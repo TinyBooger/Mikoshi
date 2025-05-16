@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat Interface</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      padding: 1rem;
+      background: #0070f3;
+      color: white;
+      text-align: center;
+    }
+
+    .chat-box {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      background: #f4f4f4;
+    }
+
+    .message {
+      margin-bottom: 1rem;
+    }
+
+    .input-area {
+      display: flex;
+      padding: 1rem;
+      background: #fff;
+      border-top: 1px solid #ccc;
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .input-area button {
+      margin-left: 0.5rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background: #0070f3;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>ChatBox</header>
+  <div class="chat-box" id="chatBox">
+    <div class="message"><strong>Bot:</strong> Hello! How can I help you today?</div>
+  </div>
+  <div class="input-area">
+    <input type="text" id="userInput" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <script>
+        function sendMessage() {
+        const input = document.getElementById('userInput');
+        const chatBox = document.getElementById('chatBox');
+        const msg = input.value.trim();
+        if (msg) {
+            const userMsg = document.createElement('div');
+            userMsg.className = 'message';
+            userMsg.innerHTML = `<strong>You:</strong> ${msg}`;
+            chatBox.appendChild(userMsg);
+
+            const responses = [
+            "Sorry, I can't reply you with any meaningful sentences yet.",
+            "Sorry, if you want real chat please wait for later updates.",
+            "I'm just a demo bot for now.",
+            "Real conversation features coming soon!",
+            "Hang tight! I'm still learning how to talk.",
+            "Thanks for trying me out!",
+            "This is a placeholder. More to come!",
+            "Oops, still under construction!",
+            "Be patient, smarter replies are on their way.",
+            "I’m a bot in training—bear with me!",
+            "Not quite ready to chat yet, but soon!",
+            "Thanks for your message, I'm still learning!",
+            "Please wait, my AI brain is warming up.",
+            "I wish I had more to say right now!",
+            "Your message is received, processing... eventually.",
+            "ChatBox says hi, but replies are limited now."
+            ];
+            const botMsg = document.createElement('div');
+            botMsg.className = 'message';
+            botMsg.innerHTML = `<strong>Bot:</strong> ${responses[Math.floor(Math.random() * responses.length)]}`;
+            chatBox.appendChild(botMsg);
+
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+        }
+        document.getElementById('userInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+        });
+
+  </script>
+</body>
+</html>
