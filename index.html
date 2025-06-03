@@ -1,17 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Landing Page</title>
-  <link rel="stylesheet" href="style.css" />
+    <title>AI Chat Frontend</title>
 </head>
 <body>
-  <section class="container">
-    <h1>Welcome to ChatBox!</h1>
-    <p>This is a simple landing page built for ChatBox Developer application. </p>
-    <p>(Click the button below to start chatting!)</p>
-    <a href="chat.html" class="btn">Start Chatting</a>
-  </section>
+    <input type="text" id="userInput" placeholder="输入消息...">
+    <button onclick="sendMessage()">发送</button>
+    <div id="response"></div>
+
+    <script>
+        const API_URL = "https://xxxx.ngrok.io/api/v1/generate"; // 替换为你的 ngrok URL
+
+        async function sendMessage() {
+            const input = document.getElementById("userInput").value;
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    prompt: input,
+                    max_new_tokens: 100
+                })
+            });
+            const data = await response.json();
+            document.getElementById("response").innerText = data.results[0].text;
+        }
+    </script>
 </body>
 </html>
