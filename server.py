@@ -30,7 +30,7 @@ async def chat(request: Request):
             temperature=0.7,
             top_p=0.9,
             repetition_penalty=1.1,
-            stop_sequences=["User:", "\nUser:"]
+            stop=["User:", "\nUser:"]
             )
         return {"reply": result}
     except Exception as e:
