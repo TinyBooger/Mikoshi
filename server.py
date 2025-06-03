@@ -18,8 +18,6 @@ client = InferenceClient(
     token=os.getenv("HF_API_KEY")
 )
 
-app.mount("/", StaticFiles(directory=".", html=True), name="static")
-
 @app.post("/chat")
 async def chat(request: Request):
     data = await request.json()
@@ -29,3 +27,5 @@ async def chat(request: Request):
         return {"reply": result}
     except Exception as e:
         return {"reply": f"Error: {str(e)}"}
+
+app.mount("/", StaticFiles(directory=".", html=True), name="static")
