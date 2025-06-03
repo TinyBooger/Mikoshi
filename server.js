@@ -11,7 +11,7 @@ app.use(express.json());
 app.post('/chat', async (req, res) => {
   const userMessage = req.body.message;
 
-  const response = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1', {
+  const response = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.HF_API_KEY}`,
