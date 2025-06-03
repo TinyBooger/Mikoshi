@@ -23,7 +23,15 @@ async def chat(request: Request):
     data = await request.json()
     prompt = data.get("message", "")
     try:
-        result = client.text_generation(prompt, max_new_tokens=100)
+        result = client.text_generation(
+            prompt,
+            max_new_tokens=100,
+            do_sample=True,
+            temperature=0.7,
+            top_p=0.9,
+            repetition_penalty=1.1,
+            stop_sequences=["User:", "\nUser:"]
+            )
         return {"reply": result}
     except Exception as e:
         return {"reply": f"Error: {str(e)}"}
