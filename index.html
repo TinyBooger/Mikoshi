@@ -1,15 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Mistral Chatbot</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chatbot with Persona</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 2rem auto; }
+    #chat-box { border: 1px solid #ccc; padding: 1rem; height: 400px; overflow-y: auto; background: #f9f9f9; }
+    .message { margin-bottom: 1rem; }
+    form { margin-top: 1rem; display: flex; }
+    input[type="text"] { flex: 1; padding: 0.5rem; font-size: 1rem; }
+    button { padding: 0.5rem 1rem; font-size: 1rem; }
+  </style>
 </head>
 <body>
-  <h1>Chat with Mistral 7B</h1>
-  <textarea id="input" rows="4" cols="50" placeholder="Type your message..."></textarea><br>
-  <button onclick="sendMessage()">Send</button>
-  <h3>Response:</h3>
-  <pre id="chat"></pre>
+
+  <h1>Chatbot</h1>
+  <div id="chat-box"></div>
+
+  <form id="chat-form">
+    <input id="input" type="text" placeholder="Type your message here..." autocomplete="off" required />
+    <button type="submit">Send</button>
+  </form>
 
   <script src="script.js"></script>
 </body>

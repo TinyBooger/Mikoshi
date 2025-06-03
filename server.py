@@ -21,7 +21,9 @@ client = InferenceClient(
 @app.post("/chat")
 async def chat(request: Request):
     data = await request.json()
-    prompt = data.get("message", "")
+    user_input = data.get("message", "")
+    persona = "You are a helpful, friendly assistant who responds with clear, complete sentences."
+    prompt = f"{persona}\nUser: {user_input}\nAssistant:"
     try:
         result = client.text_generation(
             prompt,
