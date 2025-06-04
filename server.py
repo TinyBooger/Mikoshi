@@ -61,7 +61,7 @@ async def chat(request: Request):
     persona = character["persona"]
     sample_dialogue = character.get("sample_dialogue", "")
     prompt = f"{persona}\n{sample_dialogue}\nUser: {user_input}\nAssistant:"
-    response = client.text_generation(
+    response = client.conversation(
         model="mistralai/Mistral-7B-Instruct-v0.3",
         prompt=prompt,
         max_new_tokens=250,
