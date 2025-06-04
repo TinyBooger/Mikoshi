@@ -67,11 +67,9 @@ async def chat(request: Request):
             {"role": "system", "content": system_content},
             {"role": "user", "content": user_input}
         ],
-        max_new_tokens=250,
+        max_tokens=250,
         temperature=0.7,
-        top_p=0.9,
-        repetition_penalty=1.1,
-        stop=["\nUser:", "\n"]
+        top_p=0.9
     )
     generated_text = response[0]['generated_text']
     reply = generated_text[len(prompt):].strip()
