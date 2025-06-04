@@ -58,7 +58,7 @@ async def chat(request: Request):
     character = characters.get(character_name)
     if not character:
         return JSONResponse(content={"error": "Character not found"}, status_code=404)
-    context = character["context"]
+    context = character["persona"]
     example_messages = character.get("example_messages", [])
     messages = [{"role": "system", "content": context}] + example_messages
     messages.append({"role": "user", "content": user_input})
