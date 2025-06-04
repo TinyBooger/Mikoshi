@@ -61,10 +61,9 @@ async def chat(request: Request):
     context = character["context"]
     response = client.chat_completion(
         model="mistralai/Mistral-7B-Instruct-v0.3",
-        messages=[
-            {"role": "system", "content": context},
-            {"role": "user", "content": user_input}
-        ],
+        messages=[{"role": "system", "content": context}]
+        messages += character.get("example_messages", [])
+        messages.append({"role": "user", "content": user_input})
         max_tokens=250,
         temperature=0.7,
         top_p=0.9
