@@ -59,11 +59,12 @@ async def chat(request: Request):
     if not character:
         return JSONResponse(content={"error": "Character not found"}, status_code=404)
     context = character["context"]
+    example_messages = character.get("example_messages", [])
+    messages = [{"role": "system", "content": context}] + example_messages
+    messages.append({"role": "user", "content": user_input})
     response = client.chat_completion(
         model="mistralai/Mistral-7B-Instruct-v0.3",
-        messages=[{"role": "system", "content": context}]
-        messages += character.get("example_messages", [])
-        messages.append({"role": "user", "content": user_input})
+        messages = messages,
         max_tokens=250,
         temperature=0.7,
         top_p=0.9
