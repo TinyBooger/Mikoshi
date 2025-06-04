@@ -1,12 +1,12 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from huggingface_hub import InferenceClient
 import os
 import json
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 HF_TOKEN = os.getenv("HF_API_KEY")
 client = InferenceClient(token=HF_TOKEN)
@@ -23,6 +23,10 @@ def load_characters():
 def save_characters(characters):
     with open(CHARACTERS_FILE, "w") as f:
         json.dump(characters, f, indent=2)
+
+@app.get("/")
+async def root():
+    return FileResponse("static/index.html")
 
 @app.post("/api/create-character")
 async def create_character(request: Request):
