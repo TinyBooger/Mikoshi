@@ -71,6 +71,5 @@ async def chat(request: Request):
         temperature=0.7,
         top_p=0.9
     )
-    generated_text = response[0]['generated_text']
-    reply = generated_text[len(prompt):].strip()
+    reply = response["choices"][0]["message"]["content"].strip()
     return JSONResponse(content={"response": reply})
