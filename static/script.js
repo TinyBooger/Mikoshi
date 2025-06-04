@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const characterModal = document.getElementById("character-modal");
   const closeModalBtn = document.getElementById("close-modal");
   const characterForm = document.getElementById("character-form");
+  const currentCharDisplay = document.getElementById("current-character-display");
 
   // Load characters
   fetch("/api/characters")
@@ -21,6 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
         li.addEventListener("click", () => {
           currentCharacter = name;
           chatBox.innerHTML = "";
+          currentCharDisplay.textContent = `Chatting as: ${currentCharacter}`;
         });
         characterList.appendChild(li);
       });
@@ -99,6 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
           li.addEventListener("click", () => {
             currentCharacter = name;
             chatBox.innerHTML = "";
+            currentCharDisplay.textContent = `Chatting as: ${currentCharacter}`;
           });
           characterList.appendChild(li);
         });

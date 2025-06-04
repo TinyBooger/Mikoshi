@@ -63,7 +63,7 @@ async def chat(request: Request):
     prompt = f"{persona}\n{sample_dialogue}\nUser: {user_input}\nAssistant:"
     response = client.text_generation(
         model="mistralai/Mistral-7B-Instruct-v0.3",
-        inputs=prompt,
+        prompt=prompt,
         max_new_tokens=250,
         temperature=0.7,
         top_p=0.9,
