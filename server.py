@@ -6,7 +6,7 @@ import os
 import json
 
 app = FastAPI()
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
 HF_TOKEN = os.getenv("HF_API_KEY")
 client = InferenceClient(token=HF_TOKEN)
