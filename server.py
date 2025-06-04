@@ -1,41 +1,71 @@
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from huggingface_hub import InferenceClient
 import os
+import json
 
 app = FastAPI()
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+HF_TOKEN = os.getenv("HF_API_KEY")
+client = InferenceClient(token=HF_TOKEN)
 
-client = InferenceClient(
-    model="mistralai/Mistral-7B-Instruct-v0.3",
-    token=os.getenv("HF_API_KEY")
-)
+CHARACTERS_FILE = "characters.json"
 
-@app.post("/chat")
+def load_characters():
+    if not os.path.exists(CHARACTERS_FILE):
+        with open(CHARACTERS_FILE, "w") as f:
+            json.dump({}, f)
+    with open(CHARACTERS_FILE, "r") as f:
+        return json.load(f)
+
+def save_characters(characters):
+    with open(CHARACTERS_FILE, "w") as f:
+        json.dump(characters, f, indent=2)
+
+@app.post("/api/create-character")
+async def create_character(request: Request):
+    data = await request.json()
+    name = data.get("name")
+    persona = data.get("persona")
+    sample_dialogue = data.get("sample_dialogue", "")
+    if not name or not persona:
+        return JSONResponse(content={"error": "Missing name or persona"}, status_code=400)
+    characters = load_characters()
+    characters[name] = {
+        "persona": persona,
+        "sample_dialogue": sample_dialogue
+    }
+    save_characters(characters)
+    return JSONResponse(content={"message": f"Character '{name}' created."})
+
+@app.get("/api/characters")
+async def get_characters():
+    characters = load_characters()
+    return JSONResponse(content=characters)
+
+@app.post("/api/chat")
 async def chat(request: Request):
     data = await request.json()
+    character_name = data.get("character")
     user_input = data.get("message", "")
-    persona = "You are a helpful, friendly assistant who responds with clear, complete sentences."
-    prompt = f"{persona}\nUser: {user_input}\nAssistant:"
-    try:
-        result = client.text_generation(
-            prompt,
-            max_new_tokens=100,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.9,
-            repetition_penalty=1.1,
-            stop=["User:", "\nUser:"]
-            )
-        return {"reply": result}
-    except Exception as e:
-        return {"reply": f"Error: {str(e)}"}
-
-app.mount("/", StaticFiles(directory=".", html=True), name="static")
+    characters = load_characters()
+    character = characters.get(character_name)
+    if not character:
+        return JSONResponse(content={"error": "Character not found"}, status_code=404)
+    persona = character["persona"]
+    sample_dialogue = character.get("sample_dialogue", "")
+    prompt = f"{persona}\n{sample_dialogue}\nUser: {user_input}\nAssistant:"
+    response = client.text_generation(
+        model="mistralai/Mistral-7B-Instruct-v0.3",
+        inputs=prompt,
+        max_new_tokens=250,
+        temperature=0.7,
+        top_p=0.9,
+        repetition_penalty=1.1,
+        stop=["\nUser:", "\n"]
+    )
+    generated_text = response[0]['generated_text']
+    reply = generated_text[len(prompt):].strip()
+    return JSONResponse(content={"response": reply})

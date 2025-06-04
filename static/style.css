@@ -1,0 +1,97 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+}
+
+#sidebar {
+  width: 250px;
+  background-color: #f4f4f4;
+  padding: 1rem;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+#sidebar button {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+#character-list {
+  list-style: none;
+  padding: 0;
+}
+
+#character-list li {
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+#character-list li:hover {
+  background-color: #ddd;
+}
+
+#chat-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+#chat-box {
+  flex: 1;
+  border: 1px solid #ccc;
+  padding: 1rem;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+#chat-form {
+  display: flex;
+}
+
+#chat-form input {
+  flex: 1;
+  padding: 0.5rem;
+}
+
+#chat-form button {
+  padding: 0.5rem 1rem;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 1rem;
+  width: 400px;
+  position: relative;
+}
+
+.close-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 1rem;
+  cursor: pointer;
+  font-size: 1.5rem;
+}
