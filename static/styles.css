@@ -95,3 +95,30 @@ body {
   cursor: pointer;
   font-size: 1.5rem;
 }
+
+.character-section {
+  margin-bottom: 2rem;
+}
+
+.character-section h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.character-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.character-card {
+  padding: 1rem;
+  background-color: #f2f2f2;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.character-card:hover {
+  background-color: #e0e0e0;
+}

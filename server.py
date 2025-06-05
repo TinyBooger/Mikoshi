@@ -39,6 +39,10 @@ def parse_sample_dialogue(text):
 async def root():
     return FileResponse("static/index.html")
 
+@app.get("/chat")
+async def chat_page():
+    return FileResponse("static/chat.html")
+
 @app.post("/api/create-character")
 async def create_character(request: Request, db: Session = Depends(get_db)):
     data = await request.json()

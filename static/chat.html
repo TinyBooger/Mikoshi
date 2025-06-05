@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Character Chat</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <aside id="sidebar">
+      <button id="create-character-btn">+ Create Character</button>
+      <ul id="character-list"></ul>
+    </aside>
+    <main id="chat-section">
+      <div id="current-character-display">No character selected</div>
+      <div id="chat-box"></div>
+      <form id="chat-form">
+        <input id="input" type="text" placeholder="Type your message..." required />
+        <button type="submit">Send</button>
+      </form>
+    </main>
+  </div>
+
+  <!-- Character Creation Modal -->
+  <div id="character-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-button" id="close-modal">&times;</span>
+      <h2>Create New Character</h2>
+      <form id="character-form">
+        <label for="char-name">Name:</label><br>
+        <input type="text" id="char-name" required /><br>
+        <label for="char-persona">Persona:</label><br>
+        <textarea id="char-persona" required></textarea><br>
+        <label for="char-sample">Sample Dialogue:</label><br>
+        <textarea id="char-sample"></textarea><br>
+        <button type="submit">Save Character</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/chat.js"></script>
+</body>
+</html>

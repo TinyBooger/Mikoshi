@@ -1,40 +1,48 @@
+<!-- static/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Character Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Character Library</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
   <div class="container">
-    <aside id="sidebar">
+    <aside class="sidebar">
       <button id="create-character-btn">+ Create Character</button>
       <ul id="character-list"></ul>
     </aside>
-    <main id="chat-section">
-      <div id="current-character-display">No character selected</div>
-      <div id="chat-box"></div>
-      <form id="chat-form">
-        <input id="input" type="text" placeholder="Type your message..." required />
-        <button type="submit">Send</button>
-      </form>
+
+    <main class="main-content" id="main-content">
+      <h2>Character Library</h2>
+
+      <section>
+        <h3>Recent Characters</h3>
+        <ul id="recent-characters" class="character-grid"></ul>
+      </section>
+
+      <section>
+        <h3>Popular Characters</h3>
+        <ul id="popular-characters" class="character-grid"></ul>
+      </section>
+
+      <section>
+        <h3>Recommended for You</h3>
+        <ul id="recommended-characters" class="character-grid"></ul>
+      </section>
     </main>
   </div>
 
-  <!-- Character Creation Modal -->
   <div id="character-modal" class="modal hidden">
     <div class="modal-content">
-      <span class="close-button" id="close-modal">&times;</span>
+      <span id="close-modal" class="close-button">&times;</span>
       <h2>Create New Character</h2>
       <form id="character-form">
-        <label for="char-name">Name:</label><br>
-        <input type="text" id="char-name" required /><br>
-        <label for="char-persona">Persona:</label><br>
-        <textarea id="char-persona" required></textarea><br>
-        <label for="char-sample">Sample Dialogue:</label><br>
-        <textarea id="char-sample"></textarea><br>
-        <button type="submit">Save Character</button>
+        <input type="text" id="char-name" placeholder="Name" required />
+        <textarea id="char-persona" placeholder="Persona/Context" required></textarea>
+        <textarea id="char-sample" placeholder="Sample Dialogue"></textarea>
+        <button type="submit">Create</button>
       </form>
     </div>
   </div>

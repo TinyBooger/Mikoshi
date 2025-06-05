@@ -1,122 +1,26 @@
-let currentCharacter = null;
-
 document.addEventListener("DOMContentLoaded", () => {
-  const chatForm = document.getElementById("chat-form");
-  const inputEl = document.getElementById("input");
-  const chatBox = document.getElementById("chat-box");
-  const characterList = document.getElementById("character-list");
-  const createCharBtn = document.getElementById("create-character-btn");
-  const characterModal = document.getElementById("character-modal");
-  const closeModalBtn = document.getElementById("close-modal");
-  const characterForm = document.getElementById("character-form");
-  const currentCharDisplay = document.getElementById("current-character-display");
+  const recentList = document.getElementById("recent-characters");
+  const popularList = document.getElementById("popular-characters");
+  const recommendedList = document.getElementById("recommended-characters");
 
-  // Load characters
   fetch("/api/characters")
     .then(res => res.json())
     .then(data => {
-      characterList.innerHTML = "";
       Object.keys(data).forEach(name => {
-        const li = document.createElement("li");
-        li.textContent = name;
-        li.addEventListener("click", () => {
-          currentCharacter = name;
-          chatBox.innerHTML = "";
-          currentCharDisplay.textContent = `Chatting as: ${currentCharacter}`;
+        const card = document.createElement("div");
+        card.className = "character-card";
+        card.textContent = name;
+        card.addEventListener("click", () => {
+          window.location.href = `/chat?character=${encodeURIComponent(name)}`;
         });
-        characterList.appendChild(li);
+        recentList.appendChild(card.cloneNode(true));
+        popularList.appendChild(card.cloneNode(true));
+        recommendedList.appendChild(card.cloneNode(true));
       });
     });
 
-  // Handle chat form submission
-  chatForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const message = inputEl.value.trim();
-    if (!message || !currentCharacter) return;
-    appendMessage("User", message);
-    inputEl.value = "";
-
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        character: currentCharacter,
-        message: message
-      })
-    });
-
-    const data = await response.json();
-    appendMessage(currentCharacter, data.response);
-  });
-
-  // Append message to chat box
-  function appendMessage(sender, text) {
-    const msgDiv = document.createElement("div");
-    msgDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
-    chatBox.appendChild(msgDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
-
-  // Show character creation modal
-  createCharBtn.addEventListener("click", () => {
-    characterModal.classList.remove("hidden");
-  });
-
-  // Close modal
-  closeModalBtn.addEventListener("click", () => {
-    characterModal.classList.add("hidden");
-  });
-
-  // Handle character creation form
-  characterForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const name = document.getElementById("char-name").value.trim();
-    const persona = document.getElementById("char-persona").value.trim();
-    const sample = document.getElementById("char-sample").value.trim();
-    const lines = sample.split("\n").filter(l => l.trim());
-    const messages = [];
-    for (const line of lines) {
-      if (line.startsWith("<user>:")) {
-        messages.push({ role: "user", content: line.replace("<user>:", "").trim() });
-      } else if (line.startsWith("<bot>:")) {
-        messages.push({ role: "assistant", content: line.replace("<bot>:", "").trim() });
-      }
-    }
-
-    if (!name || !persona) return;
-
-    await fetch("/api/create-character", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        name: name,
-        persona: persona,
-        sample_dialogue: sample
-      })
-    });
-
-    // Reload character list
-    fetch("/api/characters")
-      .then(res => res.json())
-      .then(data => {
-        characterList.innerHTML = "";
-        Object.keys(data).forEach(name => {
-          const li = document.createElement("li");
-          li.textContent = name;
-          li.addEventListener("click", () => {
-            currentCharacter = name;
-            chatBox.innerHTML = "";
-            currentCharDisplay.textContent = `Chatting as: ${currentCharacter}`;
-          });
-          characterList.appendChild(li);
-        });
-      });
-
-    characterModal.classList.add("hidden");
-    characterForm.reset();
+  document.getElementById("create-character-btn").addEventListener("click", () => {
+    // Reuse existing modal logic if needed
+    window.location.href = "/chat"; // or open modal if available
   });
 });
