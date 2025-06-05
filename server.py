@@ -25,6 +25,16 @@ def get_db():
     finally:
         db.close()
 
+def parse_sample_dialogue(text):
+    lines = text.strip().splitlines()
+    messages = []
+    for line in lines:
+        if line.startswith("<user>:"):
+            messages.append({"role": "user", "content": line[len("<user>:"):].strip()})
+        elif line.startswith("<bot>:"):
+            messages.append({"role": "assistant", "content": line[len("<bot>:"):].strip()})
+    return messages
+
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
@@ -34,13 +44,19 @@ async def create_character(request: Request, db: Session = Depends(get_db)):
     data = await request.json()
     name = data.get("name")
     persona = data.get("persona")
-    example_messages = data.get("example_messages", [])
+    sample_dialogue = data.get("sample_dialogue", "")  # Now treated as raw text
+
     if not name or not persona:
         return JSONResponse(content={"error": "Missing name or persona"}, status_code=400)
+
     # Check if character exists
     existing = db.query(Character).filter(Character.name == name).first()
     if existing:
         return JSONResponse(content={"error": "Character already exists"}, status_code=400)
+
+    # Parse sample dialogue
+    example_messages = parse_sample_dialogue(sample_dialogue)
+
     # Save to DB
     char = Character(
         name=name,
