@@ -75,6 +75,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const name = document.getElementById("char-name").value.trim();
     const persona = document.getElementById("char-persona").value.trim();
     const sample = document.getElementById("char-sample").value.trim();
+    const lines = sample.split("\n").filter(l => l.trim());
+    const messages = [];
+    for (const line of lines) {
+      if (line.startsWith("<user>:")) {
+        messages.push({ role: "user", content: line.replace("<user>:", "").trim() });
+      } else if (line.startsWith("<bot>:")) {
+        messages.push({ role: "assistant", content: line.replace("<bot>:", "").trim() });
+      }
+    }
 
     if (!name || !persona) return;
 
