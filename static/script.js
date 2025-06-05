@@ -7,20 +7,23 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(res => res.json())
     .then(data => {
       Object.keys(data).forEach(name => {
-        const card = document.createElement("div");
-        card.className = "character-card";
-        card.textContent = name;
-        card.addEventListener("click", () => {
-          window.location.href = `/chat?character=${encodeURIComponent(name)}`;
-        });
-        recentList.appendChild(card.cloneNode(true));
-        popularList.appendChild(card.cloneNode(true));
-        recommendedList.appendChild(card.cloneNode(true));
+        const createCard = () => {
+          const card = document.createElement("div");
+          card.className = "character-card";
+          card.textContent = name;
+          card.addEventListener("click", () => {
+            window.location.href = `/chat?character=${encodeURIComponent(name)}`;
+          });
+          return card;
+        };
+
+        recentList.appendChild(createCard());
+        popularList.appendChild(createCard());
+        recommendedList.appendChild(createCard());
       });
     });
 
   document.getElementById("create-character-btn").addEventListener("click", () => {
-    // Reuse existing modal logic if needed
-    window.location.href = "/chat"; // or open modal if available
+    window.location.href = "/chat";
   });
 });
