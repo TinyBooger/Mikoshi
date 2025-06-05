@@ -10,6 +10,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeModalBtn = document.getElementById("close-modal");
   const characterForm = document.getElementById("character-form");
   const currentCharDisplay = document.getElementById("current-character-display");
+  const urlParams = new URLSearchParams(window.location.search);
+  const selectedCharacter = urlParams.get("character");
+  if (selectedCharacter) {
+    currentCharacter = selectedCharacter;
+    currentCharDisplay.textContent = `Chatting as: ${currentCharacter}`;
+  }
 
   // Load characters
   fetch("/api/characters")
