@@ -7,5 +7,5 @@ class Character(Base):
     __tablename__ = "characters"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
-    context = Column(String, nullable=False)
+    persona = Column(String, nullable=False)
     example_messages = Column(JSON, default=[])

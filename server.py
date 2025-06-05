@@ -86,9 +86,9 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     character = db.query(Character).filter(Character.name == character_name).first()
     if not character:
         return JSONResponse(content={"error": "Character not found"}, status_code=404)
-    context = character.persona
+    persona = character.persona
     example_messages = json.loads(character.example_messages) if character.example_messages else []
-    messages = [{"role": "system", "content": context}] + example_messages
+    messages = [{"role": "system", "content": persona}] + example_messages
     messages.append({"role": "user", "content": user_input})
 
     response = client.chat_completion(
