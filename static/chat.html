@@ -11,6 +11,11 @@
     <aside id="sidebar">
       <button id="create-character-btn">+ Create Character</button>
       <ul id="character-list"></ul>
+      
+      <!-- Auth section -->
+      <div id="auth-controls" style="margin-top: auto; padding-top: 1em;">
+        <button id="open-login-btn">Login / Signup</button>
+      </div>
     </aside>
     <main id="chat-section">
       <div id="current-character-display">No character selected</div>
@@ -37,6 +42,16 @@
         <button type="submit">Save Character</button>
       </form>
     </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="login-modal" class="hidden" style="position: fixed; top: 20%; left: 35%; background: white; padding: 20px; border: 1px solid gray;">
+    <input type="email" id="login-email" placeholder="Email" /><br />
+    <input type="password" id="login-password" placeholder="Password" /><br />
+    <input type="text" id="login-phone" placeholder="Phone (optional)" /><br />
+    <button id="submit-login">Login</button>
+    <button id="submit-signup">Signup</button>
+    <button id="close-login-modal">Cancel</button>
   </div>
 
   <script src="/static/chat.js"></script>

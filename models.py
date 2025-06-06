@@ -9,3 +9,11 @@ class Character(Base):
     name = Column(String, unique=True, index=True, nullable=False)
     persona = Column(String, nullable=False)
     example_messages = Column(JSON, default=[])
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False)
+    phone = Column(String, unique=False)
+    hashed_password = Column(String, nullable=False)

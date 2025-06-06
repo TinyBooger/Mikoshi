@@ -1,12 +1,17 @@
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from huggingface_hub import InferenceClient
 from sqlalchemy.orm import Session
 import os
+
 from database import SessionLocal, engine
-from models import Base, Character
+from models import Base, Character, User
+from schemas import UserCreate, UserLogin
+from passlib.context import CryptContext
 import json
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -42,6 +47,28 @@ async def root():
 @app.get("/chat")
 async def chat_page():
     return FileResponse("static/chat.html")
+
+# ========== Auth APIs ==========
+
+@app.post("/api/signup")
+async def signup(user: UserCreate, db: Session = Depends(get_db)):
+    existing = db.query(User).filter(User.email == user.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    hashed = pwd_context.hash(user.password)
+    db_user = User(email=user.email, phone=user.phone, hashed_password=hashed)
+    db.add(db_user)
+    db.commit()
+    return {"message": "Signup successful"}
+
+@app.post("/api/login")
+async def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return {"message": "Login successful"}
+
+# ========== Character APIs ==========
 
 @app.post("/api/create-character")
 async def create_character(request: Request, db: Session = Depends(get_db)):
