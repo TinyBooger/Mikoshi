@@ -3,3 +3,4 @@ uvicorn
 huggingface_hub
 sqlalchemy 
 psycopg2-binary
+passlib[bcrypt]
