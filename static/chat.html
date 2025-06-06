@@ -8,10 +8,10 @@
 </head>
 <body>
   <div class="container">
-    <aside id="sidebar">
+    <aside id="sidebar" style="display: flex; flex-direction: column; height: 100%;">
       <button id="create-character-btn">+ Create Character</button>
       <ul id="character-list"></ul>
-      
+      <div style="flex-grow: 1;"></div> <!-- pushes button to bottom -->
       <!-- Auth section -->
       <div id="auth-controls" style="margin-top: auto; padding-top: 1em;">
         <button id="open-login-btn">Login / Signup</button>
@@ -28,7 +28,7 @@
   </div>
 
   <!-- Character Creation Modal -->
-  <div id="character-modal" class="modal hidden">
+  <div id="character-modal" class="hidden">
     <div class="modal-content">
       <span class="close-button" id="close-modal">&times;</span>
       <h2>Create New Character</h2>
