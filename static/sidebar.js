@@ -1,69 +1,10 @@
-let currentCharacter = null;
-
 document.addEventListener("DOMContentLoaded", () => {
-  const chatForm = document.getElementById("chat-form");
-  const inputEl = document.getElementById("input");
-  const chatBox = document.getElementById("chat-box");
+  const loginModal = document.getElementById("login-modal");
   const characterList = document.getElementById("character-list");
   const createCharBtn = document.getElementById("create-character-btn");
   const characterModal = document.getElementById("character-modal");
   const closeModalBtn = document.getElementById("close-modal");
   const characterForm = document.getElementById("character-form");
-  const currentCharDisplay = document.getElementById("current-character-display");
-  const urlParams = new URLSearchParams(window.location.search);
-  const selectedCharacter = urlParams.get("character");
-  if (selectedCharacter) {
-    currentCharacter = selectedCharacter;
-    currentCharDisplay.textContent = `Chatting as: ${currentCharacter}`;
-  }
-
-  // Load characters
-  fetch("/api/characters")
-    .then(res => res.json())
-    .then(data => {
-      characterList.innerHTML = "";
-      Object.keys(data).forEach(name => {
-        const li = document.createElement("li");
-        li.textContent = name;
-        li.addEventListener("click", () => {
-          currentCharacter = name;
-          chatBox.innerHTML = "";
-          currentCharDisplay.textContent = `Chatting as: ${currentCharacter}`;
-        });
-        characterList.appendChild(li);
-      });
-    });
-
-  // Handle chat form submission
-  chatForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const message = inputEl.value.trim();
-    if (!message || !currentCharacter) return;
-    appendMessage("User", message);
-    inputEl.value = "";
-
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        character: currentCharacter,
-        message: message
-      })
-    });
-
-    const data = await response.json();
-    appendMessage(currentCharacter, data.response);
-  });
-
-  // Append message to chat box
-  function appendMessage(sender, text) {
-    const msgDiv = document.createElement("div");
-    msgDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
-    chatBox.appendChild(msgDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
 
   // Show character creation modal
   createCharBtn.addEventListener("click", () => {
@@ -125,4 +66,51 @@ document.addEventListener("DOMContentLoaded", () => {
     characterModal.classList.add("hidden");
     characterForm.reset();
   });
+
+  const openLoginBtn = document.getElementById("open-login-btn");
+  if (openLoginBtn) {
+    openLoginBtn.addEventListener("click", () => {
+      loginModal.classList.remove("hidden");
+    });
+  }
+
+  const closeLoginBtn = document.getElementById("close-login-modal");
+  if (closeLoginBtn) {
+    closeLoginBtn.addEventListener("click", () => {
+      loginModal.classList.add("hidden");
+    });
+  }
+
+  const submitLogin = document.getElementById("submit-login");
+  if (submitLogin) {
+    submitLogin.addEventListener("click", async () => {
+      const email = document.getElementById("login-email").value.trim();
+      const password = document.getElementById("login-password").value.trim();
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      alert(data.message || data.detail);
+      if (res.ok) loginModal.classList.add("hidden");
+    });
+  }
+
+  const submitSignup = document.getElementById("submit-signup");
+  if (submitSignup) {
+    submitSignup.addEventListener("click", async () => {
+      const email = document.getElementById("login-email").value.trim();
+      const password = document.getElementById("login-password").value.trim();
+      const phone = document.getElementById("login-phone").value.trim();
+      const res = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, phone })
+      });
+      const data = await res.json();
+      alert(data.message || data.detail);
+      if (res.ok) loginModal.classList.add("hidden");
+    });
+  }
 });

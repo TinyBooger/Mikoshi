@@ -9,17 +9,15 @@
 </head>
 <body>
   <div class="container">
-    <aside id="sidebar" style="display: flex; flex-direction: column; height: 100%;">
-      <button id="create-character-btn">+ Create Character</button>
-      <ul id="character-list"></ul>
+    <div id="sidebar-placeholder"></div>
+    <script>
+      fetch("/static/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-placeholder").innerHTML = html;
+        });
+    </script>
 
-      <div style="flex-grow: 1;"></div> <!-- pushes button to bottom -->
-
-      <!-- Auth section -->
-      <div id="auth-controls" style="margin-top: auto; padding-top: 1em;">
-        <button id="open-login-btn">Login / Signup</button>
-      </div>
-    </aside>
 
     <main id="main-content">
       <h2>Character Library</h2>
