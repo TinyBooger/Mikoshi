@@ -122,3 +122,12 @@ body {
 .character-card:hover {
   background-color: #e0e0e0;
 }
+
+#login-modal {
+  width: 300px;
+  background-color: white;
+  padding: 20px;
+  border: 1px solid gray;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
