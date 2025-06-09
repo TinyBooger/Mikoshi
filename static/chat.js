@@ -12,15 +12,11 @@ document.addEventListener("DOMContentLoaded", () => {
       sidebarScript.src = "/static/sidebar.js";
       document.body.appendChild(sidebarScript);
     });
-    
+
   const chatForm = document.getElementById("chat-form");
   const inputEl = document.getElementById("input");
   const chatBox = document.getElementById("chat-box");
   const characterList = document.getElementById("character-list");
-  const createCharBtn = document.getElementById("create-character-btn");
-  const characterModal = document.getElementById("character-modal");
-  const closeModalBtn = document.getElementById("close-modal");
-  const characterForm = document.getElementById("character-form");
   const currentCharDisplay = document.getElementById("current-character-display");
   const urlParams = new URLSearchParams(window.location.search);
   const selectedCharacter = urlParams.get("character");
