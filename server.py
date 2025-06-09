@@ -40,6 +40,13 @@ def parse_sample_dialogue(text):
             messages.append({"role": "assistant", "content": line[len("<bot>:"):].strip()})
     return messages
 
+# Dummy in-memory store; replace with real DB access
+user_profiles = {}
+
+class AccountSetup(BaseModel):
+    name: str
+    profile_pic: str
+
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
@@ -131,3 +138,17 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     )
     reply = response["choices"][0]["message"]["content"].strip()
     return JSONResponse(content={"response": reply})
+
+# ==================== Account Setup =============================
+@app.post("/api/setup-account")
+async def setup_account(data: AccountSetup, request: Request):
+    user_id = request.session.get("user_id")  # Assume session stores user ID
+    if not user_id:
+        return {"error": "User not logged in"}
+
+    user_profiles[user_id] = {
+        "name": data.name,
+        "profile_pic": data.profile_pic
+    }
+
+    return {"message": "Account setup complete"}

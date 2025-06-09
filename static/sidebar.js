@@ -99,18 +99,8 @@ function initSidebar() {
 
   const submitSignup = document.getElementById("submit-signup");
   if (submitSignup) {
-    submitSignup.addEventListener("click", async () => {
-      const email = document.getElementById("login-email").value.trim();
-      const password = document.getElementById("login-password").value.trim();
-      const phone = document.getElementById("login-phone").value.trim();
-      const res = await fetch("/api/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, phone })
-      });
-      const data = await res.json();
-      alert(data.message || data.detail);
-      if (res.ok) loginModal.classList.add("hidden");
-    });
-  }
+  submitSignup.addEventListener("click", () => {
+    window.location.href = "/static/account_setup.html";
+  });
+}
 }

@@ -1,0 +1,31 @@
+<!-- static/account_setup.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Account Setup</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="account-setup">
+    <h2>Set Up Your Account</h2>
+    <form id="account-setup-form">
+      <label>Email:</label><br />
+      <input type="email" id="email" required /><br />
+
+      <label>Password:</label><br />
+      <input type="password" id="password" required /><br />
+
+      <label>Account Name:</label><br />
+      <input type="text" id="account-name" required /><br />
+
+      <label>Profile Picture URL:</label><br />
+      <input type="text" id="profile-pic" /><br />
+
+      <button type="submit">Create Account</button>
+    </form>
+  </div>
+
+  <script src="/static/account_setup.js"></script>
+</body>
+</html>
