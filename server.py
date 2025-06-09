@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Depends, HTTPException, Form
+from fastapi import FastAPI, Request, Depends, HTTPException, Form,  UploadFile, File
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from huggingface_hub import InferenceClient
@@ -126,7 +126,7 @@ async def account_setup(
         email: str = Form(...),
         password: str = Form(...),
         name: str = Form(...),
-        profile_pic: str = Form(""),
+        profile_pic: UploadFile = File(None),
         db: Session = Depends(get_db)
     ):
         existing = db.query(User).filter(User.email == email).first()
@@ -134,11 +134,15 @@ async def account_setup(
             raise HTTPException(status_code=400, detail="Email already registered")
 
         hashed = pwd_context.hash(password)
+
+        # Optional: Save the file or store just the filename
+        filename = profile_pic.filename if profile_pic else None
+
         db_user = User(
             email=email,
             hashed_password=hashed,
             name=name,
-            profile_pic=profile_pic
+            profile_pic=filename
         )
         db.add(db_user)
         db.commit()
