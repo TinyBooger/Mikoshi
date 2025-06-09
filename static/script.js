@@ -4,22 +4,32 @@ document.addEventListener("DOMContentLoaded", () => {
   const recommendedList = document.getElementById("recommended-characters");
 
   fetch("/api/characters")
-    .then(res => res.json())
-    .then(data => {
-      Object.keys(data).forEach(name => {
-        const createCard = () => {
-          const card = document.createElement("div");
-          card.className = "character-card";
-          card.textContent = name;
-          card.addEventListener("click", () => {
-            window.location.href = `/chat?character=${encodeURIComponent(name)}`;
-          });
-          return card;
-        };
+  .then(res => res.json())
+  .then(data => {
+    Object.keys(data).forEach(name => {
+      const createCard = () => {
+        const card = document.createElement("div");
+        card.className = "character-card";
+        card.textContent = name;
+        card.addEventListener("click", () => {
+          window.location.href = `/chat?character=${encodeURIComponent(name)}`;
+        });
+        return card;
+      };
 
-        recentList.appendChild(createCard());
-        popularList.appendChild(createCard());
-        recommendedList.appendChild(createCard());
-      });
+      recentList.appendChild(createCard());
+      popularList.appendChild(createCard());
+      recommendedList.appendChild(createCard());
     });
+  });
+
+  // Dynamically load sidebar.js after sidebar is fetched
+  const waitForSidebar = setInterval(() => {
+    if (document.getElementById("create-character-btn")) {
+      clearInterval(waitForSidebar);
+      const sidebarScript = document.createElement("script");
+      sidebarScript.src = "/static/sidebar.js";
+      document.body.appendChild(sidebarScript);
+    }
+  }, 50);
 });

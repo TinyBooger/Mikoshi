@@ -14,10 +14,6 @@
         .then(res => res.text())
         .then(html => {
           document.getElementById("sidebar-placeholder").innerHTML = html;
-          // Now load the sidebar event handlers
-          const script = document.createElement("script");
-          script.src = "/static/sidebar.js";
-          document.body.appendChild(script);
         });
     </script>
 

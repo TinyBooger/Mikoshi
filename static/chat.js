@@ -64,4 +64,14 @@ document.addEventListener("DOMContentLoaded", () => {
     chatBox.appendChild(msgDiv);
     chatBox.scrollTop = chatBox.scrollHeight;
   }
+
+  // Dynamically load sidebar.js after sidebar is fetched
+  const waitForSidebar = setInterval(() => {
+    if (document.getElementById("create-character-btn")) {
+      clearInterval(waitForSidebar);
+      const sidebarScript = document.createElement("script");
+      sidebarScript.src = "/static/sidebar.js";
+      document.body.appendChild(sidebarScript);
+    }
+  }, 50);
 });
