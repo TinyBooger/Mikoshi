@@ -17,3 +17,5 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     phone = Column(String, unique=False)
     hashed_password = Column(String, nullable=False)
+    name = Column(String)  # Add this
+    profile_pic = Column(String, nullable=True)  # Also add for storing file path if needed
