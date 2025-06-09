@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
+function initSidebar() {
   const loginModal = document.getElementById("login-modal");
   const characterList = document.getElementById("character-list");
   const createCharBtn = document.getElementById("create-character-btn");
@@ -113,4 +113,4 @@ document.addEventListener("DOMContentLoaded", () => {
       if (res.ok) loginModal.classList.add("hidden");
     });
   }
-});
+}

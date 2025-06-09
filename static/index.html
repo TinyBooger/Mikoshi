@@ -68,6 +68,7 @@
 
         const script = document.createElement("script");
         script.src = "/static/sidebar.js";
+        script.onload = () => initSidebar(); // manually trigger it
         document.body.appendChild(script);
       });
   </script>
