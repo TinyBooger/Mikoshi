@@ -20,6 +20,18 @@
     </main>
   </div>
 
+  <script>
+    fetch("/static/sidebar.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("sidebar-placeholder").innerHTML = html;
+
+        // Load sidebar handlers AFTER the HTML is injected
+        const sidebarScript = document.createElement("script");
+        sidebarScript.src = "/static/sidebar.js";
+        document.body.appendChild(sidebarScript);
+      });
+  </script>
   <script src="/static/chat.js"></script>
 </body>
 </html>
