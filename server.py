@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Depends, HTTPException
+from fastapi import FastAPI, Request, Depends, HTTPException, Form
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from huggingface_hub import InferenceClient
@@ -39,13 +39,6 @@ def parse_sample_dialogue(text):
         elif line.startswith("<bot>:"):
             messages.append({"role": "assistant", "content": line[len("<bot>:"):].strip()})
     return messages
-
-# Dummy in-memory store; replace with real DB access
-user_profiles = {}
-
-class AccountSetup(BaseModel):
-    name: str
-    profile_pic: str
 
 @app.get("/")
 async def root():
@@ -139,16 +132,25 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     reply = response["choices"][0]["message"]["content"].strip()
     return JSONResponse(content={"response": reply})
 
-# ==================== Account Setup =============================
-@app.post("/api/setup-account")
-async def setup_account(data: AccountSetup, request: Request):
-    user_id = request.session.get("user_id")  # Assume session stores user ID
-    if not user_id:
-        return {"error": "User not logged in"}
+@app.post("/api/account-setup")
+async def account_setup(
+    email: str = Form(...),
+    password: str = Form(...),
+    name: str = Form(...),
+    profile_pic: str = Form(""),
+    db: Session = Depends(get_db)
+):
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
 
-    user_profiles[user_id] = {
-        "name": data.name,
-        "profile_pic": data.profile_pic
-    }
-
-    return {"message": "Account setup complete"}
+    hashed = pwd_context.hash(password)
+    db_user = User(
+        email=email,
+        hashed_password=hashed,
+        name=name,
+        profile_pic=profile_pic
+    )
+    db.add(db_user)
+    db.commit()
+    return {"message": "Account created successfully"}
