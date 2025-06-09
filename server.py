@@ -50,17 +50,6 @@ async def chat_page():
 
 # ========== Auth APIs ==========
 
-@app.post("/api/signup")
-async def signup(user: UserCreate, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == user.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    hashed = pwd_context.hash(user.password)
-    db_user = User(email=user.email, phone=user.phone, hashed_password=hashed)
-    db.add(db_user)
-    db.commit()
-    return {"message": "Signup successful"}
-
 @app.post("/api/login")
 async def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
@@ -134,23 +123,23 @@ async def chat(request: Request, db: Session = Depends(get_db)):
 
 @app.post("/api/account-setup")
 async def account_setup(
-    email: str = Form(...),
-    password: str = Form(...),
-    name: str = Form(...),
-    profile_pic: str = Form(""),
-    db: Session = Depends(get_db)
-):
-    existing = db.query(User).filter(User.email == email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        email: str = Form(...),
+        password: str = Form(...),
+        name: str = Form(...),
+        profile_pic: str = Form(""),
+        db: Session = Depends(get_db)
+    ):
+        existing = db.query(User).filter(User.email == email).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
 
-    hashed = pwd_context.hash(password)
-    db_user = User(
-        email=email,
-        hashed_password=hashed,
-        name=name,
-        profile_pic=profile_pic
-    )
-    db.add(db_user)
-    db.commit()
-    return {"message": "Account created successfully"}
+        hashed = pwd_context.hash(password)
+        db_user = User(
+            email=email,
+            hashed_password=hashed,
+            name=name,
+            profile_pic=profile_pic
+        )
+        db.add(db_user)
+        db.commit()
+        return {"message": "Account created successfully"}
