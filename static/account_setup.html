@@ -9,20 +9,12 @@
 <body>
   <div class="account-setup">
     <h2>Set Up Your Account</h2>
-    <form id="account-setup-form">
-      <label>Email:</label><br />
-      <input type="email" id="email" required /><br />
-
-      <label>Password:</label><br />
-      <input type="password" id="password" required /><br />
-
-      <label>Account Name:</label><br />
-      <input type="text" id="account-name" required /><br />
-
-      <label>Profile Picture URL:</label><br />
-      <input type="text" id="profile-pic" /><br />
-
-      <button type="submit">Create Account</button>
+    <form id="account-setup-form" enctype="multipart/form-data">
+      <input type="email" name="email" required />
+      <input type="password" name="password" required />
+      <input type="text" name="name" required />
+      <input type="file" name="profile_pic" />
+      <button type="submit">Submit</button>
     </form>
   </div>
 
