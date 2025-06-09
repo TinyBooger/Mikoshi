@@ -1,4 +1,16 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // Insert sidebar HTML first
+  fetch("/static/sidebar.html")
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById("sidebar-placeholder").innerHTML = html;
+
+      // Now load sidebar.js
+      const sidebarScript = document.createElement("script");
+      sidebarScript.src = "/static/sidebar.js";
+      document.body.appendChild(sidebarScript);
+    });
+
   const recentList = document.getElementById("recent-characters");
   const popularList = document.getElementById("popular-characters");
   const recommendedList = document.getElementById("recommended-characters");
@@ -22,14 +34,4 @@ document.addEventListener("DOMContentLoaded", () => {
       recommendedList.appendChild(createCard());
     });
   });
-
-  // Dynamically load sidebar.js after sidebar is fetched
-  const waitForSidebar = setInterval(() => {
-    if (document.getElementById("create-character-btn")) {
-      clearInterval(waitForSidebar);
-      const sidebarScript = document.createElement("script");
-      sidebarScript.src = "/static/sidebar.js";
-      document.body.appendChild(sidebarScript);
-    }
-  }, 50);
 });

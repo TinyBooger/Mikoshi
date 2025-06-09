@@ -1,6 +1,18 @@
 let currentCharacter = null;
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Insert sidebar HTML first
+  fetch("/static/sidebar.html")
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById("sidebar-placeholder").innerHTML = html;
+
+      // Now load sidebar.js
+      const sidebarScript = document.createElement("script");
+      sidebarScript.src = "/static/sidebar.js";
+      document.body.appendChild(sidebarScript);
+    });
+    
   const chatForm = document.getElementById("chat-form");
   const inputEl = document.getElementById("input");
   const chatBox = document.getElementById("chat-box");

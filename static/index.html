@@ -10,14 +10,6 @@
 <body>
   <div class="container">
     <div id="sidebar-placeholder"></div>
-    <script>
-      fetch("/static/sidebar.html")
-        .then(res => res.text())
-        .then(html => {
-          document.getElementById("sidebar-placeholder").innerHTML = html;
-        });
-    </script>
-
 
     <main id="main-content">
       <h2>Character Library</h2>
