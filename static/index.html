@@ -37,10 +37,12 @@
       .then(html => {
         document.getElementById("sidebar-placeholder").innerHTML = html;
 
-        // Load sidebar handlers AFTER the HTML is injected
-        const sidebarScript = document.createElement("script");
-        sidebarScript.src = "/static/sidebar.js";
-        document.body.appendChild(sidebarScript);
+        // Wait a tick before loading sidebar.js
+        setTimeout(() => {
+          const script = document.createElement("script");
+          script.src = "/static/sidebar.js";
+          document.body.appendChild(script);
+        }, 5000);
       });
   </script>
   <script src="/static/script.js"></script>
