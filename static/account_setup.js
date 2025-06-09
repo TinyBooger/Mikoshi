@@ -8,7 +8,7 @@ document.getElementById("account-setup-form").addEventListener("submit", async (
   });
 
   const data = await res.json();
-  alert(data.message || data.detail);
+  alert(data.message || JSON.stringify(data));
 
   if (res.ok) {
     window.location.href = "/";
