@@ -1,20 +1,16 @@
 document.getElementById("account-setup-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value.trim();
-  const name = document.getElementById("account-name").value.trim();
-  const profilePic = document.getElementById("profile-pic").value.trim();
+  const formData = new FormData(e.target);
 
-  const res = await fetch("/api/signup", {
+  const res = await fetch("/setup-account", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, name, profile_pic: profilePic })
+    body: formData
   });
 
   const data = await res.json();
   alert(data.message || data.detail);
 
   if (res.ok) {
-    window.location.href = "/";  // Redirect to homepage or dashboard
+    window.location.href = "/";
   }
 });
