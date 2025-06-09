@@ -2,7 +2,7 @@ document.getElementById("account-setup-form").addEventListener("submit", async (
   e.preventDefault();
   const formData = new FormData(e.target);
 
-  const res = await fetch("/setup-account", {
+  const res = await fetch("/api/account-setup", {
     method: "POST",
     body: formData
   });
