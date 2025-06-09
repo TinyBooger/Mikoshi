@@ -20,6 +20,35 @@
     </main>
   </div>
 
+  <!-- Character Creation Modal -->
+  <div id="character-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-button" id="close-modal">&times;</span>
+      <h2>Create New Character</h2>
+      <form id="character-form">
+        <label for="char-name">Name:</label><br>
+        <input type="text" id="char-name" required /><br>
+        <label for="char-persona">Persona:</label><br>
+        <textarea id="char-persona" required></textarea><br>
+        <label for="char-sample">Sample Dialogue:</label><br>
+        <textarea id="char-sample"></textarea><br>
+        <button type="submit">Save Character</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="login-modal" class="modal hidden">
+    <div class="modal-content">
+      <input type="email" id="login-email" placeholder="Email" /><br />
+      <input type="password" id="login-password" placeholder="Password" /><br />
+      <input type="text" id="login-phone" placeholder="Phone (optional)" /><br />
+      <button id="submit-login">Login</button>
+      <button id="submit-signup">Signup</button>
+      <button id="close-login-modal">Cancel</button>
+    </div>
+  </div>
+
   <script>
     fetch("/static/sidebar.html")
       .then(res => res.text())
