@@ -66,12 +66,9 @@
       .then(html => {
         document.getElementById("sidebar-placeholder").innerHTML = html;
 
-        // Wait a tick before loading sidebar.js
-        setTimeout(() => {
-          const script = document.createElement("script");
-          script.src = "/static/sidebar.js";
-          document.body.appendChild(script);
-        }, 5000);
+        const script = document.createElement("script");
+        script.src = "/static/sidebar.js";
+        document.body.appendChild(script);
       });
   </script>
   <script src="/static/script.js"></script>
