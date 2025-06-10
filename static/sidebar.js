@@ -61,7 +61,7 @@ function showUserMenu(user) {
 
   toggle.addEventListener("click", () => {
     dropdown.style.display = dropdown.style.display === "none" ? "flex" : "none";
-    toggle.textContent = dropdown.style.display === "none" ? "▾" : "▴";
+    toggle.textContent = dropdown.style.display === "none" ? "▴" : "▾";
   });
 
   document.getElementById("logout-btn").addEventListener("click", async () => {
