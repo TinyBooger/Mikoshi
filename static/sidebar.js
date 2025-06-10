@@ -1,3 +1,5 @@
+let isLoggedIn = false;
+
 async function handleLogin() {
   const email = document.getElementById("login-email").value.trim();
   const password = document.getElementById("login-password").value.trim();
@@ -28,6 +30,11 @@ function loadCharacters() {
         const li = document.createElement("li");
         li.textContent = name;
         li.addEventListener("click", () => {
+          if (!isLoggedIn) {
+            alert("Please login first.");
+            document.getElementById("login-modal").classList.remove("hidden");
+            return;
+          }
           currentCharacter = name;
           chatBox.innerHTML = "";
           currentCharDisplay.textContent = `Chatting as: ${currentCharacter}`;
@@ -41,7 +48,10 @@ async function checkLogin() {
   const res = await fetch("/api/current-user");
   if (res.ok) {
     const user = await res.json();
-    if (user.name) showUserMenu(user);
+    if (user.name) {
+      isLoggedIn = true;
+      showUserMenu(user);
+    }
   }
 }
 
@@ -80,6 +90,11 @@ function initSidebar() {
   const characterForm = document.getElementById("character-form");
 
   createCharBtn.addEventListener("click", () => {
+    if (!isLoggedIn) {
+      alert("Please login first.");
+      document.getElementById("login-modal").classList.remove("hidden");
+      return;
+    }
     characterModal.classList.remove("hidden");
   });
 
