@@ -76,6 +76,7 @@ function showUserMenu(user) {
 
   document.getElementById("logout-btn").addEventListener("click", async () => {
     await fetch("/api/logout", { method: "POST" });
+    isLoggedIn = false;
     location.reload();
   });
 }
