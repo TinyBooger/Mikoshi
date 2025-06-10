@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from huggingface_hub import InferenceClient
 from sqlalchemy.orm import Session
+from itsdangerous import URLSafeSerializer
 import os
 
 from database import SessionLocal, engine
@@ -39,6 +40,20 @@ def parse_sample_dialogue(text):
         elif line.startswith("<bot>:"):
             messages.append({"role": "assistant", "content": line[len("<bot>:"):].strip()})
     return messages
+
+# ================Session Token====================
+SECRET_KEY = os.getenv("SECRET_KEY")
+serializer = URLSafeSerializer(SECRET_KEY)
+
+def create_session_token(user):
+    return serializer.dumps({"user_id": user.id})
+
+def verify_session_token(token):
+    try:
+        data = serializer.loads(token)
+        return data["user_id"]
+    except:
+        return None
 
 @app.get("/")
 async def root():
@@ -119,7 +134,16 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    return {"message": "Login successful"}
+    
+    response = JSONResponse(content={"message": "Login successful"})
+    response.set_cookie(
+        key="session_token",
+        value=create_session_token(user),  # You define this
+        httponly=True,
+        secure=True,
+        samesite="Lax"
+    )
+    return response
 
 @app.post("/api/account-setup")
 async def account_setup(
@@ -149,12 +173,20 @@ async def account_setup(
         return {"message": "Account created successfully"}
 
 @app.get("/api/current-user")
-def current_user(db: Session = Depends(get_db)):
-    # Stub for now – replace with real session/user ID logic
-    user = db.query(User).first()
-    if not user:
+def get_current_user(request: Request, db: Session = Depends(get_db)):
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
         raise HTTPException(status_code=401, detail="Not logged in")
+    user = db.query(User).get(user_id)
     return {
+        "id": user.id,
         "name": user.name,
         "profile_pic": user.profile_pic
     }
+
+@app.post("/api/logout")
+def logout():
+    response = JSONResponse(content={"message": "Logged out"})
+    response.delete_cookie("session_token")
+    return response
