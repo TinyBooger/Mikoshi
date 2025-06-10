@@ -2,17 +2,15 @@
   <button id="create-character-btn">+ Create Character</button>
   <ul id="character-list"></ul>
   <div style="flex-grow: 1;"></div>
-  <div id="auth-controls" style="margin-top: auto; padding-top: 1em;">
-    <div id="user-menu" style="cursor: pointer; display: none; flex-direction: column; align-items: flex-start;">
-      <div id="user-info" style="display: flex; align-items: center; gap: 8px;">
-        <img id="user-pic" src="/static/default-avatar.png" style="width: 32px; height: 32px; border-radius: 50%;">
-        <span id="user-name"></span>
-        <span id="menu-toggle">▾</span>
-      </div>
-      <div id="dropdown" style="display: none; flex-direction: column; padding-left: 40px;">
-        <button id="profile-btn" style="margin-top: 4px;">Profile</button>
-        <button id="logout-btn" style="margin-top: 4px;">Log out</button>
-      </div>
+  <div id="auth-controls" style="margin-top: auto; padding-bottom: 1em; display: flex; flex-direction: column; align-items: flex-end; position: relative;">
+    <div id="dropdown" style="display: none; flex-direction: column; position: absolute; bottom: 40px; right: 0;">
+      <button id="profile-btn">Profile</button>
+      <button id="logout-btn">Log out</button>
+    </div>
+    <div id="user-menu" style="display: none; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+      <img id="user-pic" src="/static/default-avatar.png" style="width: 32px; height: 32px; border-radius: 50%;">
+      <span id="user-name"></span>
+      <span id="menu-toggle">▴</span>
     </div>
     <button id="open-login-btn">Login / Signup</button>
   </div>
