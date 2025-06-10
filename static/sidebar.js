@@ -74,6 +74,11 @@ function showUserMenu(user) {
     toggle.textContent = dropdown.style.display === "none" ? "▴" : "▾";
   });
 
+  document.getElementById("profile-btn").addEventListener("click", () => {
+    window.location.href = "/profile";
+  });
+
+
   document.getElementById("logout-btn").addEventListener("click", async () => {
     await fetch("/api/logout", { method: "POST" });
     isLoggedIn = false;

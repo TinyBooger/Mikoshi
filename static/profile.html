@@ -1,0 +1,41 @@
+<!-- static/profile.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Profile</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div id="sidebar-placeholder"></div>
+
+    <main id="main-content">
+      <h2>My Profile</h2>
+      <div id="profile-info" style="margin-top: 16px;">
+        <img id="profile-pic" src="" alt="Profile Picture" style="width: 100px; height: 100px; border-radius: 50%;" />
+        <h3 id="profile-name"></h3>
+        <button id="edit-profile-btn">Edit Profile</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-button" id="close-edit-modal">&times;</span>
+      <h2>Edit Profile</h2>
+      <form id="edit-form">
+        <label for="edit-name">Name:</label><br>
+        <input type="text" id="edit-name" required /><br>
+        <label for="edit-pic">Profile Picture:</label><br>
+        <input type="file" id="edit-pic" accept="image/*" /><br>
+        <button type="submit">Save</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/profile.js"></script>
+</body>
+</html>

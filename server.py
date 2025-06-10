@@ -127,6 +127,11 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     reply = response["choices"][0]["message"]["content"].strip()
     return JSONResponse(content={"response": reply})
 
+# ===============Profile Page==================
+@app.get("/profile")
+def profile_page():
+    return FileResponse("static/profile.html")
+
 # ========== Auth APIs ==========
 
 @app.post("/api/login")
