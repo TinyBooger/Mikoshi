@@ -1,3 +1,42 @@
+async function handleLogin() {
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value.trim();
+  const res = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await res.json();
+  alert(data.message || data.detail);
+  if (res.ok) {
+    document.getElementById("login-modal").classList.add("hidden");
+    await checkLogin();
+  }
+}
+
+function handleSignupRedirect() {
+  window.location.href = "/static/account_setup.html";
+}
+
+function loadCharacters() {
+  fetch("/api/characters")
+    .then(res => res.json())
+    .then(data => {
+      const characterList = document.getElementById("character-list");
+      characterList.innerHTML = "";
+      Object.keys(data).forEach(name => {
+        const li = document.createElement("li");
+        li.textContent = name;
+        li.addEventListener("click", () => {
+          currentCharacter = name;
+          chatBox.innerHTML = "";
+          currentCharDisplay.textContent = `Chatting as: ${currentCharacter}`;
+        });
+        characterList.appendChild(li);
+      });
+    });
+}
+
 async function checkLogin() {
   const res = await fetch("/api/current-user");
   if (res.ok) {
@@ -13,7 +52,6 @@ async function checkLogin() {
   }
 }
 
-
 function initSidebar() {
   const loginModal = document.getElementById("login-modal");
   const characterList = document.getElementById("character-list");
@@ -22,17 +60,14 @@ function initSidebar() {
   const closeModalBtn = document.getElementById("close-modal");
   const characterForm = document.getElementById("character-form");
 
-  // Show character creation modal
   createCharBtn.addEventListener("click", () => {
     characterModal.classList.remove("hidden");
   });
 
-  // Close modal
   closeModalBtn.addEventListener("click", () => {
     characterModal.classList.add("hidden");
   });
 
-  // Handle character creation form
   characterForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("char-name").value.trim();
@@ -52,9 +87,7 @@ function initSidebar() {
 
     await fetch("/api/create-character", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: name,
         persona: persona,
@@ -62,23 +95,7 @@ function initSidebar() {
       })
     });
 
-    // Reload character list
-    fetch("/api/characters")
-      .then(res => res.json())
-      .then(data => {
-        characterList.innerHTML = "";
-        Object.keys(data).forEach(name => {
-          const li = document.createElement("li");
-          li.textContent = name;
-          li.addEventListener("click", () => {
-            currentCharacter = name;
-            chatBox.innerHTML = "";
-            currentCharDisplay.textContent = `Chatting as: ${currentCharacter}`;
-          });
-          characterList.appendChild(li);
-        });
-      });
-
+    loadCharacters();
     characterModal.classList.add("hidden");
     characterForm.reset();
   });
@@ -99,27 +116,13 @@ function initSidebar() {
 
   const submitLogin = document.getElementById("submit-login");
   if (submitLogin) {
-    submitLogin.addEventListener("click", async () => {
-      const email = document.getElementById("login-email").value.trim();
-      const password = document.getElementById("login-password").value.trim();
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      alert(data.message || data.detail);
-      if (res.ok) loginModal.classList.add("hidden");
-    });
+    submitLogin.addEventListener("click", handleLogin);
   }
 
   const submitSignup = document.getElementById("submit-signup");
   if (submitSignup) {
-    submitSignup.addEventListener("click", () => {
-      window.location.href = "/static/account_setup.html";
-    });
+    submitSignup.addEventListener("click", handleSignupRedirect);
   }
 
-  // Fetch and update user info
   checkLogin();
 }
