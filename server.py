@@ -138,7 +138,7 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
     response = JSONResponse(content={"message": "Login successful"})
     response.set_cookie(
         key="session_token",
-        value=create_session_token(user),  # You define this
+        value=create_session_token(db_user),
         httponly=True,
         secure=True,
         samesite="Lax"
@@ -178,7 +178,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     user_id = verify_session_token(token)
     if not user_id:
         raise HTTPException(status_code=401, detail="Not logged in")
-    user = db.query(User).get(user_id)
+    user = db.query(User).filter(User.id == user_id).first()
     return {
         "id": user.id,
         "name": user.name,
