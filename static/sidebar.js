@@ -41,16 +41,35 @@ async function checkLogin() {
   const res = await fetch("/api/current-user");
   if (res.ok) {
     const user = await res.json();
-    if (!user.name) return;
-    const authDiv = document.getElementById("auth-controls");
-    authDiv.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <img src="${user.profile_pic || '/static/default-avatar.png'}" style="width: 32px; height: 32px; border-radius: 50%;">
-        <span>${user.name}</span>
-      </div>
-    `;
+    if (user.name) showUserMenu(user);
   }
 }
+
+function showUserMenu(user) {
+  const authDiv = document.getElementById("auth-controls");
+  document.getElementById("open-login-btn").style.display = "none";
+
+  const userMenu = document.getElementById("user-menu");
+  const userPic = document.getElementById("user-pic");
+  const userName = document.getElementById("user-name");
+  const dropdown = document.getElementById("dropdown");
+  const toggle = document.getElementById("menu-toggle");
+
+  userPic.src = user.profile_pic || "/static/default-avatar.png";
+  userName.textContent = user.name;
+  userMenu.style.display = "flex";
+
+  toggle.addEventListener("click", () => {
+    dropdown.style.display = dropdown.style.display === "none" ? "flex" : "none";
+    toggle.textContent = dropdown.style.display === "none" ? "▾" : "▴";
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await fetch("/api/logout", { method: "POST" });
+    location.reload();
+  });
+}
+
 
 function initSidebar() {
   const loginModal = document.getElementById("login-modal");
