@@ -1,3 +1,19 @@
+async function checkLogin() {
+  const res = await fetch("/api/current-user");
+  if (res.ok) {
+    const user = await res.json();
+    const authDiv = document.getElementById("auth-controls");
+    authDiv.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <img src="${user.profile_pic || '/static/default-avatar.png'}" style="width: 32px; height: 32px; border-radius: 50%;">
+        <span>${user.name}</span>
+      </div>
+    `;
+  }
+}
+checkLogin();
+
+
 function initSidebar() {
   const loginModal = document.getElementById("login-modal");
   const characterList = document.getElementById("character-list");
@@ -99,8 +115,11 @@ function initSidebar() {
 
   const submitSignup = document.getElementById("submit-signup");
   if (submitSignup) {
-  submitSignup.addEventListener("click", () => {
-    window.location.href = "/static/account_setup.html";
-  });
-}
+    submitSignup.addEventListener("click", () => {
+      window.location.href = "/static/account_setup.html";
+    });
+  }
+
+  // Fetch and update user info
+  checkLogin();
 }

@@ -48,15 +48,6 @@ async def root():
 async def chat_page():
     return FileResponse("static/chat.html")
 
-# ========== Auth APIs ==========
-
-@app.post("/api/login")
-async def login(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    return {"message": "Login successful"}
-
 # ========== Character APIs ==========
 
 @app.post("/api/create-character")
@@ -121,6 +112,15 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     reply = response["choices"][0]["message"]["content"].strip()
     return JSONResponse(content={"response": reply})
 
+# ========== Auth APIs ==========
+
+@app.post("/api/login")
+async def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return {"message": "Login successful"}
+
 @app.post("/api/account-setup")
 async def account_setup(
         email: str = Form(...),
@@ -147,3 +147,14 @@ async def account_setup(
         db.add(db_user)
         db.commit()
         return {"message": "Account created successfully"}
+
+@app.get("/api/current-user")
+def current_user(db: Session = Depends(get_db)):
+    # Stub for now – replace with real session/user ID logic
+    user = db.query(User).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    return {
+        "name": user.name,
+        "profile_pic": user.profile_pic
+    }
