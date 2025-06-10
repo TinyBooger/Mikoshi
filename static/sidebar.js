@@ -1,8 +1,8 @@
 async function checkLogin() {
   const res = await fetch("/api/current-user");
-  if (!res.ok) return;
   if (res.ok) {
     const user = await res.json();
+    if (!user.name) return;
     const authDiv = document.getElementById("auth-controls");
     authDiv.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px;">
@@ -12,7 +12,6 @@ async function checkLogin() {
     `;
   }
 }
-checkLogin();
 
 
 function initSidebar() {
