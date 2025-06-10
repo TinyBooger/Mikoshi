@@ -1,5 +1,6 @@
 async function checkLogin() {
   const res = await fetch("/api/current-user");
+  if (!res.ok) return;
   if (res.ok) {
     const user = await res.json();
     const authDiv = document.getElementById("auth-controls");
