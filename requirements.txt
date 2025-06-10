@@ -7,4 +7,4 @@ passlib[bcrypt]
 pydantic[email]
 python-multipart
 itsdangerous
-bcrypt
+bcrypt<4.0
