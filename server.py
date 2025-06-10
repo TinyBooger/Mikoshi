@@ -134,22 +134,22 @@ def profile_page():
 
 @app.post("/api/update-profile")
 async def update_profile(
-    name: str = Form(...),
-    profile_pic: UploadFile = File(None),
-    request: Request,
-    db: Session = Depends(get_db)
-):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
+        request: Request,
+        name: str = Form(...),
+        profile_pic: UploadFile = File(None),
+        db: Session = Depends(get_db)
+    ):
+        token = request.cookies.get("session_token")
+        user_id = verify_session_token(token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Not logged in")
 
-    user = db.query(User).get(user_id)
-    user.name = name
-    if profile_pic:
-        user.profile_pic = profile_pic.filename  # Or save the file if needed
-    db.commit()
-    return {"message": "Profile updated"}
+        user = db.query(User).get(user_id)
+        user.name = name
+        if profile_pic:
+            user.profile_pic = profile_pic.filename  # Or save the file if needed
+        db.commit()
+        return {"message": "Profile updated"}
 
 # ========== Auth APIs ==========
 
