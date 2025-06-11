@@ -49,17 +49,5 @@ function setupProfilePage() {
 
 document.addEventListener("DOMContentLoaded", () => {
   setupProfilePage();
-
-  fetch("/static/sidebar.html")
-    .then(res => res.text())
-    .then(html => {
-      document.getElementById("sidebar-placeholder").innerHTML = html;
-      const script = document.createElement("script");
-      script.src = "/static/sidebar.js";
-      script.onload = () => {
-        initSidebar();
-        loadProfile()
-      }
-      document.body.appendChild(script);
-    });
+  loadProfile();
 });

@@ -36,6 +36,19 @@
     </div>
   </div>
 
+  <script>
+    fetch("/static/sidebar.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("sidebar-placeholder").innerHTML = html;
+
+        const script = document.createElement("script");
+        script.src = "/static/sidebar.js";
+        script.onload = () => initSidebar(); // manually trigger it
+        document.body.appendChild(script);
+      });
+  </script>
+
   <script src="/static/profile.js"></script>
 </body>
 </html>
