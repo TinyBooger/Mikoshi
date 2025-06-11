@@ -38,7 +38,10 @@
 
   <script>
     fetch("/static/sidebar.html")
-      .then(res => res.text())
+      .then(res => {
+        if (!res.ok) throw new Error("Sidebar HTML fetch failed");
+        return res.text();
+      })
       .then(html => {
         document.getElementById("sidebar-placeholder").innerHTML = html;
 
