@@ -43,6 +43,7 @@ function setupProfilePage() {
     if (res.ok) {
       document.getElementById("edit-modal").classList.add("hidden");
       loadProfile();
+      initSidebar();
     }
   });
 }
