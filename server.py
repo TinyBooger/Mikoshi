@@ -42,6 +42,15 @@ def parse_sample_dialogue(text):
             messages.append({"role": "assistant", "content": line[len("<bot>:"):].strip()})
     return messages
 
+def get_current_user(request: Request, db: Session):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
 # ================Session Token====================
 SECRET_KEY = os.getenv("SECRET_KEY")
 serializer = URLSafeSerializer(SECRET_KEY)
