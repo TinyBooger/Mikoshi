@@ -26,4 +26,5 @@ class User(Base):
     name = Column(String)  # Add this
     profile_pic = Column(String, nullable=True)  # Also add for storing file path if needed
 
+    characters_created = Column(ARRAY(String), default=[])
     recent_characters = Column(ARRAY(String), default=[])
