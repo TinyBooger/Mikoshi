@@ -32,7 +32,8 @@ function setupProfilePage() {
 
     const res = await fetch("/api/update-profile", {
       method: "POST",
-      body: formData
+      body: formData,
+      credentials: "include"
     });
 
     const data = await res.json();
