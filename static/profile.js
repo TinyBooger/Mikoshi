@@ -22,7 +22,9 @@ function setupProfilePage() {
     loadProfile();
   });
 
-  document.getElementById("save-edit").addEventListener("click", async () => {
+  document.getElementById("edit-form").addEventListener("submit", async (e) => {
+    e.preventDefault(); // Prevent default form reload
+
     const name = document.getElementById("edit-name").value.trim();
     const pic = document.getElementById("edit-pic").files[0];
 
