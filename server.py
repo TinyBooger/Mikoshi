@@ -10,6 +10,7 @@ from database import SessionLocal, engine
 from models import Base, Character, User
 from schemas import UserCreate, UserLogin
 from passlib.context import CryptContext
+import shutil
 import json
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -70,19 +71,16 @@ async def character_create_page():
     return FileResponse("static/character_create.html")
 
 @app.post("/api/create-character")
-async def create_character(request: Request, db: Session = Depends(get_db)):
-    # Get logged-in user
-    user = get_current_user(request, db)
+async def create_character(
+    name: str = Form(...),
+    persona: str = Form(...),
+    sample_dialogue: str = Form(""),
+    picture: UploadFile = File(None),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-
-    data = await request.json()
-    name = data.get("name")
-    persona = data.get("persona")
-    sample_dialogue = data.get("sample_dialogue", "")
-
-    if not name or not persona:
-        return JSONResponse(content={"error": "Missing name or persona"}, status_code=400)
 
     existing = db.query(Character).filter(Character.name == name).first()
     if existing:
@@ -104,7 +102,7 @@ async def create_character(request: Request, db: Session = Depends(get_db)):
         name=name,
         persona=persona,
         example_messages=json.dumps(messages),
-        creator_id=user.id,
+        creator_id=str(user["id"]),
         popularity=0,
         picture=pic_path
     )
