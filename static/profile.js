@@ -19,6 +19,7 @@ function setupProfilePage() {
 
   document.getElementById("close-edit-modal").addEventListener("click", () => {
     document.getElementById("edit-modal").classList.add("hidden");
+    loadProfile();
   });
 
   document.getElementById("save-edit").addEventListener("click", async () => {
