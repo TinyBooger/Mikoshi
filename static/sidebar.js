@@ -97,9 +97,9 @@ function initSidebar() {
       document.getElementById("login-modal").classList.remove("hidden");
       return;
     }
-    characterModal.classList.remove("hidden");
+    window.location.href = "/character-create";
   });
-  
+
   const openLoginBtn = document.getElementById("open-login-btn");
   if (openLoginBtn) {
     openLoginBtn.addEventListener("click", () => {
