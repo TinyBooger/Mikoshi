@@ -65,7 +65,7 @@ async def chat_page():
 
 # ========== Character APIs ==========
 
-@app.get("/character-create", response_class=HTMLResponse)
+@app.get("/character-create")
 async def character_create_page():
     return FileResponse("static/character_create.html")
 
