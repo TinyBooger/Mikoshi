@@ -38,10 +38,7 @@
 
   <script>
     fetch("/static/sidebar.html")
-      .then(res => {
-        if (!res.ok) throw new Error("Sidebar HTML fetch failed");
-        return res.text();
-      })
+      .then(res => res.text())
       .then(html => {
         document.getElementById("sidebar-placeholder").innerHTML = html;
 
@@ -51,7 +48,6 @@
         document.body.appendChild(script);
       });
   </script>
-
   <script src="/static/profile.js"></script>
 </body>
 </html>
