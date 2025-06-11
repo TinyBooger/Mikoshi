@@ -48,7 +48,6 @@ function setupProfilePage() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  loadProfile();
   setupProfilePage();
 
   fetch("/static/sidebar.html")
@@ -57,7 +56,10 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("sidebar-placeholder").innerHTML = html;
       const script = document.createElement("script");
       script.src = "/static/sidebar.js";
-      script.onload = () => initSidebar();
+      script.onload = () => {
+        initSidebar();
+        loadProfile()
+      }
       document.body.appendChild(script);
     });
 });
