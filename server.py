@@ -81,20 +81,29 @@ async def character_create_page():
 
 @app.post("/api/create-character")
 async def create_character(
+    request: Request,
     name: str = Form(...),
     persona: str = Form(...),
     sample_dialogue: str = Form(""),
     picture: UploadFile = File(None),
-    db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
-    if not user:
+    # Get user from session
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check if character already exists
     existing = db.query(Character).filter(Character.name == name).first()
     if existing:
         return JSONResponse(content={"error": "Character already exists"}, status_code=400)
 
+    # Parse sample dialogue
     messages = parse_sample_dialogue(sample_dialogue)
 
     # Save picture if provided
@@ -106,22 +115,21 @@ async def create_character(
         with open(pic_path, "wb") as f:
             shutil.copyfileobj(picture.file, f)
 
-    # Create character with creator
+    # Create and save character
     char = Character(
         name=name,
         persona=persona,
         example_messages=json.dumps(messages),
-        creator_id=str(user["id"]),
+        creator_id=str(user_id),
         popularity=0,
         picture=pic_path
     )
     db.add(char)
 
-    # Update user's character_created field
-    db_user = db.query(User).filter(User.id == user["id"]).first()
-    if db_user.character_created is None:
-        db_user.character_created = []
-    db_user.character_created.append(name)
+    # Update user's character_created list
+    if user.character_created is None:
+        user.character_created = []
+    user.character_created.append(name)
 
     db.commit()
     return JSONResponse(content={"message": f"Character '{name}' created."})
