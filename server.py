@@ -145,10 +145,14 @@ async def update_profile(
             raise HTTPException(status_code=401, detail="Not logged in")
 
         user = db.query(User).get(user_id)
-        user.name = name
+        print("user_id:", user_id)
+        print("user:", user)
+        if name:
+            user.name = name
         if profile_pic:
             user.profile_pic = profile_pic.filename  # Or save the file if needed
         db.commit()
+        db.refresh(user)
         return {"message": "Profile updated"}
 
 # ========== Auth APIs ==========
