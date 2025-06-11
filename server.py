@@ -71,29 +71,51 @@ async def character_create_page():
 
 @app.post("/api/create-character")
 async def create_character(request: Request, db: Session = Depends(get_db)):
+    # Get logged-in user
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     data = await request.json()
     name = data.get("name")
     persona = data.get("persona")
-    sample_dialogue = data.get("sample_dialogue", "")  # Now treated as raw text
+    sample_dialogue = data.get("sample_dialogue", "")
 
     if not name or not persona:
         return JSONResponse(content={"error": "Missing name or persona"}, status_code=400)
 
-    # Check if character exists
     existing = db.query(Character).filter(Character.name == name).first()
     if existing:
         return JSONResponse(content={"error": "Character already exists"}, status_code=400)
 
-    # Parse sample dialogue
-    example_messages = parse_sample_dialogue(sample_dialogue)
+    messages = parse_sample_dialogue(sample_dialogue)
 
-    # Save to DB
+    # Save picture if provided
+    pic_path = None
+    if picture:
+        ext = picture.filename.split(".")[-1]
+        filename = f"char_{name}.{ext}"
+        pic_path = f"static/uploads/{filename}"
+        with open(pic_path, "wb") as f:
+            shutil.copyfileobj(picture.file, f)
+
+    # Create character with creator
     char = Character(
         name=name,
         persona=persona,
-        example_messages=json.dumps(example_messages)
+        example_messages=json.dumps(messages),
+        creator_id=user.id,
+        popularity=0,
+        picture=pic_path
     )
     db.add(char)
+
+    # Update user's character_created field
+    db_user = db.query(User).filter(User.id == user["id"]).first()
+    if db_user.character_created is None:
+        db_user.character_created = []
+    db_user.character_created.append(name)
+
     db.commit()
     return JSONResponse(content={"message": f"Character '{name}' created."})
 
