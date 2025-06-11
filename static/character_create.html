@@ -1,0 +1,44 @@
+<!-- static/character_create.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Character</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div id="sidebar-placeholder"></div>
+
+    <main id="main-content">
+      <h2>Create New Character</h2>
+      <form id="character-form">
+        <label for="char-name">Name:</label><br>
+        <input type="text" id="char-name" required /><br>
+        <label for="char-persona">Persona:</label><br>
+        <textarea id="char-persona" required></textarea><br>
+        <label for="char-sample">Sample Dialogue:</label><br>
+        <textarea id="char-sample"></textarea><br>
+        <label for="char-picture">Profile Picture:</label><br>
+        <input type="file" id="char-picture" accept="image/*"><br>
+        <button type="submit">Save Character</button>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    fetch("/static/sidebar.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("sidebar-placeholder").innerHTML = html;
+        const script = document.createElement("script");
+        script.src = "/static/sidebar.js";
+        script.onload = () => initSidebar();
+        document.body.appendChild(script);
+      });
+  </script>
+
+  <script src="/static/character_create.js"></script>
+</body>
+</html>

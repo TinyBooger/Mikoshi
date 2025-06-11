@@ -89,11 +89,7 @@ function showUserMenu(user) {
 
 function initSidebar() {
   const loginModal = document.getElementById("login-modal");
-  const characterList = document.getElementById("character-list");
   const createCharBtn = document.getElementById("create-character-btn");
-  const characterModal = document.getElementById("character-modal");
-  const closeModalBtn = document.getElementById("close-modal");
-  const characterForm = document.getElementById("character-form");
 
   createCharBtn.addEventListener("click", () => {
     if (!isLoggedIn) {
@@ -103,43 +99,7 @@ function initSidebar() {
     }
     characterModal.classList.remove("hidden");
   });
-
-  closeModalBtn.addEventListener("click", () => {
-    characterModal.classList.add("hidden");
-  });
-
-  characterForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const name = document.getElementById("char-name").value.trim();
-    const persona = document.getElementById("char-persona").value.trim();
-    const sample = document.getElementById("char-sample").value.trim();
-    const lines = sample.split("\n").filter(l => l.trim());
-    const messages = [];
-    for (const line of lines) {
-      if (line.startsWith("<user>:")) {
-        messages.push({ role: "user", content: line.replace("<user>:", "").trim() });
-      } else if (line.startsWith("<bot>:")) {
-        messages.push({ role: "assistant", content: line.replace("<bot>:", "").trim() });
-      }
-    }
-
-    if (!name || !persona) return;
-
-    await fetch("/api/create-character", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: name,
-        persona: persona,
-        sample_dialogue: sample
-      })
-    });
-
-    loadCharacters();
-    characterModal.classList.add("hidden");
-    characterForm.reset();
-  });
-
+  
   const openLoginBtn = document.getElementById("open-login-btn");
   if (openLoginBtn) {
     openLoginBtn.addEventListener("click", () => {
