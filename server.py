@@ -65,6 +65,10 @@ async def chat_page():
 
 # ========== Character APIs ==========
 
+@app.get("/character-create", response_class=HTMLResponse)
+async def character_create_page():
+    return FileResponse("static/character_create.html")
+
 @app.post("/api/create-character")
 async def create_character(request: Request, db: Session = Depends(get_db)):
     data = await request.json()
