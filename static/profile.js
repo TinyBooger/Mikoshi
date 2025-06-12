@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (characters.length > 0) {
     const main = document.getElementById("main-content");
     const section = document.createElement("section");
-    section.innerHTML = `<h3>Characters</h3><div id="character-list" style="margin-top:10px;"></div>`;
+    section.innerHTML = `<div id="character-list" style="margin-top:10px;"></div>`;
     main.appendChild(section);
 
     const container = section.querySelector("#character-list");
