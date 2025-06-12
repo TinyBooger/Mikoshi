@@ -146,6 +146,20 @@ async def get_characters(db: Session = Depends(get_db)):
         }
     return JSONResponse(content=result)
 
+@app.get("/api/character/{character_id}")
+def get_character(character_id: int, db: Session = Depends(get_db)):
+    c = db.query(Character).filter(Character.id == character_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Character not found")
+    return {
+        "id": c.id,
+        "name": c.name,
+        "persona": c.persona,
+        "example_messages": json.loads(c.example_messages),
+        "creator_id": c.creator_id
+    }
+
+
 
 @app.get("/api/my-characters")
 async def get_my_characters(request: Request, db: Session = Depends(get_db)):
