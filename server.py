@@ -127,7 +127,7 @@ async def create_character(
         user.characters_created = []
     db.commit()  # Commit first to get char.id
     db.refresh(char)
-    db_user.characters_created.append(str(char.id))
+    user.characters_created.append(str(char.id))
     db.commit()
 
     db.commit()
