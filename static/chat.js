@@ -1,3 +1,4 @@
+//static/chat.js
 let currentCharacter = null;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -13,6 +14,14 @@ document.addEventListener("DOMContentLoaded", () => {
   if (selectedCharacterId) {
   currentCharacterId = selectedCharacterId;
     // Optionally fetch character name from the API to display, or store name when loading characters
+  }
+
+  if (currentCharacterIdcharacterId) {
+    fetch("/api/recent-characters/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ character_id: currentCharacterIdcharacterId }),
+    });
   }
 
   // Load characters

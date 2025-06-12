@@ -10,6 +10,7 @@ from database import SessionLocal, engine
 from models import Base, Character, User
 from schemas import UserCreate, UserLogin
 from passlib.context import CryptContext
+from datetime import datetime
 import shutil
 import json
 
@@ -160,6 +161,67 @@ async def get_my_characters(request: Request, db: Session = Depends(get_db)):
     characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
     print("Characters found:", [c.name for c in characters])
     return [{"id": c.id, "name": c.name, "picture": c.picture} for c in characters]
+
+@app.post("/api/recent-characters/update")
+async def update_recent_characters(request: Request, db: Session = Depends(get_db)):
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not logged in")
+
+    data = await request.json()
+    char_id = data.get("character_id")
+    if not char_id:
+        raise HTTPException(status_code=400, detail="Missing character_id")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    now_str = datetime.utcnow().isoformat()
+    recent = user.recent_characters or []
+
+    # Remove existing entry for this character
+    recent = [entry for entry in recent if entry.get("id") != char_id]
+
+    # Insert new entry at front
+    recent.insert(0, {"id": char_id, "timestamp": now_str})
+
+    # Limit to last 10 entries (optional)
+    user.recent_characters = recent[:10]
+
+    db.commit()
+    return {"status": "success"}
+
+@app.get("/api/recent-characters")
+async def get_recent_characters(request: Request, db: Session = Depends(get_db)):
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
+        # Return empty list if not logged in
+        return []
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.recent_characters:
+        return []
+
+    recent = user.recent_characters
+    # Extract character IDs maintaining order
+    char_ids = [entry["id"] for entry in recent]
+
+    characters = db.query(Character).filter(Character.id.in_(char_ids)).all()
+    char_map = {str(c.id): c for c in characters}
+
+    # Return list preserving order with id, name, picture, and timestamp
+    return [
+        {
+            "id": entry["id"],
+            "name": char_map.get(entry["id"], None).name if char_map.get(entry["id"]) else "Unknown",
+            "picture": char_map.get(entry["id"], None).picture if char_map.get(entry["id"]) else None,
+            "timestamp": entry["timestamp"],
+        }
+        for entry in recent if entry["id"] in char_map
+    ]
 
 
 #======================== Chat API =======================

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, JSON
+from sqlalchemy import Column, String, Integer, JSON, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import ARRAY
 
@@ -27,4 +27,4 @@ class User(Base):
     profile_pic = Column(String, nullable=True)  # Also add for storing file path if needed
 
     characters_created = Column(ARRAY(Integer), default=[])
-    recent_characters = Column(ARRAY(Integer), default=[])
+    recent_characters = Column(ARRAY(JSONB), default=[])
