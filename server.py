@@ -141,7 +141,8 @@ async def get_characters(db: Session = Depends(get_db)):
     for c in chars:
         result[c.name] = {
             "persona": c.persona,
-            "example_messages": json.loads(c.example_messages)
+            "example_messages": json.loads(c.example_messages),
+            "creator_id": c.creator_id
         }
     return JSONResponse(content=result)
 
