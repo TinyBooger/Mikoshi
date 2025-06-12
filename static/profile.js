@@ -10,19 +10,6 @@ async function loadProfile() {
   const user = await res.json();
   document.getElementById("profile-pic").src = user.profile_pic || "/static/default-avatar.png";
   document.getElementById("profile-name").textContent = user.name;
-
-  fetch("/api/characters")
-      .then(res => res.json())
-      .then(chars => {
-        const list = document.getElementById("character-list");
-        Object.entries(chars).forEach(([name, info]) => {
-          if (info.creator_id == user.id) {
-            const li = document.createElement("li");
-            li.textContent = name;
-            list.appendChild(li);
-          }
-        });
-      });
 }
 
 function setupProfilePage() {
@@ -61,7 +48,32 @@ function setupProfilePage() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   setupProfilePage();
   loadProfile();
+
+  // Fetch user characters
+  const res = await fetch("/api/my-characters");
+  const characters = await res.json();
+
+  if (characters.length > 0) {
+    const main = document.getElementById("main-content");
+    const section = document.createElement("section");
+    section.innerHTML = `<h3>Characters</h3><div id="character-list" style="margin-top:10px;"></div>`;
+    main.appendChild(section);
+
+    const container = section.querySelector("#character-list");
+    characters.forEach(c => {
+      const div = document.createElement("div");
+      div.className = "character-item";
+      div.style = "display:flex; align-items:center; margin:10px 0; cursor:pointer;";
+      div.onclick = () => window.location.href = `/chat?id=${c.id}`;
+
+      div.innerHTML = `
+        <img src="${c.picture || '/static/default.png'}" alt="${c.name}" style="width:50px;height:50px;border-radius:50%;margin-right:10px;">
+        <span>${c.name}</span>
+      `;
+      container.appendChild(div);
+    });
+  }
 });

@@ -7,10 +7,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const characterList = document.getElementById("character-list");
   const currentCharDisplay = document.getElementById("current-character-display");
   const urlParams = new URLSearchParams(window.location.search);
-  const selectedCharacter = urlParams.get("character");
-  if (selectedCharacter) {
-    currentCharacter = selectedCharacter;
-    currentCharDisplay.textContent = `Chatting as: ${currentCharacter}`;
+  const selectedCharacterId = urlParams.get("character");
+  let currentCharacterId = null;
+  let currentCharacterName = null;
+  if (selectedCharacterId) {
+  currentCharacterId = selectedCharacterId;
+    // Optionally fetch character name from the API to display, or store name when loading characters
   }
 
   // Load characters
@@ -18,23 +20,31 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(res => res.json())
     .then(data => {
       characterList.innerHTML = "";
-      Object.keys(data).forEach(name => {
+      // data now is an array or object with id and name, adjust accordingly
+      Object.values(data).forEach(char => {
         const li = document.createElement("li");
-        li.textContent = name;
+        li.textContent = char.name;
         li.addEventListener("click", () => {
-          currentCharacter = name;
+          currentCharacterId = char.id;
+          currentCharacterName = char.name;
           chatBox.innerHTML = "";
-          currentCharDisplay.textContent = `Chatting as: ${currentCharacter}`;
+          currentCharDisplay.textContent = `Chatting as: ${currentCharacterName}`;
         });
         characterList.appendChild(li);
+
+        // If no id selected yet and this character matches id, set display
+        if (currentCharacterId === char.id) {
+          currentCharacterName = char.name;
+          currentCharDisplay.textContent = `Chatting as: ${currentCharacterName}`;
+        }
       });
     });
 
-  // Handle chat form submission
+  // On form submit
   chatForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const message = inputEl.value.trim();
-    if (!message || !currentCharacter) return;
+    if (!message || !currentCharacterId) return;
     appendMessage("User", message);
     inputEl.value = "";
 
@@ -44,13 +54,13 @@ document.addEventListener("DOMContentLoaded", () => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        character: currentCharacter,
+        character_id: currentCharacterId,
         message: message
       })
     });
 
     const data = await response.json();
-    appendMessage(currentCharacter, data.response);
+    appendMessage(currentCharacterName || "Character", data.response);
   });
 
   // Append message to chat box

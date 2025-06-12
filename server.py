@@ -69,10 +69,6 @@ def verify_session_token(token):
 async def root():
     return FileResponse("static/index.html")
 
-@app.get("/chat")
-async def chat_page():
-    return FileResponse("static/chat.html")
-
 # ========== Character APIs ==========
 
 @app.get("/character-create")
@@ -129,7 +125,10 @@ async def create_character(
     # Update user's characters_created list
     if user.characters_created is None:
         user.characters_created = []
-    user.characters_created.append(name)
+    db.commit()  # Commit first to get char.id
+    db.refresh(char)
+    db_user.characters_created.append(str(char.id))
+    db.commit()
 
     db.commit()
     return JSONResponse(content={"message": f"Character '{name}' created."})
@@ -146,14 +145,36 @@ async def get_characters(db: Session = Depends(get_db)):
         }
     return JSONResponse(content=result)
 
+@app.get("/api/my-characters")
+async def get_my_characters(request: Request, db: Session = Depends(get_db)):
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not logged in")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.characters_created:
+        return []
+
+    characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
+    return [{"id": c.id, "name": c.name, "picture": c.picture} for c in characters]
+
+
+#======================== Chat API =======================
+
+@app.get("/chat")
+async def chat_page():
+    return FileResponse("static/chat.html")
+
 @app.post("/api/chat")
 async def chat(request: Request, db: Session = Depends(get_db)):
     data = await request.json()
-    character_name = data.get("character")
+    character_id = data.get("id")
     user_input = data.get("message", "")
-    character = db.query(Character).filter(Character.name == character_name).first()
+    character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
         return JSONResponse(content={"error": "Character not found"}, status_code=404)
+
     persona = character.persona
     example_messages = json.loads(character.example_messages) if character.example_messages else []
     messages = [{"role": "system", "content": persona}] + example_messages
@@ -168,6 +189,7 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     )
     reply = response["choices"][0]["message"]["content"].strip()
     return JSONResponse(content={"response": reply})
+
 
 # ===============Profile Page==================
 @app.get("/profile")
