@@ -128,7 +128,6 @@ async def create_character(
     db.commit()  # Commit first to get char.id
     db.refresh(char)
     user.characters_created.append(str(char.id))
-    db.commit()
 
     db.commit()
     return JSONResponse(content={"message": f"Character '{name}' created."})
