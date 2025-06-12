@@ -159,6 +159,7 @@ async def get_my_characters(request: Request, db: Session = Depends(get_db)):
         return []
 
     characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
+    print("Characters found:", [c.name for c in characters])
     return [{"id": c.id, "name": c.name, "picture": c.picture} for c in characters]
 
 
