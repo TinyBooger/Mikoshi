@@ -21,11 +21,11 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(data => {
       characterList.innerHTML = "";
       // data now is an array or object with id and name, adjust accordingly
-      Object.values(data).forEach(char => {
+      Object.entries(data).forEach(([id, char]) => {
         const li = document.createElement("li");
         li.textContent = char.name;
         li.addEventListener("click", () => {
-          currentCharacterId = char.id;
+          currentCharacterId = id;
           currentCharacterName = char.name;
           chatBox.innerHTML = "";
           currentCharDisplay.textContent = `Chatting as: ${currentCharacterName}`;
@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
         characterList.appendChild(li);
 
         // If no id selected yet and this character matches id, set display
-        if (currentCharacterId === char.id) {
+        if (currentCharacterId == id) {
           currentCharacterName = char.name;
           currentCharDisplay.textContent = `Chatting as: ${currentCharacterName}`;
         }
