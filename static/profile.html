@@ -18,6 +18,10 @@
         <h3 id="profile-name"></h3>
         <button id="edit-profile-btn">Edit Profile</button>
       </div>
+      <div id="created-characters" style="margin-top: 32px;">
+        <h3>Characters</h3>
+        <ul id="character-list"></ul>
+      </div>
     </main>
   </div>
 
@@ -32,23 +36,6 @@
         <label for="edit-pic">Profile Picture:</label><br>
         <input type="file" id="edit-pic" accept="image/*" /><br>
         <button type="submit">Save</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Character Creation Modal -->
-  <div id="character-modal" class="modal hidden">
-    <div class="modal-content">
-      <span class="close-button" id="close-modal">&times;</span>
-      <h2>Create New Character</h2>
-      <form id="character-form">
-        <label for="char-name">Name:</label><br>
-        <input type="text" id="char-name" required /><br>
-        <label for="char-persona">Persona:</label><br>
-        <textarea id="char-persona" required></textarea><br>
-        <label for="char-sample">Sample Dialogue:</label><br>
-        <textarea id="char-sample"></textarea><br>
-        <button type="submit">Save Character</button>
       </form>
     </div>
   </div>

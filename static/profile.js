@@ -10,6 +10,19 @@ async function loadProfile() {
   const user = await res.json();
   document.getElementById("profile-pic").src = user.profile_pic || "/static/default-avatar.png";
   document.getElementById("profile-name").textContent = user.name;
+
+  fetch("/api/characters")
+      .then(res => res.json())
+      .then(chars => {
+        const list = document.getElementById("character-list");
+        Object.entries(chars).forEach(([name, info]) => {
+          if (info.creator_id == user.id) {
+            const li = document.createElement("li");
+            li.textContent = name;
+            list.appendChild(li);
+          }
+        });
+      });
 }
 
 function setupProfilePage() {
