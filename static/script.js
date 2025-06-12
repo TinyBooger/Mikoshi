@@ -6,11 +6,11 @@ document.addEventListener("DOMContentLoaded", () => {
   fetch("/api/characters")
   .then(res => res.json())
   .then(data => {
-    Object.keys(data).forEach((id,name) => {
+    Object.entries(data).forEach(([id, char]) => {
       const createCard = () => {
         const card = document.createElement("div");
         card.className = "character-card";
-        card.textContent = name;
+        card.textContent = char.name;
         card.addEventListener("click", () => {
           window.location.href = `/chat?character=${encodeURIComponent(id)}`;
         });
