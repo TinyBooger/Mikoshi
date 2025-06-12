@@ -30,6 +30,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ character_id: currentCharacterId }),
     });
+
+    loadRecentCharacters();
   }
 
   chatForm.addEventListener("submit", async (e) => {
