@@ -12,8 +12,10 @@ class Character(Base):
     example_messages = Column(JSON, default=[])
 
     views = Column(Integer, default=0)
+    likes = Column(Integer, default=0)
     picture = Column(String, nullable=True)  # path or URL to the picture
 
+    created_time = Column(DateTime, default=datetime.utcnow)
     creator_id = Column(String, nullable=False)  # store creator email or id
 
 class User(Base):
