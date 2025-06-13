@@ -27,5 +27,6 @@ class User(Base):
     profile_pic = Column(String, nullable=True)  # Also add for storing file path if needed
 
     views = Column(Integer, default=0)
+    likes = Column(Integer, default=0)
     characters_created = Column(ARRAY(Integer), default=[])
     recent_characters = Column(ARRAY(JSONB), default=[])

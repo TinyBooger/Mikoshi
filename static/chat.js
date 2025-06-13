@@ -13,7 +13,7 @@ async function loadCharacterDetails(characterId) {
     document.getElementById("char-name").textContent = char.name;
     document.getElementById("char-creator").textContent = char.creator_name || "Unknown";
     document.getElementById("char-creator").href = `/profile/${char.creator_id}`;
-    document.getElementById("char-views").textContent = char.popularity || 0;
+    document.getElementById("char-views").textContent = char.views || 0;
     document.getElementById("char-likes").textContent = char.likes || 0;
     document.getElementById("char-created").textContent = new Date(char.created_time).toLocaleDateString();
 
