@@ -96,32 +96,52 @@ body {
   font-size: 1.5rem;
 }
 
-.character-section {
-  margin-bottom: 2rem;
-}
-
-.character-section h2 {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-}
-
 .character-list {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
 }
 
-.character-card {
-  padding: 1rem;
-  background-color: #f2f2f2;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s;
+.character-row-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding-bottom: 8px;
 }
 
-.character-card:hover {
-  background-color: #e0e0e0;
+.character-grid {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 10px;
 }
+
+.character-card {
+  min-width: 120px;
+  max-width: 120px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 4px;
+  background-color: #f9f9f9;
+  cursor: pointer;
+}
+
+.character-card img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+}
+
+.popularity-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  font-size: 0.75rem;
+  background: #eee;
+  padding: 2px 5px;
+  border-radius: 6px;
+}
+
 
 #login-modal {
   width: 300px;

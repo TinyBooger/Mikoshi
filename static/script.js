@@ -3,23 +3,25 @@ document.addEventListener("DOMContentLoaded", () => {
   const popularList = document.getElementById("popular-characters");
   const recommendedList = document.getElementById("recommended-characters");
 
-  fetch("/api/characters")
-  .then(res => res.json())
-  .then(data => {
-    Object.entries(data).forEach(([id, char]) => {
-      const createCard = () => {
+  // Load top 10 popular characters
+  fetch("/api/characters/popular")
+    .then(res => res.json())
+    .then(chars => {
+      chars.forEach(char => {
         const card = document.createElement("div");
         card.className = "character-card";
-        card.textContent = char.name;
+        card.style.position = "relative";
+        card.innerHTML = `
+          <img src="${char.picture || '/static/default.png'}" alt="${char.name}" style="width:100%; border-radius:8px;">
+          <div style="padding:4px; text-align:center;">${char.name}</div>
+          <div style="position:absolute; bottom:4px; right:8px; font-size:12px; color:gray;">❤️ ${char.popularity}</div>
+        `;
         card.addEventListener("click", () => {
-          window.location.href = `/chat?character=${encodeURIComponent(id)}`;
+          window.location.href = `/chat?character=${encodeURIComponent(char.id)}`;
         });
-        return card;
-      };
-
-      recentList.appendChild(createCard());
-      popularList.appendChild(createCard());
-      recommendedList.appendChild(createCard());
+        popularList.appendChild(card);
+      });
     });
-  });
+
+  // Placeholder recent & recommended (left unchanged for now)
 });

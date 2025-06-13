@@ -26,5 +26,6 @@ class User(Base):
     name = Column(String)  # Add this
     profile_pic = Column(String, nullable=True)  # Also add for storing file path if needed
 
+    popularity = Column(Integer, default=0)
     characters_created = Column(ARRAY(Integer), default=[])
     recent_characters = Column(ARRAY(JSONB), default=[])

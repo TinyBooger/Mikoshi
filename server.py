@@ -237,6 +237,35 @@ async def get_recent_characters(request: Request, db: Session = Depends(get_db))
         for entry in recent if entry["id"] in char_map
     ]
 
+@app.get("/api/characters/popular")
+def get_popular_characters(db: Session = Depends(get_db)):
+    chars = db.query(Character).order_by(Character.popularity.desc()).limit(10).all()
+    result = []
+    for c in chars:
+        result.append({
+            "id": c.id,
+            "name": c.name,
+            "persona": c.persona,
+            "picture": c.picture,
+            "popularity": c.popularity,
+        })
+    return result
+
+@app.post("/api/popularity/increment")
+def increment_popularity(payload: dict, db: Session = Depends(get_db)):
+    character_id = payload.get("character_id")
+
+    if character_id:
+        char = db.query(Character).filter(Character.id == character_id).first()
+        if char:
+            char.popularity = (char.popularity or 0) + 1
+
+            creator = db.query(User).filter(User.id == char.creator_id).first()
+            if creator:
+                creator.popularity = (creator.popularity or 0) + 1
+
+    db.commit()
+    return {"message": "Popularity updated"}
 
 #======================== Chat API =======================
 

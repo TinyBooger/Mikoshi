@@ -31,6 +31,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       body: JSON.stringify({ character_id: currentCharacterId }),
     });
 
+    // Update popularity
+    fetch("/api/popularity/increment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ character_id: currentCharacterId})
+    });
+
     loadRecentCharacters();
   }
 
