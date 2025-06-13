@@ -11,7 +11,7 @@ class Character(Base):
     persona = Column(String, nullable=False)
     example_messages = Column(JSON, default=[])
 
-    popularity = Column(Integer, default=0)
+    views = Column(Integer, default=0)
     picture = Column(String, nullable=True)  # path or URL to the picture
 
     creator_id = Column(String, nullable=False)  # store creator email or id
@@ -26,6 +26,6 @@ class User(Base):
     name = Column(String)  # Add this
     profile_pic = Column(String, nullable=True)  # Also add for storing file path if needed
 
-    popularity = Column(Integer, default=0)
+    views = Column(Integer, default=0)
     characters_created = Column(ARRAY(Integer), default=[])
     recent_characters = Column(ARRAY(JSONB), default=[])

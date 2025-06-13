@@ -118,7 +118,7 @@ async def create_character(
         persona=persona,
         example_messages=json.dumps(messages),
         creator_id=str(user_id),
-        popularity=0,
+        views=0,
         picture=pic_path
     )
     db.add(char)
@@ -159,7 +159,15 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
         "creator_id": c.creator_id
     }
 
+@router.post("/api/character/{character_id}/like")
+def like_character(character_id: int, db: Session = Depends(get_db)):
+    char = db.query(Character).filter(Character.id == character_id).first()
+    if not char:
+        raise HTTPException(status_code=404, detail="Character not found")
 
+    char.likes += 1
+    db.commit()
+    return JSONResponse(content={"likes": char.likes})
 
 @app.get("/api/my-characters")
 async def get_my_characters(request: Request, db: Session = Depends(get_db)):
@@ -239,7 +247,7 @@ async def get_recent_characters(request: Request, db: Session = Depends(get_db))
 
 @app.get("/api/characters/popular")
 def get_popular_characters(db: Session = Depends(get_db)):
-    chars = db.query(Character).order_by(Character.popularity.desc()).limit(10).all()
+    chars = db.query(Character).order_by(Character.views.desc()).limit(10).all()
     result = []
     for c in chars:
         result.append({
@@ -247,25 +255,25 @@ def get_popular_characters(db: Session = Depends(get_db)):
             "name": c.name,
             "persona": c.persona,
             "picture": c.picture,
-            "popularity": c.popularity,
+            "views": c.views,
         })
     return result
 
-@app.post("/api/popularity/increment")
-def increment_popularity(payload: dict, db: Session = Depends(get_db)):
+@app.post("/api/views/increment")
+def increment_views(payload: dict, db: Session = Depends(get_db)):
     character_id = payload.get("character_id")
 
     if character_id:
         char = db.query(Character).filter(Character.id == character_id).first()
         if char:
-            char.popularity = (char.popularity or 0) + 1
+            char.views = (char.views or 0) + 1
 
             creator = db.query(User).filter(User.id == char.creator_id).first()
             if creator:
-                creator.popularity = (creator.popularity or 0) + 1
+                creator.views = (creator.views or 0) + 1
 
     db.commit()
-    return {"message": "Popularity updated"}
+    return {"message": "views updated"}
 
 #======================== Chat API =======================
 

@@ -1,6 +1,36 @@
 let currentCharacterId = null;
 let currentCharacterName = null;
 
+async function loadCharacterDetails(characterId) {
+  try {
+    const res = await fetch(`/api/character/${characterId}`);
+    if (!res.ok) throw new Error();
+
+    const char = await res.json();
+
+    // Fill in sidebar details
+    document.getElementById("char-pic").src = char.avatar_url || "/static/default-avatar.png";
+    document.getElementById("char-name").textContent = char.name;
+    document.getElementById("char-creator").textContent = char.creator_name || "Unknown";
+    document.getElementById("char-creator").href = `/profile/${char.creator_id}`;
+    document.getElementById("char-views").textContent = char.popularity || 0;
+    document.getElementById("char-likes").textContent = char.likes || 0;
+    document.getElementById("char-created").textContent = new Date(char.created_time).toLocaleDateString();
+
+    // Like button
+    document.getElementById("like-button").onclick = async () => {
+      const res = await fetch(`/api/character/${characterId}/like`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById("char-likes").textContent = data.likes;
+      }
+    };
+  } catch {
+    console.error("Failed to load character details.");
+  }
+}
+
+
 document.addEventListener("DOMContentLoaded", async () => {
   const chatForm = document.getElementById("chat-form");
   const inputEl = document.getElementById("input");
@@ -11,6 +41,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   currentCharacterId = urlParams.get("character");
 
   if (currentCharacterId) {
+    loadCharacterDetails(currentCharacterId);
+
     try {
       const res = await fetch(`/api/character/${currentCharacterId}`);
       if (res.ok) {
@@ -31,8 +63,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       body: JSON.stringify({ character_id: currentCharacterId }),
     });
 
-    // Update popularity
-    fetch("/api/popularity/increment", {
+    // Update views
+    fetch("/api/views/increment", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ character_id: currentCharacterId})

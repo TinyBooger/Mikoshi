@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
         card.innerHTML = `
           <img src="${char.picture || '/static/default.png'}" alt="${char.name}" style="width:100%; border-radius:8px;">
           <div style="padding:4px; text-align:center;">${char.name}</div>
-          <div style="position:absolute; bottom:4px; right:8px; font-size:12px; color:gray;">❤️ ${char.popularity}</div>
+          <div style="position:absolute; bottom:4px; right:8px; font-size:12px; color:gray;">❤️ ${char.views}</div>
         `;
         card.addEventListener("click", () => {
           window.location.href = `/chat?character=${encodeURIComponent(char.id)}`;
