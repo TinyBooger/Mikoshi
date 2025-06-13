@@ -159,7 +159,7 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
         "creator_id": c.creator_id
     }
 
-@router.post("/api/character/{character_id}/like")
+@app.post("/api/character/{character_id}/like")
 def like_character(character_id: int, db: Session = Depends(get_db)):
     char = db.query(Character).filter(Character.id == character_id).first()
     if not char:
