@@ -43,6 +43,7 @@ def parse_sample_dialogue(text):
             messages.append({"role": "assistant", "content": line[len("<bot>:"):].strip()})
     return messages
 
+# ============================= User =================================
 def get_current_user(request: Request, db: Session):
     user_id = request.session.get("user_id")
     if not user_id:
@@ -51,6 +52,29 @@ def get_current_user(request: Request, db: Session):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+@app.get("/api/user/{user_id}")
+def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "id": user.id,
+        "name": user.name,
+        "profile_pic": user.profile_pic,
+    }
+
+@app.get("/api/user/{user_id}/characters")
+def get_user_characters(user_id: int, db: Session = Depends(get_db)):
+    characters = db.query(Character).filter(Character.creator_id == user_id).all()
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "picture": c.avatar_url
+        }
+        for c in characters
+    ]
 
 # ================Session Token====================
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -314,6 +338,10 @@ async def chat(request: Request, db: Session = Depends(get_db)):
 def profile_page():
     return FileResponse("static/profile.html")
 
+@app.get("/profile/{user_id}")
+async def public_profile_page(user_id: str):
+    return FileResponse("static/public-profile.html")
+    
 @app.post("/api/update-profile")
 async def update_profile(
         request: Request,
