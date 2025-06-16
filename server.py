@@ -340,8 +340,8 @@ def profile_page():
 
 @app.get("/profile/{user_id}")
 async def public_profile_page(user_id: str):
-    return FileResponse("static/public-profile.html")
-    
+    return FileResponse("static/public_profile.html")
+
 @app.post("/api/update-profile")
 async def update_profile(
         request: Request,
