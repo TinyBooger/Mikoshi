@@ -53,7 +53,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadProfile();
 
   // Fetch user characters
-  const res = await fetch("/api/my-characters");
+  const res = await fetch("/api/characters-created");
   const characters = await res.json();
 
   if (characters.length > 0) {

@@ -196,20 +196,20 @@ def like_character(character_id: int, db: Session = Depends(get_db)):
     db.commit()
     return JSONResponse(content={"likes": char.likes})
 
-@app.get("/api/my-characters")
-async def get_my_characters(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
+# @app.get("/api/my-characters")
+# async def get_my_characters(request: Request, db: Session = Depends(get_db)):
+#     token = request.cookies.get("session_token")
+#     user_id = verify_session_token(token)
+#     if not user_id:
+#         raise HTTPException(status_code=401, detail="Not logged in")
 
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.characters_created:
-        return []
+#     user = db.query(User).filter(User.id == user_id).first()
+#     if not user or not user.characters_created:
+#         return []
 
-    characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
-    print("Characters found:", [c.name for c in characters])
-    return [{"id": c.id, "name": c.name, "picture": c.picture} for c in characters]
+#     characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
+#     print("Characters found:", [c.name for c in characters])
+#     return [{"id": c.id, "name": c.name, "picture": c.picture} for c in characters]
 
 @app.post("/api/recent-characters/update")
 async def update_recent_characters(request: Request, db: Session = Depends(get_db)):
@@ -364,6 +364,22 @@ async def update_profile(
         db.commit()
         db.refresh(user)
         return {"message": "Profile updated"}
+
+@app.get("/api/characters-created")
+def get_user_created_characters(request: Request, user_id: int = None, db: Session = Depends(get_db)):
+    if user_id is None:
+        token = request.cookies.get("session_token")
+        user_id = verify_session_token(token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Not logged in")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.characters_created:
+        return []
+
+    characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
+    return [{"id": c.id, "name": c.name, "picture": c.picture} for c in characters]
+
 
 # ========== Auth APIs ==========
 

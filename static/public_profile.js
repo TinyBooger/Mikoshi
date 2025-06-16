@@ -16,7 +16,7 @@ async function loadPublicProfile() {
   document.getElementById("profile-pic").src = user.profile_pic || "/static/default-avatar.png";
   document.getElementById("profile-name").textContent = user.name || "Unknown";
 
-  const charRes = await fetch(`/api/user/${userId}/characters`);
+  const charRes = await fetch(`/api/characters-created?user_id=`+userId);
   const characters = await charRes.json();
 
   if (characters.length > 0) {
