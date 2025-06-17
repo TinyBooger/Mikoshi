@@ -73,8 +73,8 @@ function showUserMenu(user) {
   const toggle = document.getElementById("menu-toggle");
 
   userPic.src = user.profile_pic || "/static/default-avatar.png";
+  userName.textContent = user.name;
   userMenu.classList.remove("d-none");
-  userMenu.style.display = "flex";
   userMenu.classList.add("d-flex", "flex-column", "align-items-start");
   dropdown.classList.add("d-flex", "flex-column", "border", "rounded", "bg-white", "p-2", "shadow-sm");
   dropdown.style.display = "none";
