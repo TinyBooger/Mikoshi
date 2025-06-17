@@ -75,16 +75,20 @@ function showUserMenu(user) {
   userPic.src = user.profile_pic || "/static/default-avatar.png";
   userName.textContent = user.name;
   userMenu.style.display = "flex";
+  userMenu.classList.add("d-flex", "flex-column", "align-items-start");
+  dropdown.classList.add("d-flex", "flex-column", "border", "rounded", "bg-white", "p-2", "shadow-sm");
+  dropdown.style.display = "none";
 
   toggle.addEventListener("click", () => {
-    dropdown.style.display = dropdown.style.display === "none" ? "flex" : "none";
-    toggle.textContent = dropdown.style.display === "none" ? "▴" : "▾";
+    const isHidden = dropdown.style.display === "none";
+    dropdown.style.display = isHidden ? "flex" : "none";
+    toggle.classList.toggle("bi-caret-up-fill", !isHidden);
+    toggle.classList.toggle("bi-caret-down-fill", isHidden);
   });
 
   document.getElementById("profile-btn").addEventListener("click", () => {
     window.location.href = "/profile";
   });
-
 
   document.getElementById("logout-btn").addEventListener("click", async () => {
     await fetch("/api/logout", { method: "POST" });
