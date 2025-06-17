@@ -9,12 +9,16 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(chars => {
       chars.forEach(char => {
         const card = document.createElement("div");
-        card.className = "character-card";
-        card.style.position = "relative";
+        card.className = "card text-center";
+        card.style.width = "150px";
+        card.style.margin = "5px";
+        card.style.cursor = "pointer";
         card.innerHTML = `
-          <img src="${char.picture || '/static/default.png'}" alt="${char.name}" style="width:100%; border-radius:8px;">
-          <div style="padding:4px; text-align:center;">${char.name}</div>
-          <div style="position:absolute; bottom:4px; right:8px; font-size:12px; color:gray;">❤️ ${char.views}</div>
+          <img src="${char.picture || '/static/default.png'}" class="card-img-top" alt="${char.name}" style="border-radius: 8px;">
+          <div class="card-body p-2">
+            <h6 class="card-title mb-1">${char.name}</h6>
+            <p class="text-muted" style="font-size: 12px;">❤️ ${char.views}</p>
+          </div>
         `;
         card.addEventListener("click", () => {
           window.location.href = `/chat?character=${encodeURIComponent(char.id)}`;
