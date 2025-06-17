@@ -66,7 +66,6 @@ function showUserMenu(user) {
   const userMenu = document.getElementById("user-menu");
   const openLoginBtn = document.getElementById("open-login-btn");
 
-  openLoginBtn.style.display = "none";
   document.getElementById("user-name").textContent = user.name;
   document.getElementById("user-pic").src = user.profile_pic || "/static/default-avatar.png";
 
