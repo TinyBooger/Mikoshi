@@ -12,7 +12,6 @@ async function handleLogin() {
   const data = await res.json();
   alert(data.message || data.detail);
   if (res.ok) {
-    document.getElementById("open-login-btn").classList.add("d-none");
     await checkLogin();
   }
 }
@@ -65,6 +64,8 @@ async function checkLogin() {
 function showUserMenu(user) {
   const userMenu = document.getElementById("user-menu");
   const openLoginBtn = document.getElementById("open-login-btn");
+
+  if (openLoginBtn) openLoginBtn.classList.add("d-none");
 
   document.getElementById("user-name").textContent = user.name;
   document.getElementById("user-pic").src = user.profile_pic || "/static/default-avatar.png";
