@@ -12,7 +12,7 @@ async function handleLogin() {
   const data = await res.json();
   alert(data.message || data.detail);
   if (res.ok) {
-    document.getElementById("login-modal").classList.add("hidden");
+    document.getElementById("login-modal").classList.add("d-none");
     await checkLogin();
   }
 }
