@@ -7,20 +7,18 @@
   <ul id="recent-characters" class="list-group mb-3"></ul>
 
   <div class="mt-auto">
-    <div id="auth-controls">
-      <div id="user-menu" class="dropdown dropup d-none position-relative mt-auto px-2">
+    <div id="auth-controls" class="mt-auto px-2">
+      <div id="user-menu" class="dropdown d-none">
         <button 
-          id="menu-toggle" 
-          class="btn btn-outline-light w-100 dropdown-toggle d-flex align-items-center justify-content-between" 
+          class="btn btn-outline-light dropdown-toggle w-100 d-flex align-items-center gap-2" 
           type="button" 
+          id="userDropdown" 
           data-bs-toggle="dropdown" 
           aria-expanded="false">
-          <div class="d-flex align-items-center gap-2">
-            <img id="user-pic" src="/static/default-avatar.png" class="rounded-circle" width="32" height="32">
-            <span id="user-name"></span>
-          </div>
+          <img id="user-pic" src="/static/default-avatar.png" class="rounded-circle" width="32" height="32">
+          <span id="user-name" class="flex-grow-1 text-start">Username</span>
         </button>
-        <ul class="dropdown-menu dropdown-menu-end">
+        <ul class="dropdown-menu w-100" aria-labelledby="userDropdown">
           <li><button id="profile-btn" class="dropdown-item">Profile</button></li>
           <li><button id="logout-btn" class="dropdown-item">Log out</button></li>
         </ul>
