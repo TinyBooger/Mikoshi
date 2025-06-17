@@ -8,16 +8,22 @@
 
   <div class="mt-auto">
     <div id="auth-controls">
-      <div id="user-menu" class="d-none position-relative">
-        <div id="user-info" class="d-flex align-items-center gap-2" style="cursor: pointer;">
-          <img id="user-pic" src="/static/default-avatar.png" class="rounded-circle" width="32" height="32">
-          <span id="user-name"></span>
-          <span id="menu-toggle">▴</span>
-        </div>
-        <div id="dropdown" class="dropdown-menu show p-2" style="display: none;">
-          <button id="profile-btn" class="btn btn-sm btn-outline-primary mb-2 w-100">Profile</button>
-          <button id="logout-btn" class="btn btn-sm btn-outline-danger w-100">Log out</button>
-        </div>
+      <div id="user-menu" class="dropdown dropup d-none position-relative mt-auto px-2">
+        <button 
+          id="menu-toggle" 
+          class="btn btn-outline-light w-100 dropdown-toggle d-flex align-items-center justify-content-between" 
+          type="button" 
+          data-bs-toggle="dropdown" 
+          aria-expanded="false">
+          <div class="d-flex align-items-center gap-2">
+            <img id="user-pic" src="/static/default-avatar.png" class="rounded-circle" width="32" height="32">
+            <span id="user-name"></span>
+          </div>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><button id="profile-btn" class="dropdown-item">Profile</button></li>
+          <li><button id="logout-btn" class="dropdown-item">Log out</button></li>
+        </ul>
       </div>
       <button id="open-login-btn" class="btn btn-outline-secondary w-100 mt-2">Login / Signup</button>
     </div>

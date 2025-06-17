@@ -63,40 +63,21 @@ async function checkLogin() {
 }
 
 function showUserMenu(user) {
-  const authDiv = document.getElementById("auth-controls");
-  document.getElementById("open-login-btn").style.display = "none";
-
   const userMenu = document.getElementById("user-menu");
-  const userPic = document.getElementById("user-pic");
-  const userName = document.getElementById("user-name");
-  const dropdown = document.getElementById("dropdown");
-  const toggle = document.getElementById("menu-toggle");
+  const openLoginBtn = document.getElementById("open-login-btn");
 
-  userPic.src = user.profile_pic || "/static/default-avatar.png";
-  userName.textContent = user.name;
+  openLoginBtn.style.display = "none";
+  document.getElementById("user-name").textContent = user.name;
+  document.getElementById("user-pic").src = user.profile_pic || "/static/default-avatar.png";
+
   userMenu.classList.remove("d-none");
-  userMenu.classList.add("d-flex", "flex-column", "align-items-start");
-  dropdown.classList.add("d-flex", "flex-column", "border", "rounded", "bg-white", "p-2", "shadow-sm");
-  dropdown.style.display = "none";
 
-  toggle.addEventListener("click", () => {
-    const isHidden = dropdown.style.display === "none";
-    dropdown.style.display = isHidden ? "flex" : "none";
-    toggle.classList.toggle("bi-caret-up-fill", !isHidden);
-    toggle.classList.toggle("bi-caret-down-fill", isHidden);
-  });
-
-  document.getElementById("profile-btn").addEventListener("click", () => {
-    window.location.href = "/profile";
-  });
-
-  document.getElementById("logout-btn").addEventListener("click", async () => {
+  document.getElementById("profile-btn").onclick = () => window.location.href = "/profile";
+  document.getElementById("logout-btn").onclick = async () => {
     await fetch("/api/logout", { method: "POST" });
-    isLoggedIn = false;
     location.reload();
-  });
+  };
 }
-
 
 function initSidebar() {
   const loginModal = document.getElementById("login-modal");
