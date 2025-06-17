@@ -132,6 +132,10 @@ body {
   border-radius: 50%;
 }
 
+.dropdown-toggle::after {
+  transform: rotate(180deg); /* Point up */
+}
+
 .popularity-badge {
   position: absolute;
   bottom: 6px;
