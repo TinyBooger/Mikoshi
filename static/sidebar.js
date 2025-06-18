@@ -35,15 +35,15 @@ async function loadRecentCharacters() {
     }
 
     recentChars.forEach(c => {
-      const li = document.createElement("li");
-      li.className = "list-group-item list-group-item-action d-flex align-items-center gap-2";
-      li.style.cursor = "pointer";
-      li.onclick = () => window.location.href = `/chat?character=${c.id}`;
-      li.innerHTML = `
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "list-group-item list-group-item-action d-flex align-items-center gap-2";
+      btn.onclick = () => window.location.href = `/chat?character=${c.id}`;
+      btn.innerHTML = `
         <img src="${c.picture || '/static/default.png'}" alt="${c.name}" class="rounded-circle" style="width:30px; height:30px;">
         <span>${c.name}</span>
       `;
-      sidebar.appendChild(li);
+      sidebar.appendChild(btn);
     });
   } catch (e) {
     console.error(e);
