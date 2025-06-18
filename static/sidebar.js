@@ -30,20 +30,20 @@ async function loadRecentCharacters() {
     sidebar.innerHTML = "";
 
     if (recentChars.length === 0) {
-      sidebar.textContent = "No recent chats";
+      sidebar.innerHTML = '<li class="list-group-item text-muted">No recent chats</li>';
       return;
     }
 
     recentChars.forEach(c => {
-      const div = document.createElement("div");
-      div.className = "recent-character";
-      div.style.cursor = "pointer";
-      div.onclick = () => window.location.href = `/chat?character=${c.id}`;
-      div.innerHTML = `
-        <img src="${c.picture || '/static/default.png'}" alt="${c.name}" style="width:30px; height:30px; border-radius:50%; margin-right:8px;">
+      const li = document.createElement("li");
+      li.className = "list-group-item list-group-item-action d-flex align-items-center gap-2";
+      li.style.cursor = "pointer";
+      li.onclick = () => window.location.href = `/chat?character=${c.id}`;
+      li.innerHTML = `
+        <img src="${c.picture || '/static/default.png'}" alt="${c.name}" class="rounded-circle" style="width:30px; height:30px;">
         <span>${c.name}</span>
       `;
-      sidebar.appendChild(div);
+      sidebar.appendChild(li);
     });
   } catch (e) {
     console.error(e);
