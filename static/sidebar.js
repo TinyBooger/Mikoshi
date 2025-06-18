@@ -80,6 +80,7 @@ function showUserMenu(user) {
 }
 
 function initSidebar() {
+  console.log("Sidebar loaded")
   const loginModal = document.getElementById("login-modal");
   const createCharBtn = document.getElementById("create-character-btn");
 
