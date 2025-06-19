@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Depends, HTTPException, Form,  UploadFile, File
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from huggingface_hub import InferenceClient
 from sqlalchemy.orm import Session
@@ -43,7 +43,6 @@ def parse_sample_dialogue(text):
             messages.append({"role": "assistant", "content": line[len("<bot>:"):].strip()})
     return messages
 
-# ============================= User =================================
 def get_current_user(request: Request, db: Session):
     user_id = request.session.get("user_id")
     if not user_id:
@@ -53,6 +52,17 @@ def get_current_user(request: Request, db: Session):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
+# ============================= Login Check =============================
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    # Check session cookie or auth
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/static/index.html")  # Your welcome/login page
+
+    return await call_next(request)
+
+# ============================= User =================================
 @app.get("/api/user/{user_id}")
 def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
