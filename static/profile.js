@@ -14,11 +14,11 @@ async function loadProfile() {
 
 function setupProfilePage() {
   document.getElementById("edit-profile-btn").addEventListener("click", () => {
-    document.getElementById("edit-modal").classList.remove("hidden");
+    document.getElementById("edit-modal").classList.remove("d-none");
   });
 
   document.getElementById("close-edit-modal").addEventListener("click", () => {
-    document.getElementById("edit-modal").classList.add("hidden");
+    document.getElementById("edit-modal").classList.add("d-none");
     loadProfile();
   });
 
@@ -41,7 +41,7 @@ function setupProfilePage() {
     const data = await res.json();
     alert(data.message || data.detail);
     if (res.ok) {
-      document.getElementById("edit-modal").classList.add("hidden");
+      document.getElementById("edit-modal").classList.add("d-none");
       loadProfile();
       initSidebar();
     }

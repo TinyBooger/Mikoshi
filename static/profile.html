@@ -31,7 +31,7 @@
   </div>
 
   <!-- Edit Modal -->
-  <div id="edit-modal" class="modal d-block" tabindex="-1" style="display: none;">
+  <div id="edit-modal" class="modal d-none">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -56,24 +56,13 @@
   </div>
 
   <!-- Login Modal -->
-  <div id="login-modal" class="modal d-block" tabindex="-1" style="display: none;">
-    <div class="modal-dialog">
-      <div class="modal-content p-3">
-        <div class="modal-header">
-          <h5 class="modal-title">Login</h5>
-          <button type="button" class="btn-close" id="close-login-modal"></button>
-        </div>
-        <div class="modal-body">
-          <input type="email" class="form-control mb-2" id="login-email" placeholder="Email" />
-          <input type="password" class="form-control mb-2" id="login-password" placeholder="Password" />
-          <input type="text" class="form-control mb-3" id="login-phone" placeholder="Phone (optional)" />
-          <div class="d-flex justify-content-between">
-            <button id="submit-login" class="btn btn-primary">Login</button>
-            <button id="submit-signup" class="btn btn-secondary">Signup</button>
-            <button id="close-login-modal" class="btn btn-outline-danger">Cancel</button>
-          </div>
-        </div>
-      </div>
+  <div id="login-modal" class="modal hidden">
+    <div class="modal-content">
+      <input type="email" id="login-email" placeholder="Email" /><br />
+      <input type="password" id="login-password" placeholder="Password" /><br />
+      <button id="submit-login">Login</button>
+      <button id="submit-signup">Signup</button>
+      <button id="close-login-modal">Cancel</button>
     </div>
   </div>
 
