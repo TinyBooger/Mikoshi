@@ -1,4 +1,4 @@
-//static/sidebar.js
+//static/sidebar.js?v=0.102
 let isLoggedIn = false;
 
 async function handleLogin() {

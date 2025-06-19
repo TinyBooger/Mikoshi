@@ -61,7 +61,7 @@
         document.getElementById("sidebar-placeholder").innerHTML = html;
 
         const script = document.createElement("script");
-        script.src = "/static/sidebar.js";
+        script.src = "/static/sidebar.js?v=0.102";
         script.onload = () => initSidebar(); // manually trigger it
         document.body.appendChild(script);
       });

@@ -9,41 +9,44 @@
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-  <div class="container">
-    <div id="sidebar-placeholder"></div>
+  <div class="d-flex" style="height: 100vh;">
+    <div id="sidebar-placeholder" style="width: 250px;"></div>
 
-    <main id="chat-section">
-      <div id="current-character-display">No character selected</div>
-      <div id="chat-box"></div>
-      <form id="chat-form">
-        <input id="input" type="text" placeholder="Type your message..." required />
-        <button type="submit">Send</button>
-      </form>
+    <main class="flex-grow-1 d-flex">
+      <div class="flex-grow-1 d-flex flex-column p-3">
+        <h5 id="current-character-display" class="mb-3">No character selected</h5>
+        <div id="chat-box" class="flex-grow-1 border rounded p-3 mb-3 overflow-auto bg-light" style="min-height: 300px;"></div>
+        <form id="chat-form" class="d-flex gap-2">
+          <input id="input" class="form-control" type="text" placeholder="Type your message..." required />
+          <button type="submit" class="btn btn-primary">Send</button>
+        </form>
+      </div>
+
+      <aside id="right-sidebar" class="border-start p-3" style="width: 250px;">
+        <img id="char-pic" src="/static/default.png" alt="Character Avatar" class="img-fluid rounded mb-3" />
+        <h5 id="char-name">Name</h5>
+        <p class="mb-1 text-muted">By <a id="char-creator" href="#">Creator</a></p>
+        <p class="mb-1 text-muted">Created: <span id="char-created">Unknown</span></p>
+        <p class="mb-1 text-muted">Views: <span id="char-views">0</span></p>
+        <div class="d-flex align-items-center gap-2">
+          <button id="like-button" class="btn btn-outline-danger btn-sm" title="Like">
+            <i class="bi bi-hand-thumbs-up-fill"></i>
+          </button>
+          <span id="char-likes">0</span>
+        </div>
+      </aside>
     </main>
-
-    <div id="right-sidebar">
-      <img id="char-pic" src="" alt="Character Avatar" />
-      <h3 id="char-name">Name</h3>
-      <p>By <a id="char-creator" href="#">Creator</a></p>
-      <p>Created: <span id="char-created">Unknown</span></p>
-      <p>Views: <span id="char-views">0</span></p>
-      <p>
-        <button id="like-button" title="Like">👍</button>
-        <span id="char-likes">0</span>
-      </p>
-    </div>
-
   </div>
 
   <!-- Modal -->
   <div id="login-modal" class="modal hidden">
     <div class="modal-content">
-      <input type="email" id="login-email" placeholder="Email" /><br />
-      <input type="password" id="login-password" placeholder="Password" /><br />
-      <input type="text" id="login-phone" placeholder="Phone (optional)" /><br />
-      <button id="submit-login">Login</button>
-      <button id="submit-signup">Signup</button>
-      <button id="close-login-modal">Cancel</button>
+      <input type="email" id="login-email" placeholder="Email" class="form-control mb-2" />
+      <input type="password" id="login-password" placeholder="Password" class="form-control mb-2" />
+      <input type="text" id="login-phone" placeholder="Phone (optional)" class="form-control mb-2" />
+      <button id="submit-login" class="btn btn-primary w-100 mb-1">Login</button>
+      <button id="submit-signup" class="btn btn-secondary w-100 mb-1">Signup</button>
+      <button id="close-login-modal" class="btn btn-outline-danger w-100">Cancel</button>
     </div>
   </div>
 
@@ -52,10 +55,9 @@
       .then(res => res.text())
       .then(html => {
         document.getElementById("sidebar-placeholder").innerHTML = html;
-
         const script = document.createElement("script");
-        script.src = "/static/sidebar.js";
-        script.onload = () => initSidebar(); // manually trigger it
+        script.src = "/static/sidebar.js?v=0.102";
+        script.onload = () => initSidebar();
         document.body.appendChild(script);
       });
   </script>
