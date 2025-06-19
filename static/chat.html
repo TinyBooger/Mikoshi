@@ -16,9 +16,11 @@
       <div class="flex-grow-1 d-flex flex-column p-3">
         <h5 id="current-character-display" class="mb-3">No character selected</h5>
         <div id="chat-box" class="flex-grow-1 border rounded p-3 mb-3 overflow-auto bg-light" style="min-height: 300px;"></div>
-        <form id="chat-form" class="d-flex gap-2">
-          <input id="input" class="form-control" type="text" placeholder="Type your message..." required />
-          <button type="submit" class="btn btn-primary">Send</button>
+        <form id="chat-form" class="d-flex gap-2 align-items-center bg-light rounded p-2">
+          <input id="input" class="form-control border-0 bg-light" type="text" placeholder="Type your message..." required />
+          <button type="submit" class="btn btn-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+            <i class="bi bi-send"></i>
+          </button>
         </form>
       </div>
 
@@ -28,9 +30,9 @@
         <p class="mb-1 text-muted">By <a id="char-creator" href="#">Creator</a></p>
         <p class="mb-1 text-muted">Created: <span id="char-created">Unknown</span></p>
         <p class="mb-1 text-muted">Views: <span id="char-views">0</span></p>
-        <div class="d-flex align-items-center gap-2">
-          <button id="like-button" class="btn btn-outline-danger btn-sm" title="Like">
-            <i class="bi bi-hand-thumbs-up-fill"></i>
+        <div class="d-flex align-items-center gap-2 mt-3">
+          <button id="like-button" class="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+            <i class="bi bi-hand-thumbs-up"></i>
           </button>
           <span id="char-likes">0</span>
         </div>
