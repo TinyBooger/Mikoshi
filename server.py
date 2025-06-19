@@ -53,18 +53,7 @@ def get_current_user(request: Request, db: Session):
     return user
 
 # ============================= Login Check =============================
-# @app.middleware("http")
-# async def require_login(request: Request, call_next):
-#     # Allow static files and login API
-#     if request.url.path.startswith("/static") or request.url.path.startswith("/api/login") or request.url.path.startswith("/api/signup"):
-#         return await call_next(request)
-#     # Check session cookie or auth
-#     token = request.cookies.get("session_token")
-#     user_id = verify_session_token(token)
-#     if not user_id:
-#         return RedirectResponse(url="/static/index.html")  # Your welcome/login page
 
-#     return await call_next(request)
 
 # ============================= User =================================
 @app.get("/api/user/{user_id}")
