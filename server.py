@@ -56,8 +56,9 @@ def get_current_user(request: Request, db: Session):
 @app.middleware("http")
 async def require_login(request: Request, call_next):
     # Check session cookie or auth
-    user = get_current_user()
-    if not user:
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
         return RedirectResponse(url="/static/index.html")  # Your welcome/login page
 
     return await call_next(request)
