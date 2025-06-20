@@ -339,26 +339,35 @@ async def public_profile_page(user_id: str):
 
 @app.post("/api/update-profile")
 async def update_profile(
-        request: Request,
-        name: str = Form(...),
-        profile_pic: UploadFile = File(None),
-        db: Session = Depends(get_db)
-    ):
-        token = request.cookies.get("session_token")
-        user_id = verify_session_token(token)
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Not logged in")
+    request: Request,
+    name: str = Form(...),
+    profile_pic: UploadFile = File(None),
+    db: Session = Depends(get_db)
+):
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not logged in")
 
-        user = db.query(User).get(user_id)
-        print("user_id:", user_id)
-        print("user:", user)
-        if name:
-            user.name = name
-        if profile_pic:
-            user.profile_pic = profile_pic.filename  # Or save the file if needed
-        db.commit()
-        db.refresh(user)
-        return {"message": "Profile updated"}
+    user = db.query(User).get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.name = name
+
+    if profile_pic:
+        ext = profile_pic.filename.split(".")[-1]
+        upload_dir = "static/uploads/profile_pics"
+        os.makedirs(upload_dir, exist_ok=True)
+        filename = f"user_{user.id}.{ext}"
+        file_path = os.path.join(upload_dir, filename)
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(profile_pic.file, f)
+        user.profile_pic = f"/static/uploads/profile_pics/{filename}"
+
+    db.commit()
+    db.refresh(user)
+    return {"message": "Profile updated"}
 
 @app.get("/api/characters-created")
 def get_user_created_characters(request: Request, user_id: int = None, db: Session = Depends(get_db)):
@@ -396,30 +405,37 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
 
 @app.post("/api/account-setup")
 async def account_setup(
-        email: str = Form(...),
-        password: str = Form(...),
-        name: str = Form(...),
-        profile_pic: UploadFile = File(None),
-        db: Session = Depends(get_db)
-    ):
-        existing = db.query(User).filter(User.email == email).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="Email already registered")
+    email: str = Form(...),
+    password: str = Form(...),
+    name: str = Form(...),
+    profile_pic: UploadFile = File(None),
+    db: Session = Depends(get_db)
+):
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
 
-        hashed = pwd_context.hash(password)
+    hashed = pwd_context.hash(password)
 
-        # Optional: Save the file or store just the filename
-        filename = profile_pic.filename if profile_pic else None
+    # Create user first (without profile_pic)
+    db_user = User(email=email, hashed_password=hashed, name=name)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
 
-        db_user = User(
-            email=email,
-            hashed_password=hashed,
-            name=name,
-            profile_pic=filename
-        )
-        db.add(db_user)
+    # Save profile picture with user_id in filename
+    if profile_pic:
+        ext = profile_pic.filename.split(".")[-1]
+        upload_dir = "static/uploads/profile_pics"
+        os.makedirs(upload_dir, exist_ok=True)
+        filename = f"user_{db_user.id}.{ext}"
+        file_path = os.path.join(upload_dir, filename)
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(profile_pic.file, f)
+        db_user.profile_pic = f"/static/uploads/profile_pics/{filename}"
         db.commit()
-        return {"message": "Account created successfully"}
+
+    return {"message": "Account created successfully"}
 
 @app.get("/api/current-user")
 def get_current_user(request: Request, db: Session = Depends(get_db)):
