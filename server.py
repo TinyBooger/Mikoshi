@@ -60,27 +60,27 @@ def get_current_user(request: Request, db: Session):
     return user
 
 # ============================= Login Check =============================
-@app.middleware("http")
-async def auth_middleware(request: Request, call_next):
-    # Paths that don't require login
-    public_paths = {
-        "/", "/static/index.html", "/api/login", "/api/account-setup",
-        "/static/styles.css", "/static/account_setup.js", "/static/account_setup.html"
-    }
+# @app.middleware("http")
+# async def auth_middleware(request: Request, call_next):
+#     # Paths that don't require login
+#     public_paths = {
+#         "/", "/static/index.html", "/api/login", "/api/account-setup",
+#         "/static/styles.css", "/static/account_setup.js", "/static/account_setup.html"
+#     }
 
-    path = request.url.path
+#     path = request.url.path
 
-    # Allow static files and allowed paths
-    if path.startswith("/static") or any(path == p or path.startswith(p + "/") for p in public_paths):
-        return await call_next(request)
+#     # Allow static files and allowed paths
+#     if path.startswith("/static") or any(path == p or path.startswith(p + "/") for p in public_paths):
+#         return await call_next(request)
 
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
+#     token = request.cookies.get("session_token")
+#     user_id = verify_session_token(token)
 
-    if not user_id:
-        return RedirectResponse("/")
+#     if not user_id:
+#         return RedirectResponse("/")
 
-    return await call_next(request)    
+#     return await call_next(request)    
         
 # ============================= User =================================
 @app.get("/api/user/{user_id}")
