@@ -1,6 +1,9 @@
-from fastapi import FastAPI, Request, Depends, HTTPException, Form,  UploadFile, File
+from fastapi import FastAPI, Request, Depends, HTTPException, Form,  UploadFile, File, status, APIRouter
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware import Middleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from huggingface_hub import InferenceClient
 from sqlalchemy.orm import Session
 from itsdangerous import URLSafeSerializer
@@ -16,7 +19,12 @@ import json
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-app = FastAPI()
+# Add this before creating your FastAPI app
+middleware = [
+    Middleware(HTTPSRedirectMiddleware),  # Optional but recommended for production
+]
+
+app = FastAPI(middleware=middleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 HF_TOKEN = os.getenv("HF_API_KEY")
@@ -43,17 +51,170 @@ def parse_sample_dialogue(text):
             messages.append({"role": "assistant", "content": line[len("<bot>:"):].strip()})
     return messages
 
-def get_current_user(request: Request, db: Session):
-    user_id = request.session.get("user_id")
+security = HTTPBearer()
+
+async def get_current_user(
+    request: Request,
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    # First try to get token from Authorization header (for API calls)
+    token = credentials.credentials if credentials else None
+    
+    # If no header token, try to get from cookie (for browser requests)
+    if not token:
+        token = request.cookies.get("session_token")
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+    
+    user_id = verify_session_token(token)
     if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token"
+        )
+    
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
     return user
+
+# def get_current_user(request: Request, db: Session):
+#     user_id = request.session.get("user_id")
+#     if not user_id:
+#         raise HTTPException(status_code=401, detail="Not logged in")
+#     user = db.query(User).filter(User.id == user_id).first()
+#     if not user:
+#         raise HTTPException(status_code=404, detail="User not found")
+#     return user
+
+# ================Session Token====================
+SECRET_KEY = os.getenv("SECRET_KEY")
+serializer = URLSafeSerializer(SECRET_KEY)
+
+def create_session_token(user):
+    return serializer.dumps({"user_id": user.id})
+
+def verify_session_token(token):
+    try:
+        data = serializer.loads(token)
+        return data["user_id"]
+    except:
+        return None
+
+@app.get("/")
+async def root():
+    return FileResponse("static/index.html")
 
 # ============================= Login Check =============================
 
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    # List of paths that don't require authentication
+    public_paths = {
+        "/", "/login", "/auth/login", 
+        "/static", "/auth/account-setup"
+    }
+    
+    # Skip auth check for public paths and static files
+    if any(request.url.path.startswith(path) for path in public_paths):
+        return await call_next(request)
+    
+    try:
+        # Try to get current user
+        token = request.cookies.get("session_token")
+        if not token:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        user_id = verify_session_token(token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Attach user_id to request state for use in endpoints
+        request.state.user_id = user_id
+        return await call_next(request)
+    
+    except HTTPException as e:
+        if request.url.path.startswith("/api"):
+            # For API routes, return JSON response
+            return JSONResponse(
+                content={"detail": e.detail},
+                status_code=e.status_code
+            )
+        else:
+            # For HTML routes, redirect to login
+            return RedirectResponse(url="/", status_code=303)
+        
+# ========== Auth APIs ==========
+auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+@auth_router.post("/login")
+async def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    response = JSONResponse(
+        content={"message": "Login successful"},
+        status_code=status.HTTP_200_OK
+    )
+    response.set_cookie(
+        key="session_token",
+        value=create_session_token(db_user),
+        httponly=True,
+        secure=True,  # Set to False in development if using HTTP
+        samesite="Lax",
+        max_age=86400  # 1 day expiration
+    )
+    return response
+
+@auth_router.post("/logout")
+def logout():
+    response = JSONResponse(content={"message": "Logged out"})
+    response.delete_cookie("session_token")
+    return response
+
+# Include the router in your app
+app.include_router(auth_router)
+
+@app.post("/api/account-setup")
+async def account_setup(
+        email: str = Form(...),
+        password: str = Form(...),
+        name: str = Form(...),
+        profile_pic: UploadFile = File(None),
+        db: Session = Depends(get_db)
+    ):
+        existing = db.query(User).filter(User.email == email).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+        hashed = pwd_context.hash(password)
+
+        # Optional: Save the file or store just the filename
+        filename = profile_pic.filename if profile_pic else None
+
+        db_user = User(
+            email=email,
+            hashed_password=hashed,
+            name=name,
+            profile_pic=filename
+        )
+        db.add(db_user)
+        db.commit()
+        return {"message": "Account created successfully"}
 
 # ============================= User =================================
 @app.get("/api/user/{user_id}")
@@ -79,28 +240,10 @@ def get_user_characters(user_id: int, db: Session = Depends(get_db)):
         for c in characters
     ]
 
-# ================Session Token====================
-SECRET_KEY = os.getenv("SECRET_KEY")
-serializer = URLSafeSerializer(SECRET_KEY)
-
-def create_session_token(user):
-    return serializer.dumps({"user_id": user.id})
-
-def verify_session_token(token):
-    try:
-        data = serializer.loads(token)
-        return data["user_id"]
-    except:
-        return None
-
-@app.get("/")
-async def root():
-    return FileResponse("static/index.html")
-
 # ========== Character APIs ==========
 
 @app.get("/character-create")
-async def character_create_page():
+async def character_create_page(user: User = Depends(get_current_user)):
     return FileResponse("static/character_create.html")
 
 @app.post("/api/create-character")
@@ -110,7 +253,8 @@ async def create_character(
     persona: str = Form(...),
     sample_dialogue: str = Form(""),
     picture: UploadFile = File(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     # Get user from session
     token = request.cookies.get("session_token")
@@ -161,7 +305,7 @@ async def create_character(
     return JSONResponse(content={"message": f"Character '{name}' created."})
 
 @app.get("/api/characters")
-async def get_characters(db: Session = Depends(get_db)):
+async def get_characters(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     chars = db.query(Character).all()
     result = {}
     for c in chars:
@@ -174,7 +318,7 @@ async def get_characters(db: Session = Depends(get_db)):
     return JSONResponse(content=result)
 
 @app.get("/api/character/{character_id}")
-def get_character(character_id: int, db: Session = Depends(get_db)):
+def get_character(character_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     c = db.query(Character).filter(Character.id == character_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -190,7 +334,7 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
     }
 
 @app.post("/api/character/{character_id}/like")
-def like_character(character_id: int, db: Session = Depends(get_db)):
+def like_character(character_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     char = db.query(Character).filter(Character.id == character_id).first()
     if not char:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -199,34 +343,13 @@ def like_character(character_id: int, db: Session = Depends(get_db)):
     db.commit()
     return JSONResponse(content={"likes": char.likes})
 
-# @app.get("/api/my-characters")
-# async def get_my_characters(request: Request, db: Session = Depends(get_db)):
-#     token = request.cookies.get("session_token")
-#     user_id = verify_session_token(token)
-#     if not user_id:
-#         raise HTTPException(status_code=401, detail="Not logged in")
-
-#     user = db.query(User).filter(User.id == user_id).first()
-#     if not user or not user.characters_created:
-#         return []
-
-#     characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
-#     print("Characters found:", [c.name for c in characters])
-#     return [{"id": c.id, "name": c.name, "picture": c.picture} for c in characters]
-
 @app.post("/api/recent-characters/update")
-async def update_recent_characters(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
-
+async def update_recent_characters(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     data = await request.json()
     char_id = data.get("character_id")
     if not char_id:
         raise HTTPException(status_code=400, detail="Missing character_id")
 
-    user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -246,14 +369,7 @@ async def update_recent_characters(request: Request, db: Session = Depends(get_d
     return {"status": "success"}
 
 @app.get("/api/recent-characters")
-async def get_recent_characters(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        # Return empty list if not logged in
-        return []
-
-    user = db.query(User).filter(User.id == user_id).first()
+async def get_recent_characters(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not user or not user.recent_characters:
         return []
 
@@ -276,7 +392,7 @@ async def get_recent_characters(request: Request, db: Session = Depends(get_db))
     ]
 
 @app.get("/api/characters/popular")
-def get_popular_characters(db: Session = Depends(get_db)):
+def get_popular_characters(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     chars = db.query(Character).order_by(Character.views.desc()).limit(10).all()
     result = []
     for c in chars:
@@ -290,7 +406,7 @@ def get_popular_characters(db: Session = Depends(get_db)):
     return result
 
 @app.post("/api/views/increment")
-def increment_views(payload: dict, db: Session = Depends(get_db)):
+def increment_views(payload: dict, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     character_id = payload.get("character_id")
 
     if character_id:
@@ -308,11 +424,11 @@ def increment_views(payload: dict, db: Session = Depends(get_db)):
 #======================== Chat API =======================
 
 @app.get("/chat")
-async def chat_page():
+async def chat_page(user: User = Depends(get_current_user)):
     return FileResponse("static/chat.html")
 
 @app.post("/api/chat")
-async def chat(request: Request, db: Session = Depends(get_db)):
+async def chat(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     data = await request.json()
     character_id = data.get("id")
     user_input = data.get("message", "")
@@ -338,11 +454,11 @@ async def chat(request: Request, db: Session = Depends(get_db)):
 
 # ===============Profile Page==================
 @app.get("/profile")
-def profile_page():
+def profile_page(user: User = Depends(get_current_user)):
     return FileResponse("static/profile.html")
 
 @app.get("/profile/{user_id}")
-async def public_profile_page(user_id: str):
+async def public_profile_page(user_id: str, user: User = Depends(get_current_user)):
     return FileResponse("static/public_profile.html")
 
 @app.post("/api/update-profile")
@@ -350,15 +466,9 @@ async def update_profile(
         request: Request,
         name: str = Form(...),
         profile_pic: UploadFile = File(None),
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)
     ):
-        token = request.cookies.get("session_token")
-        user_id = verify_session_token(token)
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Not logged in")
-
-        user = db.query(User).get(user_id)
-        print("user_id:", user_id)
         print("user:", user)
         if name:
             user.name = name
@@ -369,7 +479,7 @@ async def update_profile(
         return {"message": "Profile updated"}
 
 @app.get("/api/characters-created")
-def get_user_created_characters(request: Request, user_id: int = None, db: Session = Depends(get_db)):
+def get_user_created_characters(request: Request, user_id: int = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if user_id is None:
         token = request.cookies.get("session_token")
         user_id = verify_session_token(token)
@@ -384,66 +494,4 @@ def get_user_created_characters(request: Request, user_id: int = None, db: Sessi
     return [{"id": c.id, "name": c.name, "picture": c.picture} for c in characters]
 
 
-# ========== Auth APIs ==========
 
-@app.post("/api/login")
-async def login(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    response = JSONResponse(content={"message": "Login successful"})
-    response.set_cookie(
-        key="session_token",
-        value=create_session_token(db_user),
-        httponly=True,
-        secure=True,
-        samesite="Lax"
-    )
-    return response
-
-@app.post("/api/account-setup")
-async def account_setup(
-        email: str = Form(...),
-        password: str = Form(...),
-        name: str = Form(...),
-        profile_pic: UploadFile = File(None),
-        db: Session = Depends(get_db)
-    ):
-        existing = db.query(User).filter(User.email == email).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="Email already registered")
-
-        hashed = pwd_context.hash(password)
-
-        # Optional: Save the file or store just the filename
-        filename = profile_pic.filename if profile_pic else None
-
-        db_user = User(
-            email=email,
-            hashed_password=hashed,
-            name=name,
-            profile_pic=filename
-        )
-        db.add(db_user)
-        db.commit()
-        return {"message": "Account created successfully"}
-
-@app.get("/api/current-user")
-def get_current_user(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
-    user = db.query(User).filter(User.id == user_id).first()
-    return {
-        "id": user.id,
-        "name": user.name,
-        "profile_pic": user.profile_pic
-    }
-
-@app.post("/api/logout")
-def logout():
-    response = JSONResponse(content={"message": "Logged out"})
-    response.delete_cookie("session_token")
-    return response
