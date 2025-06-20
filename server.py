@@ -183,12 +183,7 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
 @auth_router.post("/logout")
 def logout():
     response = RedirectResponse(url="/", status_code=303)
-    response.delete_cookie(
-        key="session_token",
-        httponly=True,
-        secure=True,  # Set to False in development if not using HTTPS
-        samesite="Lax"
-    )
+    response.delete_cookie("session_token")
     return response
 
 # Include the router in your app
