@@ -217,7 +217,8 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
     }
 
 @app.post("/api/character/{character_id}/like")
-def like_character(character_id: int, db: Session = Depends(get_db)):
+def like_character(request: Request, character_id: int, db: Session = Depends(get_db)):
+    get_current_user(request, db)  # will raise 401 if not logged in
     char = db.query(Character).filter(Character.id == character_id).first()
     if not char:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -317,7 +318,8 @@ def get_popular_characters(db: Session = Depends(get_db)):
     return result
 
 @app.post("/api/views/increment")
-def increment_views(payload: dict, db: Session = Depends(get_db)):
+def increment_views(request: Request, payload: dict, db: Session = Depends(get_db)):
+    get_current_user(request, db)  # will raise 401 if not logged in
     character_id = payload.get("character_id")
 
     if character_id:
@@ -340,6 +342,7 @@ async def chat_page():
 
 @app.post("/api/chat")
 async def chat(request: Request, db: Session = Depends(get_db)):
+    get_current_user(request, db)  # will raise 401 if not logged in
     data = await request.json()
     character_id = data.get("id")
     user_input = data.get("message", "")
