@@ -68,6 +68,13 @@
 
   <!-- Sidebar script -->
   <script>
+    fetch("/api/current-user").then(res => {
+      if (!res.ok) {
+        window.location.href = "/";
+      }
+    }).catch(() => {
+      window.location.href = "/";
+    });
     fetch("/static/sidebar.html")
       .then(res => res.text())
       .then(html => {
