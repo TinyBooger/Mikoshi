@@ -182,7 +182,7 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
 
 @auth_router.post("/logout")
 def logout():
-    response = RedirectResponse(url="/", status_code=303)
+    response = JSONResponse(content={"message": "Logged out"})
     response.delete_cookie("session_token")
     return response
 
@@ -215,19 +215,6 @@ async def account_setup(
         db.add(db_user)
         db.commit()
         return {"message": "Account created successfully"}
-
-@app.get("/api/current-user")
-def get_current_user(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
-    user = db.query(User).filter(User.id == user_id).first()
-    return {
-        "id": user.id,
-        "name": user.name,
-        "profile_pic": user.profile_pic
-    }
 
 # ============================= User =================================
 @app.get("/api/user/{user_id}")
