@@ -116,7 +116,6 @@ async def create_character(
     picture: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
-    # Get user from session
     token = request.cookies.get("session_token")
     user_id = verify_session_token(token)
     if not user_id:
@@ -126,39 +125,39 @@ async def create_character(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Check if character already exists
     existing = db.query(Character).filter(Character.name == name).first()
     if existing:
         return JSONResponse(content={"error": "Character already exists"}, status_code=400)
 
-    # Parse sample dialogue
     messages = parse_sample_dialogue(sample_dialogue)
 
-    # Save picture if provided
-    pic_path = None
-    if picture:
-        ext = picture.filename.split(".")[-1]
-        filename = f"char_{name}.{ext}"
-        pic_path = f"static/uploads/{filename}"
-        with open(pic_path, "wb") as f:
-            shutil.copyfileobj(picture.file, f)
-
-    # Create and save character
+    # Temporarily create char without picture
     char = Character(
         name=name,
         persona=persona,
         example_messages=json.dumps(messages),
         creator_id=str(user_id),
         views=0,
-        picture=pic_path
+        picture=None
     )
     db.add(char)
+    db.commit()
+    db.refresh(char)  # Get char.id
+
+    # Save picture if provided
+    if picture:
+        ext = picture.filename.split(".")[-1]
+        upload_dir = "static/uploads/character_pics"
+        os.makedirs(upload_dir, exist_ok=True)
+        filename = f"char_{char.id}.{ext}"
+        pic_path = os.path.join(upload_dir, filename)
+        with open(pic_path, "wb") as f:
+            shutil.copyfileobj(picture.file, f)
+        char.picture = f"/static/uploads/character_pics/{filename}"
 
     # Update user's characters_created list
     if user.characters_created is None:
         user.characters_created = []
-    db.commit()  # Commit first to get char.id
-    db.refresh(char)
     user.characters_created.append(str(char.id))
 
     db.commit()
