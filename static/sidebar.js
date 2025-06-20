@@ -74,7 +74,7 @@ function showUserMenu(user) {
 
   document.getElementById("profile-btn").onclick = () => window.location.href = "/profile";
   document.getElementById("logout-btn").onclick = async () => {
-    await fetch("/api/logout", { method: "POST" });
+    await fetch("/auth/logout", { method: "POST" });
     location.reload();
   };
 }
