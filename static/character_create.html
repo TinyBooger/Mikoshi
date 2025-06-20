@@ -44,10 +44,12 @@
       if (!res.ok) {
         window.location.href = "/";
       }
+      else{
+        document.body.style.display = "block";
+      }
     }).catch(() => {
       window.location.href = "/";
     });
-    document.body.style.display = "block";
     fetch("/static/sidebar.html")
       .then(res => res.text())
       .then(html => {
