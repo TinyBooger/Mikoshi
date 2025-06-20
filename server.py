@@ -16,6 +16,16 @@ from datetime import datetime
 import shutil
 import json
 
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True
+)
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Add this before creating your FastAPI app
@@ -146,14 +156,13 @@ async def create_character(
 
     # Save picture if provided
     if picture:
-        ext = picture.filename.split(".")[-1]
-        upload_dir = "static/uploads/character_pics"
-        os.makedirs(upload_dir, exist_ok=True)
-        filename = f"char_{char.id}.{ext}"
-        pic_path = os.path.join(upload_dir, filename)
-        with open(pic_path, "wb") as f:
-            shutil.copyfileobj(picture.file, f)
-        char.picture = f"/static/uploads/character_pics/{filename}"
+        upload_res = cloudinary.uploader.upload(
+            picture.file,
+            folder="characters",
+            public_id=f"char_{char.id}_{name}",
+        )
+        pic_url = upload_res.get("secure_url")
+        char.picture = pic_url
 
     # Update user's characters_created list
     if user.characters_created is None:
@@ -354,15 +363,15 @@ async def update_profile(
 
     user.name = name
 
+    # Save profile picture with user_id in filename
     if profile_pic:
-        ext = profile_pic.filename.split(".")[-1]
-        upload_dir = "static/uploads/profile_pics"
-        os.makedirs(upload_dir, exist_ok=True)
-        filename = f"user_{user.id}.{ext}"
-        file_path = os.path.join(upload_dir, filename)
-        with open(file_path, "wb") as f:
-            shutil.copyfileobj(profile_pic.file, f)
-        user.profile_pic = f"/static/uploads/profile_pics/{filename}"
+        upload_res = cloudinary.uploader.upload(
+            profile_pic.file,
+            folder="avatars",
+            public_id=f"user_{user.id}"
+        )
+        pic_url = upload_res.get("secure_url")
+        user.profile_pic = pic_url
 
     db.commit()
     db.refresh(user)
@@ -424,15 +433,15 @@ async def account_setup(
 
     # Save profile picture with user_id in filename
     if profile_pic:
-        ext = profile_pic.filename.split(".")[-1]
-        upload_dir = "static/uploads/profile_pics"
-        os.makedirs(upload_dir, exist_ok=True)
-        filename = f"user_{db_user.id}.{ext}"
-        file_path = os.path.join(upload_dir, filename)
-        with open(file_path, "wb") as f:
-            shutil.copyfileobj(profile_pic.file, f)
-        db_user.profile_pic = f"/static/uploads/profile_pics/{filename}"
-        db.commit()
+        upload_res = cloudinary.uploader.upload(
+            profile_pic.file,
+            folder="avatars",
+            public_id=f"user_{db_user.id}"
+        )
+        pic_url = upload_res.get("secure_url")
+        db_user.profile_pic = pic_url
+        
+    db.commit()
 
     return {"message": "Account created successfully"}
 
