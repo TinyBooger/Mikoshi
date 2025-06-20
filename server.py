@@ -58,29 +58,6 @@ def get_current_user(request: Request, db: Session):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
-
-# ============================= Login Check =============================
-# @app.middleware("http")
-# async def auth_middleware(request: Request, call_next):
-#     # Paths that don't require login
-#     public_paths = {
-#         "/", "/static/index.html", "/api/login", "/api/account-setup",
-#         "/static/styles.css", "/static/account_setup.js", "/static/account_setup.html"
-#     }
-
-#     path = request.url.path
-
-#     # Allow static files and allowed paths
-#     if path.startswith("/static") or any(path == p or path.startswith(p + "/") for p in public_paths):
-#         return await call_next(request)
-
-#     token = request.cookies.get("session_token")
-#     user_id = verify_session_token(token)
-
-#     if not user_id:
-#         return RedirectResponse("/")
-
-#     return await call_next(request)    
         
 # ============================= User =================================
 @app.get("/api/user/{user_id}")
@@ -227,21 +204,6 @@ def like_character(request: Request, character_id: int, db: Session = Depends(ge
     db.commit()
     return JSONResponse(content={"likes": char.likes})
 
-# @app.get("/api/my-characters")
-# async def get_my_characters(request: Request, db: Session = Depends(get_db)):
-#     token = request.cookies.get("session_token")
-#     user_id = verify_session_token(token)
-#     if not user_id:
-#         raise HTTPException(status_code=401, detail="Not logged in")
-
-#     user = db.query(User).filter(User.id == user_id).first()
-#     if not user or not user.characters_created:
-#         return []
-
-#     characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
-#     print("Characters found:", [c.name for c in characters])
-#     return [{"id": c.id, "name": c.name, "picture": c.picture} for c in characters]
-
 @app.post("/api/recent-characters/update")
 async def update_recent_characters(request: Request, db: Session = Depends(get_db)):
     token = request.cookies.get("session_token")
@@ -344,7 +306,7 @@ async def chat_page():
 async def chat(request: Request, db: Session = Depends(get_db)):
     get_current_user(request, db)  # will raise 401 if not logged in
     data = await request.json()
-    character_id = data.get("id")
+    character_id = data.get("character_id")
     user_input = data.get("message", "")
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
