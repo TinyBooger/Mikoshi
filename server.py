@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Request, Depends, HTTPException, Form,  UploadFile, File
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware import Middleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from huggingface_hub import InferenceClient
 from sqlalchemy.orm import Session
 from itsdangerous import URLSafeSerializer
@@ -16,7 +18,12 @@ import json
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-app = FastAPI()
+# Add this before creating your FastAPI app
+middleware = [
+    Middleware(HTTPSRedirectMiddleware),  # Optional but recommended for production
+]
+
+app = FastAPI(middleware=middleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 HF_TOKEN = os.getenv("HF_API_KEY")
@@ -53,8 +60,28 @@ def get_current_user(request: Request, db: Session):
     return user
 
 # ============================= Login Check =============================
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    # Paths that don't require login
+    public_paths = {
+        "/", "/static/index.html", "/api/login", "/api/account-setup",
+        "/static/styles.css", "/static/account_setup.js", "/static/account_setup.html"
+    }
 
+    path = request.url.path
 
+    # Allow static files and allowed paths
+    if path.startswith("/static") or any(path == p or path.startswith(p + "/") for p in public_paths):
+        return await call_next(request)
+
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+
+    if not user_id:
+        return RedirectResponse("/")
+
+    return await call_next(request)    
+        
 # ============================= User =================================
 @app.get("/api/user/{user_id}")
 def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
