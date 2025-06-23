@@ -9,13 +9,21 @@ async function loadCharacterDetails(characterId) {
     const char = await res.json();
 
     // Fill in sidebar details
-    document.getElementById("char-pic").src = char.avatar_url || "/static/default-avatar.png";
+    document.getElementById("char-pic").src = char.picture || "/static/default.png";
     document.getElementById("char-name").textContent = char.name;
-    document.getElementById("char-creator").textContent = char.creator_name || "Unknown";
-    document.getElementById("char-creator").href = `/profile/${char.creator_id}`;
     document.getElementById("char-views").textContent = char.views || 0;
     document.getElementById("char-likes").textContent = char.likes || 0;
     document.getElementById("char-created").textContent = new Date(char.created_time).toLocaleDateString();
+
+    // Fetch creator info
+    const userRes = await fetch(`/api/user/${char.creator_id}`);
+    if (userRes.ok) {
+      const creator = await userRes.json();
+      document.getElementById("char-creator").textContent = creator.name || "Unknown";
+    } else {
+      document.getElementById("char-creator").textContent = "Unknown";
+    }
+    document.getElementById("char-creator").href = `/profile/${char.creator_id}`;
 
     // Like button
     document.getElementById("like-button").onclick = async () => {
