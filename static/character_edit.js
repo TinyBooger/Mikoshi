@@ -1,3 +1,21 @@
+function enableEdit(id, editBtn) {
+  const field = document.getElementById(id);
+  const confirmBtn = editBtn.nextElementSibling;
+  field.removeAttribute("readonly");
+  field.classList.add("bg-warning-subtle");
+  editBtn.classList.add("d-none");
+  confirmBtn.classList.remove("d-none");
+}
+
+function disableEdit(id, confirmBtn) {
+  const field = document.getElementById(id);
+  const editBtn = confirmBtn.previousElementSibling;
+  field.setAttribute("readonly", true);
+  field.classList.remove("bg-warning-subtle");
+  confirmBtn.classList.add("d-none");
+  editBtn.classList.remove("d-none");
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const charId = urlParams.get("id");
