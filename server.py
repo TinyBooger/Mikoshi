@@ -205,6 +205,40 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
         "picture": c.picture
     }
 
+@app.post("/api/update-character")
+async def update_character(
+    request: Request,
+    id: int = Form(...),
+    name: str = Form(...),
+    persona: str = Form(...),
+    sample_dialogue: str = Form(""),
+    picture: UploadFile = File(None),
+    db: Session = Depends(get_db)
+):
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    char = db.query(Character).filter(Character.id == id).first()
+    if not char or str(char.creator_id) != str(user_id):
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    char.name = name
+    char.persona = persona
+    char.example_messages = json.dumps(parse_sample_dialogue(sample_dialogue))
+
+    if picture:
+        upload_res = cloudinary.uploader.upload(
+            picture.file,
+            folder="characters",
+            public_id=f"char_{char.id}_{name}"
+        )
+        char.picture = upload_res.get("secure_url")
+
+    db.commit()
+    return {"message": "Character updated successfully"}
+
 @app.post("/api/character/{character_id}/like")
 def like_character(request: Request, character_id: int, db: Session = Depends(get_db)):
     get_current_user(request, db)  # will raise 401 if not logged in

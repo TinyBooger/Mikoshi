@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edit Character</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css" />
+  <style>body { display: none; }</style>
+</head>
+<body>
+  <div class="d-flex" style="height: 100vh;">
+    <div id="sidebar-placeholder" style="width: 250px;"></div>
+
+    <main id="main-content" class="flex-grow-1 p-4">
+      <h2 class="mb-4">Edit Character</h2>
+      <form id="character-form" class="w-100" enctype="multipart/form-data">
+        <div class="mb-3">
+          <label for="char-name" class="form-label">Name</label>
+          <div class="input-group">
+            <input type="text" id="char-name" class="form-control" readonly>
+            <button type="button" class="btn btn-outline-secondary" onclick="enableEdit('char-name')">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="char-persona" class="form-label">Persona</label>
+          <div class="input-group">
+            <textarea id="char-persona" class="form-control" rows="3" readonly></textarea>
+            <button type="button" class="btn btn-outline-secondary" onclick="enableEdit('char-persona')">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="char-sample" class="form-label">Sample Dialogue</label>
+          <div class="input-group">
+            <textarea id="char-sample" class="form-control" rows="3" readonly></textarea>
+            <button type="button" class="btn btn-outline-secondary" onclick="enableEdit('char-sample')">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="char-picture" class="form-label">Profile Picture</label>
+          <input type="file" id="char-picture" class="form-control" accept="image/*">
+        </div>
+
+        <button type="submit" class="btn btn-dark mt-3">
+          <i class="bi bi-save me-2"></i>Save Changes
+        </button>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    function enableEdit(id) {
+      document.getElementById(id).removeAttribute("readonly");
+      document.getElementById(id).focus();
+    }
+
+    fetch("/api/current-user").then(res => {
+      if (!res.ok) {
+        window.location.href = "/";
+      } else {
+        document.body.style.display = "block";
+      }
+    }).catch(() => {
+      window.location.href = "/";
+    });
+
+    fetch("/static/sidebar.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("sidebar-placeholder").innerHTML = html;
+        const script = document.createElement("script");
+        script.src = "/static/sidebar.js?v=0.102";
+        script.onload = () => initSidebar();
+        document.body.appendChild(script);
+      });
+  </script>
+
+  <script src="/static/character_edit.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
