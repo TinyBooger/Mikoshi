@@ -198,7 +198,8 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
         "creator_id": c.creator_id,
         "likes": c.likes,
         "views": c.views,
-        "created_time": c.created_time
+        "created_time": c.created_time,
+        "picture": c.picture
     }
 
 @app.post("/api/character/{character_id}/like")
