@@ -172,6 +172,7 @@ async def create_character(
         user.characters_created.append(char.id)
 
     db.commit()
+    db.refresh(user)
     return JSONResponse(content={"message": f"Character '{name}' created."})
 
 @app.get("/api/characters")
