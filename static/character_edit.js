@@ -2,8 +2,7 @@ function enableEdit(id, editBtn) {
   const field = document.getElementById(id);
   const confirmBtn = editBtn.nextElementSibling;
   field.removeAttribute("readonly");
-  input.classList.remove("form-control-plaintext");
-  input.classList.add("form-control");
+  input.classList.remove("readonly")
   field.classList.add("bg-warning-subtle");
   editBtn.classList.add("d-none");
   confirmBtn.classList.remove("d-none");
@@ -13,8 +12,7 @@ function disableEdit(id, confirmBtn) {
   const field = document.getElementById(id);
   const editBtn = confirmBtn.previousElementSibling;
   field.setAttribute("readonly", true);
-  input.classList.remove("form-control");
-  input.classList.add("form-control-plaintext");
+  input.classList.add("readonly");
   field.classList.remove("bg-warning-subtle");
   confirmBtn.classList.add("d-none");
   editBtn.classList.remove("d-none");
