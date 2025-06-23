@@ -180,3 +180,8 @@ body {
   cursor: pointer;
   margin-right: 5px;
 }
+
+.readonly {
+  color: gray;
+  background-color: #f8f9fa;
+}
