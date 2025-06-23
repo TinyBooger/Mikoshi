@@ -67,12 +67,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       const div = document.createElement("div");
       div.className = "character-item";
       div.style = "display:flex; align-items:center; margin:10px 0; cursor:pointer;";
-      div.onclick = () => window.location.href = `/chat?character=${c.id}`;
-
       div.innerHTML = `
         <img src="${c.picture || '/static/default.png'}" alt="${c.name}" style="width:50px;height:50px;border-radius:50%;margin-right:10px;">
-        <span>${c.name}</span>
+        <span class="me-auto">${c.name}</span>
+        <button class="btn btn-sm btn-outline-secondary ms-3" onclick="event.stopPropagation(); window.location.href='/edit-character?id=${c.id}'">
+          <i class="bi bi-pencil"></i> Edit
+        </button>
       `;
+
+      div.onclick = () => window.location.href = `/chat?character=${c.id}`;
+
       container.appendChild(div);
     });
   }
