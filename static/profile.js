@@ -64,25 +64,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const container = section.querySelector("#character-list");
     characters.forEach(c => {
-      const div = document.createElement("div");
-      div.className = "character-item";
-      div.style = "display:flex; align-items:center; margin:10px 0; cursor:pointer;";
-      div.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-          <div style="display: flex; align-items: center;">
-            <img src="${c.picture || '/static/default.png'}" alt="${c.name}" style="width:50px;height:50px;border-radius:50%;margin-right:10px;">
-            <span>${c.name}</span>
-          </div>
-          <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); window.location.href='/edit-character?id=${c.id}'">
-            <i class="bi bi-pencil"></i>
-          </button>
+      const card = document.createElement("div");
+      card.className = "card";
+      card.style = "width: 150px; cursor: pointer;";
+      card.onclick = () => window.location.href = `/chat?character=${c.id}`;
+
+      card.innerHTML = `
+        <img src="${c.picture || '/static/default.png'}" class="card-img-top" alt="${c.name}" style="border-radius: 8px;">
+        <div class="card-body p-2">
+          <h6 class="card-title mb-1 d-flex justify-content-between align-items-center">
+            ${c.name}
+            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); window.location.href='/edit-character?id=${c.id}'">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </h6>
+          <p class="text-muted mb-0" style="font-size: 12px;">❤️ ${c.views}</p>
         </div>
       `;
-
-
-      div.onclick = () => window.location.href = `/chat?character=${c.id}`;
-
-      container.appendChild(div);
+      container.appendChild(card);
     });
+
   }
 });
