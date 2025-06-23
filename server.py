@@ -168,6 +168,7 @@ async def create_character(
     if user.characters_created is None:
         user.characters_created = []
     if char.id not in user.characters_created:
+        print("character id: ", char.id)
         user.characters_created.append(char.id)
 
     db.commit()
