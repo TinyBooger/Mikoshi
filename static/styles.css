@@ -184,4 +184,7 @@ body {
 .readonly {
   color: gray;
   background-color: #f8f9fa;
+  pointer-events: none;
+  user-select: none;
+  caret-color: transparent;
 }
