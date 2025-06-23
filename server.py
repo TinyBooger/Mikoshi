@@ -169,7 +169,7 @@ async def create_character(
         user.characters_created = []
     if char.id not in user.characters_created:
         print("character id: ", char.id)
-        user.characters_created.append(char.id)
+        user.characters_created = user.characters_created + [char.id]
 
     db.commit()
     db.refresh(user)
