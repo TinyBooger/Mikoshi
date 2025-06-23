@@ -167,7 +167,8 @@ async def create_character(
     # Update user's characters_created list
     if user.characters_created is None:
         user.characters_created = []
-    user.characters_created.append(str(char.id))
+    if char.id not in user.characters_created:
+        user.characters_created.append(char.id)
 
     db.commit()
     return JSONResponse(content={"message": f"Character '{name}' created."})
