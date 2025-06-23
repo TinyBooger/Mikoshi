@@ -208,7 +208,7 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
 # -----------edit character-------------
 @app.get("/edit-character")
 async def edit_character_page():
-    return FileResponse("static/edit_character.html")
+    return FileResponse("static/character_.html")
 
 @app.post("/api/update-character")
 async def update_character(
