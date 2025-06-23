@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     section.innerHTML = `<div id="character-list" style="margin-top:10px;"></div>`;
     main.appendChild(section);
 
-    const container = section.querySelector("#character-list");
+    const container = document.getElementById("character-list");
     characters.forEach(c => {
       const card = document.createElement("div");
       card.className = "card";
