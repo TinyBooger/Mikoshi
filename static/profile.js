@@ -68,12 +68,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       div.className = "character-item";
       div.style = "display:flex; align-items:center; margin:10px 0; cursor:pointer;";
       div.innerHTML = `
-        <img src="${c.picture || '/static/default.png'}" alt="${c.name}" style="width:50px;height:50px;border-radius:50%;margin-right:10px;">
-        <span class="me-auto">${c.name}</span>
-        <button class="btn btn-sm btn-outline-secondary ms-3" onclick="event.stopPropagation(); window.location.href='/edit-character?id=${c.id}'">
-          <i class="bi bi-pencil"></i> Edit
-        </button>
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+          <div style="display: flex; align-items: center;">
+            <img src="${c.picture || '/static/default.png'}" alt="${c.name}" style="width:50px;height:50px;border-radius:50%;margin-right:10px;">
+            <span>${c.name}</span>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); window.location.href='/edit-character?id=${c.id}'">
+            <i class="bi bi-pencil"></i>
+          </button>
+        </div>
       `;
+
 
       div.onclick = () => window.location.href = `/chat?character=${c.id}`;
 
