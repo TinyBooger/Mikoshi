@@ -31,27 +31,30 @@
 
   <!-- Main Page Content -->
   <div id="main-container" class="d-flex d-none" style="height: 100vh;">
-    <div id="sidebar-placeholder" style="width: 250px;"></div>
+    <div id="sidebar-placeholder" style="width: 250px; flex-shrink: 0;"></div>
 
-    <main id="main-content" class="flex-grow-1 p-4 overflow-auto">
-      <div id="topbar-container"></div>
-      <h2>Character Library</h2>
+    <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+      <div id="topbar-container" class="flex-shrink-0"></div>
+      <main id="main-content" class="flex-grow-1 p-4 overflow-auto">
+        <h2>Character Library</h2>
 
-      <section class="mb-4">
-        <h4>Popular Characters</h4>
-        <div id="popular-characters" class="d-flex flex-row overflow-auto gap-3"></div>
-      </section>
+        <section class="mb-4">
+          <h4>Popular Characters</h4>
+          <div id="popular-characters" class="d-flex flex-row overflow-auto gap-3"></div>
+        </section>
 
-      <section class="mb-4">
-        <h4>Recently Uploaded</h4>
-        <div id="recent-characters" class="d-flex flex-row overflow-auto gap-3"></div>
-      </section>
+        <section class="mb-4">
+          <h4>Recently Uploaded</h4>
+          <div id="recent-characters" class="d-flex flex-row overflow-auto gap-3"></div>
+        </section>
 
-      <section class="mb-4">
-        <h4>Recommended for You</h4>
-        <div id="recommended-characters" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3"></div>
-      </section>
-    </main>
+        <section class="mb-4">
+          <h4>Recommended for You</h4>
+          <div id="recommended-characters" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3"></div>
+        </section>
+      </main>
+    </div>
+
   </div>
 
   <script>

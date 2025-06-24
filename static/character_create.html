@@ -11,33 +11,35 @@
 </head>
 <body>
   <div class="d-flex" style="height: 100vh;">
-    <div id="sidebar-placeholder" style="width: 250px;"></div>
+    <div id="sidebar-placeholder" style="width: 250px; flex-shrink: 0;"></div>
 
-    <main id="main-content" class="flex-grow-1 p-4">
-      <div id="topbar-container"></div>
-      <h2 class="mb-4">Create New Character</h2>
-      <form id="character-form" class="w-100" enctype="multipart/form-data">
-        <div class="mb-3">
-          <label for="char-name" class="form-label">Name</label>
-          <input type="text" id="char-name" class="form-control" required>
-        </div>
-        <div class="mb-3">
-          <label for="char-persona" class="form-label">Persona</label>
-          <textarea id="char-persona" class="form-control" rows="3" required></textarea>
-        </div>
-        <div class="mb-3">
-          <label for="char-sample" class="form-label">Sample Dialogue</label>
-          <textarea id="char-sample" class="form-control" rows="3"></textarea>
-        </div>
-        <div class="mb-3">
-          <label for="char-picture" class="form-label">Profile Picture</label>
-          <div class="input-group" style="max-width: 300px;">
-            <input type="file" id="char-picture" class="form-control" accept="image/*">
+    <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+      <div id="topbar-container" class="flex-shrink-0"></div>
+      <main id="main-content" class="flex-grow-1 p-4">
+        <h2 class="mb-4">Create New Character</h2>
+        <form id="character-form" class="w-100" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="char-name" class="form-label">Name</label>
+            <input type="text" id="char-name" class="form-control" required>
           </div>
-        </div>
-        <button type="submit" class="btn btn-dark"><i class="bi bi-save me-2"></i>Save Character</button>
-      </form>
-    </main>
+          <div class="mb-3">
+            <label for="char-persona" class="form-label">Persona</label>
+            <textarea id="char-persona" class="form-control" rows="3" required></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="char-sample" class="form-label">Sample Dialogue</label>
+            <textarea id="char-sample" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="char-picture" class="form-label">Profile Picture</label>
+            <div class="input-group" style="max-width: 300px;">
+              <input type="file" id="char-picture" class="form-control" accept="image/*">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-dark"><i class="bi bi-save me-2"></i>Save Character</button>
+        </form>
+      </main>
+    </div>
   </div>
 
   <script>
