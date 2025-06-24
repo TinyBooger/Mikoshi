@@ -506,3 +506,7 @@ def logout():
     response = JSONResponse(content={"message": "Logged out"})
     response.delete_cookie("session_token")
     return response
+
+@app.get("/search")
+async def search_page():
+    return FileResponse("static/search.html")
