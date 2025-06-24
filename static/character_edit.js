@@ -66,6 +66,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const data = await resp.json();
     alert(data.message || data.detail || "Update complete");
-    if (resp.ok) location.reload();
+    if (resp.ok) window.location.href = "/profile";
   });
 });

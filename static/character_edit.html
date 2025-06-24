@@ -92,6 +92,15 @@
         script.onload = () => initSidebar();
         document.body.appendChild(script);
       });
+    fetch('/static/topbar.html')
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById('topbar-container').innerHTML = html;
+        if (window.location.pathname !== '/' && document.referrer !== '') {
+          document.getElementById('back-button').classList.remove('d-none');
+          document.getElementById('back-button').onclick = () => history.back();
+        }
+      });
   </script>
 
   <script src="/static/character_edit.js"></script>
