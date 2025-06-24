@@ -2,5 +2,22 @@
   <button id="back-button" class="btn btn-outline-secondary btn-sm d-none">← Back</button>
   <div class="flex-grow-1 mx-3">
     <input type="text" class="form-control form-control-sm" id="search-bar" placeholder="Search characters...">
+    <button class="btn btn-outline-primary" id="search-btn">Search</button>
   </div>
 </div>
+
+<script>
+  document.addEventListener("click", function (e) {
+    if (e.target.id === "search-btn") {
+      const q = document.getElementById("search-bar").value.trim();
+      if (q) window.location.href = `/search?q=${encodeURIComponent(q)}`;
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && document.activeElement.id === "search-bar") {
+      const q = document.getElementById("search-bar").value.trim();
+      if (q) window.location.href = `/search?q=${encodeURIComponent(q)}`;
+    }
+  });
+</script>

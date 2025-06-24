@@ -78,6 +78,22 @@
           .then(res => res.text())
           .then(html => {
             document.getElementById('topbar-container').innerHTML = html;
+            // Setup event handlers after HTML is injected
+            const searchBtn = document.getElementById("search-btn");
+            const searchBar = document.getElementById("search-bar");
+            if (searchBtn && searchBar) {
+              searchBtn.onclick = () => {
+                const q = searchBar.value.trim();
+                if (q) window.location.href = `/search?q=${encodeURIComponent(q)}`;
+              };
+
+              searchBar.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                  const q = searchBar.value.trim();
+                  if (q) window.location.href = `/search?q=${encodeURIComponent(q)}`;
+                }
+              });
+            }
             if (window.location.pathname !== '/' && document.referrer !== '') {
               document.getElementById('back-button').classList.remove('d-none');
               document.getElementById('back-button').onclick = () => history.back();
