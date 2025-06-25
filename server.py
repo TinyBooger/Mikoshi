@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware import Middleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from huggingface_hub import InferenceClient
 from sqlalchemy.orm import Session
 from itsdangerous import URLSafeSerializer
@@ -35,6 +36,14 @@ middleware = [
 
 app = FastAPI(middleware=middleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://mikoshi-react.onrender.com"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 HF_TOKEN = os.getenv("HF_API_KEY")
 client = InferenceClient(token=HF_TOKEN)
