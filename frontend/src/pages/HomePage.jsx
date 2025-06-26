@@ -1,7 +1,7 @@
 // src/pages/HomePage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
 
 import defaultPicture from '../assets/images/default-picture.png';
 
@@ -10,7 +10,7 @@ function HomePage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/characters/popular`, { credentials: 'include' })
+    fetch(`/api/characters/popular`, { credentials: 'include' })
       .then(res => res.json())
       .then(setPopular);
   }, []);

@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
 
 function WelcomePage({ setUser }) {
   const navigate = useNavigate();
@@ -12,7 +12,7 @@ function WelcomePage({ setUser }) {
     const email = e.target.email.value.trim();
     const password = e.target.password.value.trim();
 
-    const res = await fetch(`${API_BASE}/api/login`, {
+    const res = await fetch(`/api/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -24,7 +24,7 @@ function WelcomePage({ setUser }) {
 
     if (res.ok) {
       console.log("Fetching user...");
-      const userRes = await fetch(`${API_BASE}/api/current-user`, { credentials: 'include' });
+      const userRes = await fetch(`/api/current-user`, { credentials: 'include' });
       const userData = await userRes.json();
       console.log("User data:", userData);
       setUser(userData); // ✅ this triggers App to re-render with logged-in router

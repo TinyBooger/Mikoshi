@@ -2,24 +2,24 @@ import React, { useEffect, useState } from 'react';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
 
 export default function Sidebar() {
   const [user, setUser] = useState(null);
   const [recent, setRecent] = useState([]);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/current-user`, { credentials: 'include' })
+    fetch(`/api/current-user`, { credentials: 'include' })
       .then(res => (res.ok ? res.json() : null))
       .then(data => setUser(data));
 
-    fetch(`${API_BASE}/api/recent-characters`, { credentials: 'include' })
+    fetch(`/api/recent-characters`, { credentials: 'include' })
       .then(res => (res.ok ? res.json() : []))
       .then(setRecent);
   }, []);
 
   const handleLogout = async () => {
-    await fetch(`${API_BASE}/api/logout`, {
+    await fetch(`/api/logout`, {
       method: "POST",
       credentials: 'include'
     });
