@@ -112,10 +112,6 @@ async def root():
 
 # ========== Character APIs ==========
 
-@app.get("/character-create")
-async def character_create_page():
-    return FileResponse("static/character_create.html")
-
 @app.post("/api/create-character")
 async def create_character(
     request: Request,
@@ -205,9 +201,6 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
     }
 
 # -----------edit character-------------
-@app.get("/edit-character")
-async def edit_character_page():
-    return FileResponse("static/character_edit.html")
 
 @app.post("/api/update-character")
 async def update_character(
@@ -348,10 +341,6 @@ def increment_views(request: Request, payload: dict, db: Session = Depends(get_d
 
 #======================== Chat API =======================
 
-@app.get("/chat")
-async def chat_page():
-    return FileResponse("static/chat.html")
-
 @app.post("/api/chat")
 async def chat(request: Request, db: Session = Depends(get_db)):
     get_current_user(request, db)  # will raise 401 if not logged in
@@ -379,13 +368,6 @@ async def chat(request: Request, db: Session = Depends(get_db)):
 
 
 # ===============Profile Page==================
-@app.get("/profile")
-def profile_page():
-    return FileResponse("static/profile.html")
-
-@app.get("/profile/{user_id}")
-async def public_profile_page(user_id: str):
-    return FileResponse("static/public_profile.html")
 
 @app.post("/api/update-profile")
 async def update_profile(
@@ -505,7 +487,3 @@ def logout():
     response = JSONResponse(content={"message": "Logged out"})
     response.delete_cookie("session_token")
     return response
-
-@app.get("/search")
-async def search_page():
-    return FileResponse("static/search.html")
