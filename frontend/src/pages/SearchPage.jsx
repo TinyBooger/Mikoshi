@@ -1,10 +1,12 @@
 // src/pages/SearchPage.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from 'react-router';
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -54,7 +56,7 @@ export default function SearchPage() {
                   key={id}
                   className="list-group-item d-flex align-items-center"
                   style={{ cursor: "pointer" }}
-                  onClick={() => (window.location.href = `/chat?character=${id}`)}
+                  onClick={() => (navigate(`/chat?character=${id}`))}
                 >
                   <img
                     src={char.picture || "/static/default.png"}

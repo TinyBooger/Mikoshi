@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import defaultPicture from '../assets/images/default-picture.png';
 import Sidebar from '../components/sidebar';
@@ -10,6 +11,7 @@ export default function ProfilePage() {
   const [showModal, setShowModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPic, setEditPic] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch('/api/current-user')
@@ -18,7 +20,7 @@ export default function ProfilePage() {
         setUser(data);
         setEditName(data.name);
       })
-      .catch(() => window.location.href = '/');
+      .catch(() => navigate('/'));
 
     fetch('/api/characters-created')
       .then(res => res.ok ? res.json() : [])
@@ -76,7 +78,7 @@ export default function ProfilePage() {
                 key={c.id}
                 className="card"
                 style={{ width: 150, cursor: 'pointer' }}
-                onClick={() => window.location.href = `/chat?character=${c.id}`}
+                onClick={() => navigate(`/chat?character=${c.id}`)}
               >
                 <img
                   src={c.picture || defaultPicture}
@@ -91,7 +93,7 @@ export default function ProfilePage() {
                       className="btn btn-sm btn-outline-secondary"
                       onClick={e => {
                         e.stopPropagation();
-                        window.location.href = `/edit-character?id=${c.id}`;
+                        navigate(`/edit-character?id=${c.id}`);
                       }}
                     >
                       <i className="bi bi-pencil"></i>

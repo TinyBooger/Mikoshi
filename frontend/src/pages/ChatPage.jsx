@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useSearchParams } from 'react-router';
 import Sidebar from '../components/sidebar';
 import Topbar from '../components/topbar';
@@ -12,11 +13,12 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const characterId = searchParams.get('character');
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch('/api/current-user', { credentials: 'include' })
       .then(res => {
-        if (!res.ok) window.location.href = '/';
+        if (!res.ok) navigate('/');
       });
   }, []);
 

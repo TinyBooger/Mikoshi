@@ -1,10 +1,12 @@
 // src/pages/PublicProfilePage.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from 'react-router';
 
 export default function PublicProfilePage() {
   const [user, setUser] = useState(null);
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const pathParts = window.location.pathname.split("/");
@@ -60,7 +62,7 @@ export default function PublicProfilePage() {
                     key={c.id}
                     className="character-item d-flex align-items-center"
                     style={{ cursor: "pointer" }}
-                    onClick={() => (window.location.href = `/chat?character=${c.id}`)}
+                    onClick={() => (navigate(`/chat?character=${c.id}`))}
                   >
                     <img
                       src={c.picture || "/static/default.png"}

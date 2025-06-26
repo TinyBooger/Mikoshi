@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 
@@ -7,6 +8,7 @@ import defaultAvatar from '../assets/images/default-avatar.png';
 export default function Sidebar() {
   const [user, setUser] = useState(null);
   const [recent, setRecent] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch(`/api/current-user`, { credentials: 'include' })
@@ -40,7 +42,7 @@ export default function Sidebar() {
           className="btn btn-outline-secondary mb-3 w-100"
           onClick={() => {
             if (!user) return alert("Please login first");
-            window.location.href = "/character-create";
+            navigate("/character-create");
           }}
         >
           + Create Character
@@ -55,7 +57,7 @@ export default function Sidebar() {
             <button
               key={c.id}
               className="list-group-item list-group-item-action d-flex align-items-center gap-2"
-              onClick={() => window.location.href = `/chat?character=${c.id}`}
+              onClick={() => navigate(`/chat?character=${c.id}`)}
             >
               <img
                 src={c.picture || defaultPicture}
@@ -88,7 +90,7 @@ export default function Sidebar() {
               <li>
                 <button
                   className="dropdown-item"
-                  onClick={() => window.location.href = "/profile"}
+                  onClick={() => navigate("/profile")}
                 >
                   Profile
                 </button>

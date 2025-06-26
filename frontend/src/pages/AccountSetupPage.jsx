@@ -1,6 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router';
 
 export default function AccountSetupPage() {
+  const navigate = useNavigate();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -14,7 +17,7 @@ export default function AccountSetupPage() {
     alert(data.message || JSON.stringify(data));
 
     if (res.ok) {
-      window.location.href = '/';
+      navigate('/');
     }
   };
 
