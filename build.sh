@@ -14,6 +14,7 @@ cd ..
 
 echo "==> Copying build files to backend static folder..."
 rm -rf backend/static/*
+mkdir -p backend/static
 cp -r frontend/dist/* backend/static/
 
 echo "==> Installing backend dependencies..."
