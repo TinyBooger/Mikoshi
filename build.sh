@@ -10,13 +10,14 @@ npm install
 echo "==> Building frontend..."
 npm run build
 
+cd ..
+
 echo "==> Copying build files to backend static folder..."
-rm -rf ../backend/static/*
-cp -r dist/* ../backend/static/
+rm -rf backend/static/*
+cp -r frontend/dist/* backend/static/
 
 echo "==> Installing backend dependencies..."
-cd ../backend
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 
 echo "==> Build complete. You can now start the server with:"
-echo "uvicorn server:app --host 0.0.0.0 --port 10000"
+echo "uvicorn backend.server:app --host 0.0.0.0 --port 10000"
