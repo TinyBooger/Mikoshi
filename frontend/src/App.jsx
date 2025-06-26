@@ -4,6 +4,14 @@ import { createBrowserRouter, RouterProvider } from 'react-router';
 import Layout from './components/layout';
 import HomePage from './pages/HomePage';
 import WelcomePage from './pages/WelcomePage';
+import AccountSetupPage from './pages/AccountSetupPage';
+import CharacterCreatePage from './pages/CharacterCreatePage';
+import CharacterEditPage from './pages/CharacterEditPage';
+import ChatPage from './pages/ChatPage';
+import ProfilePage from './pages/ProfilePage';
+import PublicProfilePage from "./pages/PublicProfilePage";
+import SearchPage from "./pages/SearchPage";
+
 
 export default function App() {
   const [user, setUser] = useState(undefined);
@@ -20,8 +28,20 @@ export default function App() {
     {
       path: '/',
       element: user ? <Layout /> : <WelcomePage setUser={setUser} />,
-      children: user ? [{ index: true, element: <HomePage /> }] : [],
+      children: user ? [
+        { index: true, element: <HomePage /> },
+        { path: 'character-create', element: <CharacterCreatePage /> },
+        { path: 'character-edit', element: <CharacterEditPage /> },
+        { path: 'chat', element: <ChatPage /> },
+        { path: 'profile', element: <ProfilePage /> },
+        { path: "profile/:userId", element: <PublicProfilePage /> },
+        { path: "search", element: <SearchPage /> },
+      ] : [],
     },
+    {
+      path: '/account-setup',
+      element: <AccountSetupPage />,
+    }
   ]);
 
   return <RouterProvider router={router} />;
