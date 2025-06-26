@@ -17,8 +17,10 @@ rm -rf backend/static/*
 mkdir -p backend/static
 cp -r frontend/dist/* backend/static/
 
+cd backend
+
 echo "==> Installing backend dependencies..."
-pip install -r backend/requirements.txt
+pip install -r requirements.txt
 
 echo "==> Build complete. You can now start the server with:"
-echo "uvicorn backend.server:app --host 0.0.0.0 --port 10000"
+echo "uvicorn server:app --host 0.0.0.0 --port 10000"
