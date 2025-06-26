@@ -9,7 +9,7 @@ export default function App() {
   const [user, setUser] = useState(undefined);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/api/current-user`, { credentials: 'include' })
+    fetch(`/api/current-user`, { credentials: 'include' })
       .then(res => (res.ok ? res.json() : null))
       .then(data => setUser(data));
   }, []);
