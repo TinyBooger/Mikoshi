@@ -459,7 +459,7 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
         value=create_session_token(db_user),
         httponly=True,
         secure=True,
-        samesite="Lax"
+        samesite="None"
     )
     return response
 
