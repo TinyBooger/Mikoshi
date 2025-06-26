@@ -73,59 +73,53 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="d-flex" style={{ height: '100vh' }}>
-      <Sidebar />
-      <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-        <Topbar />
-        <main className="flex-grow-1 d-flex">
-          <div className="flex-grow-1 d-flex flex-column p-3">
-            <h5 className="mb-3">
-              Chatting as: {char ? char.name : 'Unknown'}
-            </h5>
-            <div className="flex-grow-1 border rounded p-3 mb-3 overflow-auto bg-light">
-              {messages.map((m, i) => (
-                <div key={i}><strong>{m.sender}:</strong> {m.content}</div>
-              ))}
-            </div>
-            <form className="d-flex gap-2 align-items-center bg-light rounded p-2" onSubmit={handleSubmit}>
-              <input
-                className="form-control border-0 bg-light"
-                placeholder="Type your message..."
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                required
-              />
-              <button className="btn btn-dark rounded-circle d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
-                <i className="bi bi-send"></i>
-              </button>
-            </form>
-          </div>
-
-          <aside className="border-start p-3" style={{ width: 250 }}>
-            <img
-              src={char?.picture || defaultPic}
-              alt="Character Avatar"
-              className="img-fluid rounded mb-3"
+    <main className="flex-grow-1 d-flex">
+        <div className="flex-grow-1 d-flex flex-column p-3">
+        <h5 className="mb-3">
+            Chatting as: {char ? char.name : 'Unknown'}
+        </h5>
+        <div className="flex-grow-1 border rounded p-3 mb-3 overflow-auto bg-light">
+            {messages.map((m, i) => (
+            <div key={i}><strong>{m.sender}:</strong> {m.content}</div>
+            ))}
+        </div>
+        <form className="d-flex gap-2 align-items-center bg-light rounded p-2" onSubmit={handleSubmit}>
+            <input
+            className="form-control border-0 bg-light"
+            placeholder="Type your message..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            required
             />
-            <h5>{char?.name}</h5>
-            <p className="mb-1 text-muted">
-              By <a href={`/profile/${char?.creator_id}`}>{creator?.name || 'Unknown'}</a>
-            </p>
-            <p className="mb-1 text-muted">Created: {char && new Date(char.created_time).toLocaleDateString()}</p>
-            <p className="mb-1 text-muted">Views: {char?.views || 0}</p>
-            <div className="d-flex align-items-center gap-2 mt-3">
-              <button
-                className="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
-                style={{ width: 32, height: 32 }}
-                onClick={likeCharacter}
-              >
-                <i className="bi bi-hand-thumbs-up"></i>
-              </button>
-              <span>{likes}</span>
-            </div>
-          </aside>
-        </main>
-      </div>
-    </div>
+            <button className="btn btn-dark rounded-circle d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
+            <i className="bi bi-send"></i>
+            </button>
+        </form>
+        </div>
+
+        <aside className="border-start p-3" style={{ width: 250 }}>
+        <img
+            src={char?.picture || defaultPic}
+            alt="Character Avatar"
+            className="img-fluid rounded mb-3"
+        />
+        <h5>{char?.name}</h5>
+        <p className="mb-1 text-muted">
+            By <a href={`/profile/${char?.creator_id}`}>{creator?.name || 'Unknown'}</a>
+        </p>
+        <p className="mb-1 text-muted">Created: {char && new Date(char.created_time).toLocaleDateString()}</p>
+        <p className="mb-1 text-muted">Views: {char?.views || 0}</p>
+        <div className="d-flex align-items-center gap-2 mt-3">
+            <button
+            className="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
+            style={{ width: 32, height: 32 }}
+            onClick={likeCharacter}
+            >
+            <i className="bi bi-hand-thumbs-up"></i>
+            </button>
+            <span>{likes}</span>
+        </div>
+        </aside>
+    </main>
   );
 }

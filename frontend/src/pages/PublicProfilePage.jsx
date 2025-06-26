@@ -39,9 +39,7 @@ export default function PublicProfilePage() {
 
   return (
     <div className="d-flex" style={{ height: "100vh" }}>
-      <div id="sidebar-placeholder" style={{ width: 250, flexShrink: 0 }}></div>
       <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-        <div id="topbar-container" className="flex-shrink-0"></div>
         <main className="flex-grow-1 p-4">
           <section className="mb-4 d-flex align-items-center gap-3">
             <img

@@ -49,12 +49,7 @@ export default function ProfilePage() {
 
   return (
     <div className="d-flex" style={{ height: '100vh' }}>
-      <div style={{ width: 250, flexShrink: 0 }}>
-        <Sidebar />
-      </div>
-
       <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-        <Topbar />
         <main className="flex-grow-1 p-4">
           <h2 className="mb-4">My Profile</h2>
 
