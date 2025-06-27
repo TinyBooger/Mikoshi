@@ -14,18 +14,13 @@ export default function SearchPage() {
     setQuery(q);
 
     async function fetchCharacters() {
-      const res = await fetch("/api/characters");
+      const res = await fetch(`/api/characters/search?q=${encodeURIComponent(q)}`);
       if (!res.ok) {
         setLoading(false);
         return;
       }
       const data = await res.json();
-      const filtered = Object.entries(data).filter(
-        ([_, char]) =>
-          char.name.toLowerCase().includes(q.toLowerCase()) ||
-          char.persona.toLowerCase().includes(q.toLowerCase())
-      );
-      setResults(filtered);
+      setResults(data);
       setLoading(false);
     }
 
