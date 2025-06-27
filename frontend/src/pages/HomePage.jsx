@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 
-
-import defaultPicture from '../assets/images/default-picture.png';
+import CharacterCard from '../components/CharacterCard';
 
 function HomePage() {
   const [popular, setPopular] = useState([]);
@@ -17,25 +16,11 @@ function HomePage() {
 
   return (
     <>
-      <h2>Character Library</h2>
 
       <section className="mb-4">
         <h4>Popular Characters</h4>
         <div className="d-flex flex-row overflow-auto gap-3">
-          {popular.map(c => (
-            <div
-              key={c.id}
-              className="card text-center"
-              style={{ width: 150, margin: 5, cursor: 'pointer' }}
-              onClick={() => navigate(`/chat?character=${encodeURIComponent(c.id)}`)}
-            >
-              <img src={c.picture || defaultPicture} className="card-img-top" alt={c.name} style={{ borderRadius: 8 }} />
-              <div className="card-body p-2">
-                <h6 className="card-title mb-1">{c.name}</h6>
-                <p className="text-muted" style={{ fontSize: 12 }}>❤️ {c.views}</p>
-              </div>
-            </div>
-          ))}
+          {popular.map(c => <CharacterCard key={c.id} character={c} />)}
         </div>
       </section>
 

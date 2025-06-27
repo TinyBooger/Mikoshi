@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import CharacterCard from '../components/CharacterCard';
 import defaultAvatar from '../assets/images/default-avatar.png';
-import defaultPicture from '../assets/images/default-picture.png';
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
@@ -72,35 +72,14 @@ export default function ProfilePage() {
           <h4>Characters</h4>
           <div className="d-flex flex-wrap gap-3 mt-3">
             {characters.map(c => (
-              <div
-                key={c.id}
-                className="card"
-                style={{ width: 150, cursor: 'pointer' }}
-                onClick={() => navigate(`/chat?character=${c.id}`)}
-              >
-                <img
-                  src={c.picture || defaultPicture}
-                  className="card-img-top"
-                  alt={c.name}
-                  style={{ borderRadius: 8 }}
-                />
-                <div className="card-body p-2">
-                  <h6 className="card-title mb-1 d-flex justify-content-between align-items-center">
-                    {c.name}
-                    <button
-                      className="btn btn-sm btn-outline-secondary"
-                      onClick={e => {
-                        e.stopPropagation();
-                        navigate(`/character-edit?id=${c.id}`);
-                      }}
-                    >
-                      <i className="bi bi-pencil"></i>
-                    </button>
-                  </h6>
-                  <p className="text-muted mb-0" style={{ fontSize: 12 }}>
-                    ❤️ {c.views}
-                  </p>
-                </div>
+              <div key={c.id} style={{ width: 150 }}>
+                <CharacterCard character={c} />
+                <button
+                  className="btn btn-sm btn-outline-secondary w-100 mt-1"
+                  onClick={() => navigate(`/character-edit?id=${c.id}`)}
+                >
+                  <i className="bi bi-pencil-square"></i> Edit
+                </button>
               </div>
             ))}
           </div>

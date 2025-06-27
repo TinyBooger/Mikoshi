@@ -1,6 +1,7 @@
 // src/pages/PublicProfilePage.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from 'react-router';
+import CharacterCard from "../components/CharacterCard";
 
 export default function PublicProfilePage() {
   const [user, setUser] = useState(null);
@@ -57,26 +58,7 @@ export default function PublicProfilePage() {
             <h3 className="mb-3">Characters</h3>
             <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
               {characters.length > 0 ? (
-                characters.map((c) => (
-                  <div
-                    key={c.id}
-                    className="character-item d-flex align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => (navigate(`/chat?character=${c.id}`))}
-                  >
-                    <img
-                      src={c.picture || "/static/default.png"}
-                      alt={c.name}
-                      style={{
-                        width: 50,
-                        height: 50,
-                        borderRadius: "50%",
-                        marginRight: 10,
-                      }}
-                    />
-                    <span>{c.name}</span>
-                  </div>
-                ))
+                characters.map((c) => <CharacterCard  character={c} />)
               ) : (
                 <p>No characters found.</p>
               )}
