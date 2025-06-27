@@ -1,3 +1,9 @@
+from fastapi import Request, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from database import get_db
+from models import User
+
 import os
 from itsdangerous import URLSafeSerializer
 
@@ -14,7 +20,7 @@ def verify_session_token(token):
     except Exception:
         return None
 
-def get_current_user(request: Request, db: Session):
+def get_current_user(request: Request, db: Session = Depends(get_db)):
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Not logged in")
