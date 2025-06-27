@@ -107,7 +107,12 @@ export default function ChatPage() {
         />
         <h5>{char?.name}</h5>
         <p className="mb-1 text-muted">
-            By <a href={`/profile/${char?.creator_id}`}>{creator?.name || 'Unknown'}</a>
+            By <span
+              style={{ cursor: 'pointer', textDecoration: 'underline', color: 'blue' }}
+              onClick={() => navigate(`/profile/${char?.creator_id}`)}
+            >
+              {creator?.name || 'Unknown'}
+            </span>
         </p>
         <p className="mb-1 text-muted">Created: {char && new Date(char.created_time).toLocaleDateString()}</p>
         <p className="mb-1 text-muted">Views: {char?.views || 0}</p>

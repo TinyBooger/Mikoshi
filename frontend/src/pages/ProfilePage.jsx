@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import defaultPicture from '../assets/images/default-picture.png';
-import Sidebar from '../components/sidebar';
-import Topbar from '../components/topbar';
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
@@ -93,7 +91,7 @@ export default function ProfilePage() {
                       className="btn btn-sm btn-outline-secondary"
                       onClick={e => {
                         e.stopPropagation();
-                        navigate(`/edit-character?id=${c.id}`);
+                        navigate(`/character-edit?id=${c.id}`);
                       }}
                     >
                       <i className="bi bi-pencil"></i>
