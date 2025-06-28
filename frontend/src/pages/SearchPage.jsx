@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from 'react-router';
 
-import defaultPicture from '../assets/images/defaul-picture.png'
+import defaultPicture from '../assets/images/default-picture.png';
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
