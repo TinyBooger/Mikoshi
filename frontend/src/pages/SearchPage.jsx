@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from 'react-router';
 
+import defaultPicture from '../assets/images/defaul-picture.png'
+
 export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -46,15 +48,15 @@ export default function SearchPage() {
                 No results for "{query}"
               </li>
             ) : (
-              results.map(([id, char]) => (
+              results.map((char) => (
                 <li
-                  key={id}
+                  key={char.id}
                   className="list-group-item d-flex align-items-center"
                   style={{ cursor: "pointer" }}
-                  onClick={() => (navigate(`/chat?character=${id}`))}
+                  onClick={() => (navigate(`/chat?character=${char.id}`))}
                 >
                   <img
-                    src={char.picture || "/static/default.png"}
+                    src={char.picture || defaultPicture}
                     alt={char.name}
                     style={{
                       width: 40,
