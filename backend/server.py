@@ -6,7 +6,7 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 import os
 
 from database import engine, Base
-from routes import auth, character, chat, user
+from routes import auth, character, chat, user, search
 
 # Middleware
 middleware = [
@@ -30,3 +30,4 @@ app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(character.router)
 app.include_router(chat.router)
+app.include_router(search.router)

@@ -24,8 +24,17 @@ export default function SearchPage() {
       const data = await res.json();
       setResults(data);
       setLoading(false);
-    }
 
+      // Update search term count
+      if (q.trim()) {
+        fetch("/api/update-search-term", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keyword: q.trim() }),
+        });
+      }
+    }
+    
     fetchCharacters();
   }, []);
 
