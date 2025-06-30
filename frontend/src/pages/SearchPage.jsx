@@ -33,7 +33,6 @@ export default function SearchPage() {
 
   return (
     <div className="d-flex" style={{ height: "100vh" }}>
-      <div id="sidebar-placeholder" style={{ width: 250, flexShrink: 0 }}></div>
       <div className="d-flex flex-column flex-grow-1 overflow-hidden">
         <div id="topbar-container" className="flex-shrink-0"></div>
         <main
