@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Integer, JSON, DateTime
+from sqlalchemy import Column, String, Integer, BigInteger, JSON, DateTime, Text, Date, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from datetime import datetime
@@ -33,3 +34,23 @@ class User(Base):
     likes = Column(Integer, default=0)
     characters_created = Column(ARRAY(Integer), default=[])
     recent_characters = Column(ARRAY(JSONB), default=[])
+
+class SearchTerm(Base):
+    __tablename__ = "search_terms"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    term = Column(Text, unique=True, nullable=False)
+    total_frequency = Column(BigInteger, default=1)
+    weekly_frequency = Column(BigInteger, default=1)
+    
+    history = relationship("SearchTermHistory", back_populates="term", cascade="all, delete")
+
+class SearchTermHistory(Base):
+    __tablename__ = "search_term_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    term_id = Column(Integer, ForeignKey("search_terms.id", ondelete="CASCADE"), nullable=False)
+    date = Column(Date, nullable=False)
+    frequency = Column(BigInteger, default=0)
+    
+    term = relationship("SearchTerm", back_populates="history")
