@@ -3,7 +3,6 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware import Middleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-from starlette.middleware.sessions import SessionMiddleware
 import os
 
 from database import engine, Base
@@ -17,7 +16,6 @@ middleware = [
 # App
 app = FastAPI(middleware=middleware)
 app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
-app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY"))
 
 # Create DB tables
 Base.metadata.create_all(bind=engine)

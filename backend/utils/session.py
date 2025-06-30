@@ -21,7 +21,8 @@ def verify_session_token(token):
         return None
 
 def get_current_user(request: Request, db: Session = Depends(get_db)):
-    user_id = request.session.get("user_id")
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
     if not user_id:
         raise HTTPException(status_code=401, detail="Not logged in")
     user = db.query(User).filter(User.id == user_id).first()
