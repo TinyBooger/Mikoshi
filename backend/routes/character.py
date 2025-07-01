@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Character, User
 from utils.session import verify_session_token, get_current_user
-from utils.chat_utils import parse_sample_dialogue
 from utils.cloudinary_utils import upload_character_picture
 
 router = APIRouter()

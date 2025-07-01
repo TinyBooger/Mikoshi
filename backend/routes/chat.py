@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-import json
 
 from database import get_db
 from models import Character
@@ -22,8 +21,7 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     if not character:
         return JSONResponse(content={"error": "Character not found"}, status_code=404)
 
-    lines = character.example_messages.strip().splitlines()
-    example_messages = parse_sample_dialogue(lines)
+    example_messages = parse_sample_dialogue(character.example_messages)
 
     messages = [{"role": "system", "content": character.persona}] + example_messages
     messages.append({"role": "user", "content": user_input})

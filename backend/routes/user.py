@@ -58,7 +58,7 @@ def get_user_created_characters(request: Request, user_id: int = None, db: Sessi
         return []
 
     characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
-    return [{"id": c.id, "name": c.name, "picture": c.picture} for c in characters]
+    return [{"id": c.id, "name": c.name, "picture": c.picture, "likes":c.likes, "views": c.views} for c in characters]
 
 @router.get("/api/user/{user_id}/characters")
 def get_user_characters(user_id: int, db: Session = Depends(get_db)):
