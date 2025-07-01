@@ -30,9 +30,7 @@ export default function CharacterEditPage() {
         setCharData({
           name: data.name,
           persona: data.persona,
-          sample: (data.example_messages || "")
-            .map(m => `<${m.role}>: ${m.content}`)
-            .join("\n"),
+          sample: data.example_messages || ""
         });
       });
   }, [id, navigate]);
