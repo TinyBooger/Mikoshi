@@ -58,7 +58,7 @@ export default function CharacterEditPage() {
     formData.append("persona", charData.persona);
     formData.append("sample_dialogue", charData.sample);
     formData.append("tagline", charData.tagline);
-    formData.append("tags", JSON.stringify(tags));
+    formData.append("tags", JSON.stringify(charData.tags));
     formData.append("greeting", charData.greeting);
     if (picture) formData.append("picture", picture);
 
