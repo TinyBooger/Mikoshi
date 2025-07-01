@@ -1,5 +1,4 @@
-from sqlalchemy import Column, String, Integer, BigInteger, JSON, DateTime, Text, Date, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, Integer, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from datetime import datetime, UTC
@@ -12,6 +11,8 @@ class Character(Base):
     name = Column(String, unique=True, index=True, nullable=False)
     persona = Column(String, nullable=False)
     example_messages = Column(Text, default="")
+    tagline = Column(String(255), default="")  # 50 words fits ~255 chars
+    tags = Column(ARRAY(String), default=[])   # array of strings
 
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
