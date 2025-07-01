@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
+import TagsInput from './components/TagsInput'; // adjust path as needed
 
 export default function CharacterCreatePage() {
   const [name, setName] = useState('');
   const [persona, setPersona] = useState('');
   const [greeting, setGreeting] = useState('');
   const [tagline, setTagline] = useState('');
-  const [tags, setTags] = useState('');
+  const [tags, setTags] = useState([]);
   const [sample, setSample] = useState('');
   const [picture, setPicture] = useState(null);
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ export default function CharacterCreatePage() {
     formData.append("name", name.trim());
     formData.append("persona", persona.trim());
     formData.append("tagline", tagline.trim());
-    formData.append("tags", tags.trim());
+    formData.append("tags", tags.join(",")); // join tags array into CSV string for backend
     formData.append("greeting", greeting.trim());
     formData.append("sample_dialogue", sample.trim());
     if (picture) formData.append("picture", picture);
@@ -60,8 +61,8 @@ export default function CharacterCreatePage() {
           <input className="form-control" value={greeting} onChange={(e) => setGreeting(e.target.value)} />
         </div>
         <div className="mb-3">
-          <label className="form-label">Tags (comma-separated)</label>
-          <input className="form-control" value={tags} onChange={(e) => setTags(e.target.value)} />
+          <label className="form-label">Tags</label>
+          <TagsInput tags={tags} setTags={setTags} />
         </div>
         <div className="mb-3">
           <label className="form-label">Sample Dialogue</label>

@@ -37,7 +37,7 @@ export default function CharacterEditPage() {
           persona: data.persona,
           sample: data.example_messages || "",
           tagline: data.tagline || "",
-          tags: data.tags || "",
+          tags: data.tags ? data.tags.split(",") : [], // convert CSV to array
           greeting: data.greeting || "",
         });
       });
@@ -58,7 +58,7 @@ export default function CharacterEditPage() {
     formData.append("persona", charData.persona);
     formData.append("sample_dialogue", charData.sample);
     formData.append("tagline", charData.tagline);
-    formData.append("tags", charData.tags);
+    formData.append("tags", charData.tags.join(",")); // join array back to CSV string
     formData.append("greeting", charData.greeting);
     if (picture) formData.append("picture", picture);
 
@@ -82,11 +82,11 @@ export default function CharacterEditPage() {
         <main className="flex-grow-1 p-4">
           <h2 className="mb-4">Edit Character</h2>
           <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
-            {["name", "persona", "sample", "tagline", "tags", "greeting"].map(field => (
+            {["name", "persona", "sample", "tagline", "greeting"].map(field => (
               <div className="mb-3" key={field}>
                 <label className="form-label text-capitalize">{field}</label>
                 <div className="input-group">
-                  {field === "name" || field === "tagline" || field === "tags" || field === "greeting" ? (
+                  {field === "name" || field === "tagline" || field === "greeting" ? (
                     <input
                       type="text"
                       className={`form-control ${editable[field] ? "bg-warning-subtle" : "readonly"}`}
@@ -115,6 +115,25 @@ export default function CharacterEditPage() {
                 </div>
               </div>
             ))}
+
+            <div className="mb-3">
+              <label className="form-label text-capitalize">Tags</label>
+              {editable.tags ? (
+                <TagsInput tags={charData.tags} setTags={value => handleChange("tags", value)} />
+              ) : (
+                <div className="input-group">
+                  <input
+                    type="text"
+                    className="form-control readonly"
+                    value={charData.tags.join(", ")}
+                    readOnly
+                  />
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => toggleEdit("tags")}>
+                    <i className="bi bi-pencil"></i>
+                  </button>
+                </div>
+              )}
+            </div>
 
             <div className="mb-3">
               <label className="form-label">Profile Picture</label>
