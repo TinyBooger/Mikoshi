@@ -22,7 +22,6 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     if not character:
         return JSONResponse(content={"error": "Character not found"}, status_code=404)
 
-    persona = character.persona
     lines = character.example_messages.strip().splitlines()
     example_messages = parse_sample_dialogue(lines)
 
