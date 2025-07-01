@@ -143,7 +143,8 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
         "created_time": c.created_time,
         "picture": c.picture,
         "tagline": c.tagline,
-        "tags": c.tags
+        "tags": c.tags,
+        "greeting": c.greeting
     }
 
 @router.post("/api/character/{character_id}/like")
