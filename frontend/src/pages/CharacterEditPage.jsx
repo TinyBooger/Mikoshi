@@ -37,7 +37,7 @@ export default function CharacterEditPage() {
           persona: data.persona,
           sample: data.example_messages || "",
           tagline: data.tagline || "",
-          tags: data.tags ? data.tags.split(",") : [], // convert CSV to array
+          tags: data.tags || [],
           greeting: data.greeting || "",
         });
       });
@@ -58,7 +58,7 @@ export default function CharacterEditPage() {
     formData.append("persona", charData.persona);
     formData.append("sample_dialogue", charData.sample);
     formData.append("tagline", charData.tagline);
-    formData.append("tags", charData.tags.join(",")); // join array back to CSV string
+    formData.append("tags", JSON.stringify(tags));
     formData.append("greeting", charData.greeting);
     if (picture) formData.append("picture", picture);
 

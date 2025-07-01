@@ -24,7 +24,7 @@ export default function CharacterCreatePage() {
     formData.append("name", name.trim());
     formData.append("persona", persona.trim());
     formData.append("tagline", tagline.trim());
-    formData.append("tags", tags.join(",")); // join tags array into CSV string for backend
+    formData.append("tags", JSON.stringify(tags));
     formData.append("greeting", greeting.trim());
     formData.append("sample_dialogue", sample.trim());
     if (picture) formData.append("picture", picture);
