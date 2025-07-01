@@ -7,6 +7,7 @@ function Topbar() {
 
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Fetch popular suggestions initially or when query is empty
   useEffect(() => {
@@ -50,6 +51,8 @@ function Topbar() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 100)} // delay to allow click
             aria-autocomplete="list"
             aria-haspopup="true"
           />
@@ -57,7 +60,7 @@ function Topbar() {
             <i className="bi bi-search"></i>
           </button>
         </div>
-        {suggestions.length > 0 && (
+        {showSuggestions && suggestions.length > 0 && (
           <ul
             className="list-group position-absolute w-100"
             style={{ top: '100%', zIndex: 1040, maxHeight: 200, overflowY: 'auto' }}
