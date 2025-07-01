@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-import json
+from typing import List
 
 from database import get_db
 from models import Character, User
@@ -16,7 +16,7 @@ async def create_character(
     name: str = Form(...),
     persona: str = Form(...),
     tagline: str = Form(""),
-    tags: str = Form(""),
+    tags: List[str] = Form([]),
     greeting: str = Form(""),
     sample_dialogue: str = Form(""),
     picture: UploadFile = File(None),
@@ -39,7 +39,7 @@ async def create_character(
         name=name,
         persona=persona,
         tagline=tagline.strip(),
-        tags=json.loads(tags) if tags else [],
+        tags=tags,
         greeting=greeting.strip(),
         example_messages=sample_dialogue.strip(),
         creator_id=str(user_id),
@@ -69,7 +69,7 @@ async def update_character(
     name: str = Form(...),
     persona: str = Form(...),
     tagline: str = Form(""),
-    tags: str = Form(""),
+    tags: List[str] = Form([]),
     greeting: str = Form(""),
     sample_dialogue: str = Form(""),
     picture: UploadFile = File(None),
@@ -87,7 +87,7 @@ async def update_character(
     char.name = name
     char.persona = persona
     char.tagline = tagline.strip()
-    char.tags = json.loads(tags) if tags else [],
+    char.tags = tags
     char.greeting = greeting.strip()
     char.example_messages = sample_dialogue.strip()
 
