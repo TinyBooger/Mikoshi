@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-import json
 
 from database import get_db
 from models import Character, User
@@ -64,7 +63,7 @@ def get_characters(db: Session = Depends(get_db)):
         c.id: {
             "name": c.name,
             "persona": c.persona,
-            "example_messages": json.loads(c.example_messages),
+            "example_messages": c.example_messages,
             "creator_id": c.creator_id
         } for c in chars
     }
@@ -93,7 +92,7 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
         "id": c.id,
         "name": c.name,
         "persona": c.persona,
-        "example_messages": json.loads(c.example_messages),
+        "example_messages": c.example_messages,
         "creator_id": c.creator_id,
         "likes": c.likes,
         "views": c.views,
