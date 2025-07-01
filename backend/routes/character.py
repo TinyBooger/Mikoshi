@@ -14,6 +14,9 @@ async def create_character(
     request: Request,
     name: str = Form(...),
     persona: str = Form(...),
+    tagline: str = Form(""),
+    tags: str = Form(""),
+    greeting: str = Form(""),
     sample_dialogue: str = Form(""),
     picture: UploadFile = File(None),
     db: Session = Depends(get_db)
@@ -34,6 +37,9 @@ async def create_character(
     char = Character(
         name=name,
         persona=persona,
+        tagline=tagline.strip(),
+        tags=tags.strip(),
+        greeting=greeting.strip(),
         example_messages=sample_dialogue.strip(),
         creator_id=str(user_id),
         views=0,
@@ -54,6 +60,41 @@ async def create_character(
     db.commit()
     db.refresh(user)
     return {"message": f"Character '{name}' created."}
+
+@router.post("/api/update-character")
+async def update_character(
+    request: Request,
+    id: int = Form(...),
+    name: str = Form(...),
+    persona: str = Form(...),
+    tagline: str = Form(""),
+    tags: str = Form(""),
+    greeting: str = Form(""),
+    sample_dialogue: str = Form(""),
+    picture: UploadFile = File(None),
+    db: Session = Depends(get_db)
+):
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    char = db.query(Character).filter(Character.id == id).first()
+    if not char or str(char.creator_id) != str(user_id):
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    char.name = name
+    char.persona = persona
+    char.tagline = tagline.strip()
+    char.tags = tags.strip()
+    char.greeting = greeting.strip()
+    char.example_messages = sample_dialogue.strip()
+
+    if picture:
+        char.picture = upload_character_picture(picture.file, char.id, name)
+
+    db.commit()
+    return {"message": "Character updated successfully"}
 
 @router.get("/api/characters")
 def get_characters(db: Session = Depends(get_db)):
@@ -98,35 +139,6 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
         "created_time": c.created_time,
         "picture": c.picture
     }
-
-@router.post("/api/update-character")
-async def update_character(
-    request: Request,
-    id: int = Form(...),
-    name: str = Form(...),
-    persona: str = Form(...),
-    sample_dialogue: str = Form(""),
-    picture: UploadFile = File(None),
-    db: Session = Depends(get_db)
-):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    char = db.query(Character).filter(Character.id == id).first()
-    if not char or str(char.creator_id) != str(user_id):
-        raise HTTPException(status_code=403, detail="Not allowed")
-
-    char.name = name
-    char.persona = persona
-    char.example_messages = sample_dialogue
-
-    if picture:
-        char.picture = upload_character_picture(picture.file, char.id, name)
-
-    db.commit()
-    return {"message": "Character updated successfully"}
 
 @router.post("/api/character/{character_id}/like")
 def like_character(request: Request, character_id: int, db: Session = Depends(get_db)):

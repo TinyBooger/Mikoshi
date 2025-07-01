@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 export default function CharacterCreatePage() {
   const [name, setName] = useState('');
   const [persona, setPersona] = useState('');
+  const [greeting, setGreeting] = useState('');
   const [tagline, setTagline] = useState('');
   const [tags, setTags] = useState('');
   const [sample, setSample] = useState('');
@@ -23,6 +24,7 @@ export default function CharacterCreatePage() {
     formData.append("persona", persona.trim());
     formData.append("tagline", tagline.trim());
     formData.append("tags", tags.trim());
+    formData.append("greeting", greeting.trim());
     formData.append("sample_dialogue", sample.trim());
     if (picture) formData.append("picture", picture);
 
@@ -52,6 +54,10 @@ export default function CharacterCreatePage() {
         <div className="mb-3">
           <label className="form-label">Tagline</label>
           <input className="form-control" value={tagline} onChange={(e) => setTagline(e.target.value)} />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Greeting (optional)</label>
+          <input className="form-control" value={greeting} onChange={(e) => setGreeting(e.target.value)} />
         </div>
         <div className="mb-3">
           <label className="form-label">Tags (comma-separated)</label>

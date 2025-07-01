@@ -12,6 +12,9 @@ export default function CharacterEditPage() {
     name: false,
     persona: false,
     sample: false,
+    tagline: false,
+    tags: false,
+    greeting: false,
   });
 
   useEffect(() => {
@@ -30,7 +33,10 @@ export default function CharacterEditPage() {
         setCharData({
           name: data.name,
           persona: data.persona,
-          sample: data.example_messages || ""
+          sample: data.example_messages || "",
+          tagline: data.tagline || "",
+          tags: data.tags || "",
+          greeting: data.greeting || "",
         });
       });
   }, [id, navigate]);
@@ -49,6 +55,9 @@ export default function CharacterEditPage() {
     formData.append("name", charData.name);
     formData.append("persona", charData.persona);
     formData.append("sample_dialogue", charData.sample);
+    formData.append("tagline", charData.tagline);
+    formData.append("tags", charData.tags);
+    formData.append("greeting", charData.greeting);
     if (picture) formData.append("picture", picture);
 
     const res = await fetch("/api/update-character", {
@@ -71,11 +80,11 @@ export default function CharacterEditPage() {
         <main className="flex-grow-1 p-4">
           <h2 className="mb-4">Edit Character</h2>
           <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
-            {["name", "persona", "sample"].map(field => (
+            {["name", "persona", "sample", "tagline", "tags", "greeting"].map(field => (
               <div className="mb-3" key={field}>
                 <label className="form-label text-capitalize">{field}</label>
                 <div className="input-group">
-                  {field === "name" ? (
+                  {field === "name" || field === "tagline" || field === "tags" || field === "greeting" ? (
                     <input
                       type="text"
                       className={`form-control ${editable[field] ? "bg-warning-subtle" : "readonly"}`}

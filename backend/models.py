@@ -17,6 +17,7 @@ class Character(Base):
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
     picture = Column(String, nullable=True)  # path or URL to the picture
+    greeting = Column(String, nullable=True)
 
     created_time = Column(DateTime, default=lambda: datetime.now(UTC))
     creator_id = Column(String, nullable=False)  # store creator email or id
