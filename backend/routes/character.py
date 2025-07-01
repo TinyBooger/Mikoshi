@@ -164,6 +164,7 @@ def get_popular_characters(db: Session = Depends(get_db)):
             "picture": c.picture,
             "views": c.views,
             "likes": c.likes,
+            "tagline": c.tagline
         } for c in chars
     ]
 
