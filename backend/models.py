@@ -11,7 +11,7 @@ class Character(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     persona = Column(String, nullable=False)
-    example_messages = Column(JSON, default=[])
+    example_messages = Column(Text, default="")
 
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)

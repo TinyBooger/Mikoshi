@@ -33,12 +33,10 @@ async def create_character(
     if existing:
         return JSONResponse(content={"error": "Character already exists"}, status_code=400)
 
-    messages = parse_sample_dialogue(sample_dialogue)
-
     char = Character(
         name=name,
         persona=persona,
-        example_messages=json.dumps(messages),
+        example_messages=sample_dialogue.strip(),
         creator_id=str(user_id),
         views=0,
         picture=None
@@ -124,7 +122,7 @@ async def update_character(
 
     char.name = name
     char.persona = persona
-    char.example_messages = json.dumps(parse_sample_dialogue(sample_dialogue))
+    char.example_messages = sample_dialogue
 
     if picture:
         char.picture = upload_character_picture(picture.file, char.id, name)
