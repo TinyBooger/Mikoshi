@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import TagsInput from './components/TagsInput'; // adjust path as needed
+import TagsInput from '../components/TagsInput'; // adjust path as needed
 
 export default function CharacterCreatePage() {
   const [name, setName] = useState('');

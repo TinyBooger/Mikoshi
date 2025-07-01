@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
-import TagsInput from './components/TagsInput';
+import TagsInput from '../components/TagsInput';
 
 export default function CharacterEditPage() {
   const [searchParams] = useSearchParams();
