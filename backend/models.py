@@ -9,7 +9,7 @@ class Character(Base):
     __tablename__ = "characters"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
-    persona = Column(String, nullable=False)
+    persona = Column(Text, nullable=False)
     example_messages = Column(Text, default="")
     tagline = Column(String(255), default="")  # 50 words fits ~255 chars
     tags = Column(ARRAY(String), default=[])   # array of strings

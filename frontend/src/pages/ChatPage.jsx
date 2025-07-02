@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import defaultPic from '../assets/images/default-picture.png';
+import { buildSystemMessage } from '../utils/systemTemplate';
 
 export default function ChatPage() {
   const [searchParams] = useSearchParams();
@@ -45,11 +46,11 @@ export default function ChatPage() {
         });
         if (data.greeting) {
           setMessages([
-            { role: "system", content: data.persona || "System message" },
+            { role: "system", content: buildSystemMessage(data.persona || "", data.example_messages || "") },
             { role: "assistant", content: data.greeting }
           ]);
         } else {
-          setMessages([{ role: "system", content: data.persona || "System message" }]);
+          setMessages([{ role: "system", content: buildSystemMessage(data.persona || "", data.example_messages || "") }]);
         }
       });
   }, [characterId, navigate]);
