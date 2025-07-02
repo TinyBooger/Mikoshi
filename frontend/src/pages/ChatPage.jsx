@@ -43,17 +43,14 @@ export default function ChatPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ character_id: characterId })
         });
-
-        // Fetch greeting
-        fetch('/api/chat-greeting', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ character_id: characterId })
-        })
-        .then(res => res.json())
-        .then(data => {
-          setMessages([{ role: 'assistant', content: data.greeting }]);
-        });
+        if (data.greeting) {
+          setMessages([
+            { role: "system", content: data.persona || "System message" },
+            { role: "assistant", content: data.greeting }
+          ]);
+        } else {
+          setMessages([{ role: "system", content: data.persona || "System message" }]);
+        }
       });
   }, [characterId, navigate]);
 
