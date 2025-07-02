@@ -154,6 +154,8 @@ async def delete_character(character_id: int, request: Request, db: Session = De
     if not char:
         raise HTTPException(status_code=404, detail="Character not found")
     if char.creator_id != user.id:
+        print("creator id: ", char.creaetor_id)
+        print("user id:", user.id)
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Remove from user's characters_created list
