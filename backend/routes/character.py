@@ -147,6 +147,23 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
         "greeting": c.greeting
     }
 
+@router.delete("/api/character/{character_id}/delete")
+async def delete_character(character_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    char = db.query(Character).filter(Character.id == character_id).first()
+    if not char:
+        raise HTTPException(status_code=404, detail="Character not found")
+    if char.creator_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Remove from user's characters_created list
+    if character_id in user.characters_created:
+        user.characters_created.remove(character_id)
+
+    db.delete(char)
+    db.commit()
+    return {"message": "Character deleted successfully"}
+
 @router.post("/api/character/{character_id}/like")
 def like_character(request: Request, character_id: int, db: Session = Depends(get_db)):
     get_current_user(request, db)

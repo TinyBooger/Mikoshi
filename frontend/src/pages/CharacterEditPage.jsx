@@ -145,9 +145,26 @@ export default function CharacterEditPage() {
               />
             </div>
 
-            <button type="submit" className="btn btn-dark mt-3">
-              <i className="bi bi-save me-2"></i>Save Changes
-            </button>
+            <div className="d-flex gap-2 mt-3">
+              <button type="submit" className="btn btn-dark mt-3">
+                <i className="bi bi-save me-2"></i>Save Changes
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger mt-3 ms-2"
+                onClick={async () => {
+                  if (window.confirm("Are you sure you want to delete this character?")) {
+                    const res = await fetch(`/api/character/${id}/delete`, { method: "DELETE" });
+                    const data = await res.json();
+                    alert(data.message || data.detail || "Character deleted");
+                    if (res.ok) navigate("/profile");
+                  }
+                }}
+              >
+                <i className="bi bi-trash me-2"></i>Delete Character
+              </button>
+            </div>
+
           </form>
         </main>
       </div>
