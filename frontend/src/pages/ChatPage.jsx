@@ -90,10 +90,12 @@ export default function ChatPage() {
           Chatting as: {char ? char.name : 'Unknown'}
         </h5>
         <div className="flex-grow-1 border rounded p-3 mb-3 overflow-auto bg-light">
-          {messages.map((m, i) => (
-            <div key={i}>
-              <strong>{m.role === 'user' ? 'You' : char.name}:</strong> {m.content}
-            </div>
+          {messages
+            .filter(m => m.role != 'system')
+            .map((m, i) => (
+              <div key={i}>
+                <strong>{m.role === 'user' ? 'You' : char.name}:</strong> {m.content}
+              </div>
           ))}
         </div>
         <form className="d-flex gap-2 align-items-center bg-light rounded p-2" onSubmit={handleSubmit}>
