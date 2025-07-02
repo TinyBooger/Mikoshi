@@ -42,7 +42,7 @@ async def create_character(
         tags=tags,
         greeting=greeting.strip(),
         example_messages=sample_dialogue.strip(),
-        creator_id=str(user_id),
+        creator_id=user_id,
         views=0,
         picture=None
     )
@@ -81,7 +81,7 @@ async def update_character(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     char = db.query(Character).filter(Character.id == id).first()
-    if not char or str(char.creator_id) != str(user_id):
+    if not char or char.creator_id != user_id:
         raise HTTPException(status_code=403, detail="Not allowed")
 
     char.name = name
@@ -154,7 +154,7 @@ async def delete_character(character_id: int, request: Request, db: Session = De
     if not char:
         raise HTTPException(status_code=404, detail="Character not found")
     if char.creator_id != user.id:
-        print("creator id: ", char.creator_id)
+        print("creator id:", char.creator_id)
         print("user id:", user.id)
         raise HTTPException(status_code=403, detail="Not authorized")
 
