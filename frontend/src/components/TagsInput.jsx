@@ -62,17 +62,19 @@ export default function TagsInput({ tags, setTags }) {
         placeholder="Add a tag and press Enter"
       />
       {showSuggestions && suggestions.length > 0 && (
-        <div className="border rounded p-2 mt-1 d-flex flex-wrap gap-2" style={{ background: '#f8f9fa' }}>
+        <div
+          className="position-absolute border rounded p-2 d-flex flex-wrap gap-2"
+          style={{ background: '#f8f9fa', top: '100%', left: 0, right: 0, zIndex: 10 }}
+        >
           {suggestions.map((s, i) => (
-            <div key={i} className="badge bg-light text-dark border d-flex align-items-center">
+            <div
+              key={i}
+              className="badge bg-light text-dark border d-flex align-items-center"
+              style={{ cursor: 'pointer' }}
+              onMouseDown={() => addTag(s.name)} // use onMouseDown to avoid blur before click
+            >
               {s.name}
-              <button
-                type="button"
-                className="btn btn-sm btn-link p-0 ms-1"
-                onClick={() => addTag(s.name)}
-              >
-                <i className="bi bi-plus"></i>
-              </button>
+              <i className="bi bi-plus ms-1"></i>
             </div>
           ))}
         </div>
