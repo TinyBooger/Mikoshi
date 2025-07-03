@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from database import get_db
-from models import Character, User
+from models import Character, User, Tag
 from utils.session import verify_session_token, get_current_user
 from utils.cloudinary_utils import upload_character_picture
 
@@ -34,6 +34,13 @@ async def create_character(
     existing = db.query(Character).filter(Character.name == name).first()
     if existing:
         return JSONResponse(content={"error": "Character already exists"}, status_code=400)
+
+    for tag_name in tags:  # update tags
+        tag = db.query(Tag).filter(Tag.name == tag_name).first()
+        if tag:
+            tag.count += 1
+        else:
+            db.add(Tag(name=tag_name, count=1))
 
     char = Character(
         name=name,
