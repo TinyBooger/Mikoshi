@@ -62,18 +62,20 @@ export default function TagsInput({ tags, setTags }) {
         placeholder="Add a tag and press Enter"
       />
       {showSuggestions && suggestions.length > 0 && (
-        <ul className="list-group position-absolute w-100" style={{ top: '100%', zIndex: 10, maxHeight: 150, overflowY: 'auto' }}>
-          {suggestions.map(s => (
-            <li
-              key={s.name}
-              className="list-group-item list-group-item-action"
-              style={{ cursor: 'pointer' }}
-              onMouseDown={() => addTag(s.name)}
-            >
-              {s.name} <small className="text-muted">({s.count})</small>
-            </li>
+        <div className="border rounded p-2 mt-1 d-flex flex-wrap gap-2" style={{ background: '#f8f9fa' }}>
+          {suggestions.map((s, i) => (
+            <div key={i} className="badge bg-light text-dark border d-flex align-items-center">
+              {s.name}
+              <button
+                type="button"
+                className="btn btn-sm btn-link p-0 ms-1"
+                onClick={() => addTag(s.name)}
+              >
+                <i className="bi bi-plus"></i>
+              </button>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
