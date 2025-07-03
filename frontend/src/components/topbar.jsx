@@ -34,7 +34,7 @@ function Topbar() {
       className="d-flex align-items-center justify-content-between px-3 py-2 shadow-sm bg-light position-sticky top-0"
       style={{ zIndex: 1030 }}
     >
-      {location.pathname !== '/' && document.referrer !== '' && (
+      {location.pathname !== '/' && (
         <button
           className="btn btn-outline-secondary btn-sm"
           onClick={() => window.history.back()}
