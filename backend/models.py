@@ -43,3 +43,9 @@ class SearchTerm(Base):
     keyword = Column(String, primary_key=True, unique=True, nullable=False)
     search_count = Column(Integer, default=1)
     last_searched = Column(DateTime, default=datetime.now(UTC))
+
+class Tag(Base):
+    __tablename__ = "tags"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(Text, unique=True, nullable=False)
+    count = Column(Integer, default=0)
