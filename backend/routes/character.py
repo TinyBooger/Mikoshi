@@ -58,7 +58,7 @@ async def create_character(
     db.refresh(char)
 
     if picture:
-        char.picture = upload_character_picture(picture.file, char.id, name)
+        char.picture = upload_character_picture(picture.file, char.id)
 
     if user.characters_created is None:
         user.characters_created = []
@@ -99,7 +99,7 @@ async def update_character(
     char.example_messages = sample_dialogue.strip()
 
     if picture:
-        char.picture = upload_character_picture(picture.file, char.id, name)
+        char.picture = upload_character_picture(picture.file, char.id)
 
     db.commit()
     return {"message": "Character updated successfully"}

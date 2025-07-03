@@ -17,10 +17,11 @@ def upload_avatar(file, user_id):
     )
     return upload_res.get("secure_url")
 
-def upload_character_picture(file, char_id, name):
+def upload_character_picture(file, char_id):
     upload_res = cloudinary.uploader.upload(
         file,
         folder="characters",
-        public_id=f"char_{char_id}_{name}"
+        public_id=f"char_{char_id}",
+        overwrite=True
     )
     return upload_res.get("secure_url")
