@@ -1,7 +1,7 @@
 // App.jsx
 import React, { useEffect, useState } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router';
-import AdminApp from './admin/adminApp.jsx';
+import AdminApp from './admin/AdminApp.jsx';
 import Layout from './components/layout';
 import HomePage from './pages/HomePage';
 import WelcomePage from './pages/WelcomePage';
