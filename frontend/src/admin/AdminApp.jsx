@@ -6,16 +6,14 @@ import UsersPage from "./UsersPage";
 
 export default function AdminApp() {
   return (
-    <Router>
-      <div className="d-flex">
-        <AdminSidebar />
-        <div className="flex-grow-1 p-3">
-          <Routes>
-            <Route path="/admin" element={<DashboardPage />} />
-            <Route path="/admin/users" element={<UsersPage />} />
-          </Routes>
-        </div>
+    <div className="d-flex">
+      <AdminSidebar />
+      <div className="flex-grow-1 p-3">
+        <Routes>
+          <Route path="/admin/*" element={<DashboardPage />} />
+          <Route path="/admin/users" element={<UsersPage />} />
+        </Routes>
       </div>
-    </Router>
+    </div>
   );
 }

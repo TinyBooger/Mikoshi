@@ -1,6 +1,7 @@
 // App.jsx
 import React, { useEffect, useState } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router';
+import AdminApp from './admin/adminApp.jsx';
 import Layout from './components/layout';
 import HomePage from './pages/HomePage';
 import WelcomePage from './pages/WelcomePage';
@@ -37,6 +38,10 @@ export default function App() {
         { path: "profile/:userId", element: <PublicProfilePage /> },
         { path: "search", element: <SearchPage /> },
       ] : [],
+    },
+    {
+      path: '/admin',
+      element: <AdminApp />,
     },
     {
       path: '/account-setup',
