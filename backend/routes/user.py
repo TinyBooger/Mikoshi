@@ -6,6 +6,7 @@ from database import get_db
 from models import User, Character
 from utils.session import verify_session_token
 from utils.cloudinary_utils import upload_avatar
+from utils.validators import validate_account_fields
 
 router = APIRouter()
 
@@ -35,6 +36,10 @@ async def update_profile(
     user = db.query(User).get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    error = validate_account_fields(name=name)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
 
     user.name = name
 

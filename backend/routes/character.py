@@ -7,6 +7,7 @@ from database import get_db
 from models import Character, User, Tag
 from utils.session import verify_session_token, get_current_user
 from utils.cloudinary_utils import upload_character_picture
+from utils.validators import validate_character_fields
 
 router = APIRouter()
 
@@ -34,6 +35,10 @@ async def create_character(
     existing = db.query(Character).filter(Character.name == name).first()
     if existing:
         return JSONResponse(content={"error": "Character already exists"}, status_code=400)
+    
+    error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
 
     for tag_name in tags:  # update tags
         tag = db.query(Tag).filter(Tag.name == tag_name).first()
@@ -90,6 +95,10 @@ async def update_character(
     char = db.query(Character).filter(Character.id == id).first()
     if not char or char.creator_id != user_id:
         raise HTTPException(status_code=403, detail="Not allowed")
+    
+    error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
 
     char.name = name
     char.persona = persona

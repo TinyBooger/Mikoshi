@@ -8,6 +8,7 @@ from models import User
 from schemas import UserLogin
 from utils.session import create_session_token, verify_session_token
 from utils.cloudinary_utils import upload_avatar
+from utils.validators import validate_account_fields
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -44,6 +45,11 @@ async def account_setup(
 ):
     if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    error = validate_account_fields(email=email, password=password, name=name)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+
 
     hashed = pwd_context.hash(password)
     db_user = User(email=email, hashed_password=hashed, name=name)
