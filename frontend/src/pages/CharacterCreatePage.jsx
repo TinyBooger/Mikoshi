@@ -3,6 +3,13 @@ import { useNavigate } from 'react-router';
 import TagsInput from '../components/TagsInput'; // adjust path as needed
 
 export default function CharacterCreatePage() {
+  const MAX_NAME_LENGTH = 50;
+  const MAX_PERSONA_LENGTH = 1000;
+  const MAX_TAGLINE_LENGTH = 200;
+  const MAX_GREETING_LENGTH = 500;
+  const MAX_SAMPLE_LENGTH = 300;
+  const MAX_TAGS = 20;
+
   const [name, setName] = useState('');
   const [persona, setPersona] = useState('');
   const [greeting, setGreeting] = useState('');
@@ -44,34 +51,98 @@ export default function CharacterCreatePage() {
     <main className="flex-grow-1 p-4 overflow-auto">
       <h2 className="mb-4">Create New Character</h2>
       <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
-        <div className="mb-3">
+        <div className="mb-3 position-relative">
           <label className="form-label">Name</label>
-          <input className="form-control" required value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            className="form-control"
+            required
+            value={name}
+            maxLength={MAX_NAME_LENGTH}
+            onChange={(e) => setName(e.target.value)}
+            style={{ paddingRight: "3rem" }}
+          />
+          <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+            {name.length}/{MAX_NAME_LENGTH}
+          </small>
         </div>
-        <div className="mb-3">
+
+        <div className="mb-3 position-relative">
           <label className="form-label">Persona</label>
-          <textarea className="form-control" rows="3" required value={persona} onChange={(e) => setPersona(e.target.value)} />
+          <textarea
+            className="form-control"
+            rows="3"
+            required
+            value={persona}
+            maxLength={MAX_PERSONA_LENGTH}
+            onChange={(e) => setPersona(e.target.value)}
+            style={{ paddingRight: "3rem" }}
+          />
+          <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+            {persona.length}/{MAX_PERSONA_LENGTH}
+          </small>
         </div>
-        <div className="mb-3">
+
+        <div className="mb-3 position-relative">
           <label className="form-label">Tagline</label>
-          <input className="form-control" value={tagline} onChange={(e) => setTagline(e.target.value)} />
+          <input
+            className="form-control"
+            value={tagline}
+            maxLength={MAX_TAGLINE_LENGTH}
+            onChange={(e) => setTagline(e.target.value)}
+            style={{ paddingRight: "3rem" }}
+          />
+          <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+            {tagline.length}/{MAX_TAGLINE_LENGTH}
+          </small>
         </div>
-        <div className="mb-3">
+
+        <div className="mb-3 position-relative">
           <label className="form-label">Greeting (optional)</label>
-          <input className="form-control" value={greeting} onChange={(e) => setGreeting(e.target.value)} />
+          <input
+            className="form-control"
+            value={greeting}
+            maxLength={MAX_GREETING_LENGTH}
+            onChange={(e) => setGreeting(e.target.value)}
+            style={{ paddingRight: "3rem" }}
+          />
+          <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+            {greeting.length}/{MAX_GREETING_LENGTH}
+          </small>
         </div>
-        <div className="mb-3">
+
+        <div className="mb-3 position-relative">
           <label className="form-label">Tags</label>
-          <TagsInput tags={tags} setTags={setTags} />
+          <TagsInput tags={tags} setTags={setTags} maxTags={MAX_TAGS} />
+          <small className="text-muted" style={{ top: 0, right: 0 }}>
+            {tags.length}/{MAX_TAGS} tags
+          </small>
         </div>
-        <div className="mb-3">
+
+        <div className="mb-3 position-relative">
           <label className="form-label">Sample Dialogue</label>
-          <textarea className="form-control" rows="3" value={sample} onChange={(e) => setSample(e.target.value)} />
+          <textarea
+            className="form-control"
+            rows="3"
+            value={sample}
+            maxLength={MAX_SAMPLE_LENGTH}
+            onChange={(e) => setSample(e.target.value)}
+            style={{ paddingRight: "3rem" }}
+          />
+          <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+            {sample.length}/{MAX_SAMPLE_LENGTH}
+          </small>
         </div>
+
         <div className="mb-3">
           <label className="form-label">Profile Picture</label>
-          <input type="file" accept="image/*" className="form-control" onChange={(e) => setPicture(e.target.files[0])} />
+          <input
+            type="file"
+            accept="image/*"
+            className="form-control"
+            onChange={(e) => setPicture(e.target.files[0])}
+          />
         </div>
+
         <button type="submit" className="btn btn-dark">
           <i className="bi bi-save me-2"></i>Save Character
         </button>

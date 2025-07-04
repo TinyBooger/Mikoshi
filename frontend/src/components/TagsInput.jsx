@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function TagsInput({ tags, setTags }) {
+export default function TagsInput({ tags, setTags, maxTags }) {
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -27,7 +27,7 @@ export default function TagsInput({ tags, setTags }) {
   };
 
   const addTag = (tag) => {
-    if (!tags.includes(tag)) {
+    if (tags.length < maxTags && !tags.includes(tag)) {
       setTags([...tags, tag]);
     }
     setInput("");
