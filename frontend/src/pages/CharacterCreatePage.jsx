@@ -7,7 +7,7 @@ export default function CharacterCreatePage() {
   const MAX_PERSONA_LENGTH = 1000;
   const MAX_TAGLINE_LENGTH = 200;
   const MAX_GREETING_LENGTH = 500;
-  const MAX_SAMPLE_LENGTH = 300;
+  const MAX_SAMPLE_LENGTH = 1000;
   const MAX_TAGS = 20;
 
   const [name, setName] = useState('');

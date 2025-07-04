@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-
 import TagsInput from '../components/TagsInput';
 
 export default function CharacterEditPage() {
+  const MAX_NAME_LENGTH = 50;
+  const MAX_PERSONA_LENGTH = 1000;
+  const MAX_TAGLINE_LENGTH = 200;
+  const MAX_GREETING_LENGTH = 500;
+  const MAX_SAMPLE_LENGTH = 1000;
+  const MAX_TAGS = 20;
+
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
   const navigate = useNavigate();
@@ -83,26 +89,56 @@ export default function CharacterEditPage() {
           <h2 className="mb-4">Edit Character</h2>
           <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
             {["name", "persona", "sample", "tagline", "greeting"].map(field => (
-              <div className="mb-3" key={field}>
+              <div className="mb-3 position-relative" key={field}>
                 <label className="form-label text-capitalize">{field}</label>
-                <div className="input-group">
-                  {field === "name" || field === "tagline" || field === "greeting" ? (
+                {field === "name" || field === "tagline" || field === "greeting" ? (
+                  <>
                     <input
                       type="text"
                       className={`form-control ${editable[field] ? "bg-warning-subtle" : "readonly"}`}
                       value={charData[field]}
                       readOnly={!editable[field]}
+                      maxLength={
+                        field === "name" ? MAX_NAME_LENGTH :
+                        field === "tagline" ? MAX_TAGLINE_LENGTH :
+                        MAX_GREETING_LENGTH
+                      }
                       onChange={e => handleChange(field, e.target.value)}
+                      style={{ paddingRight: "3rem" }}
                     />
-                  ) : (
+                    {editable[field] && (
+                      <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+                        {charData[field].length}/{
+                          field === "name" ? MAX_NAME_LENGTH :
+                          field === "tagline" ? MAX_TAGLINE_LENGTH :
+                          MAX_GREETING_LENGTH
+                        }
+                      </small>
+                    )}
+                  </>
+                ) : (
+                  <>
                     <textarea
                       rows={3}
                       className={`form-control ${editable[field] ? "bg-warning-subtle" : "readonly"}`}
                       value={charData[field]}
                       readOnly={!editable[field]}
+                      maxLength={
+                        field === "persona" ? MAX_PERSONA_LENGTH : MAX_SAMPLE_LENGTH
+                      }
                       onChange={e => handleChange(field, e.target.value)}
+                      style={{ paddingRight: "3rem" }}
                     />
-                  )}
+                    {editable[field] && (
+                      <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+                        {charData[field].length}/{
+                          field === "persona" ? MAX_PERSONA_LENGTH : MAX_SAMPLE_LENGTH
+                        }
+                      </small>
+                    )}
+                  </>
+                )}
+                <div className="input-group-append">
                   {!editable[field] ? (
                     <button type="button" className="btn btn-outline-secondary" onClick={() => toggleEdit(field)}>
                       <i className="bi bi-pencil"></i>
@@ -116,10 +152,15 @@ export default function CharacterEditPage() {
               </div>
             ))}
 
-            <div className="mb-3">
-              <label className="form-label text-capitalize">Tags</label>
+            <div className="mb-3 position-relative">
+              <label className="form-label">Tags</label>
               {editable.tags ? (
-                <TagsInput tags={charData.tags} setTags={value => handleChange("tags", value)} />
+                <>
+                  <TagsInput tags={charData.tags} setTags={value => handleChange("tags", value)} maxTags={MAX_TAGS} />
+                  <small className="text-muted">
+                    {charData.tags.length}/{MAX_TAGS} tags
+                  </small>
+                </>
               ) : (
                 <div className="input-group">
                   <input
