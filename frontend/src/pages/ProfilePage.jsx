@@ -4,6 +4,8 @@ import CharacterCard from '../components/CharacterCard';
 import defaultAvatar from '../assets/images/default-avatar.png';
 
 export default function ProfilePage() {
+  const MAX_NAME_LENGTH = 50;
+
   const [user, setUser] = useState(null);
   const [characters, setCharacters] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -23,12 +25,12 @@ export default function ProfilePage() {
     fetch('/api/characters-created')
       .then(res => res.ok ? res.json() : [])
       .then(setCharacters);
-  }, []);
+  }, [navigate]);
 
   const handleSave = async (e) => {
     e.preventDefault();
     const formData = new FormData();
-    formData.append('name', editName);
+    formData.append('name', editName.trim());
     if (editPic) formData.append('profile_pic', editPic);
 
     const res = await fetch('/api/update-profile', {
@@ -95,15 +97,20 @@ export default function ProfilePage() {
                 <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
               </div>
               <div className="modal-body">
-                <div className="mb-3">
+                <div className="mb-3 position-relative">
                   <label className="form-label">Name</label>
                   <input
                     type="text"
                     className="form-control"
                     value={editName}
+                    maxLength={MAX_NAME_LENGTH}
                     onChange={e => setEditName(e.target.value)}
                     required
+                    style={{ paddingRight: "3rem" }}
                   />
+                  <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+                    {editName.length}/{MAX_NAME_LENGTH}
+                  </small>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Profile Picture</label>
