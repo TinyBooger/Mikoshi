@@ -13,6 +13,8 @@ import ProfilePage from './pages/ProfilePage';
 import PublicProfilePage from "./pages/PublicProfilePage";
 import SearchPage from "./pages/SearchPage";
 
+import DashboardPage from "./admin/DashboardPage";
+import UsersPage from "./admin/UsersPage";
 
 export default function App() {
   const [user, setUser] = useState(undefined);
@@ -40,8 +42,12 @@ export default function App() {
       ] : [],
     },
     {
-      path: '/admin/*',
+      path: '/admin/',
       element: <AdminApp />,
+      children: [
+        {index: true, element: <DashboardPage />},
+        {path: 'users', element: <UsersPage />},
+      ]
     },
     {
       path: '/account-setup',
