@@ -13,8 +13,11 @@ import ProfilePage from './pages/ProfilePage';
 import PublicProfilePage from "./pages/PublicProfilePage";
 import SearchPage from "./pages/SearchPage";
 
-import DashboardPage from "./admin/DashboardPage";
-import UsersPage from "./admin/UsersPage";
+import DashboardPage from "./admin/pages/DashboardPage";
+import UsersPage from "./admin/pages/UsersPage";
+import CharactersPage from './admin/pages/CharactersPage.jsx';
+import TagsPage from './admin/pages/TagsPage.jsx';
+import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
 
 export default function App() {
   const [user, setUser] = useState(undefined);
@@ -47,6 +50,9 @@ export default function App() {
       children: [
         {index: true, element: <DashboardPage />},
         {path: 'users', element: <UsersPage />},
+        {path: 'characters', element: <CharactersPage />},
+        {path: 'tags', element: <TagsPage />},
+        {path: 'search-terms', element: <SearchTermsPage />},
       ]
     },
     {

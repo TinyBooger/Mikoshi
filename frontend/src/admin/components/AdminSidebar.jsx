@@ -10,8 +10,7 @@ export default function AdminSidebar() {
         <li><Link className="nav-link text-white" to="/admin/users">Users</Link></li>
         <li><Link className="nav-link text-white" to="/admin/characters">Characters</Link></li>
         <li><Link className="nav-link text-white" to="/admin/tags">Tags</Link></li>
-        <li><Link className="nav-link text-white" to="/admin/search-keywords">Search Keywords</Link></li>
-        <li><Link className="nav-link text-white" to="/admin/logs">Logs</Link></li>
+        <li><Link className="nav-link text-white" to="/admin/search-terms">Search Keywords</Link></li>
       </ul>
     </div>
   );
