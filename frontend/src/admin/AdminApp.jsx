@@ -10,8 +10,8 @@ export default function AdminApp() {
       <AdminSidebar />
       <div className="flex-grow-1 p-3">
         <Routes>
-          <Route path="/admin/*" element={<DashboardPage />} />
-          <Route path="/admin/users" element={<UsersPage />} />
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="users" element={<UsersPage />} />
         </Routes>
       </div>
     </div>
