@@ -40,7 +40,7 @@ export default function App() {
       ] : [],
     },
     {
-      path: '/admin',
+      path: '/admin/*',
       element: <AdminApp />,
     },
     {
