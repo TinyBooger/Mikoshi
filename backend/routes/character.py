@@ -208,6 +208,22 @@ def get_popular_characters(db: Session = Depends(get_db)):
         } for c in chars
     ]
 
+@router.get("/api/characters/recent")
+def get_recent_characters(db: Session = Depends(get_db)):
+    chars = db.query(Character).order_by(Character.created_time.desc()).limit(10).all()
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "persona": c.persona,
+            "picture": c.picture,
+            "views": c.views,
+            "likes": c.likes,
+            "tagline": c.tagline
+        } for c in chars
+    ]
+
+
 @router.post("/api/views/increment")
 def increment_views(request: Request, payload: dict, db: Session = Depends(get_db)):
     get_current_user(request, db)
