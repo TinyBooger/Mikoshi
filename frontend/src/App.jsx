@@ -42,7 +42,7 @@ export default function App() {
       ] : [],
     },
     {
-      path: '/admin/',
+      path: '/admin',
       element: <AdminApp />,
       children: [
         {index: true, element: <DashboardPage />},
