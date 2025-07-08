@@ -113,34 +113,40 @@ export default function ChatPage() {
         </form>
       </div>
 
-      <aside className="border-start p-3" style={{ width: 250 }}>
+      <aside className="border-start p-3 d-flex flex-column align-items-center text-center bg-white shadow-sm" style={{ width: 280 }}>
         <img
           src={char?.picture || defaultPic}
           alt="Character Avatar"
-          className="img-fluid rounded mb-3"
+          className="img-fluid rounded-circle mb-3"
+          style={{ width: 120, height: 120, objectFit: 'cover' }}
         />
-        <h5>{char?.name}</h5>
-        <p className="mb-1 text-muted">
-          By <span
+        <h5 className="fw-bold">{char?.name}</h5>
+        {char?.tagline && <p className="text-muted fst-italic small px-2">{char.tagline}</p>}
+
+        <p className="text-muted mb-1">
+          By{' '}
+          <span
             style={{ cursor: 'pointer', textDecoration: 'underline', color: 'blue' }}
             onClick={() => navigate(`/profile/${char?.creator_id}`)}
           >
             {creator?.name || 'Unknown'}
           </span>
         </p>
-        <p className="mb-1 text-muted">Created: {char && new Date(char.created_time).toLocaleDateString()}</p>
-        <p className="mb-1 text-muted">Views: {char?.views || 0}</p>
-        <div className="d-flex align-items-center gap-2 mt-3">
+        <p className="text-muted mb-1">Created: {char && new Date(char.created_time).toLocaleDateString()}</p>
+        <p className="text-muted mb-1">Views: {char?.views || 0}</p>
+
+        <div className="d-flex align-items-center gap-2 mt-2">
           <button
             className="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
-            style={{ width: 32, height: 32 }}
+            style={{ width: 36, height: 36 }}
             onClick={likeCharacter}
           >
             <i className="bi bi-hand-thumbs-up"></i>
           </button>
-          <span>{likes}</span>
+          <span className="small">{likes}</span>
         </div>
       </aside>
+
     </main>
   );
 }
