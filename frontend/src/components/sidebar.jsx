@@ -29,7 +29,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="d-flex flex-column h-100 p-3 bg-light border-end">
+    <aside className="d-flex flex-column h-100 p-3 bg-light border-end" style={{ minHeight: '100vh' }}>
       <div className="d-flex flex-column gap-3">
         <a
           href="/"
