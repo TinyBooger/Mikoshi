@@ -8,8 +8,10 @@ export default function Layout() {
     <div className="d-flex" style={{ height: '100vh' }}>
       <Sidebar />
       <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-        <Topbar />
-        <main className="flex-grow-1 p-4 overflow-auto">
+        <div style={{ height: '56px', flexShrink: 0 }}>
+          <Topbar />
+        </div>
+        <main className="flex-grow-1 overflow-auto">
           <Outlet />
         </main>
       </div>

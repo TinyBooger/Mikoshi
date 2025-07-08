@@ -30,9 +30,10 @@ function Topbar() {
   };
 
   return (
+
     <div
-      className="d-flex align-items-center justify-content-between px-3 py-2 shadow-sm bg-light position-sticky top-0"
-      style={{ zIndex: 1030 }}
+      className="d-flex align-items-center justify-content-between px-3 shadow-sm bg-light"
+      style={{ height: '56px', zIndex: 1030 }}
     >
       {location.pathname !== '/' && (
         <button
