@@ -184,18 +184,52 @@ async def delete_character(character_id: int, request: Request, db: Session = De
 
 @router.post("/api/character/{character_id}/like")
 def like_character(request: Request, character_id: int, db: Session = Depends(get_db)):
-    get_current_user(request, db)
+    user = get_current_user(request, db)
     char = db.query(Character).filter(Character.id == character_id).first()
     if not char:
         raise HTTPException(status_code=404, detail="Character not found")
 
+    # Update character like count
     char.likes += 1
+
+    # Update user's liked characters
+    if character_id not in user.liked_characters:
+        user.liked_characters.append(character_id)
+
+    # Update user's liked tags
+    for tag in char.tags or []:
+        if tag not in user.liked_tags:
+            user.liked_tags.append(tag)
+
     db.commit()
     return {"likes": char.likes}
+
 
 @router.get("/api/characters/popular")
 def get_popular_characters(db: Session = Depends(get_db)):
     chars = db.query(Character).order_by(Character.views.desc()).limit(10).all()
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "persona": c.persona,
+            "picture": c.picture,
+            "views": c.views,
+            "likes": c.likes,
+            "tagline": c.tagline
+        } for c in chars
+    ]
+
+@router.get("/api/characters/recommended")
+def get_recommended_characters(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user.liked_tags:
+        return []  # no recommendations
+
+    chars = db.query(Character).filter(
+        Character.tags.overlap(user.liked_tags)
+    ).order_by(Character.likes.desc()).limit(12).all()
+
     return [
         {
             "id": c.id,

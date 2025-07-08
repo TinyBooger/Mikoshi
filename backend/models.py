@@ -36,6 +36,9 @@ class User(Base):
     likes = Column(Integer, default=0)
     characters_created = Column(ARRAY(Integer), default=[])
     recent_characters = Column(ARRAY(JSONB), default=[])
+    liked_characters = Column(ARRAY(Integer), default=[])
+    liked_tags = Column(ARRAY(String), default=[])
+
 
 class SearchTerm(Base):
     __tablename__ = "search_term"
