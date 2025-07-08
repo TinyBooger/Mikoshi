@@ -114,7 +114,7 @@ export default function ChatPage() {
       </div>
 
       <aside className="border-start d-flex flex-column align-items-center text-center bg-white shadow-sm p-3"
-        style={{ width: 280, minHeight: '100vh' }}>
+        style={{ width: 280}}>
         <img
           src={char?.picture || defaultPic}
           alt="Character Avatar"
