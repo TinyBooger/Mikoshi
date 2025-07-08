@@ -5,7 +5,7 @@ import Topbar from './topbar';
 
 export default function Layout() {
   return (
-    <div className="d-flex" style={{ height: '100vh' }}>
+    <div className="d-flex" style={{ minHeight: '100vh' }}>
       <Sidebar />
       <div className="d-flex flex-column flex-grow-1 overflow-hidden">
         <div style={{ height: '56px', flexShrink: 0 }}>
