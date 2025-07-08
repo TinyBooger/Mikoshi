@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import array, TEXT
 from typing import List
 
 from database import get_db
@@ -225,10 +226,11 @@ def get_recommended_characters(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user.liked_tags:
         return []  # no recommendations
+    
+    user_tags = user.liked_tags or []
+    tags_array = array(user_tags, type_=TEXT)
 
-    chars = db.query(Character).filter(
-        Character.tags.overlap(user.liked_tags)
-    ).order_by(Character.likes.desc()).limit(12).all()
+    chars = db.query(Character).filter(Character.tags.overlap(tags_array)).order_by(Character.likes.desc()).limit(12).all()
 
     return [
         {
