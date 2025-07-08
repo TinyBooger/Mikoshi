@@ -113,29 +113,37 @@ export default function ChatPage() {
         </form>
       </div>
 
-      <aside className="border-start p-3 d-flex flex-column align-items-center text-center bg-white shadow-sm" style={{ width: 280 }}>
+      <aside className="border-start d-flex flex-column align-items-center text-center bg-white shadow-sm p-3"
+        style={{ width: 280, minHeight: '100vh' }}>
         <img
           src={char?.picture || defaultPic}
           alt="Character Avatar"
-          className="img-fluid rounded-circle mb-3"
-          style={{ width: 120, height: 120, objectFit: 'cover' }}
+          className="rounded-circle mb-3"
+          style={{ width: 120, height: 120, objectFit: 'cover', border: '2px solid #ccc' }}
         />
-        <h5 className="fw-bold">{char?.name}</h5>
-        {char?.tagline && <p className="text-muted fst-italic small px-2">{char.tagline}</p>}
 
-        <p className="text-muted mb-1">
-          By{' '}
-          <span
-            style={{ cursor: 'pointer', textDecoration: 'underline', color: 'blue' }}
-            onClick={() => navigate(`/profile/${char?.creator_id}`)}
-          >
-            {creator?.name || 'Unknown'}
-          </span>
-        </p>
-        <p className="text-muted mb-1">Created: {char && new Date(char.created_time).toLocaleDateString()}</p>
-        <p className="text-muted mb-1">Views: {char?.views || 0}</p>
+        <h5 className="fw-bold mb-1">{char?.name}</h5>
 
-        <div className="d-flex align-items-center gap-2 mt-2">
+        {char?.tagline && (
+          <p className="text-muted fst-italic small px-2 mb-2">{char.tagline}</p>
+        )}
+
+        <div className="w-100 text-start mt-3">
+          <p className="mb-1">
+            <strong>Creator:</strong>{' '}
+            <span
+              style={{ cursor: 'pointer', textDecoration: 'underline', color: 'blue' }}
+              onClick={() => navigate(`/profile/${char?.creator_id}`)}
+            >
+              {creator?.name || 'Unknown'}
+            </span>
+          </p>
+          <p className="mb-1"><strong>Created:</strong> {char && new Date(char.created_time).toLocaleDateString()}</p>
+          <p className="mb-1"><strong>Views:</strong> {char?.views || 0}</p>
+          <p className="mb-2"><strong>Likes:</strong> {likes}</p>
+        </div>
+
+        <div className="d-flex align-items-center gap-2 mb-3">
           <button
             className="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
             style={{ width: 36, height: 36 }}
@@ -143,9 +151,20 @@ export default function ChatPage() {
           >
             <i className="bi bi-hand-thumbs-up"></i>
           </button>
-          <span className="small">{likes}</span>
         </div>
+
+        {char?.tags?.length > 0 && (
+          <div className="w-100 text-start">
+            <strong>Tags:</strong>
+            <div className="d-flex flex-wrap gap-1 mt-1">
+              {char.tags.map((tag, i) => (
+                <span key={i} className="badge bg-secondary text-light">{tag}</span>
+              ))}
+            </div>
+          </div>
+        )}
       </aside>
+
 
     </main>
   );
