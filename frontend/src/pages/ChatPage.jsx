@@ -10,6 +10,7 @@ export default function ChatPage() {
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [hasLiked, setHasLiked] = useState(false);
   const characterId = searchParams.get('character');
   const navigate = useNavigate();
 
@@ -17,8 +18,14 @@ export default function ChatPage() {
     fetch('/api/current-user', { credentials: 'include' })
       .then(res => {
         if (!res.ok) navigate('/');
+        return res.json();
+      })
+      .then(user => {
+        if (user?.liked_characters?.includes(parseInt(characterId))) {
+          setHasLiked(true);
+        }
       });
-  }, []);
+  }, [characterId]);
 
   useEffect(() => {
     if (!characterId) return;
@@ -44,6 +51,7 @@ export default function ChatPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ character_id: characterId })
         });
+
         if (data.greeting) {
           setMessages([
             { role: "system", content: buildSystemMessage(data.persona || "", data.example_messages || "") },
@@ -81,6 +89,7 @@ export default function ChatPage() {
     if (res.ok) {
       const data = await res.json();
       setLikes(data.likes);
+      setHasLiked(true);
     }
   };
 
@@ -92,7 +101,7 @@ export default function ChatPage() {
         </h5>
         <div className="flex-grow-1 border rounded p-3 mb-3 overflow-auto bg-light">
           {messages
-            .filter(m => m.role != 'system')
+            .filter(m => m.role !== 'system')
             .map((m, i) => (
               <div key={i}>
                 <strong>{m.role === 'user' ? 'You' : char.name}:</strong> {m.content}
@@ -113,7 +122,7 @@ export default function ChatPage() {
         </form>
       </div>
 
-      <aside className="border-start d-flex flex-column bg-white shadow-sm p-3" style={{ width: 280, minHeight: 0}}>
+      <aside className="border-start d-flex flex-column bg-white shadow-sm p-3" style={{ width: 280, minHeight: 0 }}>
         <img
           src={char?.picture || defaultPic}
           alt="Character Avatar"
@@ -121,10 +130,10 @@ export default function ChatPage() {
           style={{ width: 120, height: 120, objectFit: 'cover', border: '2px solid #ccc' }}
         />
 
-        <h5 className="fw-bold mb-1">{char?.name}</h5>
+        <h5 className="fw-bold mb-1 text-center">{char?.name}</h5>
 
         {char?.tagline && (
-          <p className="text-muted fst-italic small px-2 mb-2">{char.tagline}</p>
+          <p className="text-muted fst-italic small text-center px-2 mb-2">{char.tagline}</p>
         )}
 
         <div className="w-100 text-start mt-3">
@@ -139,14 +148,15 @@ export default function ChatPage() {
           </p>
           <p className="mb-1"><strong>Created:</strong> {char && new Date(char.created_time).toLocaleDateString()}</p>
           <p className="mb-1"><strong>Views:</strong> {char?.views || 0}</p>
-          <p className="mb-2"><strong>Likes:</strong> {likes}</p>
         </div>
 
-        <div className="d-flex align-items-center gap-2 mb-3">
+        <div className="d-flex align-items-center justify-content-between gap-2 bg-light rounded px-3 py-2 my-3">
+          <span className="fw-semibold">👍 {likes}</span>
           <button
-            className="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
-            style={{ width: 36, height: 36 }}
+            className="btn btn-outline-primary btn-sm"
+            style={{ minWidth: 36 }}
             onClick={likeCharacter}
+            disabled={hasLiked}
           >
             <i className="bi bi-hand-thumbs-up"></i>
           </button>
