@@ -43,7 +43,7 @@ export default function PublicProfilePage() {
   return (
     <div className="d-flex" style={{ height: "100vh" }}>
       <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-        <main className="flex-grow-1 p-4">
+        <div className="flex-grow-1 p-4">
           <section className="mb-4 d-flex align-items-center gap-3">
             <img
               src={user.profile_pic || "/static/default-avatar.png"}
@@ -64,7 +64,7 @@ export default function PublicProfilePage() {
               )}
             </div>
           </section>
-        </main>
+        </div>
       </div>
     </div>
   );

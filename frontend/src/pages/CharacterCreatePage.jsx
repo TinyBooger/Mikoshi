@@ -48,7 +48,7 @@ export default function CharacterCreatePage() {
   };
 
   return (
-    <main className="flex-grow-1 p-4 overflow-auto">
+    <div className="flex-grow-1 p-4 overflow-auto">
       <h2 className="mb-4">Create New Character</h2>
       <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
         <div className="mb-3 position-relative">
@@ -147,6 +147,6 @@ export default function CharacterCreatePage() {
           <i className="bi bi-save me-2"></i>Save Character
         </button>
       </form>
-    </main>
+    </div>
   );
 }

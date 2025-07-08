@@ -44,7 +44,7 @@ export default function SearchPage() {
     <div className="d-flex" style={{ height: "100vh" }}>
       <div className="d-flex flex-column flex-grow-1 overflow-hidden">
         <div id="topbar-container" className="flex-shrink-0"></div>
-        <main
+        <div
           id="main-content"
           className="flex-grow-1 p-4 overflow-auto"
           style={{ minHeight: 0 }}
@@ -82,7 +82,7 @@ export default function SearchPage() {
               ))
             )}
           </ul>
-        </main>
+        </div>
       </div>
     </div>
   );

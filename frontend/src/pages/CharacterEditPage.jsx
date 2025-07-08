@@ -85,7 +85,7 @@ export default function CharacterEditPage() {
       <div style={{ width: 250, flexShrink: 0 }}></div>
       <div className="d-flex flex-column flex-grow-1 overflow-hidden">
         <div className="flex-shrink-0"></div>
-        <main className="flex-grow-1 p-4">
+        <div className="flex-grow-1 p-4">
           <h2 className="mb-4">Edit Character</h2>
           <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
             {["name", "persona", "sample", "tagline", "greeting"].map(field => (
@@ -207,7 +207,7 @@ export default function CharacterEditPage() {
             </div>
 
           </form>
-        </main>
+        </div>
       </div>
     </div>
   );

@@ -52,7 +52,7 @@ export default function ProfilePage() {
   return (
     <div className="d-flex" style={{ height: '100vh' }}>
       <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-        <main className="flex-grow-1 p-4">
+        <div className="flex-grow-1 p-4">
           <h2 className="mb-4">My Profile</h2>
 
           <div className="d-flex align-items-center gap-4 mb-4">
@@ -85,7 +85,7 @@ export default function ProfilePage() {
               </div>
             ))}
           </div>
-        </main>
+        </div>
       </div>
 
       {showModal && (
