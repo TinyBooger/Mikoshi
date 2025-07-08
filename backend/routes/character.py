@@ -194,12 +194,12 @@ def like_character(request: Request, character_id: int, db: Session = Depends(ge
 
     # Update user's liked characters
     if character_id not in user.liked_characters:
-        user.liked_characters.append(character_id)
+        user.liked_characters = user.liked_characters + [character_id]
 
     # Update user's liked tags
     for tag in char.tags or []:
         if tag not in user.liked_tags:
-            user.liked_tags.append(tag)
+            user.liked_tags = user.liked_tags + [tag]
 
     db.commit()
     return {"likes": char.likes}
