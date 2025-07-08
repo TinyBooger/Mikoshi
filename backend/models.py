@@ -37,7 +37,7 @@ class User(Base):
     characters_created = Column(ARRAY(Integer), default=[])
     recent_characters = Column(ARRAY(JSONB), default=[])
     liked_characters = Column(ARRAY(Integer), default=[])
-    liked_tags = Column(ARRAY(String), default=[])
+    liked_tags = Column(ARRAY(Text), default=[])
 
 
 class SearchTerm(Base):

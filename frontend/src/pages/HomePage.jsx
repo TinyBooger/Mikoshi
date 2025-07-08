@@ -45,9 +45,7 @@ function HomePage() {
           <p>No recommendations yet. Please like more characters to unlock personalized suggestions.</p>
         ) : (
           <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
-            {recommended.map(c => (
-              <CharacterCard key={c.id} character={c} />
-            ))}
+            {recommended.map(c => <CharacterCard key={c.id} character={c} />)}
           </div>
         )}
       </section>
