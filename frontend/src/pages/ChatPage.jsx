@@ -86,7 +86,7 @@ export default function ChatPage() {
 
   return (
     <main className="flex-grow-1 d-flex overflow-hidden">
-      <div className="flex-grow-1 d-flex flex-column p-3">
+      <div className="flex-grow-1 d-flex flex-column p-3" style={{ minHeight: 0 }}>
         <h5 className="mb-3">
           Chatting as: {char ? char.name : 'Unknown'}
         </h5>
