@@ -85,10 +85,10 @@ export default function ChatPage() {
   };
 
   return (
-    <main className="flex-grow-1 d-flex overflow-hidden">
-      <div className="flex-grow-1 d-flex flex-column p-3" style={{ minHeight: 0 }}>
+    <div className="d-flex h-100">
+      <div className="flex-grow-1 d-flex flex-column p-3 overflow-hidden" style={{ minHeight: 0 }}>
         <h5 className="mb-3">
-          Chatting as: {char ? char.name : 'Unknown'}
+          Chatting to: {char ? char.name : 'Unknown'}
         </h5>
         <div className="flex-grow-1 border rounded p-3 mb-3 overflow-auto bg-light">
           {messages
@@ -113,8 +113,7 @@ export default function ChatPage() {
         </form>
       </div>
 
-      <aside className="border-start d-flex flex-column align-items-center text-center bg-white shadow-sm p-3"
-        style={{ width: 280}}>
+      <aside className="border-start d-flex flex-column bg-white shadow-sm p-3" style={{ width: 280, minHeight: 0}}>
         <img
           src={char?.picture || defaultPic}
           alt="Character Avatar"
@@ -164,8 +163,6 @@ export default function ChatPage() {
           </div>
         )}
       </aside>
-
-
-    </main>
+    </div>
   );
 }
