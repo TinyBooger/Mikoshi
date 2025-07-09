@@ -75,5 +75,6 @@ def get_current_user_info(request: Request, db: Session = Depends(get_db)):
         "id": user.id,
         "name": user.name,
         "profile_pic": user.profile_pic,
-        "liked_characters": user.liked_characters
+        "liked_characters": user.liked_characters,
+        "chat_history": user.chat_history,
     }

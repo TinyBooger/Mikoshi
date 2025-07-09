@@ -4,6 +4,7 @@ import defaultPic from '../assets/images/default-picture.png';
 import { buildSystemMessage } from '../utils/systemTemplate';
 
 export default function ChatPage() {
+  const [currentUser, setCurrentUser] = useState(null);
   const [searchParams] = useSearchParams();
   const [char, setChar] = useState(null);
   const [creator, setCreator] = useState(null);
@@ -21,6 +22,7 @@ export default function ChatPage() {
         return res.json();
       })
       .then(user => {
+        setCurrentUser(user);
         if (user?.liked_characters?.includes(parseInt(characterId))) {
           setHasLiked(true);
         }
@@ -52,13 +54,15 @@ export default function ChatPage() {
           body: JSON.stringify({ character_id: characterId })
         });
 
-        if (data.greeting) {
-          setMessages([
-            { role: "system", content: buildSystemMessage(data.persona || "", data.example_messages || "") },
-            { role: "assistant", content: data.greeting }
-          ]);
+        const entry = currentUser.chat_history?.find(
+          h => h.character_id === parseInt(characterId)
+        );
+        if (entry) {
+          setMessages(entry.messages);
         } else {
-          setMessages([{ role: "system", content: buildSystemMessage(data.persona || "", data.example_messages || "") }]);
+          const sys = { role: "system", content: buildSystemMessage(data.persona || "", data.example_messages || "") };
+          const greet = data.greeting ? { role: "assistant", content: data.greeting } : null;
+          setMessages(greet ? [sys, greet] : [sys]);
         }
       });
   }, [characterId, navigate]);
