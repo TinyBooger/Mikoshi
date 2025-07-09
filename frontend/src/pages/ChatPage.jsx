@@ -96,46 +96,61 @@ export default function ChatPage() {
   return (
     <div className="d-flex h-100 bg-light">
       {/* Main Chat Area */}
-      <div className="flex-grow-1 d-flex flex-column p-4 overflow-hidden" style={{ minHeight: 0 }}>
-        <div className="d-flex align-items-center mb-4">
-          <h4 className="mb-0 text-primary">
-            <i className="bi bi-chat-dots me-2"></i>
-            Chatting with: <span className="fw-bold">{char?.name || 'Unknown'}</span>
-          </h4>
-        </div>
-
+      <div className="flex-grow-1 d-flex flex-column p-0 overflow-hidden" style={{ minHeight: 0 }}>
         {/* Messages Area */}
-        <div className="flex-grow-1 rounded-3 p-3 mb-3 overflow-auto bg-white shadow-sm">
+        <div className="flex-grow-1 p-4 overflow-auto">
           {messages
             .filter(m => m.role !== 'system')
             .map((m, i) => (
               <div 
                 key={i} 
-                className={`mb-3 p-3 rounded-3 ${m.role === 'user' ? 'bg-primary text-white align-self-end' : 'bg-light align-self-start'}`}
-                style={{ maxWidth: '80%' }}
+                className={`d-flex mb-3 ${m.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}
               >
-                <strong>{m.role === 'user' ? 'You' : char?.name}:</strong> 
-                <div className="mt-1">{m.content}</div>
+                <div 
+                  className={`d-flex align-items-start ${m.role === 'user' ? 'flex-row-reverse' : ''}`}
+                  style={{ maxWidth: '80%' }}
+                >
+                  <img
+                    src={m.role === 'user' 
+                      ? (user?.profile_pic || defaultPic) 
+                      : (char?.picture || defaultPic)}
+                    alt={m.role === 'user' ? 'You' : char?.name}
+                    className="rounded-circle flex-shrink-0 mt-1"
+                    style={{ width: 36, height: 36, objectFit: 'cover' }}
+                  />
+                  <div 
+                    className={`mx-3 p-3 rounded-4 ${m.role === 'user' 
+                      ? 'bg-primary text-white' 
+                      : 'bg-white border'}`}
+                  >
+                    <div className="fw-bold small mb-1">
+                      {m.role === 'user' ? 'You' : char?.name}
+                    </div>
+                    <div>{m.content}</div>
+                  </div>
+                </div>
               </div>
-          ))}
+            ))}
         </div>
 
         {/* Input Form */}
-        <form className="d-flex gap-2 align-items-center bg-white rounded-3 p-2 shadow" onSubmit={handleSubmit}>
-          <input
-            className="form-control border-0"
-            placeholder="Type your message..."
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            required
-          />
-          <button 
-            className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" 
-            style={{ width: 40, height: 40 }}
-          >
-            <i className="bi bi-send-fill"></i>
-          </button>
-        </form>
+        <div className="p-3 bg-white border-top">
+          <form className="d-flex gap-2 align-items-center" onSubmit={handleSubmit}>
+            <input
+              className="form-control rounded-pill border-0 bg-light"
+              placeholder="Type your message..."
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              required
+            />
+            <button 
+              className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" 
+              style={{ width: 40, height: 40 }}
+            >
+              <i className="bi bi-send-fill"></i>
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Character Sidebar */}
@@ -175,29 +190,24 @@ export default function ChatPage() {
           </p>
         )}
 
-        {/* Like Button */}
-        <div className="d-flex justify-content-between align-items-center bg-light rounded-3 p-3 mb-4">
-          <div>
-            <span className="fw-bold me-2">{likes}</span>
-            <span className="text-muted small">likes</span>
-          </div>
+        {/* Like Button - YouTube-inspired but cleaner */}
+        <div className="d-flex justify-content-center mb-4">
           <button
-            className={`btn btn-sm ${hasLiked ? 'btn-success' : 'btn-outline-primary'}`}
+            className={`btn btn-sm px-3 py-1 ${hasLiked ? 'text-danger' : 'text-muted'}`}
             onClick={likeCharacter}
-            disabled={hasLiked}
           >
-            <i className="bi bi-hand-thumbs-up-fill me-1"></i>
-            {hasLiked ? 'Liked' : 'Like'}
+            <i className={`bi ${hasLiked ? 'bi-heart-fill' : 'bi-heart'} fs-5`}></i>
+            <span className="ms-2 fw-medium">{likes}</span>
           </button>
         </div>
 
         {/* Tags */}
         {char?.tags?.length > 0 && (
           <div className="mb-4">
-            <h6 className="fw-bold mb-2">Tags</h6>
-            <div className="d-flex flex-wrap gap-2">
+            <h6 className="fw-bold mb-2 text-center">Tags</h6>
+            <div className="d-flex flex-wrap justify-content-center gap-2">
               {char.tags.map((tag, i) => (
-                <span key={i} className="badge bg-primary bg-opacity-10 text-primary">
+                <span key={i} className="badge bg-light text-dark border">
                   {tag}
                 </span>
               ))}
