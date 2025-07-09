@@ -94,80 +94,112 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="d-flex h-100">
-      <div className="flex-grow-1 d-flex flex-column p-3 overflow-hidden" style={{ minHeight: 0 }}>
-        <h5 className="mb-3">
-          Chatting to: {char ? char.name : 'Unknown'}
-        </h5>
-        <div className="flex-grow-1 border rounded p-3 mb-3 overflow-auto bg-light">
+    <div className="d-flex h-100 bg-light">
+      {/* Main Chat Area */}
+      <div className="flex-grow-1 d-flex flex-column p-4 overflow-hidden" style={{ minHeight: 0 }}>
+        <div className="d-flex align-items-center mb-4">
+          <h4 className="mb-0 text-primary">
+            <i className="bi bi-chat-dots me-2"></i>
+            Chatting with: <span className="fw-bold">{char?.name || 'Unknown'}</span>
+          </h4>
+        </div>
+
+        {/* Messages Area */}
+        <div className="flex-grow-1 rounded-3 p-3 mb-3 overflow-auto bg-white shadow-sm">
           {messages
             .filter(m => m.role !== 'system')
             .map((m, i) => (
-              <div key={i}>
-                <strong>{m.role === 'user' ? 'You' : char.name}:</strong> {m.content}
+              <div 
+                key={i} 
+                className={`mb-3 p-3 rounded-3 ${m.role === 'user' ? 'bg-primary text-white align-self-end' : 'bg-light align-self-start'}`}
+                style={{ maxWidth: '80%' }}
+              >
+                <strong>{m.role === 'user' ? 'You' : char?.name}:</strong> 
+                <div className="mt-1">{m.content}</div>
               </div>
           ))}
         </div>
-        <form className="d-flex gap-2 align-items-center bg-light rounded p-2" onSubmit={handleSubmit}>
+
+        {/* Input Form */}
+        <form className="d-flex gap-2 align-items-center bg-white rounded-3 p-2 shadow" onSubmit={handleSubmit}>
           <input
-            className="form-control border-0 bg-light"
+            className="form-control border-0"
             placeholder="Type your message..."
             value={input}
             onChange={e => setInput(e.target.value)}
             required
           />
-          <button className="btn btn-dark rounded-circle d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
-            <i className="bi bi-send"></i>
+          <button 
+            className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" 
+            style={{ width: 40, height: 40 }}
+          >
+            <i className="bi bi-send-fill"></i>
           </button>
         </form>
       </div>
 
-      <aside className="border-start d-flex flex-column bg-white shadow-sm p-3" style={{ width: 280, minHeight: 0 }}>
-        <img
-          src={char?.picture || defaultPic}
-          alt="Character Avatar"
-          className="rounded-circle mb-3"
-          style={{ width: 120, height: 120, objectFit: 'cover', border: '2px solid #ccc' }}
-        />
-
-        <h5 className="fw-bold mb-1 text-center">{char?.name}</h5>
-
-        {char?.tagline && (
-          <p className="text-muted fst-italic small text-center px-2 mb-2">{char.tagline}</p>
-        )}
-
-        <div className="w-100 text-start mt-3">
-          <p className="mb-1">
-            <strong>Creator:</strong>{' '}
-            <span
-              style={{ cursor: 'pointer', textDecoration: 'underline', color: 'blue' }}
-              onClick={() => navigate(`/profile/${char?.creator_id}`)}
-            >
-              {creator?.name || 'Unknown'}
-            </span>
-          </p>
-          <p className="mb-1"><strong>Created:</strong> {char && new Date(char.created_time).toLocaleDateString()}</p>
-          <p className="mb-1"><strong>Views:</strong> {char?.views || 0}</p>
+      {/* Character Sidebar */}
+      <aside className="border-start d-flex flex-column bg-white p-4" style={{ width: 320, minHeight: 0 }}>
+        <div className="d-flex align-items-start mb-4">
+          <img
+            src={char?.picture || defaultPic}
+            alt="Character Avatar"
+            className="rounded-circle me-3 shadow-sm"
+            style={{ width: 100, height: 100, objectFit: 'cover', border: '3px solid #e9ecef' }}
+          />
+          
+          <div className="mt-2">
+            <div className="text-muted small mb-1">
+              <i className="bi bi-person-fill me-1"></i> By: 
+              <span 
+                className="ms-1 text-primary fw-medium cursor-pointer"
+                onClick={() => navigate(`/profile/${char?.creator_id}`)}
+              >
+                {creator?.name || 'Unknown'}
+              </span>
+            </div>
+            <div className="text-muted small mb-1">
+              <i className="bi bi-calendar me-1"></i> {char && new Date(char.created_time).toLocaleDateString()}
+            </div>
+            <div className="text-muted small">
+              <i className="bi bi-chat-square-text me-1"></i> {char?.views || 0} chats
+            </div>
+          </div>
         </div>
 
-        <div className="d-flex align-items-center justify-content-between gap-2 bg-light rounded px-3 py-2 my-3">
-          <span className="fw-semibold">👍 {likes}</span>
+        <h3 className="fw-bold text-center mb-2">{char?.name}</h3>
+
+        {char?.tagline && (
+          <p className="text-center text-muted mb-4 px-3 fst-italic">
+            "{char.tagline}"
+          </p>
+        )}
+
+        {/* Like Button */}
+        <div className="d-flex justify-content-between align-items-center bg-light rounded-3 p-3 mb-4">
+          <div>
+            <span className="fw-bold me-2">{likes}</span>
+            <span className="text-muted small">likes</span>
+          </div>
           <button
-            className="btn btn-outline-primary btn-sm"
-            style={{ minWidth: 36 }}
+            className={`btn btn-sm ${hasLiked ? 'btn-success' : 'btn-outline-primary'}`}
             onClick={likeCharacter}
             disabled={hasLiked}
           >
-            <i className="bi bi-hand-thumbs-up"></i>
+            <i className="bi bi-hand-thumbs-up-fill me-1"></i>
+            {hasLiked ? 'Liked' : 'Like'}
           </button>
         </div>
 
+        {/* Tags */}
         {char?.tags?.length > 0 && (
-          <div className="w-100 text-start">
-            <strong>Tags:</strong>
-            <div className="d-flex flex-wrap gap-1 mt-1">
+          <div className="mb-4">
+            <h6 className="fw-bold mb-2">Tags</h6>
+            <div className="d-flex flex-wrap gap-2">
               {char.tags.map((tag, i) => (
-                <span key={i} className="badge bg-secondary text-light">{tag}</span>
+                <span key={i} className="badge bg-primary bg-opacity-10 text-primary">
+                  {tag}
+                </span>
               ))}
             </div>
           </div>
