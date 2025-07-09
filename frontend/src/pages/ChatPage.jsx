@@ -129,7 +129,7 @@ export default function ChatPage() {
                 >
                   <img
                     src={m.role === 'user' 
-                      ? (user?.profile_pic || defaultPic) 
+                      ? (currentUser?.profile_pic || defaultPic) 
                       : (char?.picture || defaultPic)}
                     alt={m.role === 'user' ? 'You' : char?.name}
                     className="rounded-circle flex-shrink-0 mt-1"
