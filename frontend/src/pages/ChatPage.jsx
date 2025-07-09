@@ -16,6 +16,7 @@ export default function ChatPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // First fetch current user
     fetch('/api/current-user', { credentials: 'include' })
       .then(res => {
         if (!res.ok) navigate('/');
@@ -23,50 +24,62 @@ export default function ChatPage() {
       })
       .then(user => {
         setCurrentUser(user);
+        
+        // Check likes immediately after setting user
         if (user?.liked_characters?.includes(parseInt(characterId))) {
           setHasLiked(true);
         }
-      });
-  }, [characterId]);
 
-  useEffect(() => {
-    if (!characterId) return;
+        // Then fetch character data if characterId exists
+        if (!characterId) return;
 
-    fetch(`/api/character/${characterId}`)
-      .then(res => res.json())
-      .then(data => {
-        setChar(data);
-        setLikes(data.likes || 0);
+        fetch(`/api/character/${characterId}`)
+          .then(res => res.json())
+          .then(data => {
+            setChar(data);
+            setLikes(data.likes || 0);
 
-        fetch(`/api/user/${data.creator_id}`)
-          .then(r => r.json())
-          .then(setCreator);
+            // Fetch creator info
+            fetch(`/api/user/${data.creator_id}`)
+              .then(r => r.json())
+              .then(setCreator);
 
-        fetch('/api/recent-characters/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ character_id: characterId })
-        });
+            // Update recent characters
+            fetch('/api/recent-characters/update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ character_id: characterId })
+            });
 
-        fetch('/api/views/increment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ character_id: characterId })
-        });
+            // Increment views
+            fetch('/api/views/increment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ character_id: characterId })
+            });
 
-        const entry = currentUser.chat_history?.find(
-          h => h.character_id === parseInt(characterId)
-        );
-        if (entry) {
-          setMessages(entry.messages);
-        } else {
-          const sys = { role: "system", content: buildSystemMessage(data.persona || "", data.example_messages || "") };
-          const greet = data.greeting ? { role: "assistant", content: data.greeting } : null;
-          setMessages(greet ? [sys, greet] : [sys]);
-        }
+            // Set messages based on user's chat history
+            const entry = user.chat_history?.find(
+              h => h.character_id === parseInt(characterId)
+            );
+            if (entry) {
+              setMessages(entry.messages);
+            } else {
+              const sys = { 
+                role: "system", 
+                content: buildSystemMessage(data.persona || "", data.example_messages || "") 
+              };
+              const greet = data.greeting ? { 
+                role: "assistant", 
+                content: data.greeting 
+              } : null;
+              setMessages(greet ? [sys, greet] : [sys]);
+            }
+          });
       });
   }, [characterId, navigate]);
 
+  // The rest of your component (handleSubmit, likeCharacter) remains the same
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim() || !char) return;
