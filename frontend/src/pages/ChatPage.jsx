@@ -62,7 +62,7 @@ export default function ChatPage() {
 
             // Set messages based on user's chat history
             const entry = user.chat_history?.find(
-              h => h.character_id === parseInt(characterId)
+              h => h.character_id === characterId
             );
             if (entry) {
               console.log(entry)
