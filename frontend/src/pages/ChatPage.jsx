@@ -100,7 +100,7 @@ export default function ChatPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         character_id: characterId,
-        chat_id: selectedChat?.chat_id,  // Add this line
+        chat_id: selectedChat?.chat_id,
         messages: updatedMessages
       })
     });
@@ -108,8 +108,8 @@ export default function ChatPage() {
     const data = await res.json();
     setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
     
-    // Update selected chat if this was a new conversation
-    if (data.chat_id && !selectedChat) {
+    // Update selected chat and refresh user data
+    if (data.chat_id) {
       setSelectedChat({
         chat_id: data.chat_id,
         title: data.chat_title || updatedMessages.find(m => m.role === 'user')?.content || 'New Chat',
@@ -117,6 +117,11 @@ export default function ChatPage() {
         messages: [...updatedMessages, { role: 'assistant', content: data.response }],
         last_updated: new Date().toISOString()
       });
+      
+      // Refresh the user data to get updated chat history
+      fetch('/api/current-user', { credentials: 'include' })
+        .then(res => res.json())
+        .then(setCurrentUser);
     }
   };
 
@@ -141,6 +146,11 @@ export default function ChatPage() {
     setMessages(greet ? [sys, greet] : [sys]);
     setSelectedChat(null);
     setInput('');
+    
+    // Refresh the user data to get updated chat history
+    fetch('/api/current-user', { credentials: 'include' })
+      .then(res => res.json())
+      .then(setCurrentUser);
   };
 
   const loadChat = (chat) => {
