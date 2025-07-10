@@ -12,6 +12,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [hasLiked, setHasLiked] = useState(false);
+  const [showChatHistory, setShowChatHistory] = useState(false);
+  const [selectedChat, setSelectedChat] = useState(null);
   const characterId = searchParams.get('character');
   const navigate = useNavigate();
 
@@ -116,6 +118,31 @@ export default function ChatPage() {
     }
   };
 
+  // Add this function to handle starting a new chat
+  const startNewChat = () => {
+    const sys = { 
+      role: "system", 
+      content: buildSystemMessage(char.persona || "", char.example_messages || "") 
+    };
+    const greet = char.greeting ? { 
+      role: "assistant", 
+      content: char.greeting 
+    } : null;
+    setMessages(greet ? [sys, greet] : [sys]);
+    setSelectedChat(null);
+  };
+
+  // Add this function to load a previous chat
+  const loadChat = (chat) => {
+    const sys = { 
+      role: "system", 
+      content: buildSystemMessage(char.persona || "", char.example_messages || "") 
+    };
+    setMessages([sys, ...chat.messages]);
+    setSelectedChat(chat);
+    setShowChatHistory(false);
+  };
+
   return (
     <div className="d-flex h-100 bg-light">
       {/* Main Chat Area */}
@@ -211,6 +238,52 @@ export default function ChatPage() {
           <p className="text-center text-muted mb-4 px-3 fst-italic">
             "{char.tagline}"
           </p>
+        )}
+
+        {currentUser?.chat_history?.length > 0 && (
+          <div className="mb-4">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <h6 className="fw-bold mb-0">Chat History</h6>
+              <button 
+                className="btn btn-sm btn-outline-primary"
+                onClick={() => setShowChatHistory(!showChatHistory)}
+              >
+                {showChatHistory ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            
+            {showChatHistory && (
+              <div className="mb-3">
+                <button 
+                  className="btn btn-sm btn-success w-100 mb-2"
+                  onClick={startNewChat}
+                >
+                  <i className="bi bi-plus-circle me-2"></i>New Chat
+                </button>
+                
+                <div className="list-group" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  {currentUser.chat_history
+                    .filter(chat => chat.character_id === characterId)
+                    .map((chat, index) => (
+                      <button
+                        key={index}
+                        className={`list-group-item list-group-item-action text-start ${selectedChat?.last_updated === chat.last_updated ? 'active' : ''}`}
+                        onClick={() => loadChat(chat)}
+                      >
+                        <div className="d-flex justify-content-between">
+                          <span className="text-truncate">
+                            {chat.messages.find(m => m.role === 'user')?.content || 'New Chat'}
+                          </span>
+                          <small className="text-muted">
+                            {new Date(chat.last_updated).toLocaleDateString()}
+                          </small>
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Like Button - YouTube-inspired but cleaner */}
