@@ -50,8 +50,8 @@ async def chat(request: Request, db: Session = Depends(get_db)):
             "character_id": character_id,
             "title": generate_chat_title(messages),
             "messages": updated_messages,
-            "last_updated": datetime.now(UTC),  # Revert to ISO string
-            "created_at": datetime.now(UTC) if not chat_id else None
+            "last_updated": datetime.now(UTC).isoformat(),  # Revert to ISO string
+            "created_at": datetime.now(UTC).isoformat() if not chat_id else None
         }
 
         # Remove existing entries for this chat_id (if exists) or character_id
