@@ -57,7 +57,7 @@ async def chat(request: Request, db: Session = Depends(get_db)):
         # Remove existing entries for this chat_id (if exists) or character_id
         filtered = [
             h for h in (user.chat_history or []) 
-            if h.get("chat_id") != chat_id and h.get("character_id") != character_id
+            if h.get("chat_id") != chat_id
         ]
 
         # Insert new entry and trim
