@@ -46,40 +46,24 @@ async def chat(request: Request, db: Session = Depends(get_db)):
         updated_messages = updated_messages[-5:]  # Keep last 5 messages
 
         new_entry = {
-            "chat_id": chat_id if chat_id else str(uuid.uuid4()),  # Use existing or new ID
+            "chat_id": chat_id if chat_id else str(uuid.uuid4()),
             "character_id": character_id,
             "title": generate_chat_title(messages),
             "messages": updated_messages,
-            "last_updated": datetime.now(UTC),
-            "created_at": datetime.now(UTC) if not chat_id else None  # Preserve original creation time
+            "last_updated": datetime.now(UTC),  # Revert to ISO string
+            "created_at": datetime.now(UTC) if not chat_id else None
         }
 
-        # Initialize if null
-        if user.chat_history is None:
-            user.chat_history = []
-            db.add(user)  # Explicitly add to session if new
-            db.flush()   # Ensure user is persisted
+        # Remove existing entries for this chat_id (if exists) or character_id
+        filtered = [
+            h for h in (user.chat_history or []) 
+            if h.get("chat_id") != chat_id and h.get("character_id") != character_id
+        ]
 
-        if chat_id:
-            # Update existing chat
-            updated = False
-            for i, chat in enumerate(user.chat_history):
-                if chat.get("chat_id") == chat_id:
-                    user.chat_history[i] = new_entry
-                    updated = True
-                    break
-            
-            if not updated:
-                # If chat_id was provided but not found, treat as new chat
-                user.chat_history.insert(0, new_entry)
-        else:
-            # Add new chat
-            user.chat_history.insert(0, new_entry)
-        
-        # Trim to keep only the 30 most recent chats (across all characters)
-        user.chat_history = user.chat_history[:30]
-        db.add(user)  # Explicitly mark as modified
-        db.commit()   # Commit the changes
+        # Insert new entry and trim
+        filtered.insert(0, new_entry)
+        user.chat_history = filtered[:30]  # Full replacement triggers SQLAlchemy
+        db.commit()
 
         # Return the chat_id so frontend can track it
         return {
