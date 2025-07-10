@@ -57,6 +57,8 @@ async def chat(request: Request, db: Session = Depends(get_db)):
         # Initialize if null
         if user.chat_history is None:
             user.chat_history = []
+            db.add(user)  # Explicitly add to session if new
+            db.flush()   # Ensure user is persisted
 
         if chat_id:
             # Update existing chat
@@ -76,8 +78,8 @@ async def chat(request: Request, db: Session = Depends(get_db)):
         
         # Trim to keep only the 30 most recent chats (across all characters)
         user.chat_history = user.chat_history[:30]
-        
-        db.commit()
+        db.add(user)  # Explicitly mark as modified
+        db.commit()   # Commit the changes
 
         # Return the chat_id so frontend can track it
         return {
