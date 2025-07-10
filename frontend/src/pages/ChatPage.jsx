@@ -63,6 +63,7 @@ export default function ChatPage() {
               h => h.character_id === parseInt(characterId)
             );
             if (entry) {
+              console.log(entry)
               setMessages(entry.messages);
             } else {
               const sys = { 
