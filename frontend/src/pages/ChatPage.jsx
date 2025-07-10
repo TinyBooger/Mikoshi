@@ -87,7 +87,6 @@ export default function ChatPage() {
       });
   }, [characterId, navigate]);
 
-  // The rest of your component (handleSubmit, likeCharacter) remains the same
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim() || !char) return;
@@ -101,12 +100,24 @@ export default function ChatPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         character_id: characterId,
+        chat_id: selectedChat?.chat_id,  // Add this line
         messages: updatedMessages
       })
     });
 
     const data = await res.json();
     setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+    
+    // Update selected chat if this was a new conversation
+    if (data.chat_id && !selectedChat) {
+      setSelectedChat({
+        chat_id: data.chat_id,
+        title: data.chat_title || updatedMessages.find(m => m.role === 'user')?.content || 'New Chat',
+        character_id: characterId,
+        messages: [...updatedMessages, { role: 'assistant', content: data.response }],
+        last_updated: new Date().toISOString()
+      });
+    }
   };
 
   const likeCharacter = async () => {
@@ -118,7 +129,6 @@ export default function ChatPage() {
     }
   };
 
-  // Add this function to handle starting a new chat
   const startNewChat = () => {
     const sys = { 
       role: "system", 
@@ -130,16 +140,19 @@ export default function ChatPage() {
     } : null;
     setMessages(greet ? [sys, greet] : [sys]);
     setSelectedChat(null);
+    setInput('');
   };
 
-  // Add this function to load a previous chat
   const loadChat = (chat) => {
     const sys = { 
       role: "system", 
       content: buildSystemMessage(char.persona || "", char.example_messages || "") 
     };
     setMessages([sys, ...chat.messages]);
-    setSelectedChat(chat);
+    setSelectedChat({
+      ...chat,
+      last_updated: chat.last_updated || new Date().toISOString()
+    });
     setShowChatHistory(false);
   };
 
@@ -261,22 +274,28 @@ export default function ChatPage() {
                   <i className="bi bi-plus-circle me-2"></i>New Chat
                 </button>
                 
-                <div className="list-group" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                <div className="list-group" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                   {currentUser.chat_history
                     .filter(chat => chat.character_id === characterId)
-                    .map((chat, index) => (
+                    .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated))
+                    .map((chat) => (
                       <button
-                        key={index}
-                        className={`list-group-item list-group-item-action text-start ${selectedChat?.last_updated === chat.last_updated ? 'active' : ''}`}
+                        key={chat.chat_id}
+                        className={`list-group-item list-group-item-action text-start ${
+                          selectedChat?.chat_id === chat.chat_id ? 'active' : ''
+                        }`}
                         onClick={() => loadChat(chat)}
                       >
-                        <div className="d-flex justify-content-between">
-                          <span className="text-truncate">
-                            {chat.messages.find(m => m.role === 'user')?.content || 'New Chat'}
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span className="fw-medium text-truncate">
+                            {chat.title || chat.messages.find(m => m.role === 'user')?.content || 'New Chat'}
                           </span>
                           <small className="text-muted">
                             {new Date(chat.last_updated).toLocaleDateString()}
                           </small>
+                        </div>
+                        <div className="small text-truncate text-muted">
+                          {chat.messages.find(m => m.role === 'assistant')?.content || 'No messages yet'}
                         </div>
                       </button>
                     ))}
