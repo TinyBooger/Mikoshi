@@ -366,9 +366,16 @@ export default function ChatPage() {
                           selectedChat?.chat_id === chat.chat_id ? 'active' : ''
                         }`}
                         onClick={() => loadChat(chat)}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          height: '48px', // Fixed height
+                          overflow: 'hidden'
+                        }}
                       >
                         {editingChatId === chat.chat_id ? (
-                          <div className="d-flex align-items-center">
+                          <div className="d-flex align-items-center w-100">
                             <input
                               type="text"
                               className="form-control form-control-sm me-2"
@@ -379,6 +386,7 @@ export default function ChatPage() {
                                 if (e.key === 'Escape') setEditingChatId(null);
                               }}
                               autoFocus
+                              style={{ flex: 1 }}
                             />
                             <button 
                               className="btn btn-sm btn-success"
@@ -400,63 +408,72 @@ export default function ChatPage() {
                             </button>
                           </div>
                         ) : (
-                          <div className="d-flex justify-content-between align-items-center">
-                            <div className="flex-grow-1">
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span className="fw-medium text-truncate">
-                                  {chat.title || chat.messages.find(m => m.role === 'user')?.content || 'New Chat'}
-                                </span>
-                                <small className="text-muted">
-                                  {new Date(chat.last_updated).toLocaleDateString()}
-                                </small>
-                              </div>
-                              <div className="small text-truncate text-muted">
-                                {chat.messages.find(m => m.role === 'assistant')?.content || 'No messages yet'}
-                              </div>
-                            </div>
+                          <>
+                            <span 
+                              className="text-truncate pe-2" 
+                              style={{
+                                flex: 1,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              {chat.title || chat.messages.find(m => m.role === 'user')?.content || 'New Chat'}
+                            </span>
                             
-                            <div className="dropdown ms-2">
-                              <button 
-                                className="btn btn-sm btn-link text-muted p-0"
-                                onClick={(e) => toggleMenu(chat.chat_id, e)}
-                                style={{
-                                  position: 'relative', // Add this
-                                  zIndex: menuOpenId === chat.chat_id ? 1000 : 'auto' // Dynamic z-index
-                                }}
-                              >
-                                <i className="bi bi-three-dots-vertical"></i>
-                              </button>
+                            <div className="d-flex align-items-center">
+                              <small className="text-muted me-2">
+                                {new Date(chat.last_updated).toLocaleDateString()}
+                              </small>
                               
-                              {menuOpenId === chat.chat_id && (
-                                <div 
-                                  className="dropdown-menu show"
-                                  style={{ position: 'absolute', right: 0, zIndex: 1000 }}
+                              <div className="dropdown">
+                                <button 
+                                  className="btn btn-sm btn-link text-muted p-0"
+                                  onClick={(e) => toggleMenu(chat.chat_id, e)}
+                                  style={{ 
+                                    position: 'relative',
+                                    zIndex: menuOpenId === chat.chat_id ? 1000 : 'auto'
+                                  }}
                                 >
-                                  <button 
-                                    className="dropdown-item"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setNewTitle(chat.title || '');
-                                      setEditingChatId(chat.chat_id);
-                                      setMenuOpenId(null);
+                                  <i className="bi bi-three-dots-vertical"></i>
+                                </button>
+                                
+                                {menuOpenId === chat.chat_id && (
+                                  <div 
+                                    className="dropdown-menu show"
+                                    style={{
+                                      position: 'absolute',
+                                      right: 0,
+                                      zIndex: 1000,
+                                      minWidth: '120px'
                                     }}
                                   >
-                                    <i className="bi bi-pencil me-2"></i> Rename
-                                  </button>
-                                  <button 
-                                    className="dropdown-item text-danger"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDelete(chat.chat_id);
-                                      setMenuOpenId(null);
-                                    }}
-                                  >
-                                    <i className="bi bi-trash me-2"></i> Delete
-                                  </button>
-                                </div>
-                              )}
+                                    <button 
+                                      className="dropdown-item"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setNewTitle(chat.title || '');
+                                        setEditingChatId(chat.chat_id);
+                                        setMenuOpenId(null);
+                                      }}
+                                    >
+                                      <i className="bi bi-pencil me-2"></i> Rename
+                                    </button>
+                                    <button 
+                                      className="dropdown-item text-danger"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDelete(chat.chat_id);
+                                        setMenuOpenId(null);
+                                      }}
+                                    >
+                                      <i className="bi bi-trash me-2"></i> Delete
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
+                          </>
                         )}
                       </div>
                     ))}
