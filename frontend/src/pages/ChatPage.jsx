@@ -17,7 +17,6 @@ export default function ChatPage() {
   const [editingChatId, setEditingChatId] = useState(null);
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
-  const [selectedPersonaId, setSelectedPersonaId] = useState(null);
   const characterId = searchParams.get('character');
   const navigate = useNavigate();
 
@@ -64,27 +63,22 @@ export default function ChatPage() {
               body: JSON.stringify({ character_id: characterId })
             });
 
+            console.log(user.chat_history)
+
             // Set messages based on user's chat history
             const entry = user.chat_history?.find(
               h => h.character_id === characterId
             );
-
             if (entry) {
-              // Set the persona from chat history if exists
-              setSelectedPersonaId(entry.persona_id || null);
-              const activePersona = entry.persona_id ? 
-                [user.personas.find(p => p.id === entry.persona_id)] : 
-                [];
-              
               const sys = { 
                 role: "system", 
-                content: buildSystemMessage(data.persona || "", data.example_messages || "", activePersona) 
+                content: buildSystemMessage(data.persona || "", data.example_messages || "") 
               };
               setMessages([sys, ...entry.messages]);
             } else {
               const sys = { 
                 role: "system", 
-                content: buildSystemMessage(data.persona || "", data.example_messages || "", []) 
+                content: buildSystemMessage(data.persona || "", data.example_messages || "") 
               };
               const greet = data.greeting ? { 
                 role: "assistant", 
@@ -110,30 +104,24 @@ export default function ChatPage() {
       body: JSON.stringify({
         character_id: characterId,
         chat_id: selectedChat?.chat_id,
-        messages: updatedMessages,
-        persona_id: selectedPersonaId
+        messages: updatedMessages
       })
     });
-
-    if (!res.ok) {
-      const error = await res.json();
-      alert(error.error || "Failed to send message");
-      return;
-    }
 
     const data = await res.json();
     setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
     
+    // Update selected chat and refresh user data
     if (data.chat_id) {
       setSelectedChat({
         chat_id: data.chat_id,
-        title: data.chat_title,
+        title: data.chat_title || updatedMessages.find(m => m.role === 'user')?.content || 'New Chat',
         character_id: characterId,
         messages: [...updatedMessages, { role: 'assistant', content: data.response }],
-        last_updated: new Date().toISOString(),
-        persona_id: selectedPersonaId
+        last_updated: new Date().toISOString()
       });
       
+      // Refresh the user data to get updated chat history
       fetch('/api/current-user', { credentials: 'include' })
         .then(res => res.json())
         .then(setCurrentUser);
@@ -150,13 +138,9 @@ export default function ChatPage() {
   };
 
   const startNewChat = () => {
-    const activePersona = selectedPersonaId ? 
-      [currentUser.personas.find(p => p.id === selectedPersonaId)] : 
-      [];
-    
     const sys = { 
       role: "system", 
-      content: buildSystemMessage(char.persona || "", char.example_messages || "", activePersona) 
+      content: buildSystemMessage(char.persona || "", char.example_messages || "") 
     };
     const greet = char.greeting ? { 
       role: "assistant", 
@@ -166,23 +150,22 @@ export default function ChatPage() {
     setSelectedChat(null);
     setInput('');
     
+    // Refresh the user data to get updated chat history
     fetch('/api/current-user', { credentials: 'include' })
       .then(res => res.json())
       .then(setCurrentUser);
   };
 
   const loadChat = (chat) => {
-    setSelectedPersonaId(chat.persona_id || null);
-    const activePersona = chat.persona_id ? 
-      [currentUser.personas.find(p => p.id === chat.persona_id)] : 
-      [];
-    
     const sys = { 
       role: "system", 
-      content: buildSystemMessage(char.persona || "", char.example_messages || "", activePersona) 
+      content: buildSystemMessage(char.persona || "", char.example_messages || "") 
     };
     setMessages([sys, ...chat.messages]);
-    setSelectedChat(chat);
+    setSelectedChat({
+      ...chat,
+      last_updated: chat.last_updated || new Date().toISOString()
+    });
     setShowChatHistory(false);
   };
 
@@ -204,11 +187,13 @@ export default function ChatPage() {
       });
 
       if (res.ok) {
+        // Refresh user data
         const updatedUser = await fetch('/api/current-user', { credentials: 'include' }).then(res => res.json());
         setCurrentUser(updatedUser);
         setEditingChatId(null);
         setNewTitle('');
         
+        // Update selected chat if it's the one being renamed
         if (selectedChat?.chat_id === chatId) {
           setSelectedChat(prev => ({
             ...prev,
@@ -233,9 +218,11 @@ export default function ChatPage() {
       });
 
       if (res.ok) {
+        // Refresh user data
         const updatedUser = await fetch('/api/current-user', { credentials: 'include' }).then(res => res.json());
         setCurrentUser(updatedUser);
         
+        // If deleted chat was the selected one, start new chat
         if (selectedChat?.chat_id === chatId) {
           startNewChat();
         }
@@ -248,35 +235,6 @@ export default function ChatPage() {
   const toggleMenu = (chatId, e) => {
     e.stopPropagation();
     setMenuOpenId(menuOpenId === chatId ? null : chatId);
-  };
-
-  const handlePersonaChange = (e) => {
-    const newPersonaId = e.target.value ? parseInt(e.target.value) : null;
-    
-    if (selectedChat) {
-      if (window.confirm("Changing persona will start a new chat. Continue?")) {
-        setSelectedPersonaId(newPersonaId);
-        startNewChat();
-      } else {
-        // Reset the select to the current persona
-        e.target.value = selectedPersonaId || '';
-      }
-    } else {
-      setSelectedPersonaId(newPersonaId);
-      // Update system message for new chat
-      const activePersona = newPersonaId ? 
-        [currentUser.personas.find(p => p.id === newPersonaId)] : 
-        [];
-      
-      const sys = { 
-        role: "system", 
-        content: buildSystemMessage(char.persona || "", char.example_messages || "", activePersona) 
-      };
-      setMessages(prev => {
-        const nonSystemMessages = prev.filter(m => m.role !== 'system');
-        return [sys, ...nonSystemMessages];
-      });
-    }
   };
 
   return (
@@ -376,33 +334,6 @@ export default function ChatPage() {
           </p>
         )}
 
-        {/* Persona Selector */}
-        {currentUser?.personas?.length > 0 && (
-          <div className="mb-4">
-            <h6 className="fw-bold mb-2 text-center">Chat Persona</h6>
-            <select
-              className="form-select"
-              value={selectedPersonaId || ''}
-              onChange={handlePersonaChange}
-              disabled={!!selectedChat}
-            >
-              <option value="">No Persona</option>
-              {currentUser.personas.map(persona => (
-                <option key={persona.id} value={persona.id}>
-                  {persona.name}
-                </option>
-              ))}
-            </select>
-            {selectedPersonaId && (
-              <div className="mt-2 p-2 bg-light rounded">
-                <small>
-                  {currentUser.personas.find(p => p.id === selectedPersonaId)?.description}
-                </small>
-              </div>
-            )}
-          </div>
-        )}
-
         {currentUser?.chat_history?.length > 0 && (
           <div className="mb-4">
             <div className="d-flex justify-content-between align-items-center mb-2">
@@ -439,7 +370,7 @@ export default function ChatPage() {
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
-                          height: '48px',
+                          height: '48px', // Fixed height
                           overflow: 'hidden'
                         }}
                       >
@@ -553,7 +484,7 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Like Button */}
+        {/* Like Button - YouTube-inspired but cleaner */}
         <div className="d-flex justify-content-center mb-4">
           <button
             className={`btn btn-sm px-3 py-1 ${hasLiked ? 'text-danger' : 'text-muted'}`}
