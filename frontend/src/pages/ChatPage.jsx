@@ -253,9 +253,6 @@ export default function ChatPage() {
       if (window.confirm("Changing persona will start a new chat. Continue?")) {
         setSelectedPersonaId(newPersonaId);
         startNewChat();
-      } else {
-        // Reset the select to the current persona
-        e.target.value = selectedPersonaId || '';
       }
     } else {
       setSelectedPersonaId(newPersonaId);
