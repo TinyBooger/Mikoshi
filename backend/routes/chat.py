@@ -26,55 +26,85 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     messages = data.get("messages")
     character_id = data.get("character_id")
     chat_id = data.get("chat_id")
+    persona_id = data.get("persona_id")  # Single persona ID instead of array
 
     if not messages or not isinstance(messages, list):
         return JSONResponse(content={"error": "Invalid or missing messages"}, status_code=400)
 
-    # Get existing title if this is an existing chat
-    existing_title = None
+    # Get existing chat details if this is an existing chat
+    existing_chat = None
     if chat_id and user.chat_history:
         for chat in user.chat_history:
             if chat.get("chat_id") == chat_id:
-                existing_title = chat.get("title")
+                existing_chat = chat
+                # Enforce persona consistency - if existing chat has a persona, use that
+                if "persona_id" in existing_chat and existing_chat["persona_id"] != persona_id:
+                    return JSONResponse(
+                        content={"error": "Cannot change persona in existing chat. Start a new chat instead."},
+                        status_code=400
+                    )
                 break
 
     try:
+        # Ensure system message is first and includes the selected persona
+        system_message = None
+        selected_persona = None
+        
+        if persona_id and user.personas:
+            selected_persona = next((p for p in user.personas if p["id"] == persona_id), None)
+        
+        if messages and messages[0].get("role") == "system":
+            system_message = messages[0]
+        
+        # Filter out any existing system messages from the payload
+        filtered_messages = [m for m in messages if m.get("role") != "system"]
+        
+        # Reconstruct messages with system message first
+        chat_messages = []
+        if system_message:
+            chat_messages.append(system_message)
+        chat_messages.extend(filtered_messages)
+
         response = client.chat_completion(
             model="mistralai/Mistral-7B-Instruct-v0.3",
-            messages=messages,
+            messages=chat_messages,
             max_tokens=250,
             temperature=0.7,
             top_p=0.9
         )
         reply = response["choices"][0]["message"]["content"].strip()
-    except Exception:
+    except Exception as e:
+        print(f"Error in chat completion: {str(e)}")
         return JSONResponse(content={"error": "Server busy, please try again later."}, status_code=503)
 
     # Update chat history
     if character_id:
-        updated_messages = messages + [{"role": "assistant", "content": reply}]
-        updated_messages = updated_messages[-5:]  # Keep last 5 messages
+        updated_messages = chat_messages + [{"role": "assistant", "content": reply}]
+        updated_messages = updated_messages[-5:]  # Keep last 5 messages (including system message)
 
         new_entry = {
             "chat_id": chat_id if chat_id else str(uuid.uuid4()),
             "character_id": character_id,
-            "title": generate_chat_title(messages, existing_title),  # Preserve existing title
+            "title": generate_chat_title(filtered_messages, existing_chat.get("title") if existing_chat else None),
             "messages": updated_messages,
+            "persona_id": persona_id,  # Store single persona ID with the chat
+            "persona_snapshot": selected_persona,  # Store persona details at time of creation
             "last_updated": datetime.now(UTC).isoformat(),
-            "created_at": datetime.now(UTC).isoformat() if not chat_id else None
+            "created_at": datetime.now(UTC).isoformat() if not chat_id else existing_chat.get("created_at")
         }
 
         # Remove existing entry for this chat_id only
         filtered = [h for h in (user.chat_history or []) if h.get("chat_id") != chat_id]
         
         filtered.insert(0, new_entry)
-        user.chat_history = filtered[:30]
+        user.chat_history = filtered[:30]  # Keep last 30 chats
         db.commit()
 
         return {
             "response": reply,
             "chat_id": new_entry["chat_id"],
-            "chat_title": new_entry["title"]  # Return existing title if preserved
+            "chat_title": new_entry["title"],
+            "persona_id": persona_id  # Return persona ID for frontend
         }
 
     return {"response": reply}
