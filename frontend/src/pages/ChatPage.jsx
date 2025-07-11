@@ -17,6 +17,7 @@ export default function ChatPage() {
   const [editingChatId, setEditingChatId] = useState(null);
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
+  const [selectedPersonaId, setSelectedPersonaId] = useState(null);
   const characterId = searchParams.get('character');
   const navigate = useNavigate();
 
@@ -237,6 +238,14 @@ export default function ChatPage() {
     setMenuOpenId(menuOpenId === chatId ? null : chatId);
   };
 
+  const handlePersonaSelect = (personaId) => {
+    const confirmed = window.confirm("This will start a new chat, are you sure?");
+    if (!confirmed) return;
+
+    setSelectedPersonaId(personaId);
+    startNewChat(); // reuse existing logic
+  };
+
   return (
     <div className="d-flex h-100 bg-light">
       {/* Main Chat Area */}
@@ -354,6 +363,30 @@ export default function ChatPage() {
                 >
                   <i className="bi bi-plus-circle me-2"></i>New Chat
                 </button>
+
+                {currentUser?.personas?.length > 0 && (
+                  <div className="dropdown mb-2">
+                    <button 
+                      className="btn btn-outline-secondary btn-sm dropdown-toggle w-100"
+                      type="button"
+                      data-bs-toggle="dropdown"
+                    >
+                      Load Persona
+                    </button>
+                    <ul className="dropdown-menu w-100">
+                      {currentUser.personas.map(p => (
+                        <li key={p.id}>
+                          <button 
+                            className="dropdown-item"
+                            onClick={() => handlePersonaSelect(p.id)}
+                          >
+                            {p.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 
                 <div className="list-group" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                   {currentUser.chat_history
