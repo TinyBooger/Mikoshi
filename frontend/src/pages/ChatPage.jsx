@@ -18,6 +18,7 @@ export default function ChatPage() {
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [selectedPersonaId, setSelectedPersonaId] = useState(null);
+  const [isNewChat, setIsNewChat] = useState(true);
   const characterId = searchParams.get('character');
   const navigate = useNavigate();
 
@@ -70,21 +71,21 @@ export default function ChatPage() {
             );
 
             if (entry) {
-              // Set the persona from chat history if exists
+              // Existing chat - load as is
+              setIsNewChat(false);
               setSelectedPersonaId(entry.persona_id || null);
-              const activePersona = entry.persona_id ? 
-                [user.personas.find(p => p.id === entry.persona_id)] : 
+              setMessages(entry.messages);
+              setSelectedChat(entry);
+            } else {
+              // New chat - initialize with system message
+              setIsNewChat(true);
+              const activePersona = selectedPersonaId ? 
+                [user.personas.find(p => p.id === selectedPersonaId)] : 
                 [];
               
               const sys = { 
                 role: "system", 
                 content: buildSystemMessage(data.persona || "", data.example_messages || "", activePersona) 
-              };
-              setMessages([sys, ...entry.messages]);
-            } else {
-              const sys = { 
-                role: "system", 
-                content: buildSystemMessage(data.persona || "", data.example_messages || "", []) 
               };
               const greet = data.greeting ? { 
                 role: "assistant", 
@@ -125,6 +126,7 @@ export default function ChatPage() {
     setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
     
     if (data.chat_id) {
+      setIsNewChat(false);
       setSelectedChat({
         chat_id: data.chat_id,
         title: data.chat_title,
@@ -150,6 +152,7 @@ export default function ChatPage() {
   };
 
   const startNewChat = () => {
+    setIsNewChat(true);
     const activePersona = selectedPersonaId ? 
       [currentUser.personas.find(p => p.id === selectedPersonaId)] : 
       [];
@@ -172,16 +175,9 @@ export default function ChatPage() {
   };
 
   const loadChat = (chat) => {
+    setIsNewChat(false);
     setSelectedPersonaId(chat.persona_id || null);
-    const activePersona = chat.persona_id ? 
-      [currentUser.personas.find(p => p.id === chat.persona_id)] : 
-      [];
-    
-    const sys = { 
-      role: "system", 
-      content: buildSystemMessage(char.persona || "", char.example_messages || "", activePersona) 
-    };
-    setMessages([sys, ...chat.messages]);
+    setMessages(chat.messages);
     setSelectedChat(chat);
     setShowChatHistory(false);
   };
@@ -253,7 +249,7 @@ export default function ChatPage() {
   const handlePersonaChange = (e) => {
     const newPersonaId = e.target.value ? parseInt(e.target.value) : null;
     
-    if (selectedChat) {
+    if (!isNewChat) {
       if (window.confirm("Changing persona will start a new chat. Continue?")) {
         setSelectedPersonaId(newPersonaId);
         startNewChat();
@@ -263,7 +259,7 @@ export default function ChatPage() {
       }
     } else {
       setSelectedPersonaId(newPersonaId);
-      // Update system message for new chat
+      // Rebuild system message with new persona
       const activePersona = newPersonaId ? 
         [currentUser.personas.find(p => p.id === newPersonaId)] : 
         [];
@@ -272,10 +268,10 @@ export default function ChatPage() {
         role: "system", 
         content: buildSystemMessage(char.persona || "", char.example_messages || "", activePersona) 
       };
-      setMessages(prev => {
-        const nonSystemMessages = prev.filter(m => m.role !== 'system');
-        return [sys, ...nonSystemMessages];
-      });
+      
+      // Keep all non-system messages (like greeting)
+      const nonSystemMessages = messages.filter(m => m.role !== 'system');
+      setMessages([sys, ...nonSystemMessages]);
     }
   };
 
@@ -384,7 +380,7 @@ export default function ChatPage() {
               className="form-select"
               value={selectedPersonaId || ''}
               onChange={handlePersonaChange}
-              disabled={!!selectedChat}
+              disabled={!isNewChat}
             >
               <option value="">No Persona</option>
               {currentUser.personas.map(persona => (
