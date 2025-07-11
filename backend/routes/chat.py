@@ -9,8 +9,10 @@ from datetime import datetime, UTC
 
 router = APIRouter()
 
-def generate_chat_title(messages):
-    """Generate a title from the first user message"""
+def generate_chat_title(messages, existing_title=None):
+    """Generate a title from the first user message if no title exists"""
+    if existing_title:
+        return existing_title
     user_messages = [m for m in messages if m.get("role") == "user"]
     if user_messages:
         first_msg = user_messages[0].get("content", "")
@@ -23,10 +25,18 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     data = await request.json()
     messages = data.get("messages")
     character_id = data.get("character_id")
-    chat_id = data.get("chat_id")  # Will be None for new chats
+    chat_id = data.get("chat_id")
 
     if not messages or not isinstance(messages, list):
         return JSONResponse(content={"error": "Invalid or missing messages"}, status_code=400)
+
+    # Get existing title if this is an existing chat
+    existing_title = None
+    if chat_id and user.chat_history:
+        for chat in user.chat_history:
+            if chat.get("chat_id") == chat_id:
+                existing_title = chat.get("title")
+                break
 
     try:
         response = client.chat_completion(
@@ -48,28 +58,23 @@ async def chat(request: Request, db: Session = Depends(get_db)):
         new_entry = {
             "chat_id": chat_id if chat_id else str(uuid.uuid4()),
             "character_id": character_id,
-            "title": generate_chat_title(messages),
+            "title": generate_chat_title(messages, existing_title),  # Preserve existing title
             "messages": updated_messages,
-            "last_updated": datetime.now(UTC).isoformat(),  # Revert to ISO string
+            "last_updated": datetime.now(UTC).isoformat(),
             "created_at": datetime.now(UTC).isoformat() if not chat_id else None
         }
 
-        # Remove existing entries for this chat_id (if exists) or character_id
-        filtered = [
-            h for h in (user.chat_history or []) 
-            if h.get("chat_id") != chat_id
-        ]
-
-        # Insert new entry and trim
+        # Remove existing entry for this chat_id only
+        filtered = [h for h in (user.chat_history or []) if h.get("chat_id") != chat_id]
+        
         filtered.insert(0, new_entry)
-        user.chat_history = filtered[:30]  # Full replacement triggers SQLAlchemy
+        user.chat_history = filtered[:30]
         db.commit()
 
-        # Return the chat_id so frontend can track it
         return {
             "response": reply,
             "chat_id": new_entry["chat_id"],
-            "chat_title": new_entry["title"]
+            "chat_title": new_entry["title"]  # Return existing title if preserved
         }
 
     return {"response": reply}
@@ -85,14 +90,27 @@ async def rename_chat(request: Request, db: Session = Depends(get_db)):
         return JSONResponse(content={"error": "Missing chat_id or new_title"}, status_code=400)
 
     if user.chat_history:
+        # Create a new list to force SQLAlchemy to detect changes
+        updated_history = []
+        modified = False
+        
         for chat in user.chat_history:
             if chat.get("chat_id") == chat_id:
-                chat["title"] = new_title
-                chat["last_updated"] = datetime.utcnow().isoformat()
-                break
+                # Create a new dict instead of modifying in-place
+                updated_chat = dict(chat)
+                updated_chat["title"] = new_title
+                updated_chat["last_updated"] = datetime.now(UTC).isoformat()
+                updated_history.append(updated_chat)
+                modified = True
+            else:
+                updated_history.append(chat)
         
-        db.commit()
-        return {"status": "success"}
+        if modified:
+            # Assign the new list to trigger change detection
+            user.chat_history = updated_history
+            db.add(user)  # Explicitly mark as modified
+            db.commit()
+            return {"status": "success"}
     
     return JSONResponse(content={"error": "Chat not found"}, status_code=404)
 
