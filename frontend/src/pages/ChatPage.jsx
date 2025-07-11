@@ -421,7 +421,7 @@ export default function ChatPage() {
                               {chat.title || chat.messages.find(m => m.role === 'user')?.content || 'New Chat'}
                             </span>
                             
-                            <div className="d-flex align-items-center">
+                            <div className="d-flex align-items-center position-relative">
                               <small className="text-muted me-2">
                                 {new Date(chat.last_updated).toLocaleDateString()}
                               </small>
@@ -442,10 +442,11 @@ export default function ChatPage() {
                                   <div 
                                     className="dropdown-menu show"
                                     style={{
-                                      position: 'absolute',
-                                      right: 0,
-                                      zIndex: 1000,
-                                      minWidth: '120px'
+                                      position: 'fixed',
+                                      right: '1rem',
+                                      zIndex: 9999,
+                                      minWidth: '120px',
+                                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                                     }}
                                   >
                                     <button 
