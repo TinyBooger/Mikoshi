@@ -73,3 +73,41 @@ async def chat(request: Request, db: Session = Depends(get_db)):
         }
 
     return {"response": reply}
+
+@router.post("/api/chat/rename")
+async def rename_chat(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    data = await request.json()
+    chat_id = data.get("chat_id")
+    new_title = data.get("new_title")
+
+    if not chat_id or not new_title:
+        return JSONResponse(content={"error": "Missing chat_id or new_title"}, status_code=400)
+
+    if user.chat_history:
+        for chat in user.chat_history:
+            if chat.get("chat_id") == chat_id:
+                chat["title"] = new_title
+                chat["last_updated"] = datetime.utcnow().isoformat()
+                break
+        
+        db.commit()
+        return {"status": "success"}
+    
+    return JSONResponse(content={"error": "Chat not found"}, status_code=404)
+
+@router.post("/api/chat/delete")
+async def delete_chat(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    data = await request.json()
+    chat_id = data.get("chat_id")
+
+    if not chat_id:
+        return JSONResponse(content={"error": "Missing chat_id"}, status_code=400)
+
+    if user.chat_history:
+        user.chat_history = [chat for chat in user.chat_history if chat.get("chat_id") != chat_id]
+        db.commit()
+        return {"status": "success"}
+    
+    return JSONResponse(content={"error": "Chat not found"}, status_code=404)

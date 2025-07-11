@@ -9,6 +9,8 @@ Mikoshi-MonoRepo
 │  │  ├─ auth.py
 │  │  ├─ character.py
 │  │  ├─ chat.py
+│  │  ├─ search.py
+│  │  ├─ tags.py
 │  │  └─ user.py
 │  ├─ schemas.py
 │  ├─ server.py
@@ -16,7 +18,9 @@ Mikoshi-MonoRepo
 │  └─ utils
 │     ├─ chat_utils.py
 │     ├─ cloudinary_utils.py
-│     └─ session.py
+│     ├─ llm_client.py
+│     ├─ session.py
+│     └─ validators.py
 ├─ build.sh
 ├─ frontend
 │  ├─ index.html
@@ -24,6 +28,17 @@ Mikoshi-MonoRepo
 │  ├─ package.json
 │  ├─ README.md
 │  └─ src
+│     ├─ admin
+│     │  ├─ AdminApp.jsx
+│     │  ├─ components
+│     │  │  ├─ AdminSidebar.jsx
+│     │  │  └─ Table.jsx
+│     │  └─ pages
+│     │     ├─ CharactersPage.jsx
+│     │     ├─ DashboardPage.jsx
+│     │     ├─ SearchTermsPage.jsx
+│     │     ├─ TagsPage.jsx
+│     │     └─ UsersPage.jsx
 │     ├─ App.jsx
 │     ├─ assets
 │     │  └─ images
@@ -33,18 +48,21 @@ Mikoshi-MonoRepo
 │     │  ├─ CharacterCard.jsx
 │     │  ├─ layout.jsx
 │     │  ├─ sidebar.jsx
+│     │  ├─ TagsInput.jsx
 │     │  └─ topbar.jsx
 │     ├─ main.jsx
-│     └─ pages
-│        ├─ AccountSetupPage.jsx
-│        ├─ CharacterCreatePage.jsx
-│        ├─ CharacterEditPage.jsx
-│        ├─ ChatPage.jsx
-│        ├─ HomePage.jsx
-│        ├─ ProfilePage.jsx
-│        ├─ PublicProfilePage.jsx
-│        ├─ SearchPage.jsx
-│        └─ WelcomePage.jsx
+│     ├─ pages
+│     │  ├─ AccountSetupPage.jsx
+│     │  ├─ CharacterCreatePage.jsx
+│     │  ├─ CharacterEditPage.jsx
+│     │  ├─ ChatPage.jsx
+│     │  ├─ HomePage.jsx
+│     │  ├─ ProfilePage.jsx
+│     │  ├─ PublicProfilePage.jsx
+│     │  ├─ SearchPage.jsx
+│     │  └─ WelcomePage.jsx
+│     └─ utils
+│        └─ systemTemplate.js
 └─ README.md
 
 ```

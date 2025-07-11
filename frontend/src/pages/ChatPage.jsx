@@ -14,6 +14,9 @@ export default function ChatPage() {
   const [hasLiked, setHasLiked] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
+  const [editingChatId, setEditingChatId] = useState(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [menuOpenId, setMenuOpenId] = useState(null);
   const characterId = searchParams.get('character');
   const navigate = useNavigate();
 
@@ -166,6 +169,74 @@ export default function ChatPage() {
     setShowChatHistory(false);
   };
 
+  const handleRename = async (chatId, currentTitle) => {
+    if (!newTitle.trim()) {
+      setEditingChatId(null);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/chat/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          chat_id: chatId,
+          new_title: newTitle.trim()
+        })
+      });
+
+      if (res.ok) {
+        // Refresh user data
+        const updatedUser = await fetch('/api/current-user', { credentials: 'include' }).then(res => res.json());
+        setCurrentUser(updatedUser);
+        setEditingChatId(null);
+        setNewTitle('');
+        
+        // Update selected chat if it's the one being renamed
+        if (selectedChat?.chat_id === chatId) {
+          setSelectedChat(prev => ({
+            ...prev,
+            title: newTitle.trim()
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error renaming chat:', error);
+    }
+  };
+
+  const handleDelete = async (chatId) => {
+    if (!window.confirm('Are you sure you want to delete this chat?')) return;
+
+    try {
+      const res = await fetch('/api/chat/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ chat_id: chatId })
+      });
+
+      if (res.ok) {
+        // Refresh user data
+        const updatedUser = await fetch('/api/current-user', { credentials: 'include' }).then(res => res.json());
+        setCurrentUser(updatedUser);
+        
+        // If deleted chat was the selected one, start new chat
+        if (selectedChat?.chat_id === chatId) {
+          startNewChat();
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+    }
+  };
+
+  const toggleMenu = (chatId, e) => {
+    e.stopPropagation();
+    setMenuOpenId(menuOpenId === chatId ? null : chatId);
+  };
+
   return (
     <div className="d-flex h-100 bg-light">
       {/* Main Chat Area */}
@@ -289,25 +360,105 @@ export default function ChatPage() {
                     .filter(chat => chat.character_id === characterId)
                     .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated))
                     .map((chat) => (
-                      <button
+                      <div 
                         key={chat.chat_id}
-                        className={`list-group-item list-group-item-action text-start ${
+                        className={`list-group-item list-group-item-action text-start p-2 ${
                           selectedChat?.chat_id === chat.chat_id ? 'active' : ''
                         }`}
                         onClick={() => loadChat(chat)}
                       >
-                        <div className="d-flex justify-content-between align-items-center">
-                          <span className="fw-medium text-truncate">
-                            {chat.title || chat.messages.find(m => m.role === 'user')?.content || 'New Chat'}
-                          </span>
-                          <small className="text-muted">
-                            {new Date(chat.last_updated).toLocaleDateString()}
-                          </small>
-                        </div>
-                        <div className="small text-truncate text-muted">
-                          {chat.messages.find(m => m.role === 'assistant')?.content || 'No messages yet'}
-                        </div>
-                      </button>
+                        {editingChatId === chat.chat_id ? (
+                          <div className="d-flex align-items-center">
+                            <input
+                              type="text"
+                              className="form-control form-control-sm me-2"
+                              value={newTitle}
+                              onChange={(e) => setNewTitle(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleRename(chat.chat_id, chat.title);
+                                if (e.key === 'Escape') setEditingChatId(null);
+                              }}
+                              autoFocus
+                            />
+                            <button 
+                              className="btn btn-sm btn-success"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRename(chat.chat_id, chat.title);
+                              }}
+                            >
+                              <i className="bi bi-check"></i>
+                            </button>
+                            <button 
+                              className="btn btn-sm btn-danger ms-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingChatId(null);
+                              }}
+                            >
+                              <i className="bi bi-x"></i>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div className="flex-grow-1">
+                              <div className="d-flex justify-content-between align-items-center">
+                                <span className="fw-medium text-truncate">
+                                  {chat.title || chat.messages.find(m => m.role === 'user')?.content || 'New Chat'}
+                                </span>
+                                <small className="text-muted">
+                                  {new Date(chat.last_updated).toLocaleDateString()}
+                                </small>
+                              </div>
+                              <div className="small text-truncate text-muted">
+                                {chat.messages.find(m => m.role === 'assistant')?.content || 'No messages yet'}
+                              </div>
+                            </div>
+                            
+                            <div className="dropdown ms-2">
+                              <button 
+                                className="btn btn-sm btn-link text-muted p-0"
+                                onClick={(e) => toggleMenu(chat.chat_id, e)}
+                                style={{
+                                  position: 'relative', // Add this
+                                  zIndex: menuOpenId === chat.chat_id ? 1000 : 'auto' // Dynamic z-index
+                                }}
+                              >
+                                <i className="bi bi-three-dots-vertical"></i>
+                              </button>
+                              
+                              {menuOpenId === chat.chat_id && (
+                                <div 
+                                  className="dropdown-menu show"
+                                  style={{ position: 'absolute', right: 0, zIndex: 1000 }}
+                                >
+                                  <button 
+                                    className="dropdown-item"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setNewTitle(chat.title || '');
+                                      setEditingChatId(chat.chat_id);
+                                      setMenuOpenId(null);
+                                    }}
+                                  >
+                                    <i className="bi bi-pencil me-2"></i> Rename
+                                  </button>
+                                  <button 
+                                    className="dropdown-item text-danger"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDelete(chat.chat_id);
+                                      setMenuOpenId(null);
+                                    }}
+                                  >
+                                    <i className="bi bi-trash me-2"></i> Delete
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     ))}
                 </div>
               </div>
