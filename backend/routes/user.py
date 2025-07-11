@@ -65,6 +65,21 @@ def get_user_created_characters(request: Request, user_id: int = None, db: Sessi
     characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
     return [{"id": c.id, "name": c.name, "picture": c.picture, "likes":c.likes, "views": c.views} for c in characters]
 
+@router.get("/api/characters-liked")
+def get_user_liked_characters(request: Request, user_id: int = None, db: Session = Depends(get_db)):
+    if user_id is None:
+        token = request.cookies.get("session_token")
+        user_id = verify_session_token(token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Not logged in")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.liked_characters:
+        return []
+
+    characters = db.query(Character).filter(Character.id.in_(user.liked_characters)).all()
+    return [{"id": c.id, "name": c.name, "picture": c.picture, "likes":c.likes, "views": c.views} for c in characters]
+
 @router.get("/api/user/{user_id}/characters")
 def get_user_characters(user_id: int, db: Session = Depends(get_db)):
     characters = db.query(Character).filter(Character.creator_id == user_id).all()

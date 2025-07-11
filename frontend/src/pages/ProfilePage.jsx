@@ -5,9 +5,15 @@ import defaultAvatar from '../assets/images/default-avatar.png';
 
 export default function ProfilePage() {
   const MAX_NAME_LENGTH = 50;
+  const TAB_TYPES = {
+    CREATED: 'Created',
+    LIKED: 'Liked'
+  };
 
   const [user, setUser] = useState(null);
-  const [characters, setCharacters] = useState([]);
+  const [createdCharacters, setCreatedCharacters] = useState([]);
+  const [likedCharacters, setLikedCharacters] = useState([]);
+  const [activeTab, setActiveTab] = useState(TAB_TYPES.CREATED);
   const [showModal, setShowModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPic, setEditPic] = useState(null);
@@ -24,7 +30,11 @@ export default function ProfilePage() {
 
     fetch('/api/characters-created')
       .then(res => res.ok ? res.json() : [])
-      .then(setCharacters);
+      .then(setCreatedCharacters);
+
+    fetch('/api/characters-liked')
+      .then(res => res.ok ? res.json() : [])
+      .then(setLikedCharacters);
   }, [navigate]);
 
   const handleSave = async (e) => {
@@ -45,6 +55,35 @@ export default function ProfilePage() {
       setShowModal(false);
       window.location.reload();
     }
+  };
+
+  const renderCharacters = () => {
+    const characters = activeTab === TAB_TYPES.CREATED ? createdCharacters : likedCharacters;
+    
+    return (
+      <div className="d-flex flex-wrap gap-3 mt-3">
+        {characters.map(c => (
+          <div key={c.id} style={{ width: 150 }}>
+            <CharacterCard character={c} />
+            {activeTab === TAB_TYPES.CREATED && (
+              <button
+                className="btn btn-sm btn-outline-secondary w-100 mt-1"
+                onClick={() => navigate(`/character-edit?id=${c.id}`)}
+              >
+                <i className="bi bi-pencil-square"></i> Edit
+              </button>
+            )}
+          </div>
+        ))}
+        {characters.length === 0 && (
+          <p className="text-muted">
+            {activeTab === TAB_TYPES.CREATED 
+              ? "You haven't created any characters yet." 
+              : "You haven't liked any characters yet."}
+          </p>
+        )}
+      </div>
+    );
   };
 
   if (!user) return null;
@@ -71,20 +110,29 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <h4>Characters</h4>
-          <div className="d-flex flex-wrap gap-3 mt-3">
-            {characters.map(c => (
-              <div key={c.id} style={{ width: 150 }}>
-                <CharacterCard character={c} />
+          <div className="mb-3">
+            <ul className="nav nav-tabs">
+              <li className="nav-item">
                 <button
-                  className="btn btn-sm btn-outline-secondary w-100 mt-1"
-                  onClick={() => navigate(`/character-edit?id=${c.id}`)}
+                  className={`nav-link ${activeTab === TAB_TYPES.CREATED ? 'active' : ''}`}
+                  onClick={() => setActiveTab(TAB_TYPES.CREATED)}
                 >
-                  <i className="bi bi-pencil-square"></i> Edit
+                  Created
                 </button>
-              </div>
-            ))}
+              </li>
+              <li className="nav-item">
+                <button
+                  className={`nav-link ${activeTab === TAB_TYPES.LIKED ? 'active' : ''}`}
+                  onClick={() => setActiveTab(TAB_TYPES.LIKED)}
+                >
+                  Liked
+                </button>
+              </li>
+            </ul>
           </div>
+
+          <h4>{activeTab} Characters</h4>
+          {renderCharacters()}
         </div>
       </div>
 
