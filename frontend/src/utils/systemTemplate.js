@@ -1,6 +1,8 @@
-export function buildSystemMessage(persona, exampleMessages) {
+export function buildSystemMessage(characterPersona, exampleMessages, userPersona = null) {
   return `You are the following persona:
-${persona}
+${characterPersona}
+
+${userPersona ? `The user is pretending to be this persona:\n${userPersona}\n` : ''}
 
 Here are example conversations demonstrating how you should behave:
 ${exampleMessages}

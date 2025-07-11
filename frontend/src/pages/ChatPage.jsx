@@ -64,8 +64,6 @@ export default function ChatPage() {
               body: JSON.stringify({ character_id: characterId })
             });
 
-            console.log(user.chat_history)
-
             // Set messages based on user's chat history
             const entry = user.chat_history?.find(
               h => h.character_id === characterId
@@ -139,23 +137,25 @@ export default function ChatPage() {
   };
 
   const startNewChat = () => {
-    const sys = { 
-      role: "system", 
-      content: buildSystemMessage(char.persona || "", char.example_messages || "") 
+    const userPersonaObj = currentUser?.personas?.find(p => p.id === selectedPersonaId);
+    const sys = {
+      role: "system",
+      content: buildSystemMessage(char.persona || "", char.example_messages || "", userPersonaObj?.description || null)
     };
-    const greet = char.greeting ? { 
-      role: "assistant", 
-      content: char.greeting 
+    const greet = char.greeting ? {
+      role: "assistant",
+      content: char.greeting
     } : null;
     setMessages(greet ? [sys, greet] : [sys]);
     setSelectedChat(null);
     setInput('');
-    
-    // Refresh the user data to get updated chat history
+
+    // Refresh user data
     fetch('/api/current-user', { credentials: 'include' })
       .then(res => res.json())
       .then(setCurrentUser);
   };
+
 
   const loadChat = (chat) => {
     const sys = { 
