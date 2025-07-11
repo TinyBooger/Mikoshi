@@ -136,3 +136,109 @@ async def update_recent_characters(request: Request, db: Session = Depends(get_d
 
     db.commit()
     return {"status": "success"}
+
+# =============================== Personas ===================================
+@router.get("/api/personas")
+def get_user_personas(request: Request, db: Session = Depends(get_db)):
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.personas:
+        return []
+    
+    # Return personas with their array indices as IDs
+    return [{"id": idx, **p} for idx, p in enumerate(user.personas)]
+
+@router.post("/api/personas")
+async def create_persona(request: Request, db: Session = Depends(get_db)):
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    
+    data = await request.json()
+    if not data or "name" not in data or "description" not in data:
+        raise HTTPException(status_code=400, detail="Missing name or description")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Generate a simple ID (index-based for array)
+    new_id = len(user.personas) if user.personas else 0
+    new_persona = {
+        "id": new_id,
+        "name": data["name"],
+        "description": data["description"]
+    }
+    
+    updated_personas = user.personas + [new_persona] if user.personas else [new_persona]
+    user.personas = updated_personas
+    db.commit()
+    
+    return new_persona
+
+@router.put("/api/personas/{persona_id}")
+async def update_persona(
+    request: Request,
+    persona_id: int,
+    db: Session = Depends(get_db)
+):
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    
+    data = await request.json()
+    if not data or "name" not in data or "description" not in data:
+        raise HTTPException(status_code=400, detail="Missing name or description")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.personas:
+        raise HTTPException(status_code=404, detail="User or persona not found")
+    
+    if persona_id >= len(user.personas):
+        raise HTTPException(status_code=404, detail="Persona not found")
+    
+    updated_personas = user.personas.copy()
+    updated_personas[persona_id] = {
+        "id": persona_id,
+        "name": data["name"],
+        "description": data["description"]
+    }
+    user.personas = updated_personas
+    db.commit()
+    
+    return updated_personas[persona_id]
+
+@router.delete("/api/personas/{persona_id}")
+def delete_persona(
+    request: Request,
+    persona_id: int,
+    db: Session = Depends(get_db)
+):
+    token = request.cookies.get("session_token")
+    user_id = verify_session_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.personas:
+        raise HTTPException(status_code=404, detail="User or persona not found")
+    
+    if persona_id >= len(user.personas):
+        raise HTTPException(status_code=404, detail="Persona not found")
+    
+    # Remove the persona and reindex remaining ones
+    updated_personas = [
+        {**p, "id": idx} for idx, p in enumerate(
+            p for i, p in enumerate(user.personas) if i != persona_id
+        )
+    ]
+    user.personas = updated_personas
+    db.commit()
+    
+    return {"message": "Persona deleted successfully"}
