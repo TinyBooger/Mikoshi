@@ -53,7 +53,7 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     # Update chat history
     if character_id:
         updated_messages = messages + [{"role": "assistant", "content": reply}]
-        updated_messages = updated_messages[-5:]  # Keep last 5 messages
+        updated_messages = updated_messages[-50:]  # Keep last 50 messages
 
         new_entry = {
             "chat_id": chat_id if chat_id else str(uuid.uuid4()),

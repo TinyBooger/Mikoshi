@@ -69,11 +69,7 @@ export default function ChatPage() {
               h => h.character_id === characterId
             );
             if (entry) {
-              const sys = { 
-                role: "system", 
-                content: buildSystemMessage(data.persona || "", data.example_messages || "") 
-              };
-              setMessages([sys, ...entry.messages]);
+              setMessages([...entry.messages]);
             } else {
               const sys = { 
                 role: "system", 
