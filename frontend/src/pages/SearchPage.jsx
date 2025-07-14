@@ -1,6 +1,6 @@
 // src/pages/SearchPage.jsx
 import React, { useEffect, useState } from "react";
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 
 import defaultPicture from '../assets/images/default-picture.png';
 
