@@ -129,21 +129,6 @@ def get_characters(db: Session = Depends(get_db)):
         } for c in chars
     }
 
-@router.get("/api/characters/search")
-def search_characters(q: str, db: Session = Depends(get_db)):
-    chars = db.query(Character).filter(
-        Character.name.ilike(f"%{q}%") | Character.persona.ilike(f"%{q}%")
-    ).all()
-    return [
-        {
-            "id": c.id,
-            "name": c.name,
-            "persona": c.persona,
-            "picture": c.picture,
-            "views": c.views,
-        } for c in chars
-    ]
-
 @router.get("/api/character/{character_id}")
 def get_character(character_id: int, db: Session = Depends(get_db)):
     c = db.query(Character).filter(Character.id == character_id).first()

@@ -1,10 +1,29 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import SearchTerm
+from models import SearchTerm, Character
 from datetime import datetime, UTC
 
 router = APIRouter()
+
+@router.get("/api/characters/search")
+def search_characters(q: str, db: Session = Depends(get_db)):
+    # Search in name, persona, and tags array
+    chars = db.query(Character).filter(
+        Character.name.ilike(f"%{q}%") | 
+        Character.persona.ilike(f"%{q}%") |
+        Character.tags.any(q)  # This checks if any element in the tags array matches q
+    ).all()
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "persona": c.persona,
+            "picture": c.picture,
+            "views": c.views,
+            "tags": c.tags  # Include tags in the response
+        } for c in chars
+    ]
 
 @router.post("/api/update-search-term")
 async def update_search_term(request: Request, db: Session = Depends(get_db)):
