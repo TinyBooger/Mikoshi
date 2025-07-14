@@ -11,17 +11,20 @@ function Topbar() {
 
   // Fetch popular suggestions initially or when query is empty
   useEffect(() => {
-    if (query.trim() === '') {
-      fetch('/api/search-suggestions/popular')
-        .then(res => res.json())
-        .then(setSuggestions)
-        .catch(() => setSuggestions([]));
-    } else {
-      fetch(`/api/search-suggestions?q=${encodeURIComponent(query.trim())}`)
-        .then(res => res.json())
-        .then(setSuggestions)
-        .catch(() => setSuggestions([]));
-    }
+    const timer = setTimeout( () =>{
+      if (query.trim() === '') {
+        fetch('/api/search-suggestions/popular')
+          .then(res => res.json())
+          .then(setSuggestions)
+          .catch(() => setSuggestions([]));
+      } else {
+        fetch(`/api/search-suggestions?q=${encodeURIComponent(query.trim())}`)
+          .then(res => res.json())
+          .then(setSuggestions)
+          .catch(() => setSuggestions([]));
+      }
+    }, 300)
+    return () => clearTimeout(timer);
   }, [query]);
 
   const handleSearch = (q = query) => {

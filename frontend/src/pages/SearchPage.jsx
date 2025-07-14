@@ -9,6 +9,7 @@ export default function SearchPage() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -36,7 +37,7 @@ export default function SearchPage() {
     }
     
     fetchCharacters();
-  }, []);
+  }, [location.search]);
 
   if (loading) return <div>Loading...</div>;
 
