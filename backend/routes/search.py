@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import get_db
 from models import SearchTerm, Character
@@ -8,11 +9,12 @@ router = APIRouter()
 
 @router.get("/api/characters/search")
 def search_characters(q: str, db: Session = Depends(get_db)):
-    # Search in name, persona, and tags array
+    # Create a case-insensitive pattern for array matching
+    ilike_pattern = f"%{q}%"
     chars = db.query(Character).filter(
-        Character.name.ilike(f"%{q}%") | 
-        Character.persona.ilike(f"%{q}%") |
-        Character.tags.any(q)  # This checks if any element in the tags array matches q
+        Character.name.ilike(ilike_pattern) | 
+        Character.persona.ilike(ilike_pattern) |
+        func.array_to_string(Character.tags, ',').ilike(ilike_pattern)
     ).all()
     return [
         {
@@ -21,7 +23,7 @@ def search_characters(q: str, db: Session = Depends(get_db)):
             "persona": c.persona,
             "picture": c.picture,
             "views": c.views,
-            "tags": c.tags  # Include tags in the response
+            "tags": c.tags
         } for c in chars
     ]
 
