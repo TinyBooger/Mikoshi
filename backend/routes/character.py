@@ -237,7 +237,7 @@ def get_characters_by_tag(
 ):
     # Find characters that have this tag
     chars = db.query(Character).filter(
-        Character.tags.contains([tag_name])
+        Character.tags.any(tag_name)
     ).order_by(
         Character.likes.desc()
     ).limit(limit).all()

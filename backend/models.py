@@ -12,7 +12,7 @@ class Character(Base):
     persona = Column(Text, nullable=False)
     example_messages = Column(Text, default="")
     tagline = Column(String(255), default="")  # 50 words fits ~255 chars
-    tags = Column(ARRAY(String), default=[])   # array of strings
+    tags = Column(ARRAY(Text), default=[])   # array of strings
 
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
