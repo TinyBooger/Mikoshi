@@ -22,25 +22,17 @@ def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get
         # Create a case-insensitive pattern
         ilike_pattern = f"%{q}%"
         
-        # Calculate score for each field
+        # Calculate score for each field using the new case() syntax
         score_case = case(
-            [
-                (Character.name.ilike(ilike_pattern), NAME_WEIGHT),
-                (func.array_to_string(Character.tags, ',').ilike(ilike_pattern), TAG_WEIGHT),
-                (Character.persona.ilike(ilike_pattern), PERSONA_WEIGHT)
-            ],
+            (Character.name.ilike(ilike_pattern), NAME_WEIGHT),
+            (func.array_to_string(Character.tags, ',').ilike(ilike_pattern), TAG_WEIGHT),
+            (Character.persona.ilike(ilike_pattern), PERSONA_WEIGHT),
             else_=0
-        )
-        
-        # Sum all scores for each character
-        total_score = func.coalesce(
-            func.sum(score_case), 
-            0
         ).label("relevance_score")
         
-        query = query.add_columns(total_score)
+        query = query.add_columns(score_case)
         query = query.group_by(Character.id)
-        query = query.order_by(total_score.desc(), Character.views.desc())
+        query = query.order_by(score_case.desc(), Character.views.desc())
         
     elif sort == "popularity":
         query = query.order_by(Character.views.desc())
