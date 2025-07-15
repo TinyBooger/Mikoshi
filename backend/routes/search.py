@@ -8,14 +8,29 @@ from datetime import datetime, UTC
 router = APIRouter()
 
 @router.get("/api/characters/search")
-def search_characters(q: str, db: Session = Depends(get_db)):
+def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get_db)):
     # Create a case-insensitive pattern for array matching
     ilike_pattern = f"%{q}%"
-    chars = db.query(Character).filter(
+    
+    # Base query
+    query = db.query(Character).filter(
         Character.name.ilike(ilike_pattern) | 
         Character.persona.ilike(ilike_pattern) |
         func.array_to_string(Character.tags, ',').ilike(ilike_pattern)
-    ).all()
+    )
+    
+    # Apply sorting
+    if sort == "popularity":
+        query = query.order_by(Character.views.desc())
+    elif sort == "recent":
+        query = query.order_by(Character.created_at.desc())
+    else:  # default is relevance
+        # You can implement more sophisticated relevance sorting here
+        # For now, we'll just sort by name
+        query = query.order_by(Character.name.asc())
+    
+    chars = query.all()
+    
     return [
         {
             "id": c.id,
@@ -23,7 +38,8 @@ def search_characters(q: str, db: Session = Depends(get_db)):
             "persona": c.persona,
             "picture": c.picture,
             "views": c.views,
-            "tags": c.tags
+            "tags": c.tags,
+            "created_at": c.created_at.isoformat() if c.created_at else None
         } for c in chars
     ]
 

@@ -8,6 +8,7 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [sortBy, setSortBy] = useState("relevance"); // default sort
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -15,12 +16,14 @@ export default function SearchPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const q = params.get("q") || "";
+    const sort = params.get("sort") || "relevance";
     setQuery(q);
+    setSortBy(sort);
     setLoading(true);
 
     async function fetchCharacters() {
       try {
-        const res = await fetch(`/api/characters/search?q=${encodeURIComponent(q)}`);
+        const res = await fetch(`/api/characters/search?q=${encodeURIComponent(q)}&sort=${sort}`);
         if (!res.ok) throw new Error('Search failed');
         const data = await res.json();
         setResults(data);
@@ -66,6 +69,10 @@ export default function SearchPage() {
   const handleSearch = (q = query) => {
     const trimmed = q.trim();
     if (trimmed) navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+  };
+
+  const handleSortChange = (newSort) => {
+    navigate(`/search?q=${encodeURIComponent(query)}&sort=${newSort}`);
   };
 
   return (
@@ -117,7 +124,32 @@ export default function SearchPage() {
 
         {/* --- EXISTING RESULTS --- */}
         <div style={{ width: "100%" }}>
-          <h2 className="text-center mb-3">Search Results</h2>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h2 className="mb-0">Search Results</h2>
+            <div className="btn-group" role="group">
+              <button 
+                type="button" 
+                className={`btn btn-sm ${sortBy === 'relevance' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => handleSortChange('relevance')}
+              >
+                Relevance
+              </button>
+              <button 
+                type="button" 
+                className={`btn btn-sm ${sortBy === 'popularity' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => handleSortChange('popularity')}
+              >
+                Popularity
+              </button>
+              <button 
+                type="button" 
+                className={`btn btn-sm ${sortBy === 'recent' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => handleSortChange('recent')}
+              >
+                Recent
+              </button>
+            </div>
+          </div>
           {loading ? (
             <div className="text-center">
               <div className="spinner-border text-primary" role="status">
