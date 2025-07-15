@@ -8,10 +8,24 @@ function Topbar() {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeTab, setActiveTab] = useState('');
 
-  // Fetch popular suggestions initially or when query is empty
+  // Set active tab based on current route
   useEffect(() => {
-    const timer = setTimeout( () =>{
+    if (location.pathname.startsWith('/browse/recommended')) {
+      setActiveTab('recommended');
+    } else if (location.pathname.startsWith('/browse/popular')) {
+      setActiveTab('popular');
+    } else if (location.pathname.startsWith('/browse/recent')) {
+      setActiveTab('recent');
+    } else {
+      setActiveTab('');
+    }
+  }, [location.pathname]);
+
+  // Fetch search suggestions
+  useEffect(() => {
+    const timer = setTimeout(() => {
       if (query.trim() === '') {
         fetch('/api/search-suggestions/popular')
           .then(res => res.json())
@@ -23,7 +37,7 @@ function Topbar() {
           .then(setSuggestions)
           .catch(() => setSuggestions([]));
       }
-    }, 300)
+    }, 300);
     return () => clearTimeout(timer);
   }, [query]);
 
@@ -32,8 +46,11 @@ function Topbar() {
     if (trimmed) navigate(`/search?q=${encodeURIComponent(trimmed)}`);
   };
 
-  return (
+  const navigateToTab = (tab) => {
+    navigate(`/browse/${tab}`);
+  };
 
+  return (
     <div
       className="d-flex align-items-center justify-content-between px-3 shadow-sm bg-light"
       style={{ height: '56px', zIndex: 1030 }}
@@ -46,6 +63,32 @@ function Topbar() {
           <i className="bi bi-arrow-left"></i>
         </button>
       )}
+
+      {/* Navigation Tabs */}
+      <div className="d-flex mx-3">
+        <button
+          className={`btn btn-sm ${activeTab === 'recommended' ? 'btn-primary' : 'btn-outline-secondary'}`}
+          onClick={() => navigateToTab('recommended')}
+          style={{ marginRight: '8px' }}
+        >
+          For You
+        </button>
+        <button
+          className={`btn btn-sm ${activeTab === 'popular' ? 'btn-primary' : 'btn-outline-secondary'}`}
+          onClick={() => navigateToTab('popular')}
+          style={{ marginRight: '8px' }}
+        >
+          Popular
+        </button>
+        <button
+          className={`btn btn-sm ${activeTab === 'recent' ? 'btn-primary' : 'btn-outline-secondary'}`}
+          onClick={() => navigateToTab('recent')}
+        >
+          Recent
+        </button>
+      </div>
+
+      {/* Search Bar */}
       <div className="ms-auto" style={{ width: 250, position: 'relative' }}>
         <div className="input-group input-group-sm">
           <input
@@ -56,7 +99,7 @@ function Topbar() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             onFocus={() => setShowSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 100)} // delay to allow click
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
             aria-autocomplete="list"
             aria-haspopup="true"
           />

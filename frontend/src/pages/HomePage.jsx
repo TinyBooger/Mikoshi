@@ -60,7 +60,7 @@ function HomePage() {
           {recommended.length > 0 && (
             <button 
               className="btn btn-link" 
-              onClick={() => navigate('/browse/for-you')}
+              onClick={() => navigate('/browse/recommended')}
             >
               More...
             </button>
