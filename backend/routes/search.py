@@ -9,8 +9,9 @@ router = APIRouter()
 
 @router.get("/api/characters/search")
 def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get_db)):
-    # Base query
-    query = db.query(Character)
+
+    # Create a case-insensitive pattern
+    ilike_pattern = f"%{q}%"
     
     # Base query with filtering
     query = db.query(Character).filter(
@@ -18,16 +19,13 @@ def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get
         Character.persona.ilike(ilike_pattern) |
         func.array_to_string(Character.tags, ',').ilike(ilike_pattern)
     )
-    
+
     # For relevance sorting, we'll calculate a score
     if sort == "relevance":
         # Define weights for different fields
         NAME_WEIGHT = 3.0
         TAG_WEIGHT = 2.0
         PERSONA_WEIGHT = 1.0
-        
-        # Create a case-insensitive pattern
-        ilike_pattern = f"%{q}%"
         
         # Calculate score for each field using the new case() syntax
         score_case = case(
