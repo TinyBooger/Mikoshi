@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
-from sqlalchemy import func
+from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 from database import get_db
 from models import SearchTerm, Character
@@ -9,27 +9,53 @@ router = APIRouter()
 
 @router.get("/api/characters/search")
 def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get_db)):
-    # Create a case-insensitive pattern for array matching
-    ilike_pattern = f"%{q}%"
-    
     # Base query
-    query = db.query(Character).filter(
-        Character.name.ilike(ilike_pattern) | 
-        Character.persona.ilike(ilike_pattern) |
-        func.array_to_string(Character.tags, ',').ilike(ilike_pattern)
-    )
+    query = db.query(Character)
     
-    # Apply sorting
-    if sort == "popularity":
+    # For relevance sorting, we'll calculate a score
+    if sort == "relevance":
+        # Define weights for different fields
+        NAME_WEIGHT = 3.0
+        TAG_WEIGHT = 2.0
+        PERSONA_WEIGHT = 1.0
+        
+        # Create a case-insensitive pattern
+        ilike_pattern = f"%{q}%"
+        
+        # Calculate score for each field
+        score_case = case(
+            [
+                (Character.name.ilike(ilike_pattern), NAME_WEIGHT),
+                (func.array_to_string(Character.tags, ',').ilike(ilike_pattern), TAG_WEIGHT),
+                (Character.persona.ilike(ilike_pattern), PERSONA_WEIGHT)
+            ],
+            else_=0
+        )
+        
+        # Sum all scores for each character
+        total_score = func.coalesce(
+            func.sum(score_case), 
+            0
+        ).label("relevance_score")
+        
+        query = query.add_columns(total_score)
+        query = query.group_by(Character.id)
+        query = query.order_by(total_score.desc(), Character.views.desc())
+        
+    elif sort == "popularity":
         query = query.order_by(Character.views.desc())
     elif sort == "recent":
         query = query.order_by(Character.created_time.desc())
-    else:  # default is relevance
-        # You can implement more sophisticated relevance sorting here
-        # For now, we'll just sort by name
+    else:
         query = query.order_by(Character.name.asc())
     
-    chars = query.all()
+    # Execute the query
+    if sort == "relevance":
+        results = query.all()
+        chars = [r[0] for r in results]  # Extract the Character objects
+        scores = [r[1] for r in results]  # Extract the scores
+    else:
+        chars = query.all()
     
     return [
         {
@@ -39,8 +65,9 @@ def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get
             "picture": c.picture,
             "views": c.views,
             "tags": c.tags,
-            "created_time": c.created_time.isoformat() if c.created_time else None
-        } for c in chars
+            "created_time": c.created_time.isoformat() if c.created_time else None,
+            "score": scores[i] if sort == "relevance" else None  # Include score for debugging
+        } for i, c in enumerate(chars)
     ]
 
 @router.post("/api/update-search-term")
