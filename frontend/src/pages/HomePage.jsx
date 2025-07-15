@@ -9,6 +9,7 @@ function HomePage() {
   const [popularTags, setPopularTags] = useState([]);
   const [tagCharacters, setTagCharacters] = useState({});
   const [loadingTags, setLoadingTags] = useState(true);
+  const [selectedTag, setSelectedTag] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -52,7 +53,10 @@ function HomePage() {
   };
 
   const handleTagClick = (tagName) => {
-    fetchCharactersByTag(tagName);
+    setSelectedTag(tagName);
+    if (!tagCharacters[tagName]) {
+      fetchCharactersByTag(tagName);
+    }
   };
 
   return (
@@ -109,8 +113,26 @@ function HomePage() {
       </section>
 
       <section className="mb-4">
-        <div className="d-flex justify-content-between align-items-center">
-          <h4>Popular Tags</h4>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <div className="d-flex align-items-center gap-3">
+            <h4 className="mb-0">Popular Tags</h4>
+            {selectedTag && (
+              <div className="d-flex align-items-center">
+                <span className="text-muted me-2">Showing:</span>
+                <span className="badge bg-primary">
+                  #{selectedTag}
+                  <button 
+                    className="btn-close btn-close-white btn-close-sm ms-2" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedTag(null);
+                    }}
+                    aria-label="Clear selection"
+                  />
+                </span>
+              </div>
+            )}
+          </div>
           <button 
             className="btn btn-link" 
             onClick={() => navigate('/browse/tags')}
@@ -131,7 +153,11 @@ function HomePage() {
               {popularTags.map(tag => (
                 <button
                   key={tag.name}
-                  className="btn btn-outline-primary btn-sm"
+                  className={`btn btn-sm ${
+                    selectedTag === tag.name 
+                      ? 'btn-primary' 
+                      : 'btn-outline-primary'
+                  }`}
                   onClick={() => handleTagClick(tag.name)}
                 >
                   {tag.name} <span className="badge bg-secondary ms-1">{tag.count}</span>
@@ -139,16 +165,19 @@ function HomePage() {
               ))}
             </div>
 
-            {Object.entries(tagCharacters).map(([tagName, characters]) => (
-              <div key={tagName} className="mb-4">
-                <h5 className="mb-2">#{tagName}</h5>
-                <div className="d-flex flex-row overflow-auto gap-3">
-                  {characters.map(c => (
+            <div className="d-flex flex-row overflow-auto gap-3">
+              {selectedTag ? (
+                tagCharacters[selectedTag]?.length > 0 ? (
+                  tagCharacters[selectedTag].map(c => (
                     <CharacterCard key={c.id} character={c} />
-                  ))}
-                </div>
-              </div>
-            ))}
+                  ))
+                ) : (
+                  <div className="text-muted py-3">Loading characters...</div>
+                )
+              ) : (
+                <div className="text-muted py-3">Select a tag to view characters</div>
+              )}
+            </div>
           </>
         )}
       </section>
