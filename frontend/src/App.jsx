@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router';
 import AdminApp from './admin/AdminApp.jsx';
 import Layout from './components/layout';
 import HomePage from './pages/HomePage';
+import BrowsePage from './pages/BrowsePage.jsx';
 import WelcomePage from './pages/WelcomePage';
 import AccountSetupPage from './pages/AccountSetupPage';
 import CharacterCreatePage from './pages/CharacterCreatePage';
@@ -36,6 +37,7 @@ export default function App() {
       element: user ? <Layout /> : <WelcomePage setUser={setUser} />,
       children: user ? [
         { index: true, element: <HomePage /> },
+        { path: 'browse/:category', element: <BrowsePage /> },
         { path: 'character-create', element: <CharacterCreatePage /> },
         { path: 'character-edit', element: <CharacterEditPage /> },
         { path: 'chat', element: <ChatPage /> },

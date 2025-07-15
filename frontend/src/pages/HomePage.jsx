@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-
 import CharacterCard from '../components/CharacterCard';
 
 function HomePage() {
@@ -26,21 +25,47 @@ function HomePage() {
   return (
     <>
       <section className="mb-4">
-        <h4>Popular Characters</h4>
+        <div className="d-flex justify-content-between align-items-center">
+          <h4>Popular Characters</h4>
+          <button 
+            className="btn btn-link" 
+            onClick={() => navigate('/browse/popular')}
+          >
+            More...
+          </button>
+        </div>
         <div className="d-flex flex-row overflow-auto gap-3">
           {popular.map(c => <CharacterCard key={c.id} character={c} />)}
         </div>
       </section>
 
       <section className="mb-4">
-        <h4>Recently Uploaded</h4>
+        <div className="d-flex justify-content-between align-items-center">
+          <h4>Recently Uploaded</h4>
+          <button 
+            className="btn btn-link" 
+            onClick={() => navigate('/browse/recent')}
+          >
+            More...
+          </button>
+        </div>
         <div className="d-flex flex-row overflow-auto gap-3">
           {recent.map(c => <CharacterCard key={c.id} character={c} />)}
         </div>
       </section>
 
       <section className="mb-4">
-        <h4>Recommended for You</h4>
+        <div className="d-flex justify-content-between align-items-center">
+          <h4>Recommended for You</h4>
+          {recommended.length > 0 && (
+            <button 
+              className="btn btn-link" 
+              onClick={() => navigate('/browse/for-you')}
+            >
+              More...
+            </button>
+          )}
+        </div>
         {recommended.length === 0 ? (
           <p>No recommendations yet. Please like more characters to unlock personalized suggestions.</p>
         ) : (
@@ -49,7 +74,6 @@ function HomePage() {
           </div>
         )}
       </section>
-
     </>
   );
 }
