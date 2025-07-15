@@ -12,6 +12,13 @@ def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get
     # Base query
     query = db.query(Character)
     
+    # Base query with filtering
+    query = db.query(Character).filter(
+        Character.name.ilike(ilike_pattern) | 
+        Character.persona.ilike(ilike_pattern) |
+        func.array_to_string(Character.tags, ',').ilike(ilike_pattern)
+    )
+    
     # For relevance sorting, we'll calculate a score
     if sort == "relevance":
         # Define weights for different fields
