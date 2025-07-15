@@ -23,7 +23,7 @@ def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get
     if sort == "popularity":
         query = query.order_by(Character.views.desc())
     elif sort == "recent":
-        query = query.order_by(Character.created_at.desc())
+        query = query.order_by(Character.created_time.desc())
     else:  # default is relevance
         # You can implement more sophisticated relevance sorting here
         # For now, we'll just sort by name
@@ -39,7 +39,7 @@ def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get
             "picture": c.picture,
             "views": c.views,
             "tags": c.tags,
-            "created_at": c.created_at.isoformat() if c.created_at else None
+            "created_time": c.created_time.isoformat() if c.created_time else None
         } for c in chars
     ]
 
