@@ -10,16 +10,21 @@ function BrowsePage() {
 
   useEffect(() => {
     setIsLoading(true);
-    fetch(`/api/characters/${category}`, { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => {
-        setCharacters(data);
-        setIsLoading(false);
-      })
-      .catch(() => {
-        setIsLoading(false);
-        navigate('/'); // Redirect to home if there's an error
-      });
+    if (category === 'tags') {
+      fetch('/api/tag-suggestions', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          setCharacters(data); // In this case, characters will actually be tags
+          setIsLoading(false);
+        });
+    } else {
+      fetch(`/api/characters/${category}`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          setCharacters(data);
+          setIsLoading(false);
+        });
+    }
   }, [category, navigate]);
 
   const getTitle = () => {
@@ -28,8 +33,10 @@ function BrowsePage() {
         return 'Popular Characters';
       case 'recent':
         return 'Recently Uploaded';
-      case 'for-you':
+      case 'recommended':
         return 'Recommended for You';
+      case 'tags':
+        return 'Browse by Tags';
       default:
         return 'Characters';
     }
@@ -47,7 +54,7 @@ function BrowsePage() {
         </div>
       ) : (
         <>
-          {category === 'for-you' && characters.length === 0 ? (
+          {category === 'recommended' && characters.length === 0 ? (
             <div className="alert alert-info">
               No recommendations yet. Please like more characters to unlock personalized suggestions.
             </div>

@@ -229,6 +229,31 @@ def get_recommended_characters(request: Request, db: Session = Depends(get_db)):
         } for c in chars
     ]
 
+@router.get("/api/characters/by-tag/{tag_name}")
+def get_characters_by_tag(
+    tag_name: str,
+    db: Session = Depends(get_db),
+    limit: int = 12
+):
+    # Find characters that have this tag
+    chars = db.query(Character).filter(
+        Character.tags.contains([tag_name])
+    ).order_by(
+        Character.likes.desc()
+    ).limit(limit).all()
+
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "persona": c.persona,
+            "picture": c.picture,
+            "views": c.views,
+            "likes": c.likes,
+            "tagline": c.tagline
+        } for c in chars
+    ]
+
 @router.get("/api/characters/recent")
 def get_recent_characters(db: Session = Depends(get_db)):
     chars = db.query(Character).order_by(Character.created_time.desc()).limit(10).all()

@@ -86,6 +86,13 @@ function Topbar() {
         >
           Recent
         </button>
+        <button
+          className={`btn btn-sm ${activeTab === 'tags' ? 'btn-primary' : 'btn-outline-secondary'}`}
+          onClick={() => navigateToTab('tags')}
+          style={{ marginRight: '8px' }}
+        >
+          Tags
+        </button>
       </div>
 
       {/* Search Bar */}
