@@ -516,8 +516,16 @@ export default function ChatPage() {
         {/* Like Button - YouTube-inspired but cleaner */}
         <div className="d-flex justify-content-center mb-4">
           <button
-            className={`btn btn-sm px-3 py-1 ${hasLiked ? 'text-danger' : 'text-muted'}`}
+            className={`btn btn-sm px-3 py-1 ${hasLiked ? 'btn-danger disabled' : 'btn-outline-danger'}`}
             onClick={likeCharacter}
+            disabled={hasLiked}
+            style={{
+              transition: 'all 0.2s ease',
+              ...(hasLiked ? {
+                cursor: 'not-allowed',
+                opacity: 0.8
+              } : {})
+            }}
           >
             <i className={`bi ${hasLiked ? 'bi-heart-fill' : 'bi-heart'} fs-5`}></i>
             <span className="ms-2 fw-medium">{likes}</span>
