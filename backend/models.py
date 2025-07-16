@@ -54,3 +54,4 @@ class Tag(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(Text, unique=True, nullable=False)
     count = Column(Integer, default=0)
+    likes = Column(Integer, default=0)   

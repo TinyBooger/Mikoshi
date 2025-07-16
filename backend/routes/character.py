@@ -184,6 +184,11 @@ def like_character(request: Request, character_id: int, db: Session = Depends(ge
 
     # Update user's liked tags
     for tag in char.tags or []:
+        # Increment the likes count for each tag
+        db_tag = db.query(Tag).filter(Tag.name == tag).first()
+        if db_tag:
+            db_tag.likes += 1
+            
         if tag not in user.liked_tags:
             user.liked_tags = user.liked_tags + [tag]
 
