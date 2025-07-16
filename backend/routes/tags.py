@@ -8,12 +8,12 @@ router = APIRouter()
 @router.get("/api/tag-suggestions")
 def tag_suggestions(q: str = "", db: Session = Depends(get_db)):
     if q.strip() == "":
-        tags = db.query(Tag).order_by(Tag.count.desc()).limit(10).all()
+        tags = db.query(Tag).order_by(Tag.likes.desc()).limit(10).all()
     else:
-        tags = db.query(Tag).filter(Tag.name.ilike(f"%{q}%")).order_by(Tag.count.desc()).limit(10).all()
-    return [{"name": t.name, "count": t.count} for t in tags]
+        tags = db.query(Tag).filter(Tag.name.ilike(f"%{q}%")).order_by(Tag.likes.desc()).limit(10).all()
+    return [{"name": t.name, "likes": t.likes} for t in tags]
 
 @router.get("/api/tags/all")
 def get_all_tags(db: Session = Depends(get_db)):
     tags = db.query(Tag).order_by(Tag.name).all()
-    return [{"name": t.name, "count": t.count} for t in tags]
+    return [{"name": t.name, "likes": t.likes} for t in tags]

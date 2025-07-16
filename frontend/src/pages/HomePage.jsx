@@ -160,7 +160,7 @@ function HomePage() {
                   }`}
                   onClick={() => handleTagClick(tag.name)}
                 >
-                  {tag.name} <span className="badge bg-secondary ms-1">{tag.count}</span>
+                  {tag.name} <span className="badge bg-secondary ms-1">{tag.likes}</span>
                 </button>
               ))}
             </div>
