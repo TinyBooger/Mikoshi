@@ -5,13 +5,13 @@ import Topbar from './topbar';
 
 export default function Layout() {
   return (
-    <div className="d-flex" style={{ minHeight: '100vh' }}>
+    <div className="d-flex" style={{ height: '100vh', overflow: 'hidden' }}>
       <Sidebar />
-      <div className="d-flex flex-column flex-grow-1 overflow-hidden">
+      <div className="d-flex flex-column flex-grow-1">
         <div style={{ height: '56px', flexShrink: 0 }}>
           <Topbar />
         </div>
-        <main className="flex-grow-1 overflow-auto">
+        <main style={{ flex: 1, overflowY: 'auto' }}>
           <Outlet />
         </main>
       </div>
