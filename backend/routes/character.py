@@ -174,9 +174,17 @@ def like_character(request: Request, character_id: int, db: Session = Depends(ge
     char = db.query(Character).filter(Character.id == character_id).first()
     if not char:
         raise HTTPException(status_code=404, detail="Character not found")
+    
+    # Get the creator of the character
+    creator = db.query(User).filter(User.id == char.creator_id).first()
+    if not creator:
+        raise HTTPException(status_code=404, detail="Character creator not found")
 
     # Update character like count
     char.likes += 1
+
+    # Update creator's total likes count
+    creator.likes = (creator.likes or 0) + 1
 
     # Update user's liked characters
     if character_id not in user.liked_characters:
