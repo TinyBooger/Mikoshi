@@ -46,13 +46,33 @@ function BrowsePage() {
   const organizeTagsAlphabetically = (tags) => {
     const organized = {};
     tags.forEach(tag => {
-      const firstLetter = tag.name[0].toUpperCase();
-      if (!organized[firstLetter]) {
-        organized[firstLetter] = [];
+      // Check if first character is a letter
+      const firstChar = tag.name[0];
+      let category;
+      
+      if (/[a-zA-Z]/.test(firstChar)) {
+        category = firstChar.toUpperCase();
+      } else {
+        category = '#'; // Group all non-alphabetic tags together
       }
-      organized[firstLetter].push(tag);
+
+      if (!organized[category]) {
+        organized[category] = [];
+      }
+      organized[category].push(tag);
     });
-    return organized;
+
+    // Sort categories alphabetically with # at the end
+    const sorted = {};
+    Object.keys(organized).sort((a, b) => {
+      if (a === '#') return 1;
+      if (b === '#') return -1;
+      return a.localeCompare(b);
+    }).forEach(key => {
+      sorted[key] = organized[key];
+    });
+
+    return sorted;
   };
 
   const fetchCharactersByTag = (tagName) => {
@@ -221,7 +241,9 @@ function BrowsePage() {
             {Object.keys(filteredTags()).length > 0 ? (
               Object.entries(filteredTags()).map(([letter, tags]) => (
                 <div key={letter} className="mb-3">
-                  <h5 className="text-muted mb-2">{letter}</h5>
+                  <h5 className="text-muted mb-2">
+                    {letter === '#' ? 'Other Tags' : letter}
+                  </h5>
                   <div className="d-flex flex-wrap gap-2">
                     {tags.map(tag => (
                       <button
