@@ -26,6 +26,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
+    firebase_uid = Column(String, unique=True, nullable=True)
     email = Column(String, unique=True, nullable=False)
     phone = Column(String, unique=False)
     hashed_password = Column(String, nullable=False)
