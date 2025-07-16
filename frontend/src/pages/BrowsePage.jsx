@@ -239,28 +239,41 @@ function BrowsePage() {
         ) : (
           <div className="tag-browser">
             {Object.keys(filteredTags()).length > 0 ? (
-              Object.entries(filteredTags()).map(([letter, tags]) => (
-                <div key={letter} className="mb-3">
-                  <h5 className="text-muted mb-2">
-                    {letter === '#' ? 'Other Tags' : letter}
-                  </h5>
-                  <div className="d-flex flex-wrap gap-2">
-                    {tags.map(tag => (
-                      <button
-                        key={tag.name}
-                        className={`btn btn-sm ${
-                          selectedTag === tag.name 
-                            ? 'btn-primary' 
-                            : 'btn-outline-secondary'
-                        }`}
-                        onClick={() => fetchCharactersByTag(tag.name)}
-                      >
-                        {tag.name} <span className="badge bg-secondary ms-1">{tag.likes}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))
+              <div className="row">
+                {/* Split the tags into 3 columns */}
+                {(() => {
+                  const letters = Object.keys(filteredTags());
+                  const columnCount = 3;
+                  const perColumn = Math.ceil(letters.length / columnCount);
+                  
+                  return Array.from({ length: columnCount }).map((_, colIndex) => (
+                    <div key={colIndex} className="col-md-4">
+                      {letters.slice(colIndex * perColumn, (colIndex + 1) * perColumn).map(letter => (
+                        <div key={letter} className="mb-3">
+                          <h5 className="text-muted mb-2">
+                            {letter === '#' ? 'Other Tags' : letter}
+                          </h5>
+                          <div className="d-flex flex-wrap gap-2">
+                            {filteredTags()[letter].map(tag => (
+                              <button
+                                key={tag.name}
+                                className={`btn btn-sm ${
+                                  selectedTag === tag.name 
+                                    ? 'btn-primary' 
+                                    : 'btn-outline-secondary'
+                                }`}
+                                onClick={() => fetchCharactersByTag(tag.name)}
+                              >
+                                {tag.name} <span className="badge bg-secondary ms-1">{tag.count}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ));
+                })()}
+              </div>
             ) : (
               <div className="text-muted py-3">
                 {searchQuery ? 'No tags match your search' : 'No tags available'}
