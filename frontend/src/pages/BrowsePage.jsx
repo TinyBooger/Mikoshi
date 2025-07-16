@@ -4,7 +4,10 @@ import CharacterCard from '../components/CharacterCard';
 
 function BrowsePage() {
   const [characters, setCharacters] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [selectedTag, setSelectedTag] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingCharacters, setIsLoadingCharacters] = useState(false);
   const { category } = useParams();
   const navigate = useNavigate();
 
@@ -14,7 +17,7 @@ function BrowsePage() {
       fetch('/api/tag-suggestions', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
-          setCharacters(data); // In this case, characters will actually be tags
+          setTags(data);
           setIsLoading(false);
         });
     } else {
@@ -27,6 +30,17 @@ function BrowsePage() {
     }
   }, [category, navigate]);
 
+  const fetchCharactersByTag = (tagName) => {
+    setSelectedTag(tagName);
+    setIsLoadingCharacters(true);
+    fetch(`/api/characters/by-tag/${encodeURIComponent(tagName)}`, { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        setCharacters(data);
+        setIsLoadingCharacters(false);
+      });
+  };
+
   const getTitle = () => {
     switch(category) {
       case 'popular':
@@ -36,15 +50,30 @@ function BrowsePage() {
       case 'recommended':
         return 'Recommended for You';
       case 'tags':
-        return 'Browse by Tags';
+        return selectedTag ? `#${selectedTag}` : 'Browse by Tags';
       default:
         return 'Characters';
     }
   };
 
+  const clearTagSelection = () => {
+    setSelectedTag(null);
+    setCharacters([]);
+  };
+
   return (
     <div className="container mt-4">
-      <h2>{getTitle()}</h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="mb-0">{getTitle()}</h2>
+        {category === 'tags' && selectedTag && (
+          <button 
+            className="btn btn-outline-secondary btn-sm"
+            onClick={clearTagSelection}
+          >
+            Back to all tags
+          </button>
+        )}
+      </div>
       
       {isLoading ? (
         <div className="text-center my-5">
@@ -58,10 +87,37 @@ function BrowsePage() {
             <div className="alert alert-info">
               No recommendations yet. Please like more characters to unlock personalized suggestions.
             </div>
+          ) : category === 'tags' && !selectedTag ? (
+            <>
+              <div className="d-flex flex-wrap gap-2 mb-4">
+                {tags.map(tag => (
+                  <button
+                    key={tag.name}
+                    className="btn btn-outline-primary"
+                    onClick={() => fetchCharactersByTag(tag.name)}
+                  >
+                    {tag.name} <span className="badge bg-secondary ms-1">{tag.count}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="text-muted">
+                Select a tag to view characters
+              </div>
+            </>
           ) : (
-            <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
-              {characters.map(c => <CharacterCard key={c.id} character={c} />)}
-            </div>
+            <>
+              {isLoadingCharacters ? (
+                <div className="text-center my-5">
+                  <div className="spinner-border" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+                  {characters.map(c => <CharacterCard key={c.id} character={c} />)}
+                </div>
+              )}
+            </>
           )}
         </>
       )}
