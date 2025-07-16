@@ -12,3 +12,8 @@ def tag_suggestions(q: str = "", db: Session = Depends(get_db)):
     else:
         tags = db.query(Tag).filter(Tag.name.ilike(f"%{q}%")).order_by(Tag.count.desc()).limit(10).all()
     return [{"name": t.name, "count": t.count} for t in tags]
+
+@router.get("/api/tags/all")
+def get_all_tags(db: Session = Depends(get_db)):
+    tags = db.query(Tag).order_by(Tag.name).all()
+    return [{"name": t.name, "count": t.count} for t in tags]

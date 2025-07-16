@@ -5,20 +5,33 @@ import CharacterCard from '../components/CharacterCard';
 function BrowsePage() {
   const [characters, setCharacters] = useState([]);
   const [popularTags, setPopularTags] = useState([]);
+  const [allTags, setAllTags] = useState([]);
   const [selectedTag, setSelectedTag] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingCharacters, setIsLoadingCharacters] = useState(false);
+  const [isLoadingAllTags, setIsLoadingAllTags] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { category } = useParams();
   const navigate = useNavigate();
 
   useEffect(() => {
     setIsLoading(true);
     if (category === 'tags') {
+      // Load popular tags
       fetch('/api/tag-suggestions', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
           setPopularTags(data);
           setIsLoading(false);
+        });
+      
+      // Load all tags for alphabetical browsing
+      setIsLoadingAllTags(true);
+      fetch('/api/tags/all', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          setAllTags(organizeTagsAlphabetically(data));
+          setIsLoadingAllTags(false);
         });
     } else {
       fetch(`/api/characters/${category}`, { credentials: 'include' })
@@ -29,6 +42,18 @@ function BrowsePage() {
         });
     }
   }, [category, navigate]);
+
+  const organizeTagsAlphabetically = (tags) => {
+    const organized = {};
+    tags.forEach(tag => {
+      const firstLetter = tag.name[0].toUpperCase();
+      if (!organized[firstLetter]) {
+        organized[firstLetter] = [];
+      }
+      organized[firstLetter].push(tag);
+    });
+    return organized;
+  };
 
   const fetchCharactersByTag = (tagName) => {
     setSelectedTag(tagName);
@@ -44,6 +69,21 @@ function BrowsePage() {
   const clearTagSelection = () => {
     setSelectedTag(null);
     setCharacters([]);
+  };
+
+  const filteredTags = () => {
+    if (!searchQuery) return allTags;
+    
+    const filtered = {};
+    Object.keys(allTags).forEach(letter => {
+      const matchingTags = allTags[letter].filter(tag => 
+        tag.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      if (matchingTags.length > 0) {
+        filtered[letter] = matchingTags;
+      }
+    });
+    return filtered;
   };
 
   if (category !== 'tags') {
@@ -143,6 +183,68 @@ function BrowsePage() {
               )}
             </div>
           </>
+        )}
+      </section>
+
+      {/* All Tags Section */}
+      <section className="mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h4 className="mb-0">Browse All Tags</h4>
+          <div className="col-md-4">
+            <div className="input-group input-group-sm">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button 
+                className="btn btn-outline-secondary" 
+                onClick={() => setSearchQuery('')}
+                disabled={!searchQuery}
+              >
+                <i className="bi bi-x"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {isLoadingAllTags ? (
+          <div className="text-center my-3">
+            <div className="spinner-border spinner-border-sm" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        ) : (
+          <div className="tag-browser">
+            {Object.keys(filteredTags()).length > 0 ? (
+              Object.entries(filteredTags()).map(([letter, tags]) => (
+                <div key={letter} className="mb-3">
+                  <h5 className="text-muted mb-2">{letter}</h5>
+                  <div className="d-flex flex-wrap gap-2">
+                    {tags.map(tag => (
+                      <button
+                        key={tag.name}
+                        className={`btn btn-sm ${
+                          selectedTag === tag.name 
+                            ? 'btn-primary' 
+                            : 'btn-outline-secondary'
+                        }`}
+                        onClick={() => fetchCharactersByTag(tag.name)}
+                      >
+                        {tag.name} <span className="badge bg-secondary ms-1">{tag.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-muted py-3">
+                {searchQuery ? 'No tags match your search' : 'No tags available'}
+              </div>
+            )}
+          </div>
         )}
       </section>
     </div>
