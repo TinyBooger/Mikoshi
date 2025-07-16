@@ -268,8 +268,21 @@ export default function ProfilePage() {
               height="100"
             />
             <div>
-              <h3 className="mb-2">{user.name}</h3>
-              <button className="btn btn-outline-primary btn-sm" onClick={() => setShowModal(true)}>
+              <div className="d-flex align-items-baseline gap-2 mb-1">
+                <h3 className="mb-0">{user.name}</h3>
+                <span className="text-muted small">•</span>
+                <div className="d-flex gap-2">
+                  <span className="badge bg-light text-dark">
+                    <i className="bi bi-eye me-1"></i>
+                    {user.views || 0} views
+                  </span>
+                  <span className="badge bg-light text-dark">
+                    <i className="bi bi-heart me-1"></i>
+                    {user.likes || 0} likes
+                  </span>
+                </div>
+              </div>
+              <button className="btn btn-outline-primary btn-sm mt-1" onClick={() => setShowModal(true)}>
                 Edit Profile
               </button>
             </div>
