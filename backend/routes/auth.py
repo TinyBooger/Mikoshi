@@ -10,7 +10,7 @@ import logging
 
 from database import get_db
 from models import User
-from schemas import UserLogin, FirebaseUserCreate
+from schemas import UserLogin
 from utils.cloudinary_utils import upload_avatar
 from utils.validators import validate_account_fields
 
