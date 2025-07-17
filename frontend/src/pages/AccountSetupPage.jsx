@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { auth, secureCreateUserWithEmailAndPassword } from '../firebase';
+import { authReady, secureCreateUserWithEmailAndPassword } from '../firebase';
 
 export default function AccountSetupPage({ setUser }) {
   const MAX_NAME_LENGTH = 50;
@@ -29,7 +29,7 @@ export default function AccountSetupPage({ setUser }) {
 
     try {
       // 1. Create user in Firebase Authentication
-      const userCredential = await secureCreateUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await secureCreateUserWithEmailAndPassword(authReady, email, password);
       const firebaseUser = userCredential.user;
       
       // 2. Prepare form data for our backend

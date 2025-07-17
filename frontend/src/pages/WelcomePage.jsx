@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router';
-import { auth, secureSignInWithEmailAndPassword } from '../firebase';
+import { authReady, secureSignInWithEmailAndPassword } from '../firebase';
 
 function WelcomePage({ setUser }) {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ function WelcomePage({ setUser }) {
     setError('');
 
     try {
-      const userCredential = await secureSignInWithEmailAndPassword(auth, email, password);
+      const userCredential = await secureSignInWithEmailAndPassword(authReady, email, password);
       const firebaseUser = userCredential.user;
       
       const idToken = await firebaseUser.getIdToken();
