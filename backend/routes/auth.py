@@ -7,6 +7,7 @@ from firebase_admin import auth as firebase_auth
 from firebase_admin import credentials
 from typing import Optional
 import logging
+import os
 
 from database import get_db
 from models import User
@@ -52,6 +53,18 @@ async def get_current_user(
     except Exception as e:
         logging.error(f"Authentication error: {str(e)}")
         raise HTTPException(status_code=401, detail="Authentication failed")
+    
+@router.get("/api/config/firebase")
+async def get_firebase_config():
+    return {
+        "apiKey": os.getenv("FIREBASE_API_KEY"),
+        "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
+        "projectId": os.getenv("FIREBASE_PROJECT_ID"),
+        "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
+        "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
+        "appId": os.getenv("FIREBASE_APP_ID"),
+        "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID")
+    }
 
 @router.post("/api/login")
 async def login(user: UserLogin):

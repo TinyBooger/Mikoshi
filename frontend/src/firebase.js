@@ -1,26 +1,49 @@
-// Import the functions you need from the SDKs you need
+// frontend/src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import {getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword} from "firebase/auth"
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
-};
+let app;
+let auth;
 
-console.log("Firebase Config:", firebaseConfig);
+// Async function to initialize Firebase
+async function initializeFirebase() {
+  try {
+    const response = await fetch('/api/config/firebase');
+    if (!response.ok) {
+      throw new Error('Failed to fetch Firebase config');
+    }
+    
+    const firebaseConfig = await response.json();
+    console.log("Firebase Config:", firebaseConfig);
+    
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    
+    return { app, auth };
+  } catch (error) {
+    console.error("Error initializing Firebase:", error);
+    throw error;
+  }
+}
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+// Create a promise that resolves when Firebase is initialized
+const firebasePromise = initializeFirebase();
 
-export {auth, createUserWithEmailAndPassword, signInWithEmailAndPassword};
+// Export the auth promise and functions
+export const authReady = firebasePromise.then(({ auth }) => auth);
+
+export async function getAuthInstance() {
+  const { auth } = await firebasePromise;
+  return auth;
+}
+
+// Wrapper functions that wait for auth to be ready
+export async function secureCreateUserWithEmailAndPassword(email, password) {
+  const auth = await getAuthInstance();
+  return createUserWithEmailAndPassword(auth, email, password);
+}
+
+export async function secureSignInWithEmailAndPassword(email, password) {
+  const auth = await getAuthInstance();
+  return signInWithEmailAndPassword(auth, email, password);
+}
