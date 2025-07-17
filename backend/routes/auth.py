@@ -117,7 +117,7 @@ async def account_setup(
         db_user.profile_pic = upload_avatar(profile_pic.file, db_user.id)
         db.commit()
 
-    return {
+    return JSONResponse({
         "message": "Account created successfully",
         "user": {
             "id": db_user.id,
@@ -125,7 +125,7 @@ async def account_setup(
             "email": db_user.email,
             "profile_pic": db_user.profile_pic
         }
-    }
+    })
 
 @router.get("/api/current-user")
 async def get_current_user_info(
