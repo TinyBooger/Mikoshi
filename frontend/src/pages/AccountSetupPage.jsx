@@ -85,13 +85,9 @@ export default function AccountSetupPage({ setUser }) {
         body: formData,
       });
 
-      // Add this debug logging:
-      console.log('Response status:', res.status);
-      const responseText = await res.text();
-      console.log('Raw response:', responseText);
-
       const data = await res.json();
-
+      console.log('Response data:', data);
+      
       if (!res.ok) {
         // If backend fails, delete the Firebase user to keep things clean
         await firebaseUser.delete();
