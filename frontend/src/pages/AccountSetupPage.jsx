@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { authReady, secureCreateUserWithEmailAndPassword, getAuthInstance } from '../firebase';
+import { authReady, secureCreateUserWithEmailAndPassword } from '../firebase';
 
 export default function AccountSetupPage({ setUser }) {
   const MAX_NAME_LENGTH = 50;
@@ -15,49 +15,12 @@ export default function AccountSetupPage({ setUser }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [emailValid, setEmailValid] = useState(false);
-  const [passwordValid, setPasswordValid] = useState(false);
-  const [confirmValid, setConfirmValid] = useState(false);
-
-  const validateEmail = (email) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-  };
-
-  const validatePassword = (password) => {
-    return password.length >= 8 && 
-          /\d/.test(password) && 
-          /[!@#$%^&*(),.?":{}|<>]/.test(password);
-  };
-
-  const handleEmailChange = (e) => {
-    const value = e.target.value;
-    setEmail(value);
-    setEmailValid(validateEmail(value));
-  };
-
-  const handlePasswordChange = (e) => {
-    const value = e.target.value;
-    setPassword(value);
-    setPasswordValid(validatePassword(value));
-    setConfirmValid(value === confirmPassword);
-  };
-
-  const handleConfirmChange = (e) => {
-    const value = e.target.value;
-    setConfirmPassword(value);
-    setConfirmValid(value === password);
-  };
+  const [passwordError, setPasswordError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-
-    if (!emailValid || !passwordValid || !confirmValid) {
-      setError('Please fix the validation errors before submitting');
-      return;
-    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -66,7 +29,7 @@ export default function AccountSetupPage({ setUser }) {
 
     try {
       // 1. Create user in Firebase Authentication
-      const userCredential = await secureCreateUserWithEmailAndPassword(email, password);
+      const userCredential = await secureCreateUserWithEmailAndPassword(authReady, email, password);
       const firebaseUser = userCredential.user;
       
       // 2. Prepare form data for our backend
@@ -138,61 +101,49 @@ export default function AccountSetupPage({ setUser }) {
 
           <form onSubmit={handleSubmit} encType="multipart/form-data">
             
-            {/* Email Input */}
             <div className="mb-3 position-relative">
               <label className="form-label">Email</label>
               <input
                 type="email"
                 name="email"
-                className={`form-control ${email && !emailValid ? 'is-invalid' : ''} ${emailValid ? 'is-valid' : ''}`}
+                className="form-control"
                 required
                 value={email}
                 maxLength={MAX_EMAIL_LENGTH}
-                onChange={handleEmailChange}
+                onChange={(e) => setEmail(e.target.value)}
+                style={{ paddingRight: "3rem" }}
               />
-              {email && !emailValid && (
-                <div className="invalid-feedback">Please enter a valid email address</div>
-              )}
               <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
                 {email.length}/{MAX_EMAIL_LENGTH}
               </small>
             </div>
 
-            {/* Password Input */}
             <div className="mb-3 position-relative">
               <label className="form-label">Password</label>
               <input
                 type="password"
                 name="password"
-                className={`form-control ${password && !passwordValid ? 'is-invalid' : ''} ${passwordValid ? 'is-valid' : ''}`}
+                className="form-control"
                 required
                 value={password}
                 maxLength={MAX_PASSWORD_LENGTH}
-                onChange={handlePasswordChange}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ paddingRight: "3rem" }}
               />
-              {password && !passwordValid && (
-                <div className="invalid-feedback">
-                  Password must be at least 8 characters with 1 number and 1 special character
-                </div>
-              )}
               <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
                 {password.length}/{MAX_PASSWORD_LENGTH}
               </small>
             </div>
 
-            {/* Confirm Password Input */}
             <div className="mb-3 position-relative">
               <label className="form-label">Confirm Password</label>
               <input
                 type="password"
-                className={`form-control ${confirmPassword && !confirmValid ? 'is-invalid' : ''} ${confirmValid ? 'is-valid' : ''}`}
+                className="form-control"
                 required
                 value={confirmPassword}
-                onChange={handleConfirmChange}
+                onChange={(e) => setConfirmPassword(e.target.value)}
               />
-              {confirmPassword && !confirmValid && (
-                <div className="invalid-feedback">Passwords do not match</div>
-              )}
             </div>
 
             <div className="mb-3 position-relative">
@@ -220,7 +171,7 @@ export default function AccountSetupPage({ setUser }) {
             <button 
               type="submit" 
               className="btn btn-dark w-100"
-              disabled={isLoading || !emailValid || !passwordValid || !confirmValid}
+              disabled={isLoading}
             >
               {isLoading ? 'Creating Account...' : 'Submit'}
             </button>
