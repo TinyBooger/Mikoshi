@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { authReady, secureCreateUserWithEmailAndPassword, getAuthInstance } from '../firebase';
+import { auth } from '../firebase';
 
 export default function AccountSetupPage({ setUser }) {
   const MAX_NAME_LENGTH = 50;

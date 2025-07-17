@@ -1,6 +1,6 @@
 import React, { useState} from 'react';
 import { useNavigate } from 'react-router';
-import { authReady, secureSignInWithEmailAndPassword, getAuthInstance } from '../firebase';
+import { auth } from '../firebase';
 
 function WelcomePage({ setUser }) {
   const navigate = useNavigate();
