@@ -6,7 +6,7 @@ import Layout from './components/layout';
 import HomePage from './pages/HomePage';
 import BrowsePage from './pages/BrowsePage.jsx';
 import WelcomePage from './pages/WelcomePage';
-import AccountSetupPage from './pages/AccountSetupPage';
+import SignUpPage from './pages/SignupPage.jsx';
 import CharacterCreatePage from './pages/CharacterCreatePage';
 import CharacterEditPage from './pages/CharacterEditPage';
 import ChatPage from './pages/ChatPage';
@@ -19,6 +19,7 @@ import UsersPage from "./admin/pages/UsersPage";
 import CharactersPage from './admin/pages/CharactersPage.jsx';
 import TagsPage from './admin/pages/TagsPage.jsx';
 import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
+import SignUpPage from './pages/SignupPage.jsx';
 
 export default function App() {
   const [user, setUser] = useState(undefined);
@@ -60,6 +61,10 @@ export default function App() {
     {
       path: '/account-setup',
       element: <AccountSetupPage />,
+    },
+    {
+      path: '/sign-up',
+      element: <SignUpPage />,
     }
   ]);
 

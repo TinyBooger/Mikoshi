@@ -70,7 +70,7 @@ function WelcomePage({ setUser }) {
           >
             {isLoading ? 'Logging in...' : 'Login'}
           </button>
-          <button type="button" className="btn btn-outline-secondary" onClick={() => navigate('/account-setup')}>Sign up</button>
+          <button type="button" className="btn btn-outline-secondary" onClick={() => navigate('/sign-up')}>Sign up</button>
         </div>
       </form>
     </div>
