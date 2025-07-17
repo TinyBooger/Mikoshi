@@ -7,7 +7,6 @@ import HomePage from './pages/HomePage';
 import BrowsePage from './pages/BrowsePage.jsx';
 import WelcomePage from './pages/WelcomePage';
 import SignUpPage from './pages/SignUpPage.jsx';
-import AccountSetupPage from './pages/AccountSetupPage.jsx'
 import CharacterCreatePage from './pages/CharacterCreatePage';
 import CharacterEditPage from './pages/CharacterEditPage';
 import ChatPage from './pages/ChatPage';
@@ -57,10 +56,6 @@ export default function App() {
         {path: 'tags', element: <TagsPage />},
         {path: 'search-terms', element: <SearchTermsPage />},
       ]
-    },
-    {
-      path: '/account-setup',
-      element: <AccountSetupPage />,
     },
     {
       path: '/sign-up',
