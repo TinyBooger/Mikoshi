@@ -24,17 +24,15 @@ def validate_character_fields(name, persona, tagline, greeting, sample_dialogue,
     return None  # valid
 
 
-def validate_account_fields(email=None, name=None):
+def validate_account_fields(email=None, password=None, name=None):
     MAX_NAME_LENGTH = 50
     MAX_EMAIL_LENGTH = 100
+    MAX_PASSWORD_LENGTH = 128
 
-    if email is not None:
-        if len(email) > MAX_EMAIL_LENGTH:
-            return f"Email too long (max {MAX_EMAIL_LENGTH})"
-        if "@" not in email:  # Very basic email format check
-            return "Invalid email format"
-    
+    if email is not None and len(email) > MAX_EMAIL_LENGTH:
+        return f"Email too long (max {MAX_EMAIL_LENGTH})"
+    if password is not None and len(password) > MAX_PASSWORD_LENGTH:
+        return f"Password too long (max {MAX_PASSWORD_LENGTH})"
     if name is not None and len(name) > MAX_NAME_LENGTH:
         return f"Name too long (max {MAX_NAME_LENGTH})"
-    
     return None

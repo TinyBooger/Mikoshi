@@ -96,7 +96,7 @@ async def account_setup(
         raise HTTPException(status_code=400, detail="User already registered")
 
     # Validate fields (excluding password since Firebase handles that)
-    error = validate_account_fields(email=email, name=name)
+    error = validate_account_fields(email=email, name=name, skip_password=True)
     if error:
         raise HTTPException(status_code=400, detail=error)
 
