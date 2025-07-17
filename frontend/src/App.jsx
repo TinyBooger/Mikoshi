@@ -6,7 +6,7 @@ import Layout from './components/layout';
 import HomePage from './pages/HomePage';
 import BrowsePage from './pages/BrowsePage.jsx';
 import WelcomePage from './pages/WelcomePage';
-import SignUpPage from './pages/SignupPage.jsx';
+import SignUpPage from './pages/SignUpPage.jsx';
 import AccountSetupPage from './pages/AccountSetupPage.jsx'
 import CharacterCreatePage from './pages/CharacterCreatePage';
 import CharacterEditPage from './pages/CharacterEditPage';
