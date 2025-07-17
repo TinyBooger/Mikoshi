@@ -31,48 +31,28 @@ async def get_current_user(
 ) -> User:
     """Verify Firebase ID token and return corresponding user from database"""
     try:
-        # 1. Extract and verify token
         id_token = credentials.credentials
-        try:
-            decoded_token = firebase_auth.verify_id_token(id_token)
-        except ValueError as e:
-            logging.error(f"Token validation error: {str(e)}")
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid authentication token",
-                headers={"WWW-Authenticate": "Bearer"}
-            )
-        
-        # 2. Get user from database
+        decoded_token = firebase_auth.verify_id_token(id_token)
         firebase_uid = decoded_token['uid']
-        db_user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
         
+        # Find user in database by firebase_uid
+        db_user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
         if not db_user:
-            logging.error(f"User not found for UID: {firebase_uid}")
-            raise HTTPException(
-                status_code=404,
-                detail="User not found in database"
-            )
+            raise HTTPException(status_code=404, detail="User not found in database")
             
         return db_user
         
-    except firebase_auth.ExpiredIdTokenError:
-        logging.error("Expired token")
-        raise HTTPException(
-            status_code=401,
-            detail="Token expired",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-    except HTTPException:
-        # Re-raise existing HTTP exceptions
-        raise
     except Exception as e:
-        logging.error(f"Unexpected authentication error: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication failed",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
+        raise HTTPException(status_code=401, detail=f"Invalid authentication: {str(e)}")
+    except firebase_auth.InvalidIdTokenError as e:
+        logging.error(f"Invalid token: {str(e)}")
+        raise HTTPException(status_code=401, detail="Invalid authentication token")
+    except firebase_auth.ExpiredIdTokenError as e:
+        logging.error(f"Expired token: {str(e)}")
+        raise HTTPException(status_code=401, detail="Authentication token expired")
+    except Exception as e:
+        logging.error(f"Authentication error: {str(e)}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
     
 @router.get("/api/config/firebase")
 async def get_firebase_config():
@@ -165,33 +145,17 @@ async def get_current_user_info(
         "likes": user.likes,
     }
 
-@router.get("/api/verify-firebase-token")  # Changed to GET to match frontend
+@router.post("/api/verify-firebase-token")
 async def verify_firebase_token(
-    authorization: str = Header(None, alias="Authorization")
+    user: User = Depends(get_current_user)
 ):
     """Endpoint for client to verify token and get user data"""
-    try:
-        if not authorization or not authorization.startswith("Bearer "):
-            return JSONResponse(
-                {"error": "Missing or invalid authorization header"},
-                status_code=401
-            )
-
-        token = authorization[7:]
-        user = await get_current_user(token)  # Make sure this handles verification
-        
-        return JSONResponse({  # Explicit JSON response
-            "message": "Token verified",
-            "user": {
-                "id": user.id,
+    return {
+        "message": "Token verified",
+        "user": {
+            "id": user.id,
             "name": user.name,
             "email": user.email,
             "profile_pic": user.profile_pic
-            }
-        })
-
-    except Exception as e:
-        return JSONResponse(
-            {"error": str(e)},
-            status_code=401
-        )
+        }
+    }
