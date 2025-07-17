@@ -85,11 +85,6 @@ export default function AccountSetupPage({ setUser }) {
         body: formData,
       });
 
-      // Add this debug logging:
-      console.log('Response status:', res.status);
-      const responseText = await res.text();
-      console.log('Raw response:', responseText);
-
       const data = await res.json();
 
       if (!res.ok) {
