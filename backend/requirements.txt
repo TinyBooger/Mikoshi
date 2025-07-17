@@ -9,4 +9,3 @@ python-multipart
 itsdangerous
 bcrypt<4.0
 cloudinary
-firebase_admin
