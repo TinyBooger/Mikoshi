@@ -18,6 +18,7 @@ import UsersPage from "./admin/pages/UsersPage";
 import CharactersPage from './admin/pages/CharactersPage.jsx';
 import TagsPage from './admin/pages/TagsPage.jsx';
 import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
+import TestPage from './pages/TestPage.jsx';
 
 export default function App() {
   const { currentUser, loading } = useContext(AuthContext);
@@ -32,6 +33,7 @@ export default function App() {
       element: currentUser ? <Layout /> : <WelcomePage />,
       children: currentUser ? [
         { index: true, element: <HomePage /> },
+        { path: 'test', element: <TestPage /> },
         { path: 'browse/:category', element: <BrowsePage /> },
         { path: 'character-create', element: <CharacterCreatePage /> },
         { path: 'character-edit', element: <CharacterEditPage /> },
