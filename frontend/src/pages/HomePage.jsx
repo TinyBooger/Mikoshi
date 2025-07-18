@@ -16,20 +16,20 @@ function HomePage() {
 
   useEffect(() => {
     // Fetch existing sections
-    fetch(`/api/characters/popular`, { 'Authorization': `Bearer ${idToken}` })
+    fetch(`/api/characters/popular`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
       .then(setPopular);
 
-    fetch(`/api/characters/recent`, { 'Authorization': `Bearer ${idToken}` })
+    fetch(`/api/characters/recent`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
       .then(setRecent);
 
-    fetch(`/api/characters/recommended`, { 'Authorization': `Bearer ${idToken}` })
+    fetch(`/api/characters/recommended`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
       .then(setRecommended);
 
     // Fetch popular tags
-    fetch('/api/tag-suggestions', { 'Authorization': `Bearer ${idToken}` })
+    fetch('/api/tag-suggestions', { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
       .then(tags => {
         setPopularTags(tags);
@@ -44,7 +44,7 @@ function HomePage() {
   }, []);
 
   const fetchCharactersByTag = (tagName) => {
-    fetch(`/api/characters/by-tag/${encodeURIComponent(tagName)}`, { 'Authorization': `Bearer ${idToken}` })
+    fetch(`/api/characters/by-tag/${encodeURIComponent(tagName)}`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
       .then(characters => {
         setTagCharacters(prev => ({
