@@ -7,6 +7,7 @@ import os
 
 from database import engine, Base
 from routes import auth, character, chat, user, search, tags
+from utils.firebase_admin_setup import initialize_firebase_admin
 
 # Middleware
 middleware = [
@@ -15,6 +16,9 @@ middleware = [
 
 # App
 app = FastAPI(middleware=middleware)
+
+# Initialize Firebase Admin at startup
+initialize_firebase_admin()
 
 # Serve static files from React build
 app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
