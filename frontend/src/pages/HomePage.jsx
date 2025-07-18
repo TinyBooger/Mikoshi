@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import CharacterCard from '../components/CharacterCard';
-import { AuthContext } from './AuthProvider.jsx';
+import { AuthContext } from '../components/AuthProvider';
 
 function HomePage() {
   const [popular, setPopular] = useState([]);
