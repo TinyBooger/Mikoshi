@@ -137,33 +137,33 @@ def logout():
     response.delete_cookie("session_token")
     return response
 
-@router.post("/api/account-setup")
-async def account_setup(
-    email: str = Form(...),
-    password: str = Form(...),
-    name: str = Form(...),
-    profile_pic: UploadFile = File(None),
-    db: Session = Depends(get_db)
-):
-    if db.query(User).filter(User.email == email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
+# @router.post("/api/account-setup")
+# async def account_setup(
+#     email: str = Form(...),
+#     password: str = Form(...),
+#     name: str = Form(...),
+#     profile_pic: UploadFile = File(None),
+#     db: Session = Depends(get_db)
+# ):
+#     if db.query(User).filter(User.email == email).first():
+#         raise HTTPException(status_code=400, detail="Email already registered")
     
-    error = validate_account_fields(email=email, password=password, name=name)
-    if error:
-        raise HTTPException(status_code=400, detail=error)
+#     error = validate_account_fields(email=email, password=password, name=name)
+#     if error:
+#         raise HTTPException(status_code=400, detail=error)
 
 
-    hashed = pwd_context.hash(password)
-    db_user = User(email=email, hashed_password=hashed, name=name)
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
+#     hashed = pwd_context.hash(password)
+#     db_user = User(email=email, hashed_password=hashed, name=name)
+#     db.add(db_user)
+#     db.commit()
+#     db.refresh(db_user)
 
-    if profile_pic:
-        db_user.profile_pic = upload_avatar(profile_pic.file, db_user.id)
-        db.commit()
+#     if profile_pic:
+#         db_user.profile_pic = upload_avatar(profile_pic.file, db_user.id)
+#         db.commit()
 
-    return {"message": "Account created successfully"}
+#     return {"message": "Account created successfully"}
 
 @router.get("/api/current-user")
 def get_current_user_info(request: Request, db: Session = Depends(get_db)):
