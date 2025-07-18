@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { AuthContext } from 'AuthProvider.jsx'; // Import the AuthContext
+import { AuthContext } from './AuthProvider.jsx'; // Import the AuthContext
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import defaultPicture from '../assets/images/default-picture.png';
