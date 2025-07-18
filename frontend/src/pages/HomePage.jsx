@@ -18,15 +18,18 @@ function HomePage() {
     // Fetch existing sections
     fetch(`/api/characters/popular`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
-      .then(setPopular);
+      .then(setPopular)
+      .catch(() => setPopular([]));
 
     fetch(`/api/characters/recent`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
-      .then(setRecent);
+      .then(setRecent)
+      .catch(() => setRecent([]));
 
     fetch(`/api/characters/recommended`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
-      .then(setRecommended);
+      .then(setRecommended)
+      .catch(() => setRecommended([]));
 
     // Fetch popular tags
     fetch('/api/tag-suggestions', { headers: { 'Authorization': `Bearer ${idToken}` } })
@@ -40,7 +43,8 @@ function HomePage() {
         topTags.forEach(tag => {
           fetchCharactersByTag(tag.name);
         });
-      });
+      })
+      .catch(() => setPopularTags([]));
   }, []);
 
   const fetchCharactersByTag = (tagName) => {
