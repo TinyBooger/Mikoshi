@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import CharacterCard from '../components/CharacterCard';
+import { AuthContext } from './AuthProvider.jsx';
 
 function HomePage() {
   const [popular, setPopular] = useState([]);
@@ -11,23 +12,24 @@ function HomePage() {
   const [loadingTags, setLoadingTags] = useState(true);
   const [selectedTag, setSelectedTag] = useState(null);
   const navigate = useNavigate();
+  const { currentUser, userData, idToken, loading } = useContext(AuthContext);
 
   useEffect(() => {
     // Fetch existing sections
-    fetch(`/api/characters/popular`, { credentials: 'include' })
+    fetch(`/api/characters/popular`, { 'Authorization': `Bearer ${idToken}` })
       .then(res => res.json())
       .then(setPopular);
 
-    fetch(`/api/characters/recent`, { credentials: 'include' })
+    fetch(`/api/characters/recent`, { 'Authorization': `Bearer ${idToken}` })
       .then(res => res.json())
       .then(setRecent);
 
-    fetch(`/api/characters/recommended`, { credentials: 'include' })
+    fetch(`/api/characters/recommended`, { 'Authorization': `Bearer ${idToken}` })
       .then(res => res.json())
       .then(setRecommended);
 
     // Fetch popular tags
-    fetch('/api/tag-suggestions', { credentials: 'include' })
+    fetch('/api/tag-suggestions', { 'Authorization': `Bearer ${idToken}` })
       .then(res => res.json())
       .then(tags => {
         setPopularTags(tags);
@@ -42,7 +44,7 @@ function HomePage() {
   }, []);
 
   const fetchCharactersByTag = (tagName) => {
-    fetch(`/api/characters/by-tag/${encodeURIComponent(tagName)}`, { credentials: 'include' })
+    fetch(`/api/characters/by-tag/${encodeURIComponent(tagName)}`, { 'Authorization': `Bearer ${idToken}` })
       .then(res => res.json())
       .then(characters => {
         setTagCharacters(prev => ({

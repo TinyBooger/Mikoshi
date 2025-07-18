@@ -150,27 +150,33 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
     }
 
 @router.delete("/api/character/{character_id}/delete")
-async def delete_character(character_id: int, request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
+async def delete_character(
+    character_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+    ):
     char = db.query(Character).filter(Character.id == character_id).first()
     if not char:
         raise HTTPException(status_code=404, detail="Character not found")
-    if char.creator_id != user.id:
+    if char.creator_id != current_user.id:
         print("creator id:", char.creator_id)
-        print("user id:", user.id)
+        print("user id:", current_user.id)
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Remove from user's characters_created list
-    if character_id in user.characters_created:
-        user.characters_created.remove(character_id)
+    if character_id in current_user.characters_created:
+        current_user.characters_created.remove(character_id)
 
     db.delete(char)
     db.commit()
     return {"message": "Character deleted successfully"}
 
 @router.post("/api/character/{character_id}/like")
-def like_character(request: Request, character_id: int, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
+def like_character(
+    character_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+    ):
     char = db.query(Character).filter(Character.id == character_id).first()
     if not char:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -187,8 +193,8 @@ def like_character(request: Request, character_id: int, db: Session = Depends(ge
     creator.likes = (creator.likes or 0) + 1
 
     # Update user's liked characters
-    if character_id not in user.liked_characters:
-        user.liked_characters = user.liked_characters + [character_id]
+    if character_id not in current_user.liked_characters:
+        current_user.liked_characters = current_user.liked_characters + [character_id]
 
     # Update user's liked tags
     for tag in char.tags or []:
@@ -197,8 +203,8 @@ def like_character(request: Request, character_id: int, db: Session = Depends(ge
         if db_tag:
             db_tag.likes += 1
             
-        if tag not in user.liked_tags:
-            user.liked_tags = user.liked_tags + [tag]
+        if tag not in current_user.liked_tags:
+            current_user.liked_tags = current_user.liked_tags + [tag]
 
     db.commit()
     return {"likes": char.likes}
@@ -220,12 +226,14 @@ def get_popular_characters(db: Session = Depends(get_db)):
     ]
 
 @router.get("/api/characters/recommended")
-def get_recommended_characters(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
-    if not user.liked_tags:
+def get_recommended_characters(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+    ):
+    if not current_user.liked_tags:
         return []  # no recommendations
     
-    user_tags = user.liked_tags or []
+    user_tags = current_user.liked_tags or []
     tags_array = array(user_tags, type_=TEXT)
 
     chars = db.query(Character).filter(Character.tags.overlap(tags_array)).order_by(Character.likes.desc()).limit(12).all()

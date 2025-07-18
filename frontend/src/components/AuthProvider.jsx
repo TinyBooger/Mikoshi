@@ -7,6 +7,7 @@ export const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userData, setUserData] = useState(null); // Added for database user data
+  const [idToken, setIdToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,12 +15,12 @@ export function AuthProvider({ children }) {
       if (user) {
         try {
           // Get the Firebase ID token
-          const idToken = await user.getIdToken();
-          
+          const freshToken = await user.getIdToken();
+          setIdToken(freshToken);
           // Fetch user data from your backend
           const response = await fetch('/api/users/me', {
             headers: {
-              'Authorization': `Bearer ${idToken}`
+              'Authorization': `Bearer ${freshToken}`
             }
           });
 
@@ -47,14 +48,15 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{ 
       currentUser, 
       userData,    // Now includes database record
+      idToken,
       loading,
       refreshUserData: async () => {  // Added refresh function
         if (currentUser) {
           try {
-            const idToken = await currentUser.getIdToken();
+            const freshToken = await currentUser.getIdToken();
             const response = await fetch('/api/users/me', {
               headers: {
-                'Authorization': `Bearer ${idToken}`
+                'Authorization': `Bearer ${freshToken}`
               }
             });
             if (response.ok) {

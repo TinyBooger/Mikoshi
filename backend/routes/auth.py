@@ -165,21 +165,21 @@ def logout():
 
 #     return {"message": "Account created successfully"}
 
-@router.get("/api/current-user")
-def get_current_user_info(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
+# @router.get("/api/current-user")
+# def get_current_user_info(request: Request, db: Session = Depends(get_db)):
+#     token = request.cookies.get("session_token")
+#     user_id = verify_session_token(token)
+#     if not user_id:
+#         raise HTTPException(status_code=401, detail="Not logged in")
 
-    user = db.query(User).filter(User.id == user_id).first()
-    return {
-        "id": user.id,
-        "name": user.name,
-        "profile_pic": user.profile_pic,
-        "liked_characters": user.liked_characters,
-        "chat_history": user.chat_history,
-        "personas": user.personas,
-        "views": user.views,
-        "likes": user.likes,
-    }
+#     user = db.query(User).filter(User.id == user_id).first()
+#     return {
+#         "id": user.id,
+#         "name": user.name,
+#         "profile_pic": user.profile_pic,
+#         "liked_characters": user.liked_characters,
+#         "chat_history": user.chat_history,
+#         "personas": user.personas,
+#         "views": user.views,
+#         "likes": user.likes,
+#     }

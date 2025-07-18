@@ -10,7 +10,7 @@ export default function Sidebar() {
   const [recent, setRecent] = useState([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
   const navigate = useNavigate();
-  const { currentUser, userData, loading } = useContext(AuthContext); // Get user data from context
+  const { currentUser, userData, idToken, loading } = useContext(AuthContext); // Get user data from context
 
   useEffect(() => {
     const fetchRecentCharacters = async () => {
@@ -21,7 +21,6 @@ export default function Sidebar() {
 
       setLoadingRecent(true);
       try {
-        const idToken = await currentUser.getIdToken();
         const response = await fetch('/api/recent-characters', {
           headers: {
             'Authorization': `Bearer ${idToken}`
