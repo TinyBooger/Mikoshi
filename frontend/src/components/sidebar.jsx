@@ -1,32 +1,72 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { AuthContext } from 'AuthProvider.jsx'; // Import the AuthContext
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebase';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 
-
-
 export default function Sidebar() {
-  const [user, setUser] = useState(null);
   const [recent, setRecent] = useState([]);
+  const [loadingRecent, setLoadingRecent] = useState(false);
   const navigate = useNavigate();
+  const { currentUser, userData, loading } = useContext(AuthContext); // Get user data from context
 
   useEffect(() => {
-    fetch(`/api/current-user`, { credentials: 'include' })
-      .then(res => (res.ok ? res.json() : null))
-      .then(data => setUser(data));
+    const fetchRecentCharacters = async () => {
+      if (!currentUser) {
+        setRecent([]);
+        return;
+      }
 
-    fetch(`/api/recent-characters`, { credentials: 'include' })
-      .then(res => (res.ok ? res.json() : []))
-      .then(setRecent);
-  }, []);
+      setLoadingRecent(true);
+      try {
+        const idToken = await currentUser.getIdToken();
+        const response = await fetch('/api/recent-characters', {
+          headers: {
+            'Authorization': `Bearer ${idToken}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setRecent(data);
+        } else {
+          console.error('Failed to fetch recent characters');
+          setRecent([]);
+        }
+      } catch (error) {
+        console.error('Error fetching recent characters:', error);
+        setRecent([]);
+      } finally {
+        setLoadingRecent(false);
+      }
+    };
+
+    fetchRecentCharacters();
+  }, [currentUser]);
 
   const handleLogout = async () => {
-    await fetch(`/api/logout`, {
-      method: "POST",
-      credentials: 'include'
-    });
-    location.reload();
+    try {
+      await signOut(auth); // Firebase sign out
+      navigate('/'); // Redirect to login page
+    } catch (error) {
+      console.error('Logout error:', error);
+      alert('Logout failed. Please try again.');
+    }
   };
+
+  if (loading) {
+    return (
+      <aside className="d-flex flex-column h-100 p-3 bg-light border-end" style={{ minHeight: '100vh' }}>
+        <div className="text-center py-5">
+          <div className="spinner-border text-secondary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside className="d-flex flex-column h-100 p-3 bg-light border-end" style={{ minHeight: '100vh' }}>
@@ -41,7 +81,7 @@ export default function Sidebar() {
         <button
           className="btn btn-outline-secondary mb-3 w-100"
           onClick={() => {
-            if (!user) return alert("Please login first");
+            if (!currentUser) return alert("Please login first");
             navigate("/character-create");
           }}
         >
@@ -72,19 +112,22 @@ export default function Sidebar() {
       </ul>
 
       <div className="mt-auto px-2">
-        {user ? (
+        {currentUser ? (
           <div className="dropdown">
             <button
               className="btn btn-outline-light border dropdown-toggle w-100 d-flex align-items-center gap-2"
               data-bs-toggle="dropdown"
             >
               <img
-                src={user.profile_pic || defaultAvatar}
+                src={userData?.profile_pic || defaultAvatar}
                 className="rounded-circle"
                 width="32"
                 height="32"
+                alt={userData?.name || 'User'}
               />
-              <span className="flex-grow-1 text-start text-dark">{user.name}</span>
+              <span className="flex-grow-1 text-start text-dark">
+                {userData?.name || currentUser.email}
+              </span>
             </button>
             <ul className="dropdown-menu w-100">
               <li>
@@ -103,7 +146,14 @@ export default function Sidebar() {
             </ul>
           </div>
         ) : (
-          <div className="text-muted text-center small">Failed to load user</div>
+          <div className="text-muted text-center small">
+            <button 
+              className="btn btn-link p-0" 
+              onClick={() => navigate('/login')}
+            >
+              Log in to continue
+            </button>
+          </div>
         )}
       </div>
     </aside>

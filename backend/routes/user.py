@@ -1,4 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import firebase_admin
+from firebase_admin import auth as firebase_auth
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -9,6 +12,7 @@ from utils.cloudinary_utils import upload_avatar
 from utils.validators import validate_account_fields
 
 router = APIRouter()
+security = HTTPBearer()
 
 @router.get("/api/user/{user_id}")
 def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
@@ -86,31 +90,49 @@ def get_user_characters(user_id: int, db: Session = Depends(get_db)):
     return [{"id": c.id, "name": c.name, "picture": c.avatar_url} for c in characters]
 
 @router.get("/api/recent-characters")
-def get_recent_characters(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        return []
+def get_recent_characters(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    try:
+        # Verify Firebase ID token
+        decoded_token = firebase_auth.verify_id_token(credentials.credentials)
+        firebase_uid = decoded_token['uid']
+        
+        # Get user from database
+        user = db.query(User).filter(User.id == firebase_uid).first()
+        if not user or not user.recent_characters:
+            return []
 
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.recent_characters:
-        return []
+        # Extract recent characters
+        recent = user.recent_characters
+        char_ids = [entry["id"] for entry in recent]
 
-    recent = user.recent_characters
-    char_ids = [entry["id"] for entry in recent]
+        # Fetch characters from database
+        characters = db.query(Character).filter(Character.id.in_(char_ids)).all()
+        char_map = {str(c.id): c for c in characters}
 
-    characters = db.query(Character).filter(Character.id.in_(char_ids)).all()
-    char_map = {str(c.id): c for c in characters}
-
-    return [
-        {
-            "id": entry["id"],
-            "name": char_map.get(entry["id"], None).name if char_map.get(entry["id"]) else "Unknown",
-            "picture": char_map.get(entry["id"], None).picture if char_map.get(entry["id"]) else None,
-            "timestamp": entry["timestamp"],
-        }
-        for entry in recent if entry["id"] in char_map
-    ]
+        # Return formatted response
+        return [
+            {
+                "id": entry["id"],
+                "name": char_map[entry["id"]].name if entry["id"] in char_map else "Unknown",
+                "picture": char_map[entry["id"]].picture if entry["id"] in char_map else None,
+                "timestamp": entry["timestamp"],
+            }
+            for entry in recent if entry["id"] in char_map
+        ]
+        
+    except firebase_admin.exceptions.FirebaseError as e:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid authentication credentials"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 @router.post("/api/recent-characters/update")
 async def update_recent_characters(request: Request, db: Session = Depends(get_db)):
