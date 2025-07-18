@@ -15,18 +15,48 @@ export default function AccountSetupPage() {
     setError('');
     
     try {
-      // Create user with email and password
+      // 1. Create user with email and password in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
-      // Update user profile with display name
+      // 2. Update profile with display name in Firebase Auth
       await updateProfile(userCredential.user, {
         displayName: name
       });
 
-      // Navigate to home page after successful signup
+      // 3. Get Firebase ID token for backend verification
+      const idToken = await userCredential.user.getIdToken();
+
+      // 4. Create user record in your database
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          name: name,
+          email: email,
+          // Include other fields if needed
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create user record');
+      }
+
+      // 5. Navigate to home page after successful signup
       navigate('/');
     } catch (err) {
       setError(err.message);
+      // Optional: Delete the Firebase user if database creation fails
+      if (auth.currentUser) {
+        try {
+          await auth.currentUser.delete();
+        } catch (deleteError) {
+          console.error("Error cleaning up Firebase user:", deleteError);
+        }
+      }
     }
   };
 

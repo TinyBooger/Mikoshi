@@ -27,10 +27,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, nullable=False)
-    phone = Column(String, unique=False)
-    hashed_password = Column(String, nullable=False)
-    name = Column(String)  # Add this
-    profile_pic = Column(String, nullable=True)  # Also add for storing file path if needed
+    name = Column(String)
+    profile_pic = Column(String, nullable=True)
 
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
@@ -40,7 +38,7 @@ class User(Base):
     liked_tags = Column(ARRAY(Text), default=[])
 
     chat_history = Column(ARRAY(JSONB), default=[])
-    personas = Column(ARRAY(JSONB), default=[])  # Add this line
+    personas = Column(ARRAY(JSONB), default=[])
 
 class SearchTerm(Base):
     __tablename__ = "search_term"
