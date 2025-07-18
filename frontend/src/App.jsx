@@ -1,5 +1,4 @@
-// App.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import AdminApp from './admin/AdminApp.jsx';
 import Layout from './components/layout';
@@ -13,7 +12,7 @@ import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
 import PublicProfilePage from "./pages/PublicProfilePage";
 import SearchPage from "./pages/SearchPage";
-
+import { AuthContext } from './components/AuthProvider';
 import DashboardPage from "./admin/pages/DashboardPage";
 import UsersPage from "./admin/pages/UsersPage";
 import CharactersPage from './admin/pages/CharactersPage.jsx';
@@ -21,21 +20,17 @@ import TagsPage from './admin/pages/TagsPage.jsx';
 import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
 
 export default function App() {
-  const [user, setUser] = useState(undefined);
+  const { currentUser, loading } = useContext(AuthContext);
 
-  useEffect(() => {
-    fetch(`/api/current-user`, { credentials: 'include' })
-      .then(res => (res.ok ? res.json() : null))
-      .then(data => setUser(data));
-  }, []);
-
-  if (user === undefined) return null;
+  if (loading) {
+    return null; // Or a loading spinner
+  }
 
   const router = createBrowserRouter([
     {
       path: '/',
-      element: user ? <Layout /> : <WelcomePage setUser={setUser} />,
-      children: user ? [
+      element: currentUser ? <Layout /> : <WelcomePage />,
+      children: currentUser ? [
         { index: true, element: <HomePage /> },
         { path: 'browse/:category', element: <BrowsePage /> },
         { path: 'character-create', element: <CharacterCreatePage /> },

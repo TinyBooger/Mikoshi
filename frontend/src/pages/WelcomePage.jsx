@@ -1,54 +1,59 @@
-// src/pages/WelcomePage.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from './firebase';
 
-
-
-function WelcomePage({ setUser }) {
+export default function LoginPage() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const email = e.target.email.value.trim();
-    const password = e.target.password.value.trim();
-
-    const res = await fetch(`/api/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-      credentials: 'include'
-    });
-
-    const data = await res.json();
-    alert(data.message || data.detail);
-
-    if (res.ok) {
-      console.log("Fetching user...");
-      const userRes = await fetch(`/api/current-user`, { credentials: 'include' });
-      const userData = await userRes.json();
-      console.log("User data:", userData);
-      setUser(userData); // ✅ this triggers App to re-render with logged-in router
+    setError('');
+    
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      navigate('/');
+    } catch (err) {
+      setError(err.message);
     }
   };
 
   return (
-    <div className="container d-flex flex-column justify-content-center align-items-center text-center vh-100">
-      <h1 className="mb-4">Welcome to Character Library</h1>
-      <p className="mb-4">Discover and chat with your favorite characters.</p>
-      <form onSubmit={handleLogin} className="w-100" style={{ maxWidth: 400 }}>
-        <div className="mb-3">
-          <input name="email" type="email" className="form-control" placeholder="Email" required />
+    <div className="bg-light d-flex align-items-center justify-content-center" style={{ minHeight: '100vh' }}>
+      <div className="container">
+        <div className="mx-auto" style={{ maxWidth: 400 }}>
+          <h2 className="mb-4 text-center">Login</h2>
+          {error && <div className="alert alert-danger">{error}</div>}
+          <form onSubmit={handleSubmit}>
+            <div className="mb-3">
+              <label className="form-label">Email</label>
+              <input
+                type="email"
+                className="form-control"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Password</label>
+              <input
+                type="password"
+                className="form-control"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+
+            <button type="submit" className="btn btn-dark w-100">Login</button>
+          </form>
         </div>
-        <div className="mb-3">
-          <input name="password" type="password" className="form-control" placeholder="Password" required />
-        </div>
-        <div className="d-grid gap-2">
-          <button type="submit" className="btn btn-dark">Login</button>
-          <button type="button" className="btn btn-outline-secondary" onClick={() => navigate('/account-setup')}>Sign up</button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }
-
-export default WelcomePage;
