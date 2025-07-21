@@ -292,8 +292,7 @@ def get_recent_characters(db: Session = Depends(get_db)):
 
 
 @router.post("/api/views/increment")
-def increment_views(request: Request, payload: dict, db: Session = Depends(get_db)):
-    get_current_user(request, db)
+def increment_views(payload: dict, db: Session = Depends(get_db)):
     character_id = payload.get("character_id")
 
     if character_id:

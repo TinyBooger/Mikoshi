@@ -6,6 +6,7 @@ from utils.session import get_current_user
 from utils.llm_client import client
 import uuid
 from datetime import datetime, UTC
+from models import User
 
 router = APIRouter()
 
@@ -20,8 +21,7 @@ def generate_chat_title(messages, existing_title=None):
     return "New Chat"
 
 @router.post("/api/chat")
-async def chat(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
+async def chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     data = await request.json()
     messages = data.get("messages")
     character_id = data.get("character_id")
@@ -32,8 +32,8 @@ async def chat(request: Request, db: Session = Depends(get_db)):
 
     # Get existing title if this is an existing chat
     existing_title = None
-    if chat_id and user.chat_history:
-        for chat in user.chat_history:
+    if chat_id and current_user.chat_history:
+        for chat in current_user.chat_history:
             if chat.get("chat_id") == chat_id:
                 existing_title = chat.get("title")
                 break
@@ -65,10 +65,10 @@ async def chat(request: Request, db: Session = Depends(get_db)):
         }
 
         # Remove existing entry for this chat_id only
-        filtered = [h for h in (user.chat_history or []) if h.get("chat_id") != chat_id]
+        filtered = [h for h in (current_user.chat_history or []) if h.get("chat_id") != chat_id]
         
         filtered.insert(0, new_entry)
-        user.chat_history = filtered[:30]
+        current_user.chat_history = filtered[:30]
         db.commit()
 
         return {
@@ -80,8 +80,7 @@ async def chat(request: Request, db: Session = Depends(get_db)):
     return {"response": reply}
 
 @router.post("/api/chat/rename")
-async def rename_chat(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
+async def rename_chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     data = await request.json()
     chat_id = data.get("chat_id")
     new_title = data.get("new_title")
@@ -89,12 +88,12 @@ async def rename_chat(request: Request, db: Session = Depends(get_db)):
     if not chat_id or not new_title:
         return JSONResponse(content={"error": "Missing chat_id or new_title"}, status_code=400)
 
-    if user.chat_history:
+    if current_user.chat_history:
         # Create a new list to force SQLAlchemy to detect changes
         updated_history = []
         modified = False
         
-        for chat in user.chat_history:
+        for chat in current_user.chat_history:
             if chat.get("chat_id") == chat_id:
                 # Create a new dict instead of modifying in-place
                 updated_chat = dict(chat)
@@ -107,24 +106,23 @@ async def rename_chat(request: Request, db: Session = Depends(get_db)):
         
         if modified:
             # Assign the new list to trigger change detection
-            user.chat_history = updated_history
-            db.add(user)  # Explicitly mark as modified
+            current_user.chat_history = updated_history
+            db.add(current_user)  # Explicitly mark as modified
             db.commit()
             return {"status": "success"}
     
     return JSONResponse(content={"error": "Chat not found"}, status_code=404)
 
 @router.post("/api/chat/delete")
-async def delete_chat(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
+async def delete_chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     data = await request.json()
     chat_id = data.get("chat_id")
 
     if not chat_id:
         return JSONResponse(content={"error": "Missing chat_id"}, status_code=400)
 
-    if user.chat_history:
-        user.chat_history = [chat for chat in user.chat_history if chat.get("chat_id") != chat_id]
+    if current_user.chat_history:
+        current_user.chat_history = [chat for chat in current_user.chat_history if chat.get("chat_id") != chat_id]
         db.commit()
         return {"status": "success"}
     

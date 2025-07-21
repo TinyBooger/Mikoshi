@@ -3,7 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import firebase_admin
 from firebase_admin import auth as firebase_auth
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, UTC
 
 from database import get_db
 from models import User, Character
@@ -117,26 +117,20 @@ def get_recent_characters(
     ]
 
 @router.post("/api/recent-characters/update")
-async def update_recent_characters(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
-
+async def update_recent_characters(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     data = await request.json()
     char_id = data.get("character_id")
     if not char_id:
         raise HTTPException(status_code=400, detail="Missing character_id")
 
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    now_str = datetime.utcnow().isoformat()
-    recent = user.recent_characters or []
+    now_str = datetime.now(UTC).isoformat()
+    recent = current_user.recent_characters or []
     recent = [entry for entry in recent if entry.get("id") != char_id]
     recent.insert(0, {"id": char_id, "timestamp": now_str})
-    user.recent_characters = recent[:10]
+    current_user.recent_characters = recent[:10]
 
     db.commit()
     return {"status": "success"}
