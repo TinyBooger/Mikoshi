@@ -20,7 +20,7 @@ class Character(Base):
     greeting = Column(String, nullable=True)
 
     created_time = Column(DateTime, default=lambda: datetime.now(UTC))
-    creator_id = Column(Integer, nullable=False)
+    creator_id = Column(String, nullable=False)
 
 class User(Base):
     __tablename__ = "users"
