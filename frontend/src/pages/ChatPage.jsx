@@ -239,7 +239,18 @@ export default function ChatPage() {
     }
   };
 
-  // ... rest of the component remains the same, just replace currentUser with userData in the JSX
+  const toggleMenu = (chatId, e) => {
+    e.stopPropagation();
+    setMenuOpenId(menuOpenId === chatId ? null : chatId);
+  };
+
+  const handlePersonaSelect = (personaId) => {
+    const confirmed = window.confirm("This will start a new chat, are you sure?");
+    if (!confirmed) return;
+
+    setSelectedPersonaId(personaId);
+    startNewChat(); // reuse existing logic
+  };
 
   return (
     <div className="d-flex h-100 bg-light">
