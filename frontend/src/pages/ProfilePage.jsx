@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router';
 import CharacterCard from '../components/CharacterCard';
 import defaultAvatar from '../assets/images/default-avatar.png';
+import { AuthContext } from '../components/AuthProvider';
 
 export default function ProfilePage() {
   const MAX_NAME_LENGTH = 50;
@@ -11,7 +12,7 @@ export default function ProfilePage() {
     PERSONAS: 'Personas'
   };
 
-  const [user, setUser] = useState(null);
+  const { userData, idToken, refreshUserData } = useContext(AuthContext);
   const [createdCharacters, setCreatedCharacters] = useState([]);
   const [likedCharacters, setLikedCharacters] = useState([]);
   const [personas, setPersonas] = useState([]);
@@ -27,7 +28,9 @@ export default function ProfilePage() {
 
   // API call functions
   const fetchPersonas = async () => {
-    const res = await fetch('/api/personas');
+    const res = await fetch('/api/personas', {
+      headers: { 'Authorization': `Bearer ${idToken}` }
+    });
     if (res.ok) return await res.json();
     throw new Error('Failed to fetch personas');
   };
@@ -35,9 +38,11 @@ export default function ProfilePage() {
   const createPersona = async (persona) => {
     const res = await fetch('/api/personas', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(persona),
-      credentials: 'include'
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}` 
+      },
+      body: JSON.stringify(persona)
     });
     if (!res.ok) throw new Error('Failed to create persona');
     return await res.json();
@@ -46,9 +51,11 @@ export default function ProfilePage() {
   const updatePersona = async (id, persona) => {
     const res = await fetch(`/api/personas/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(persona),
-      credentials: 'include'
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}` 
+      },
+      body: JSON.stringify(persona)
     });
     if (!res.ok) throw new Error('Failed to update persona');
     return await res.json();
@@ -57,33 +64,38 @@ export default function ProfilePage() {
   const deletePersona = async (id) => {
     const res = await fetch(`/api/personas/${id}`, {
       method: 'DELETE',
-      credentials: 'include'
+      headers: { 'Authorization': `Bearer ${idToken}` }
     });
     if (!res.ok) throw new Error('Failed to delete persona');
     return await res.json();
   };
 
   useEffect(() => {
-    fetch('/api/current-user')
-      .then(res => res.ok ? res.json() : Promise.reject())
-      .then(data => {
-        setUser(data);
-        setEditName(data.name);
-      })
-      .catch(() => navigate('/'));
+    if (!idToken) {
+      navigate('/');
+      return;
+    }
 
-    fetch('/api/characters-created')
+    if (userData) {
+      setEditName(userData.name);
+    }
+
+    fetch('/api/characters-created', {
+      headers: { 'Authorization': `Bearer ${idToken}` }
+    })
       .then(res => res.ok ? res.json() : [])
       .then(setCreatedCharacters);
 
-    fetch('/api/characters-liked')
+    fetch('/api/characters-liked', {
+      headers: { 'Authorization': `Bearer ${idToken}` }
+    })
       .then(res => res.ok ? res.json() : [])
       .then(setLikedCharacters);
 
     fetchPersonas()
       .then(setPersonas)
       .catch(console.error);
-  }, [navigate]);
+  }, [navigate, idToken, userData]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -93,15 +105,15 @@ export default function ProfilePage() {
 
     const res = await fetch('/api/update-profile', {
       method: 'POST',
-      body: formData,
-      credentials: 'include'
+      headers: { 'Authorization': `Bearer ${idToken}` },
+      body: formData
     });
 
     const data = await res.json();
     alert(data.message || data.detail);
     if (res.ok) {
       setShowModal(false);
-      window.location.reload();
+      await refreshUserData();
     }
   };
 
@@ -251,7 +263,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (!user) return null;
+  if (!userData) return null;
 
   return (
     <div className="d-flex" style={{ height: '100vh' }}>
@@ -261,7 +273,7 @@ export default function ProfilePage() {
 
           <div className="d-flex align-items-center gap-4 mb-4">
             <img
-              src={user.profile_pic || defaultAvatar}
+              src={userData.profile_pic || defaultAvatar}
               alt="Profile"
               className="rounded-circle"
               width="100"
@@ -269,16 +281,16 @@ export default function ProfilePage() {
             />
             <div>
               <div className="d-flex align-items-baseline gap-2 mb-1">
-                <h3 className="mb-0">{user.name}</h3>
+                <h3 className="mb-0">{userData.name}</h3>
                 <span className="text-muted small">•</span>
                 <div className="d-flex gap-2">
                   <span className="badge bg-light text-dark">
                     <i className="bi bi-eye me-1"></i>
-                    {user.views || 0} views
+                    {userData.views || 0} views
                   </span>
                   <span className="badge bg-light text-dark">
                     <i className="bi bi-heart me-1"></i>
-                    {user.likes || 0} likes
+                    {userData.likes || 0} likes
                   </span>
                 </div>
               </div>

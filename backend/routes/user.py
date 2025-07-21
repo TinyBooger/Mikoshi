@@ -30,58 +30,39 @@ async def update_profile(
     request: Request,
     name: str = Form(...),
     profile_pic: UploadFile = File(None),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
-
-    user = db.query(User).get(user_id)
-    if not user:
+    if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
     
     error = validate_account_fields(name=name)
     if error:
         raise HTTPException(status_code=400, detail=error)
 
-    user.name = name
+    current_user.name = name
 
     if profile_pic:
-        user.profile_pic = upload_avatar(profile_pic.file, user.id)
+        current_user.profile_pic = upload_avatar(profile_pic.file, current_user.id)
 
     db.commit()
-    db.refresh(user)
+    db.refresh(current_user)
     return {"message": "Profile updated"}
 
 @router.get("/api/characters-created")
-def get_user_created_characters(request: Request, user_id: int = None, db: Session = Depends(get_db)):
-    if user_id is None:
-        token = request.cookies.get("session_token")
-        user_id = verify_session_token(token)
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Not logged in")
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.characters_created:
+def get_user_created_characters(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user or not current_user.characters_created:
         return []
 
-    characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
+    characters = db.query(Character).filter(Character.id.in_(current_user.characters_created)).all()
     return [{"id": c.id, "name": c.name, "picture": c.picture, "likes":c.likes, "views": c.views} for c in characters]
 
 @router.get("/api/characters-liked")
-def get_user_liked_characters(request: Request, user_id: int = None, db: Session = Depends(get_db)):
-    if user_id is None:
-        token = request.cookies.get("session_token")
-        user_id = verify_session_token(token)
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Not logged in")
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.liked_characters:
+def get_user_liked_characters(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user or not current_user.liked_characters:
         return []
 
-    characters = db.query(Character).filter(Character.id.in_(user.liked_characters)).all()
+    characters = db.query(Character).filter(Character.id.in_(current_user.liked_characters)).all()
     return [{"id": c.id, "name": c.name, "picture": c.picture, "likes":c.likes, "views": c.views} for c in characters]
 
 @router.get("/api/user/{user_id}/characters")
@@ -91,7 +72,8 @@ def get_user_characters(user_id: int, db: Session = Depends(get_db)):
 
 @router.get("/api/recent-characters")
 def get_recent_characters(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     
     if not current_user or not current_user.recent_characters:
@@ -137,44 +119,33 @@ async def update_recent_characters(request: Request, current_user: User = Depend
 
 # =============================== Personas ===================================
 @router.get("/api/personas")
-def get_user_personas(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
-    
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.personas:
+def get_user_personas(current_user: User = Depends(get_current_user)):
+    if not current_user or not current_user.personas:
         return []
     
     # Return personas with their array indices as IDs
-    return [{"id": idx, **p} for idx, p in enumerate(user.personas)]
+    return [{"id": idx, **p} for idx, p in enumerate(current_user.personas)]
 
 @router.post("/api/personas")
-async def create_persona(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
+async def create_persona(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     
     data = await request.json()
     if not data or "name" not in data or "description" not in data:
         raise HTTPException(status_code=400, detail="Missing name or description")
     
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
     
     # Generate a simple ID (index-based for array)
-    new_id = len(user.personas) if user.personas else 0
+    new_id = len(current_user.personas) if current_user.personas else 0
     new_persona = {
         "id": new_id,
         "name": data["name"],
         "description": data["description"]
     }
     
-    updated_personas = user.personas + [new_persona] if user.personas else [new_persona]
-    user.personas = updated_personas
+    updated_personas = current_user.personas + [new_persona] if current_user.personas else [new_persona]
+    current_user.personas = updated_personas
     db.commit()
     
     return new_persona
@@ -183,31 +154,26 @@ async def create_persona(request: Request, db: Session = Depends(get_db)):
 async def update_persona(
     request: Request,
     persona_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
-    
     data = await request.json()
     if not data or "name" not in data or "description" not in data:
         raise HTTPException(status_code=400, detail="Missing name or description")
     
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.personas:
+    if not current_user or not current_user.personas:
         raise HTTPException(status_code=404, detail="User or persona not found")
     
-    if persona_id >= len(user.personas):
+    if persona_id >= len(current_user.personas):
         raise HTTPException(status_code=404, detail="Persona not found")
     
-    updated_personas = user.personas.copy()
+    updated_personas = current_user.personas.copy()
     updated_personas[persona_id] = {
         "id": persona_id,
         "name": data["name"],
         "description": data["description"]
     }
-    user.personas = updated_personas
+    current_user.personas = updated_personas
     db.commit()
     
     return updated_personas[persona_id]
@@ -216,27 +182,22 @@ async def update_persona(
 def delete_persona(
     request: Request,
     persona_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
-    
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.personas:
+    if not current_user or not current_user.personas:
         raise HTTPException(status_code=404, detail="User or persona not found")
     
-    if persona_id >= len(user.personas):
+    if persona_id >= len(current_user.personas):
         raise HTTPException(status_code=404, detail="Persona not found")
     
     # Remove the persona and reindex remaining ones
     updated_personas = [
         {**p, "id": idx} for idx, p in enumerate(
-            p for i, p in enumerate(user.personas) if i != persona_id
+            p for i, p in enumerate(current_user.personas) if i != persona_id
         )
     ]
-    user.personas = updated_personas
+    current_user.personas = updated_personas
     db.commit()
     
     return {"message": "Persona deleted successfully"}
