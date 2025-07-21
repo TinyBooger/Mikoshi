@@ -14,7 +14,6 @@ router = APIRouter()
 
 @router.post("/api/create-character")
 async def create_character(
-    request: Request,
     name: str = Form(...),
     persona: str = Form(...),
     tagline: str = Form(""),
@@ -22,15 +21,10 @@ async def create_character(
     greeting: str = Form(""),
     sample_dialogue: str = Form(""),
     picture: UploadFile = File(None),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
 
     existing = db.query(Character).filter(Character.name == name).first()
@@ -55,7 +49,7 @@ async def create_character(
         tags=tags,
         greeting=greeting.strip(),
         example_messages=sample_dialogue.strip(),
-        creator_id=user_id,
+        creator_id=current_user.id,
         views=0,
         picture=None
     )
@@ -66,13 +60,13 @@ async def create_character(
     if picture:
         char.picture = upload_character_picture(picture.file, char.id)
 
-    if user.characters_created is None:
-        user.characters_created = []
-    if char.id not in user.characters_created:
-        user.characters_created = user.characters_created + [char.id]
+    if current_user.characters_created is None:
+        current_user.characters_created = []
+    if char.id not in current_user.characters_created:
+        current_user.characters_created = current_user.characters_created + [char.id]
 
     db.commit()
-    db.refresh(user)
+    db.refresh(current_user)
     return {"message": f"Character '{name}' created."}
 
 @router.post("/api/update-character")

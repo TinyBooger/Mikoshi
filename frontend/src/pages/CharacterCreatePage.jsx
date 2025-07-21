@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router';
 import TagsInput from '../components/TagsInput'; // adjust path as needed
+import { AuthContext } from '../components/AuthProvider';
 
 export default function CharacterCreatePage() {
   const MAX_NAME_LENGTH = 50;
@@ -18,9 +19,16 @@ export default function CharacterCreatePage() {
   const [sample, setSample] = useState('');
   const [picture, setPicture] = useState(null);
   const navigate = useNavigate();
+  const { idToken } = useContext(AuthContext);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!idToken) {
+      alert("You need to be logged in to create a character.");
+      navigate('/');
+      return;
+    }
 
     if (!name.trim() || !persona.trim()) {
       alert("Name and persona are required.");
@@ -36,15 +44,26 @@ export default function CharacterCreatePage() {
     formData.append("sample_dialogue", sample.trim());
     if (picture) formData.append("picture", picture);
 
-    const res = await fetch("/api/create-character", {
-      method: "POST",
-      body: formData,
-      credentials: "include"
-    });
+    try {
+      const res = await fetch("/api/create-character", {
+        method: "POST",
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: formData
+      });
 
-    const data = await res.json();
-    alert(data.message || data.detail);
-    if (res.ok) navigate("/");
+      const data = await res.json();
+      if (res.ok) {
+        alert("Character created successfully!");
+        navigate("/");
+      } else {
+        alert(data.message || data.detail || "Failed to create character");
+      }
+    } catch (error) {
+      console.error("Error creating character:", error);
+      alert("An error occurred while creating the character");
+    }
   };
 
   return (

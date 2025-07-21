@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import TagsInput from '../components/TagsInput';
+import { AuthContext } from '../components/AuthProvider';
 
 export default function CharacterEditPage() {
   const MAX_NAME_LENGTH = 50;
@@ -10,6 +11,7 @@ export default function CharacterEditPage() {
   const MAX_SAMPLE_LENGTH = 1000;
   const MAX_TAGS = 20;
 
+  const { userData, idToken } = useContext(AuthContext);
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
   const navigate = useNavigate();
@@ -28,16 +30,27 @@ export default function CharacterEditPage() {
   useEffect(() => {
     if (!id) {
       alert("Missing character ID");
+      navigate("/");
       return;
     }
 
-    fetch("/api/current-user").then(res => {
-      if (!res.ok) navigate("/");
-    });
+    if (!idToken) {
+      navigate("/");
+      return;
+    }
 
-    fetch(`/api/character/${id}`)
-      .then(res => res.json())
+    fetch(`/api/character/${id}`, {
+      headers: { 'Authorization': `Bearer ${idToken}` }
+    })
+      .then(res => {
+        if (!res.ok) {
+          navigate("/");
+          return;
+        }
+        return res.json();
+      })
       .then(data => {
+        if (!data) return;
         setCharData({
           name: data.name,
           persona: data.persona,
@@ -47,7 +60,7 @@ export default function CharacterEditPage() {
           greeting: data.greeting || "",
         });
       });
-  }, [id, navigate]);
+  }, [id, navigate, idToken]);
 
   const toggleEdit = field =>
     setEditable(prev => ({ ...prev, [field]: !prev[field] }));
@@ -58,6 +71,11 @@ export default function CharacterEditPage() {
 
   const handleSubmit = async e => {
     e.preventDefault();
+    if (!idToken) {
+      navigate("/");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("id", id);
     formData.append("name", charData.name);
@@ -70,12 +88,30 @@ export default function CharacterEditPage() {
 
     const res = await fetch("/api/update-character", {
       method: "POST",
+      headers: { 'Authorization': `Bearer ${idToken}` },
       body: formData,
     });
 
     const data = await res.json();
     alert(data.message || data.detail || "Update complete");
     if (res.ok) navigate("/profile");
+  };
+
+  const handleDelete = async () => {
+    if (!idToken) {
+      navigate("/");
+      return;
+    }
+
+    if (window.confirm("Are you sure you want to delete this character?")) {
+      const res = await fetch(`/api/character/${id}/delete`, { 
+        method: "DELETE",
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      });
+      const data = await res.json();
+      alert(data.message || data.detail || "Character deleted");
+      if (res.ok) navigate("/profile");
+    }
   };
 
   if (!charData) return null;
@@ -193,19 +229,11 @@ export default function CharacterEditPage() {
               <button
                 type="button"
                 className="btn btn-danger mt-3 ms-2"
-                onClick={async () => {
-                  if (window.confirm("Are you sure you want to delete this character?")) {
-                    const res = await fetch(`/api/character/${id}/delete`, { method: "DELETE" });
-                    const data = await res.json();
-                    alert(data.message || data.detail || "Character deleted");
-                    if (res.ok) navigate("/profile");
-                  }
-                }}
+                onClick={handleDelete}
               >
                 <i className="bi bi-trash me-2"></i>Delete Character
               </button>
             </div>
-
           </form>
         </div>
       </div>
