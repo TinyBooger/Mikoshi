@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import CharacterCard from '../components/CharacterCard';
+import { AuthContext } from '../components/AuthProvider';
 
 function BrowsePage() {
+  const { idToken } = useContext(AuthContext);
   const [characters, setCharacters] = useState([]);
   const [popularTags, setPopularTags] = useState([]);
   const [allTags, setAllTags] = useState([]);
@@ -15,10 +17,17 @@ function BrowsePage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!idToken) {
+      navigate('/');
+      return;
+    }
+
     setIsLoading(true);
     if (category === 'tags') {
       // Load popular tags
-      fetch('/api/tag-suggestions', { credentials: 'include' })
+      fetch('/api/tag-suggestions', {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
         .then(res => res.json())
         .then(data => {
           setPopularTags(data);
@@ -27,21 +36,25 @@ function BrowsePage() {
       
       // Load all tags for alphabetical browsing
       setIsLoadingAllTags(true);
-      fetch('/api/tags/all', { credentials: 'include' })
+      fetch('/api/tags/all', {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
         .then(res => res.json())
         .then(data => {
           setAllTags(organizeTagsAlphabetically(data));
           setIsLoadingAllTags(false);
         });
     } else {
-      fetch(`/api/characters/${category}`, { credentials: 'include' })
+      fetch(`/api/characters/${category}`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
         .then(res => res.json())
         .then(data => {
           setCharacters(data);
           setIsLoading(false);
         });
     }
-  }, [category, navigate]);
+  }, [category, navigate, idToken]);
 
   const organizeTagsAlphabetically = (tags) => {
     const organized = {};
@@ -78,7 +91,9 @@ function BrowsePage() {
   const fetchCharactersByTag = (tagName) => {
     setSelectedTag(tagName);
     setIsLoadingCharacters(true);
-    fetch(`/api/characters/by-tag/${encodeURIComponent(tagName)}`, { credentials: 'include' })
+    fetch(`/api/characters/by-tag/${encodeURIComponent(tagName)}`, {
+      headers: { 'Authorization': `Bearer ${idToken}` }
+    })
       .then(res => res.json())
       .then(data => {
         setCharacters(data);
