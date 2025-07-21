@@ -114,6 +114,13 @@ export default function CharacterEditPage() {
     }
   };
 
+  const handleFormKeyDown = (e) => {
+    // Prevent form submission when Enter is pressed
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+    }
+  };
+
   if (!charData) return null;
 
   return (
@@ -123,7 +130,7 @@ export default function CharacterEditPage() {
         <div className="flex-shrink-0"></div>
         <div className="flex-grow-1 p-4">
           <h2 className="mb-4">Edit Character</h2>
-          <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
+          <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data" onKeyDown={handleFormKeyDown}>
             {["name", "persona", "sample", "tagline", "greeting"].map(field => (
               <div className="mb-3 position-relative" key={field}>
                 <label className="form-label text-capitalize">{field}</label>

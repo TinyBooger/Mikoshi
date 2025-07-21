@@ -66,10 +66,17 @@ export default function CharacterCreatePage() {
     }
   };
 
+  const handleFormKeyDown = (e) => {
+    // Prevent form submission when Enter is pressed
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+    }
+  };
+
   return (
     <div className="flex-grow-1 p-4 overflow-auto">
       <h2 className="mb-4">Create New Character</h2>
-      <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
+      <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data" onKeyDown={handleFormKeyDown}>
         <div className="mb-3 position-relative">
           <label className="form-label">Name</label>
           <input
