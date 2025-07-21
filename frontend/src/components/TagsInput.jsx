@@ -73,7 +73,7 @@ export default function TagsInput({ tags, setTags, maxTags }) {
         type="text"
         className="border-0 flex-grow-1"
         value={input}
-        onChange={(e) => setInput(e.value)}
+        onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         onFocus={() => setShowSuggestions(true)}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
