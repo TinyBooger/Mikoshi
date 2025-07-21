@@ -18,7 +18,9 @@ export default function PublicProfilePage() {
     }
 
     async function fetchData() {
-      const resUser = await fetch(`/api/user/${userId}`);
+      const resUser = await fetch(`/api/user/${userId}`, {
+          headers: { 'Authorization': `Bearer ${idToken}` }
+        });
       if (!resUser.ok) {
         alert("User not found.");
         setLoading(false);

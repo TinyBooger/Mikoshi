@@ -15,7 +15,7 @@ router = APIRouter()
 security = HTTPBearer()
 
 @router.get("/api/user/{user_id}")
-def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
+def get_user_by_id(user_id: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -65,7 +65,7 @@ def get_user_liked_characters(current_user: User = Depends(get_current_user), db
     return [{"id": c.id, "name": c.name, "picture": c.picture, "likes":c.likes, "views": c.views} for c in characters]
 
 @router.get("/api/user/{user_id}/characters")
-def get_user_characters(user_id: int, db: Session = Depends(get_db)):
+def get_user_characters(user_id: str, db: Session = Depends(get_db)):
     characters = db.query(Character).filter(Character.creator_id == user_id).all()
     return [{"id": c.id, "name": c.name, "picture": c.avatar_url} for c in characters]
 
