@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router';
+import { AuthContext } from '../components/AuthProvider';
 
 function Topbar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { idToken } = useContext(AuthContext);
 
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -26,20 +28,26 @@ function Topbar() {
   // Fetch search suggestions
   useEffect(() => {
     const timer = setTimeout(() => {
+      if (!idToken) return;
+      
       if (query.trim() === '') {
-        fetch('/api/search-suggestions/popular')
+        fetch('/api/search-suggestions/popular', {
+          headers: { 'Authorization': `Bearer ${idToken}` }
+        })
           .then(res => res.json())
           .then(setSuggestions)
           .catch(() => setSuggestions([]));
       } else {
-        fetch(`/api/search-suggestions?q=${encodeURIComponent(query.trim())}`)
+        fetch(`/api/search-suggestions?q=${encodeURIComponent(query.trim())}`, {
+          headers: { 'Authorization': `Bearer ${idToken}` }
+        })
           .then(res => res.json())
           .then(setSuggestions)
           .catch(() => setSuggestions([]));
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, idToken]);
 
   const handleSearch = (q = query) => {
     const trimmed = q.trim();

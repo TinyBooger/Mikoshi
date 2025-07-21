@@ -27,7 +27,6 @@ def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
 
 @router.post("/api/update-profile")
 async def update_profile(
-    request: Request,
     name: str = Form(...),
     profile_pic: UploadFile = File(None),
     current_user: User = Depends(get_current_user),

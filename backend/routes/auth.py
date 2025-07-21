@@ -115,27 +115,27 @@ async def create_user(
             detail=str(e)
         )
 
-@router.post("/api/login")
-async def login(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+# @router.post("/api/login")
+# async def login(user: UserLogin, db: Session = Depends(get_db)):
+#     db_user = db.query(User).filter(User.email == user.email).first()
+#     if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
+#         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    response = JSONResponse(content={"message": "Login successful"})
-    response.set_cookie(
-        key="session_token",
-        value=create_session_token(db_user),
-        httponly=True,
-        secure=True,
-        samesite="None"
-    )
-    return response
+#     response = JSONResponse(content={"message": "Login successful"})
+#     response.set_cookie(
+#         key="session_token",
+#         value=create_session_token(db_user),
+#         httponly=True,
+#         secure=True,
+#         samesite="None"
+#     )
+#     return response
 
-@router.post("/api/logout")
-def logout():
-    response = JSONResponse(content={"message": "Logged out"})
-    response.delete_cookie("session_token")
-    return response
+# @router.post("/api/logout")
+# def logout():
+#     response = JSONResponse(content={"message": "Logged out"})
+#     response.delete_cookie("session_token")
+#     return response
 
 # @router.post("/api/account-setup")
 # async def account_setup(

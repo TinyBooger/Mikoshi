@@ -71,7 +71,6 @@ async def create_character(
 
 @router.post("/api/update-character")
 async def update_character(
-    request: Request,
     id: int = Form(...),
     name: str = Form(...),
     persona: str = Form(...),
@@ -80,15 +79,12 @@ async def update_character(
     greeting: str = Form(""),
     sample_dialogue: str = Form(""),
     picture: UploadFile = File(None),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    token = request.cookies.get("session_token")
-    user_id = verify_session_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
 
     char = db.query(Character).filter(Character.id == id).first()
-    if not char or char.creator_id != user_id:
+    if not char or char.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not allowed")
     
     error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags)
