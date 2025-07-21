@@ -1,23 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { AuthContext } from '../components/AuthProvider';
 
 export default function TagsInput({ tags, setTags, maxTags }) {
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const { idToken } = useContext(AuthContext);
 
   useEffect(() => {
-    if (input.trim() === "") {
-      fetch("/api/tag-suggestions")
-        .then(res => res.json())
-        .then(setSuggestions)
-        .catch(() => setSuggestions([]));
-    } else {
-      fetch(`/api/tag-suggestions?q=${encodeURIComponent(input.trim())}`)
-        .then(res => res.json())
-        .then(setSuggestions)
-        .catch(() => setSuggestions([]));
+    const fetchSuggestions = async () => {
+      try {
+        const url = input.trim() === "" 
+          ? "/api/tag-suggestions" 
+          : `/api/tag-suggestions?q=${encodeURIComponent(input.trim())}`;
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${idToken}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setSuggestions(data);
+        } else {
+          setSuggestions([]);
+        }
+      } catch (error) {
+        console.error('Error fetching tag suggestions:', error);
+        setSuggestions([]);
+      }
+    };
+
+    if (idToken) {
+      fetchSuggestions();
     }
-  }, [input]);
+  }, [input, idToken]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && input.trim()) {
@@ -55,7 +73,7 @@ export default function TagsInput({ tags, setTags, maxTags }) {
         type="text"
         className="border-0 flex-grow-1"
         value={input}
-        onChange={(e) => setInput(e.target.value)}
+        onChange={(e) => setInput(e.value)}
         onKeyDown={handleKeyDown}
         onFocus={() => setShowSuggestions(true)}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}

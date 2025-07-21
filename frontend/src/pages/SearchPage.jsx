@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { useNavigate, useLocation } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
+import { AuthContext } from '../components/AuthProvider';
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -11,6 +12,7 @@ export default function SearchPage() {
   const [sortBy, setSortBy] = useState("relevance"); // default sort
   const navigate = useNavigate();
   const location = useLocation();
+  const { idToken } = useContext(AuthContext);
 
   // Fetch search results when URL changes
   useEffect(() => {
@@ -23,7 +25,9 @@ export default function SearchPage() {
 
     async function fetchCharacters() {
       try {
-        const res = await fetch(`/api/characters/search?q=${encodeURIComponent(q)}&sort=${sort}`);
+        const res = await fetch(`/api/characters/search?q=${encodeURIComponent(q)}&sort=${sort}`, {
+          headers: { 'Authorization': `Bearer ${idToken}` }
+        });
         if (!res.ok) throw new Error('Search failed');
         const data = await res.json();
         setResults(data);
@@ -32,7 +36,10 @@ export default function SearchPage() {
         if (q.trim()) {
           fetch("/api/update-search-term", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              'Authorization': `Bearer ${idToken}`
+            },
             body: JSON.stringify({ keyword: q.trim() }),
           });
         }
@@ -44,19 +51,25 @@ export default function SearchPage() {
       }
     }
     
-    fetchCharacters();
-  }, [location.search]);
+    if (idToken) {
+      fetchCharacters();
+    }
+  }, [location.search, idToken]);
 
   // Fetch suggestions (debounced)
   useEffect(() => {
     const timer = setTimeout(() => {
       if (query.trim() === '') {
-        fetch('/api/search-suggestions/popular')
+        fetch('/api/search-suggestions/popular', {
+          headers: { 'Authorization': `Bearer ${idToken}` }
+        })
           .then(res => res.json())
           .then(setSuggestions)
           .catch(() => setSuggestions([]));
       } else {
-        fetch(`/api/search-suggestions?q=${encodeURIComponent(query.trim())}`)
+        fetch(`/api/search-suggestions?q=${encodeURIComponent(query.trim())}`, {
+          headers: { 'Authorization': `Bearer ${idToken}` }
+        })
           .then(res => res.json())
           .then(setSuggestions)
           .catch(() => setSuggestions([]));
@@ -64,7 +77,7 @@ export default function SearchPage() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, idToken]);
 
   const handleSearch = (q = query) => {
     const trimmed = q.trim();
