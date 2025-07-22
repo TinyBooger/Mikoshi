@@ -120,9 +120,7 @@ export default function ChatPage() {
     setMessages(greet ? [sys, greet] : [sys]);
     setSelectedChat(null);
     setInput('');
-
-    // Refresh user data
-    refreshUserData();
+    print("New Chat!")
   };
 
 
