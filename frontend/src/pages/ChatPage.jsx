@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import defaultPic from '../assets/images/default-picture.png';
 import { buildSystemMessage } from '../utils/systemTemplate';
