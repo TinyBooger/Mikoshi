@@ -19,29 +19,21 @@ export default function ChatPage() {
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [selectedPersonaId, setSelectedPersonaId] = useState(null);
-  const [isNewChat, setIsNewChat] = useState(false);
   const characterId = searchParams.get('character');
   const navigate = useNavigate();
+  const initialized = useRef(false);
 
+  // Initialize character data (runs once when characterId changes)
   useEffect(() => {
     if (!idToken) {
       navigate('/');
       return;
     }
 
-    // Skip loading messages if we're starting a new chat
-    if (isNewChat) {
-      setIsNewChat(false); // Reset the flag
-      return;
-    }
-
-    // Check likes from userData
-    if (userData?.liked_characters?.includes(parseInt(characterId))) {
-      setHasLiked(true);
-    }
-
-    // Fetch character data if characterId exists
     if (!characterId) return;
+
+    // Reset initialization flag when character changes
+    initialized.current = false;
 
     fetch(`/api/character/${characterId}`, {
       headers: { 'Authorization': `Bearer ${idToken}` }
@@ -77,26 +69,62 @@ export default function ChatPage() {
           },
           body: JSON.stringify({ character_id: characterId })
         });
-
-        // Set messages based on user's chat history
-        const entry = userData?.chat_history?.find(
-          h => h.character_id === characterId
-        );
-        if (entry) {
-          setMessages([...entry.messages]);
-        } else {
-          const sys = { 
-            role: "system", 
-            content: buildSystemMessage(data.persona || "", data.example_messages || "") 
-          };
-          const greet = data.greeting ? { 
-            role: "assistant", 
-            content: data.greeting 
-          } : null;
-          setMessages(greet ? [sys, greet] : [sys]);
-        }
       });
-  }, [characterId, navigate, idToken, userData, isNewChat]);
+  }, [characterId, navigate, idToken]);
+
+  // Initialize messages and likes (runs once after character is loaded)
+  useEffect(() => {
+    if (!char || !userData || initialized.current) return;
+
+    // Mark as initialized
+    initialized.current = true;
+
+    // Check likes from userData
+    if (userData?.liked_characters?.includes(parseInt(characterId))) {
+      setHasLiked(true);
+    }
+
+    // Set messages based on user's chat history
+    const entry = userData?.chat_history?.find(
+      h => h.character_id === characterId
+    );
+    if (entry) {
+      setMessages([...entry.messages]);
+    } else {
+      initializeNewChat();
+    }
+  }, [char, userData, characterId]);
+
+  const initializeNewChat = () => {
+    const sys = { 
+      role: "system", 
+      content: buildSystemMessage(char.persona || "", char.example_messages || "") 
+    };
+    const greet = char.greeting ? { 
+      role: "assistant", 
+      content: char.greeting 
+    } : null;
+    setMessages(greet ? [sys, greet] : [sys]);
+  };
+
+  const startNewChat = () => {
+    const userPersonaObj = userData?.personas?.find(p => p.id === selectedPersonaId);
+    const sys = {
+      role: "system",
+      content: buildSystemMessage(char.persona || "", char.example_messages || "", userPersonaObj?.description || null)
+    };
+    const greet = char.greeting ? {
+      role: "assistant",
+      content: char.greeting
+    } : null;
+    setMessages(greet ? [sys, greet] : [sys]);
+    setSelectedChat(null);
+    setInput('');
+
+    // Refresh user data
+    refreshUserData();
+  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -148,26 +176,6 @@ export default function ChatPage() {
       setHasLiked(true);
       await refreshUserData();
     }
-  };
-
-  const startNewChat = () => {
-    setIsNewChat(true);
-    setMessages([]);
-    const userPersonaObj = userData?.personas?.find(p => p.id === selectedPersonaId);
-    const sys = {
-      role: "system",
-      content: buildSystemMessage(char.persona || "", char.example_messages || "", userPersonaObj?.description || null)
-    };
-    const greet = char.greeting ? {
-      role: "assistant",
-      content: char.greeting
-    } : null;
-    setMessages(greet ? [sys, greet] : [sys]);
-    setSelectedChat(null);
-    setInput('');
-
-    // Refresh user data
-    refreshUserData();
   };
 
   const loadChat = (chat) => {
