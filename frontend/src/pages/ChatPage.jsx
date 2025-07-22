@@ -144,6 +144,7 @@ export default function ChatPage() {
   };
 
   const startNewChat = () => {
+    setMessages([]);
     const userPersonaObj = userData?.personas?.find(p => p.id === selectedPersonaId);
     const sys = {
       role: "system",
