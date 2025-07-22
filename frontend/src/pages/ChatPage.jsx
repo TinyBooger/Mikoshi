@@ -19,12 +19,19 @@ export default function ChatPage() {
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [selectedPersonaId, setSelectedPersonaId] = useState(null);
+  const [isNewChat, setIsNewChat] = useState(false);
   const characterId = searchParams.get('character');
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!idToken) {
       navigate('/');
+      return;
+    }
+
+    // Skip loading messages if we're starting a new chat
+    if (isNewChat) {
+      setIsNewChat(false); // Reset the flag
       return;
     }
 
@@ -89,7 +96,7 @@ export default function ChatPage() {
           setMessages(greet ? [sys, greet] : [sys]);
         }
       });
-  }, [characterId, navigate, idToken, userData]);
+  }, [characterId, navigate, idToken, userData, isNewChat]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -144,6 +151,7 @@ export default function ChatPage() {
   };
 
   const startNewChat = () => {
+    setIsNewChat(true);
     setMessages([]);
     const userPersonaObj = userData?.personas?.find(p => p.id === selectedPersonaId);
     const sys = {
