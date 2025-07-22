@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import defaultPic from '../assets/images/default-picture.png';
 import { buildSystemMessage } from '../utils/systemTemplate';
 import { AuthContext } from '../components/AuthProvider';
+import PersonaModal from '../components/PersonaModal';
 
 export default function ChatPage() {
   const { userData, idToken, refreshUserData } = useContext(AuthContext);
@@ -19,6 +20,10 @@ export default function ChatPage() {
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [selectedPersonaId, setSelectedPersonaId] = useState(null);
+  const [personaModal, setPersonaModal] = useState({
+    show: false,
+    currentPersona: null
+  });
   const characterId = searchParams.get('character');
   const navigate = useNavigate();
   const initialized = useRef(false);
@@ -120,7 +125,6 @@ export default function ChatPage() {
     setMessages(greet ? [sys, greet] : [sys]);
     setSelectedChat(null);
     setInput('');
-    print("New Chat!")
   };
 
 
@@ -267,6 +271,32 @@ export default function ChatPage() {
     startNewChat(); // reuse existing logic
   };
 
+  const handlePersonaSave = async (personaData) => {
+    try {
+      const res = await fetch('/api/personas', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}` 
+        },
+        body: JSON.stringify(personaData)
+      });
+
+      if (!res.ok) throw new Error('Failed to create persona');
+      
+      const newPersona = await res.json();
+      await refreshUserData(); // Refresh to get the new persona
+      
+      // Optionally select the new persona immediately
+      setSelectedPersonaId(newPersona.id);
+      startNewChat();
+      
+      setPersonaModal({ show: false, currentPersona: null });
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
   return (
     <div className="d-flex h-100 bg-light">
       {/* Main Chat Area */}
@@ -364,6 +394,59 @@ export default function ChatPage() {
           </p>
         )}
 
+        {/* Always show New Chat button and Persona selection */}
+        <div className="mb-3">
+          <button 
+            className="btn btn-sm btn-success w-100 mb-2"
+            onClick={startNewChat}
+          >
+            <i className="bi bi-plus-circle me-2"></i>New Chat
+          </button>
+
+          {/* Always show Persona dropdown, even if no personas exist */}
+          <div className="dropdown mb-3">
+            <button 
+              className="btn btn-outline-secondary btn-sm dropdown-toggle w-100"
+              type="button"
+              data-bs-toggle="dropdown"
+            >
+              {selectedPersonaId 
+                ? userData?.personas?.find(p => p.id === selectedPersonaId)?.name || 'Select Persona'
+                : 'Select Persona'}
+            </button>
+            <ul className="dropdown-menu w-100">
+              {userData?.personas?.length > 0 ? (
+                <>
+                  {userData.personas.map(p => (
+                    <li key={p.id}>
+                      <button 
+                        className="dropdown-item"
+                        onClick={() => handlePersonaSelect(p.id)}
+                      >
+                        {p.name}
+                      </button>
+                    </li>
+                  ))}
+                  <li><hr className="dropdown-divider" /></li>
+                </>
+              ) : (
+                <li className="dropdown-item-text small text-muted px-3 py-2">
+                  No personas created yet
+                </li>
+              )}
+              <li>
+                <button 
+                  className="dropdown-item text-primary"
+                  onClick={() => setPersonaModal({ show: true, currentPersona: null })}
+                >
+                  <i className="bi bi-plus-circle me-1"></i> Create New Persona
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Chat History Section */}
         {userData?.chat_history?.length > 0 && (
           <div className="mb-4">
             <div className="d-flex justify-content-between align-items-center mb-2">
@@ -377,57 +460,25 @@ export default function ChatPage() {
             </div>
             
             {showChatHistory && (
-              <div className="mb-3">
-                <button 
-                  className="btn btn-sm btn-success w-100 mb-2"
-                  onClick={startNewChat}
-                >
-                  <i className="bi bi-plus-circle me-2"></i>New Chat
-                </button>
-
-                {userData?.personas?.length > 0 && (
-                  <div className="dropdown mb-2">
-                    <button 
-                      className="btn btn-outline-secondary btn-sm dropdown-toggle w-100"
-                      type="button"
-                      data-bs-toggle="dropdown"
+              <div className="list-group" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                {userData.chat_history
+                  .filter(chat => chat.character_id === characterId)
+                  .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated))
+                  .map((chat) => (
+                    <div 
+                      key={chat.chat_id}
+                      className={`list-group-item list-group-item-action text-start p-2 ${
+                        selectedChat?.chat_id === chat.chat_id ? 'active' : ''
+                      }`}
+                      onClick={() => loadChat(chat)}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        height: '48px',
+                        overflow: 'hidden'
+                      }}
                     >
-                      Load Persona
-                    </button>
-                    <ul className="dropdown-menu w-100">
-                      {userData.personas.map(p => (
-                        <li key={p.id}>
-                          <button 
-                            className="dropdown-item"
-                            onClick={() => handlePersonaSelect(p.id)}
-                          >
-                            {p.name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                <div className="list-group" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                  {userData.chat_history
-                    .filter(chat => chat.character_id === characterId)
-                    .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated))
-                    .map((chat) => (
-                      <div 
-                        key={chat.chat_id}
-                        className={`list-group-item list-group-item-action text-start p-2 ${
-                          selectedChat?.chat_id === chat.chat_id ? 'active' : ''
-                        }`}
-                        onClick={() => loadChat(chat)}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          height: '48px', // Fixed height
-                          overflow: 'hidden'
-                        }}
-                      >
                         {editingChatId === chat.chat_id ? (
                           <div className="d-flex align-items-center w-100">
                             <input
@@ -530,9 +581,8 @@ export default function ChatPage() {
                             </div>
                           </>
                         )}
-                      </div>
-                    ))}
-                </div>
+                    </div>
+                  ))}
               </div>
             )}
           </div>
@@ -571,6 +621,12 @@ export default function ChatPage() {
           </div>
         )}
       </aside>
+      <PersonaModal
+        show={personaModal.show}
+        onClose={() => setPersonaModal({ show: false, currentPersona: null })}
+        onSave={handlePersonaSave}
+        currentPersona={personaModal.currentPersona}
+      />
     </div>
   );
 }

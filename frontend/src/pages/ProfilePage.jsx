@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import CharacterCard from '../components/CharacterCard';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import { AuthContext } from '../components/AuthProvider';
+import PersonaModal from '../components/PersonaModal';
 
 export default function ProfilePage() {
   const MAX_NAME_LENGTH = 50;
@@ -18,13 +19,14 @@ export default function ProfilePage() {
   const [personas, setPersonas] = useState([]);
   const [activeTab, setActiveTab] = useState(TAB_TYPES.CREATED);
   const [showModal, setShowModal] = useState(false);
-  const [showPersonaModal, setShowPersonaModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPic, setEditPic] = useState(null);
-  const [currentPersona, setCurrentPersona] = useState(null);
-  const [personaName, setPersonaName] = useState('');
-  const [personaDescription, setPersonaDescription] = useState('');
   const navigate = useNavigate();
+  // Replace the showPersonaModal state and related functions with:
+  const [personaModal, setPersonaModal] = useState({
+    show: false,
+    currentPersona: null
+  });
 
   // API call functions
   const fetchPersonas = async () => {
@@ -117,33 +119,26 @@ export default function ProfilePage() {
     }
   };
 
-  const handlePersonaSave = async (e) => {
-    e.preventDefault();
+  const handlePersonaSave = async (personaData) => {
     try {
-      const personaData = {
-        name: personaName,
-        description: personaDescription
-      };
-
-      if (currentPersona) {
-        const updated = await updatePersona(currentPersona.id, personaData);
+      if (personaModal.currentPersona) {
+        const updated = await updatePersona(personaModal.currentPersona.id, personaData);
         setPersonas(personas.map(p => p.id === updated.id ? updated : p));
       } else {
         const newPersona = await createPersona(personaData);
         setPersonas([...personas, newPersona]);
       }
-      setShowPersonaModal(false);
-      resetPersonaForm();
+      setPersonaModal({ show: false, currentPersona: null });
     } catch (error) {
       alert(error.message);
     }
   };
 
   const editPersona = (persona) => {
-    setCurrentPersona(persona);
-    setPersonaName(persona.name);
-    setPersonaDescription(persona.description);
-    setShowPersonaModal(true);
+    setPersonaModal({
+      show: true,
+      currentPersona: persona
+    });
   };
 
   const handleDeletePersona = async (id) => {
@@ -155,12 +150,6 @@ export default function ProfilePage() {
         alert(error.message);
       }
     }
-  };
-
-  const resetPersonaForm = () => {
-    setCurrentPersona(null);
-    setPersonaName('');
-    setPersonaDescription('');
   };
 
   const renderCharacters = () => {
@@ -197,10 +186,7 @@ export default function ProfilePage() {
       <div className="mt-3">
         <button 
           className="btn btn-primary mb-3"
-          onClick={() => {
-            resetPersonaForm();
-            setShowPersonaModal(true);
-          }}
+          onClick={() => setPersonaModal({ show: true, currentPersona: null })}
         >
           <i className="bi bi-plus"></i> Create New Persona
         </button>
@@ -378,53 +364,12 @@ export default function ProfilePage() {
       )}
 
       {/* Persona Edit/Create Modal */}
-      {showPersonaModal && (
-        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <form className="modal-content" onSubmit={handlePersonaSave}>
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  {currentPersona ? 'Edit Persona' : 'Create New Persona'}
-                </h5>
-                <button type="button" className="btn-close" onClick={() => setShowPersonaModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label">Name</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={personaName}
-                    onChange={e => setPersonaName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Persona Description</label>
-                  <textarea
-                    className="form-control"
-                    rows="5"
-                    value={personaDescription}
-                    onChange={e => setPersonaDescription(e.target.value)}
-                    required
-                  />
-                  <small className="text-muted">
-                    This will be appended to the system message when chatting with characters.
-                  </small>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="submit" className="btn btn-primary">
-                  {currentPersona ? 'Save Changes' : 'Create Persona'}
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowPersonaModal(false)}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <PersonaModal
+        show={personaModal.show}
+        onClose={() => setPersonaModal({ show: false, currentPersona: null })}
+        onSave={handlePersonaSave}
+        currentPersona={personaModal.currentPersona}
+      />
     </div>
   );
 }
