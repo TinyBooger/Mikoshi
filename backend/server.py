@@ -6,7 +6,7 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 import os
 
 from database import engine, Base
-from routes import auth, character, chat, user, search, tags
+from routes import auth, character, chat, user, search, tags, scene
 from utils.firebase_admin_setup import initialize_firebase_admin
 
 # Middleware
@@ -34,6 +34,7 @@ app.include_router(character.router)
 app.include_router(chat.router)
 app.include_router(search.router)
 app.include_router(tags.router)
+app.include_router(scene.router)
 
 # Catch-all route for client-side routing
 @app.get("/{full_path:path}")
