@@ -14,7 +14,7 @@ from models import Scene
 
 # --- Create Scene Route ---
 @router.post("/api/scenes")
-def create_scene(
+async def create_scene(
     name: str = Form(...),
     description: str = Form(...),
     current_user: User = Depends(get_current_user),
