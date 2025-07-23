@@ -476,7 +476,8 @@ export default function ChatPage() {
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         height: '48px',
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        cursor: 'pointer' // <-- Add this line to force pointer cursor
                       }}
                     >
                         {editingChatId === chat.chat_id ? (
