@@ -4,6 +4,7 @@ import defaultPic from '../assets/images/default-picture.png';
 import { buildSystemMessage } from '../utils/systemTemplate';
 import { AuthContext } from '../components/AuthProvider';
 import PersonaModal from '../components/PersonaModal';
+import SceneModal from '../components/SceneModal';
 
 export default function ChatPage() {
   const { userData, idToken, refreshUserData } = useContext(AuthContext);
@@ -20,10 +21,13 @@ export default function ChatPage() {
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [selectedPersonaId, setSelectedPersonaId] = useState(null);
+  const [selectedSceneId, setSelectedSceneId] = useState(null);
+  const [scenes, setScenes] = useState([]);
   const [personaModal, setPersonaModal] = useState({
     show: false,
     currentPersona: null
   });
+  const [sceneModal, setSceneModal] = useState({ show: false });
   const characterId = searchParams.get('character');
   const navigate = useNavigate();
   const initialized = useRef(false);
@@ -100,33 +104,48 @@ export default function ChatPage() {
     }
   }, [char, userData, characterId]);
 
+  // Fetch user's scenes on mount or when userData changes
+  useEffect(() => {
+    if (!idToken) return;
+    fetch('/api/scenes', {
+      headers: { 'Authorization': `Bearer ${idToken}` }
+    })
+      .then(res => res.json())
+      .then(setScenes);
+  }, [idToken, userData]);
+
   const initializeNewChat = () => {
+    const userPersonaObj = userData?.personas?.find(p => p.id === selectedPersonaId);
+    const sceneObj = scenes?.find(s => s.id === selectedSceneId);
     const sys = { 
       role: "system", 
-      content: buildSystemMessage(char.persona || "", char.example_messages || "") 
+      content: buildSystemMessage(
+        char.persona || "", 
+        char.example_messages || "", 
+        userPersonaObj?.description || null,
+        sceneObj?.description || null
+      ) 
     };
-    const greet = char.greeting ? { 
-      role: "assistant", 
-      content: char.greeting 
-    } : null;
+    let greet = null;
+    if (sceneObj) {
+      greet = { 
+        role: "assistant", 
+        content: `Welcome to the scene: "${sceneObj.name}". ${sceneObj.description}` 
+      };
+    } else if (char.greeting) {
+      greet = { 
+        role: "assistant", 
+        content: char.greeting 
+      };
+    }
     setMessages(greet ? [sys, greet] : [sys]);
   };
 
   const startNewChat = () => {
-    const userPersonaObj = userData?.personas?.find(p => p.id === selectedPersonaId);
-    const sys = {
-      role: "system",
-      content: buildSystemMessage(char.persona || "", char.example_messages || "", userPersonaObj?.description || null)
-    };
-    const greet = char.greeting ? {
-      role: "assistant",
-      content: char.greeting
-    } : null;
-    setMessages(greet ? [sys, greet] : [sys]);
     setSelectedChat(null);
     setInput('');
+    initializeNewChat();
   };
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -297,6 +316,34 @@ export default function ChatPage() {
     }
   };
 
+  const handleSceneSelect = (sceneId) => {
+    const confirmed = window.confirm("This will start a new chat, are you sure?");
+    if (!confirmed) return;
+    setSelectedSceneId(sceneId);
+    startNewChat();
+  };
+
+  const handleSceneSave = async (sceneData) => {
+    try {
+      const formData = new FormData();
+      formData.append('name', sceneData.name);
+      formData.append('description', sceneData.description);
+      const res = await fetch('/api/scenes', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${idToken}` },
+        body: formData
+      });
+      if (!res.ok) throw new Error('Failed to create scene');
+      const newScene = await res.json();
+      setScenes(prev => [...prev, newScene]);
+      setSelectedSceneId(newScene.id);
+      setSceneModal({ show: false });
+      startNewChat();
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
   return (
     <div className="d-flex h-100 bg-light">
       {/* Main Chat Area */}
@@ -394,7 +441,7 @@ export default function ChatPage() {
           </p>
         )}
 
-        {/* Always show New Chat button and Persona selection */}
+        {/* Always show New Chat button, Persona and Scene selection */}
         <div className="mb-3">
           <button 
             className="btn btn-sm btn-success w-100 mb-2"
@@ -403,8 +450,8 @@ export default function ChatPage() {
             <i className="bi bi-plus-circle me-2"></i>New Chat
           </button>
 
-          {/* Always show Persona dropdown, even if no personas exist */}
-          <div className="dropdown mb-3">
+          {/* Persona dropdown */}
+          <div className="dropdown mb-2">
             <button 
               className="btn btn-outline-secondary btn-sm dropdown-toggle w-100"
               type="button"
@@ -440,6 +487,48 @@ export default function ChatPage() {
                   onClick={() => setPersonaModal({ show: true, currentPersona: null })}
                 >
                   <i className="bi bi-plus-circle me-1"></i> Create New Persona
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Scene dropdown */}
+          <div className="dropdown mb-3">
+            <button 
+              className="btn btn-outline-secondary btn-sm dropdown-toggle w-100"
+              type="button"
+              data-bs-toggle="dropdown"
+            >
+              {selectedSceneId 
+                ? scenes?.find(s => s.id === selectedSceneId)?.name || 'Select Scene'
+                : 'Select Scene'}
+            </button>
+            <ul className="dropdown-menu w-100">
+              {scenes?.length > 0 ? (
+                <>
+                  {scenes.map(s => (
+                    <li key={s.id}>
+                      <button 
+                        className="dropdown-item"
+                        onClick={() => handleSceneSelect(s.id)}
+                      >
+                        {s.name}
+                      </button>
+                    </li>
+                  ))}
+                  <li><hr className="dropdown-divider" /></li>
+                </>
+              ) : (
+                <li className="dropdown-item-text small text-muted px-3 py-2">
+                  No scenes created yet
+                </li>
+              )}
+              <li>
+                <button 
+                  className="dropdown-item text-primary"
+                  onClick={() => setSceneModal({ show: true })}
+                >
+                  <i className="bi bi-plus-circle me-1"></i> Create New Scene
                 </button>
               </li>
             </ul>
@@ -627,6 +716,11 @@ export default function ChatPage() {
         onClose={() => setPersonaModal({ show: false, currentPersona: null })}
         onSave={handlePersonaSave}
         currentPersona={personaModal.currentPersona}
+      />
+      <SceneModal
+        show={sceneModal.show}
+        onClose={() => setSceneModal({ show: false })}
+        onSubmit={handleSceneSave}
       />
     </div>
   );
