@@ -24,16 +24,52 @@ export default function ProfilePage() {
   // Placeholder for scene modal state
   const [showSceneModal, setShowSceneModal] = useState(false);
 
-  // Placeholder: fetch scenes (to be implemented with API later)
-  // useEffect(() => {
-  //   if (idToken) {
-  //     fetch('/api/scenes', { headers: { 'Authorization': `Bearer ${idToken}` } })
-  //       .then(res => res.ok ? res.json() : [])
-  //       .then(setScenes);
-  //   }
-  // }, [idToken]);
+  // Fetch scenes from API
+  useEffect(() => {
+    if (idToken) {
+      fetch('/api/scenes', { headers: { 'Authorization': `Bearer ${idToken}` } })
+        .then(res => res.ok ? res.json() : [])
+        .then(setScenes)
+        .catch(() => setScenes([]));
+    }
+  }, [idToken]);
 
-  // Placeholder for rendering scenes
+  // Create scene handler
+  const handleCreateScene = async (sceneData) => {
+    const formData = new FormData();
+    formData.append('name', sceneData.name);
+    formData.append('description', sceneData.description);
+    const res = await fetch('/api/scenes', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${idToken}` },
+      body: formData
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.detail || data.message || 'Failed to create scene');
+      return;
+    }
+    const newScene = await res.json();
+    setScenes([...scenes, newScene]);
+    setShowSceneModal(false);
+  };
+
+  // Delete scene handler
+  const handleDeleteScene = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this scene?')) return;
+    const res = await fetch(`/api/scenes/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${idToken}` }
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.detail || data.message || 'Failed to delete scene');
+      return;
+    }
+    setScenes(scenes.filter(s => s.id !== id));
+  };
+
+  // Render scenes
   const renderScenes = () => {
     return (
       <div className="mt-3">
@@ -60,7 +96,7 @@ export default function ProfilePage() {
                     <button className="btn btn-sm btn-outline-primary me-2" /* onClick for edit */>
                       <i className="bi bi-pencil"></i>
                     </button>
-                    <button className="btn btn-sm btn-outline-danger" /* onClick for delete */>
+                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteScene(scene.id)}>
                       <i className="bi bi-trash"></i>
                     </button>
                   </div>
@@ -382,7 +418,7 @@ export default function ProfilePage() {
                 </button>
               </li>
       {/* Scene Create/Edit Modal */}
-      <SceneModal show={showSceneModal} onClose={() => setShowSceneModal(false)} />
+      <SceneModal show={showSceneModal} onClose={() => setShowSceneModal(false)} onSubmit={handleCreateScene} />
             </ul>
           </div>
 

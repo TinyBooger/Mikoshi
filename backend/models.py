@@ -53,3 +53,13 @@ class Tag(Base):
     name = Column(Text, unique=True, nullable=False)
     count = Column(Integer, default=0)
     likes = Column(Integer, default=0)   
+
+class Scene(Base):
+    __tablename__ = "scenes"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    creator_id = Column(String, nullable=False)
+    created_time = Column(DateTime, default=lambda: datetime.now(UTC))
+    likes = Column(Integer, default=0)
+    views = Column(Integer, default=0)
