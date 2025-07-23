@@ -4,13 +4,15 @@ import CharacterCard from '../components/CharacterCard';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import { AuthContext } from '../components/AuthProvider';
 import PersonaModal from '../components/PersonaModal';
+import SceneModal from '../components/SceneModal';
 
 export default function ProfilePage() {
   const MAX_NAME_LENGTH = 50;
   const TAB_TYPES = {
     CREATED: 'Created',
     LIKED: 'Liked',
-    PERSONAS: 'Personas'
+    PERSONAS: 'Personas',
+    SCENES: 'Scenes'
   };
 
   const { userData, idToken, refreshUserData } = useContext(AuthContext);
@@ -18,6 +20,58 @@ export default function ProfilePage() {
   const [likedCharacters, setLikedCharacters] = useState([]);
   const [personas, setPersonas] = useState([]);
   const [activeTab, setActiveTab] = useState(TAB_TYPES.CREATED);
+  const [scenes, setScenes] = useState([]); // Placeholder for scenes
+  // Placeholder for scene modal state
+  const [showSceneModal, setShowSceneModal] = useState(false);
+
+  // Placeholder: fetch scenes (to be implemented with API later)
+  // useEffect(() => {
+  //   if (idToken) {
+  //     fetch('/api/scenes', { headers: { 'Authorization': `Bearer ${idToken}` } })
+  //       .then(res => res.ok ? res.json() : [])
+  //       .then(setScenes);
+  //   }
+  // }, [idToken]);
+
+  // Placeholder for rendering scenes
+  const renderScenes = () => {
+    return (
+      <div className="mt-3">
+        <button
+          className="btn btn-primary mb-3"
+          onClick={() => setShowSceneModal(true)}
+        >
+          <i className="bi bi-plus"></i> Create New Scene
+        </button>
+        {scenes.length === 0 ? (
+          <div className="alert alert-info">
+            No scenes created yet. Click "Create New Scene" to add one.
+          </div>
+        ) : (
+          <div className="list-group">
+            {scenes.map(scene => (
+              <div key={scene.id} className="list-group-item">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h5>{scene.name}</h5>
+                    <p className="mb-0 text-muted">{scene.description}</p>
+                  </div>
+                  <div>
+                    <button className="btn btn-sm btn-outline-primary me-2" /* onClick for edit */>
+                      <i className="bi bi-pencil"></i>
+                    </button>
+                    <button className="btn btn-sm btn-outline-danger" /* onClick for delete */>
+                      <i className="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
   const [showModal, setShowModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPic, setEditPic] = useState(null);
@@ -244,6 +298,13 @@ export default function ProfilePage() {
             {renderPersonas()}
           </>
         );
+      case TAB_TYPES.SCENES:
+        return (
+          <>
+            <h4>My Scenes</h4>
+            {renderScenes()}
+          </>
+        );
       default:
         return null;
     }
@@ -312,6 +373,16 @@ export default function ProfilePage() {
                   Personas
                 </button>
               </li>
+              <li className="nav-item">
+                <button
+                  className={`nav-link ${activeTab === TAB_TYPES.SCENES ? 'active' : ''}`}
+                  onClick={() => setActiveTab(TAB_TYPES.SCENES)}
+                >
+                  Scenes
+                </button>
+              </li>
+      {/* Scene Create/Edit Modal */}
+      <SceneModal show={showSceneModal} onClose={() => setShowSceneModal(false)} />
             </ul>
           </div>
 
