@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router'; // add useLocation
 import CharacterCard from '../components/CharacterCard';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import { AuthContext } from '../components/AuthProvider';
@@ -15,7 +15,15 @@ export default function ProfilePage() {
     SCENES: 'Scenes'
   };
 
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const profileUserId = params.get('userId'); // if present, viewing public profile
   const { userData, idToken, refreshUserData } = useContext(AuthContext);
+
+  // Determine if this is the current user's own profile
+  const isOwnProfile = !profileUserId || (userData && String(userData.id) === String(profileUserId));
+  // If public view, fetch userData for the profile being viewed
+  const [publicUserData, setPublicUserData] = useState(null);
   const [createdCharacters, setCreatedCharacters] = useState([]);
   const [likedCharacters, setLikedCharacters] = useState([]);
   const [personas, setPersonas] = useState([]);
@@ -73,15 +81,17 @@ export default function ProfilePage() {
   const renderScenes = () => {
     return (
       <div className="mt-3">
-        <button
-          className="btn btn-primary mb-3"
-          onClick={() => setShowSceneModal(true)}
-        >
-          <i className="bi bi-plus"></i> Create New Scene
-        </button>
+        {isOwnProfile && (
+          <button
+            className="btn btn-primary mb-3"
+            onClick={() => setShowSceneModal(true)}
+          >
+            <i className="bi bi-plus"></i> Create New Scene
+          </button>
+        )}
         {scenes.length === 0 ? (
           <div className="alert alert-info">
-            No scenes created yet. Click "Create New Scene" to add one.
+            No scenes created yet. {isOwnProfile ? 'Click "Create New Scene" to add one.' : ''}
           </div>
         ) : (
           <div className="list-group">
@@ -92,17 +102,24 @@ export default function ProfilePage() {
                     <h5>{scene.name}</h5>
                     <p className="mb-0 text-muted">{scene.description}</p>
                   </div>
-                  <div>
-                    <button className="btn btn-sm btn-outline-primary me-2" /* onClick for edit */>
-                      <i className="bi bi-pencil"></i>
-                    </button>
-                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteScene(scene.id)}>
-                      <i className="bi bi-trash"></i>
-                    </button>
-                  </div>
+                  {isOwnProfile && (
+                    <div>
+                      <button className="btn btn-sm btn-outline-primary me-2">
+                        <i className="bi bi-pencil"></i>
+                      </button>
+                      <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteScene(scene.id)}>
+                        <i className="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {!isOwnProfile && (
+          <div className="alert alert-warning mt-3">
+            Only the profile owner can create or edit scenes.
           </div>
         )}
       </div>
@@ -163,31 +180,41 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    if (!idToken) {
+    if (!idToken && !profileUserId) {
       navigate('/');
       return;
     }
-
-    if (userData) {
-      setEditName(userData.name);
+    // If public profile, fetch user data for that user
+    if (profileUserId && (!userData || String(userData.id) !== String(profileUserId))) {
+      fetch(`/api/users/${profileUserId}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(setPublicUserData);
     }
 
-    fetch('/api/characters-created', {
+    fetch(`/api/characters-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
       headers: { 'Authorization': `Bearer ${idToken}` }
     })
       .then(res => res.ok ? res.json() : [])
       .then(setCreatedCharacters);
 
-    fetch('/api/characters-liked', {
-      headers: { 'Authorization': `Bearer ${idToken}` }
-    })
-      .then(res => res.ok ? res.json() : [])
-      .then(setLikedCharacters);
+    // Only fetch liked characters if own profile
+    if (isOwnProfile) {
+      fetch('/api/characters-liked', {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setLikedCharacters);
+    }
 
-    fetchPersonas()
-      .then(setPersonas)
-      .catch(console.error);
-  }, [navigate, idToken, userData]);
+    // Only fetch personas if own profile
+    if (isOwnProfile) {
+      fetchPersonas()
+        .then(setPersonas)
+        .catch(console.error);
+    } else {
+      setPersonas([]); // hide personas for public view
+    }
+  }, [navigate, idToken, userData, profileUserId, isOwnProfile]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -250,7 +277,7 @@ export default function ProfilePage() {
         {characters.map(c => (
           <div key={c.id} style={{ width: 150 }}>
             <CharacterCard character={c} />
-            {activeTab === TAB_TYPES.CREATED && (
+            {activeTab === TAB_TYPES.CREATED && isOwnProfile && (
               <button
                 className="btn btn-sm btn-outline-secondary w-100 mt-1"
                 onClick={() => navigate(`/character-edit?id=${c.id}`)}
@@ -263,8 +290,8 @@ export default function ProfilePage() {
         {characters.length === 0 && (
           <p className="text-muted">
             {activeTab === TAB_TYPES.CREATED 
-              ? "You haven't created any characters yet." 
-              : "You haven't liked any characters yet."}
+              ? "No characters created yet." 
+              : "No liked characters yet."}
           </p>
         )}
       </div>
@@ -272,6 +299,13 @@ export default function ProfilePage() {
   };
 
   const renderPersonas = () => {
+    if (!isOwnProfile) {
+      return (
+        <div className="alert alert-warning">
+          Personas are private and only visible to the profile owner.
+        </div>
+      );
+    }
     return (
       <div className="mt-3">
         <button 
@@ -346,17 +380,23 @@ export default function ProfilePage() {
     }
   };
 
-  if (!userData) return null;
+  // Use correct user data for display
+  const displayUser = isOwnProfile ? userData : publicUserData;
+  if (!displayUser) return null;
 
   return (
     <div className="d-flex" style={{ height: '100vh' }}>
       <div className="d-flex flex-column flex-grow-1 overflow-hidden">
         <div className="flex-grow-1 p-4">
           <h2 className="mb-4">My Profile</h2>
-
+          {!isOwnProfile && (
+            <div className="alert alert-info">
+              <strong>Public Profile View:</strong> You are viewing this profile as a visitor. Editing and some private sections are disabled.
+            </div>
+          )}
           <div className="d-flex align-items-center gap-4 mb-4">
             <img
-              src={userData.profile_pic || defaultAvatar}
+              src={displayUser.profile_pic || defaultAvatar}
               alt="Profile"
               className="rounded-circle"
               width="100"
@@ -364,25 +404,26 @@ export default function ProfilePage() {
             />
             <div>
               <div className="d-flex align-items-baseline gap-2 mb-1">
-                <h3 className="mb-0">{userData.name}</h3>
+                <h3 className="mb-0">{displayUser.name}</h3>
                 <span className="text-muted small">•</span>
                 <div className="d-flex gap-2">
                   <span className="badge bg-light text-dark">
                     <i className="bi bi-eye me-1"></i>
-                    {userData.views || 0} views
+                    {displayUser.views || 0} views
                   </span>
                   <span className="badge bg-light text-dark">
                     <i className="bi bi-heart me-1"></i>
-                    {userData.likes || 0} likes
+                    {displayUser.likes || 0} likes
                   </span>
                 </div>
               </div>
-              <button className="btn btn-outline-primary btn-sm mt-1" onClick={() => setShowModal(true)}>
-                Edit Profile
-              </button>
+              {isOwnProfile && (
+                <button className="btn btn-outline-primary btn-sm mt-1" onClick={() => setShowModal(true)}>
+                  Edit Profile
+                </button>
+              )}
             </div>
           </div>
-
           <div className="mb-3">
             <ul className="nav nav-tabs">
               <li className="nav-item">
@@ -393,18 +434,21 @@ export default function ProfilePage() {
                   Created
                 </button>
               </li>
-              <li className="nav-item">
-                <button
-                  className={`nav-link ${activeTab === TAB_TYPES.LIKED ? 'active' : ''}`}
-                  onClick={() => setActiveTab(TAB_TYPES.LIKED)}
-                >
-                  Liked
-                </button>
-              </li>
+              {isOwnProfile && (
+                <li className="nav-item">
+                  <button
+                    className={`nav-link ${activeTab === TAB_TYPES.LIKED ? 'active' : ''}`}
+                    onClick={() => setActiveTab(TAB_TYPES.LIKED)}
+                  >
+                    Liked
+                  </button>
+                </li>
+              )}
               <li className="nav-item">
                 <button
                   className={`nav-link ${activeTab === TAB_TYPES.PERSONAS ? 'active' : ''}`}
                   onClick={() => setActiveTab(TAB_TYPES.PERSONAS)}
+                  disabled={!isOwnProfile}
                 >
                   Personas
                 </button>
@@ -417,8 +461,10 @@ export default function ProfilePage() {
                   Scenes
                 </button>
               </li>
-      {/* Scene Create/Edit Modal */}
-      <SceneModal show={showSceneModal} onClose={() => setShowSceneModal(false)} onSubmit={handleCreateScene} />
+              {/* Scene Create/Edit Modal */}
+              {isOwnProfile && (
+                <SceneModal show={showSceneModal} onClose={() => setShowSceneModal(false)} onSubmit={handleCreateScene} />
+              )}
             </ul>
           </div>
 
@@ -427,7 +473,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Profile Edit Modal */}
-      {showModal && (
+      {showModal && isOwnProfile && (
         <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog">
             <form className="modal-content" onSubmit={handleSave}>
@@ -471,12 +517,14 @@ export default function ProfilePage() {
       )}
 
       {/* Persona Edit/Create Modal */}
-      <PersonaModal
-        show={personaModal.show}
-        onClose={() => setPersonaModal({ show: false, currentPersona: null })}
-        onSave={handlePersonaSave}
-        currentPersona={personaModal.currentPersona}
-      />
+      {isOwnProfile && (
+        <PersonaModal
+          show={personaModal.show}
+          onClose={() => setPersonaModal({ show: false, currentPersona: null })}
+          onSave={handlePersonaSave}
+          currentPersona={personaModal.currentPersona}
+        />
+      )}
     </div>
   );
 }

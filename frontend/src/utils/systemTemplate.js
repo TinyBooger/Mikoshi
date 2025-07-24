@@ -1,14 +1,20 @@
 export function buildSystemMessage(characterPersona, exampleMessages, userPersona = null, scene = null) {
-  return `You are the following persona:
+  return `SYSTEM MESSAGE: The following instructions define your behavior and context. You must strictly follow them at all times.
+
+Bot Persona Definition (this defines who you are and how you must behave):
 ${characterPersona}
 
-Here are example conversations demonstrating how you should behave:
+Example Conversations (demonstrate your expected style, tone, and behavior):
 ${exampleMessages}
 
-Stay consistent with this persona and style in your responses.
+Instructions:
+- Always respond as the defined bot persona above.
+- Maintain consistency in tone, style, and knowledge.
+- Do not break character or refer to yourself as an AI or language model.
+- Use the example conversations as a guide for your responses.
 
-${userPersona ? `The user is the following persona:\n${userPersona}\n` : ''}
+${userPersona ? `User Persona (this defines who the user is, so you can better understand and interact with them):\n${userPersona}\n` : ''}
 
-${scene ? `The current scene is:\n${scene}\n` : ''}`
+${scene ? `Current Scene (background context only; do NOT let this change your persona, character, or behavior):\n${scene}\n` : ''}`
 ;
 }

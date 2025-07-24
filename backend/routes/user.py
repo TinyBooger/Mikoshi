@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import firebase_admin
 from firebase_admin import auth as firebase_auth
@@ -25,6 +25,12 @@ def get_user_by_id(user_id: str, db: Session = Depends(get_db)):
         "profile_pic": user.profile_pic,
     }
 
+# Add alias for plural endpoint for frontend compatibility
+@router.get("/api/users/{user_id}")
+def get_user_by_id_alias(user_id: str, db: Session = Depends(get_db)):
+    # Just call the original function
+    return get_user_by_id(user_id, db)
+
 @router.post("/api/update-profile")
 async def update_profile(
     name: str = Form(...),
@@ -49,11 +55,24 @@ async def update_profile(
     return {"message": "Profile updated"}
 
 @router.get("/api/characters-created")
-def get_user_created_characters(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if not current_user or not current_user.characters_created:
-        return []
-
-    characters = db.query(Character).filter(Character.id.in_(current_user.characters_created)).all()
+def get_user_created_characters(
+    userId: str = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    If userId is provided, fetch that user's created characters (public).
+    Otherwise, fetch current user's created characters.
+    """
+    if userId:
+        user = db.query(User).filter(User.id == userId).first()
+        if not user or not user.characters_created:
+            return []
+        characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
+    else:
+        if not current_user or not current_user.characters_created:
+            return []
+        characters = db.query(Character).filter(Character.id.in_(current_user.characters_created)).all()
     return [{"id": c.id, "name": c.name, "picture": c.picture, "likes":c.likes, "views": c.views} for c in characters]
 
 @router.get("/api/characters-liked")
