@@ -10,7 +10,6 @@ import CharacterCreatePage from './pages/CharacterCreatePage';
 import CharacterEditPage from './pages/CharacterEditPage';
 import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
-import PublicProfilePage from "./pages/PublicProfilePage";
 import SearchPage from "./pages/SearchPage";
 import { AuthContext } from './components/AuthProvider';
 import DashboardPage from "./admin/pages/DashboardPage";
@@ -39,7 +38,7 @@ export default function App() {
         { path: 'character-edit', element: <CharacterEditPage /> },
         { path: 'chat', element: <ChatPage /> },
         { path: 'profile', element: <ProfilePage /> },
-        { path: "profile/:userId", element: <PublicProfilePage /> },
+        { path: "profile/:userId", element: <ProfilePage publicView={true} /> },
         { path: "search", element: <SearchPage /> },
       ] : [],
     },
