@@ -60,12 +60,13 @@ function Topbar() {
 
   return (
     <div
-      className="d-flex align-items-center justify-content-between px-3 shadow-sm bg-light"
-      style={{ height: '56px', zIndex: 1030 }}
+      className="d-flex align-items-center justify-content-between px-4 py-2 bg-white shadow-sm"
+      style={{ height: 64, zIndex: 1030, borderBottom: '1px solid #e9ecef' }}
     >
       {location.pathname !== '/' && (
         <button
-          className="btn btn-outline-secondary btn-sm"
+          className="btn btn-outline-primary rounded-pill me-3"
+          style={{ fontSize: '1.1rem', padding: '0.4rem 1rem' }}
           onClick={() => window.history.back()}
         >
           <i className="bi bi-arrow-left"></i>
@@ -73,42 +74,40 @@ function Topbar() {
       )}
 
       {/* Navigation Tabs */}
-      <div className="d-flex mx-3">
+      <div className="d-flex gap-2 mx-3">
         <button
-          className={`btn btn-sm ${activeTab === 'recommended' ? 'btn-primary' : 'btn-outline-secondary'}`}
+          className={`btn btn-sm rounded-pill px-3 fw-semibold shadow-sm ${activeTab === 'recommended' ? 'btn-primary text-white' : 'btn-outline-primary'}`}
           onClick={() => navigateToTab('recommended')}
-          style={{ marginRight: '8px' }}
         >
           For You
         </button>
         <button
-          className={`btn btn-sm ${activeTab === 'popular' ? 'btn-primary' : 'btn-outline-secondary'}`}
+          className={`btn btn-sm rounded-pill px-3 fw-semibold shadow-sm ${activeTab === 'popular' ? 'btn-primary text-white' : 'btn-outline-primary'}`}
           onClick={() => navigateToTab('popular')}
-          style={{ marginRight: '8px' }}
         >
           Popular
         </button>
         <button
-          className={`btn btn-sm ${activeTab === 'recent' ? 'btn-primary' : 'btn-outline-secondary'}`}
+          className={`btn btn-sm rounded-pill px-3 fw-semibold shadow-sm ${activeTab === 'recent' ? 'btn-primary text-white' : 'btn-outline-primary'}`}
           onClick={() => navigateToTab('recent')}
         >
           Recent
         </button>
         <button
-          className={`btn btn-sm ${activeTab === 'tags' ? 'btn-primary' : 'btn-outline-secondary'}`}
+          className={`btn btn-sm rounded-pill px-3 fw-semibold shadow-sm ${activeTab === 'tags' ? 'btn-primary text-white' : 'btn-outline-primary'}`}
           onClick={() => navigateToTab('tags')}
-          style={{ marginRight: '8px' }}
         >
           Tags
         </button>
       </div>
 
       {/* Search Bar */}
-      <div className="ms-auto" style={{ width: 250, position: 'relative' }}>
-        <div className="input-group input-group-sm">
+      <div className="ms-auto" style={{ width: 270, position: 'relative' }}>
+        <div className="input-group input-group-sm rounded-pill shadow-sm" style={{ background: '#f8f9fa', borderRadius: 32 }}>
           <input
             type="text"
-            className="form-control"
+            className="form-control border-0 rounded-pill"
+            style={{ background: 'transparent', fontSize: '1rem', paddingLeft: 18 }}
             placeholder="Search characters..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -118,23 +117,23 @@ function Topbar() {
             aria-autocomplete="list"
             aria-haspopup="true"
           />
-          <button className="btn btn-outline-primary" onClick={() => handleSearch()}>
+          <button className="btn btn-primary rounded-pill px-3" style={{ fontSize: '1.1rem' }} onClick={() => handleSearch()}>
             <i className="bi bi-search"></i>
           </button>
         </div>
         {showSuggestions && suggestions.length > 0 && (
           <ul
-            className="list-group position-absolute w-100"
-            style={{ top: '100%', zIndex: 1040, maxHeight: 200, overflowY: 'auto' }}
+            className="list-group position-absolute w-100 shadow rounded-4"
+            style={{ top: '100%', zIndex: 1040, maxHeight: 220, overflowY: 'auto', background: '#fff' }}
           >
             {suggestions.map(({ keyword, count }) => (
               <li
                 key={keyword}
-                className="list-group-item list-group-item-action"
-                style={{ cursor: 'pointer' }}
+                className="list-group-item list-group-item-action rounded-3"
+                style={{ cursor: 'pointer', transition: 'background 0.2s' }}
                 onClick={() => handleSearch(keyword)}
               >
-                {keyword} <small className="text-muted">({count})</small>
+                <span className="fw-semibold">{keyword}</span> <small className="text-muted">({count})</small>
               </li>
             ))}
           </ul>

@@ -66,66 +66,92 @@ function HomePage() {
   };
 
   return (
-    <>
-      <section className="mb-4">
-        <div className="d-flex justify-content-between align-items-center">
-          <h4>Popular Characters</h4>
+    <div className="container-fluid px-4 py-3" style={{ background: 'var(--bs-body-bg, #f8f9fa)' }}>
+      {/* Popular Characters */}
+      <section className="mb-5">
+        <div className="d-flex justify-content-between align-items-center mb-2">
+          <h3 className="fw-bold text-dark">Popular Characters</h3>
           <button 
-            className="btn btn-link" 
+            className="btn btn-outline-primary rounded-pill px-3 py-1 shadow-sm"
             onClick={() => navigate('/browse/popular')}
           >
-            More...
+            More
           </button>
         </div>
-        <div className="d-flex flex-row overflow-auto gap-3">
-          {popular.map(c => <CharacterCard key={c.id} character={c} />)}
+        <div className="d-flex flex-row overflow-auto gap-4 pb-2">
+          {popular.length === 0 ? (
+            <div className="text-muted py-4">No popular characters found.</div>
+          ) : (
+            popular.map(c => (
+              <div className="card border-0 shadow-sm rounded-4" style={{ minWidth: 220, maxWidth: 260, transition: 'transform 0.2s', cursor: 'pointer' }}>
+                <CharacterCard key={c.id} character={c} />
+              </div>
+            ))
+          )}
         </div>
       </section>
 
-      <section className="mb-4">
-        <div className="d-flex justify-content-between align-items-center">
-          <h4>Recently Uploaded</h4>
+      {/* Recently Uploaded */}
+      <section className="mb-5">
+        <div className="d-flex justify-content-between align-items-center mb-2">
+          <h3 className="fw-bold text-dark">Recently Uploaded</h3>
           <button 
-            className="btn btn-link" 
+            className="btn btn-outline-primary rounded-pill px-3 py-1 shadow-sm"
             onClick={() => navigate('/browse/recent')}
           >
-            More...
+            More
           </button>
         </div>
-        <div className="d-flex flex-row overflow-auto gap-3">
-          {recent.map(c => <CharacterCard key={c.id} character={c} />)}
+        <div className="d-flex flex-row overflow-auto gap-4 pb-2">
+          {recent.length === 0 ? (
+            <div className="text-muted py-4">No recent characters found.</div>
+          ) : (
+            recent.map(c => (
+              <div className="card border-0 shadow-sm rounded-4" style={{ minWidth: 220, maxWidth: 260, transition: 'transform 0.2s', cursor: 'pointer' }}>
+                <CharacterCard key={c.id} character={c} />
+              </div>
+            ))
+          )}
         </div>
       </section>
 
-      <section className="mb-4">
-        <div className="d-flex justify-content-between align-items-center">
-          <h4>Recommended for You</h4>
+      {/* Recommended for You */}
+      <section className="mb-5">
+        <div className="d-flex justify-content-between align-items-center mb-2">
+          <h3 className="fw-bold text-dark">Recommended for You</h3>
           {recommended.length > 0 && (
             <button 
-              className="btn btn-link" 
+              className="btn btn-outline-primary rounded-pill px-3 py-1 shadow-sm"
               onClick={() => navigate('/browse/recommended')}
             >
-              More...
+              More
             </button>
           )}
         </div>
         {recommended.length === 0 ? (
-          <p>No recommendations yet. Please like more characters to unlock personalized suggestions.</p>
+          <div className="alert alert-info mt-3">No recommendations yet. Please like more characters to unlock personalized suggestions.</div>
         ) : (
-          <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
-            {recommended.map(c => <CharacterCard key={c.id} character={c} />)}
+          <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
+            {recommended.map(c => (
+              <div className="col">
+                <div className="card border-0 shadow-sm rounded-4 h-100" style={{ transition: 'transform 0.2s', cursor: 'pointer' }}>
+                  <CharacterCard key={c.id} character={c} />
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </section>
 
+      {/* Popular Tags */}
       <section className="mb-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <div className="d-flex align-items-center gap-3">
-            <h4 className="mb-0">Popular Tags</h4>
+            <h3 className="fw-bold text-dark mb-0">Popular Tags</h3>
             {selectedTag && (
               <div className="d-flex align-items-center">
                 <span className="text-muted me-2">Showing:</span>
-                <span className="badge bg-primary">
+                <span className="badge bg-gradient-primary text-white px-3 py-2 rounded-pill shadow-sm">
                   #{selectedTag}
                   <button 
                     className="btn-close btn-close-white btn-close-sm ms-2" 
@@ -140,16 +166,16 @@ function HomePage() {
             )}
           </div>
           <button 
-            className="btn btn-link" 
+            className="btn btn-outline-primary rounded-pill px-3 py-1 shadow-sm"
             onClick={() => navigate('/browse/tags')}
           >
-            More...
+            More
           </button>
         </div>
 
         {loadingTags ? (
-          <div className="text-center my-3">
-            <div className="spinner-border spinner-border-sm" role="status">
+          <div className="text-center my-4">
+            <div className="spinner-border text-primary" role="status">
               <span className="visually-hidden">Loading...</span>
             </div>
           </div>
@@ -159,35 +185,38 @@ function HomePage() {
               {popularTags.map(tag => (
                 <button
                   key={tag.name}
-                  className={`btn btn-sm ${
+                  className={`btn btn-sm px-3 py-2 rounded-pill shadow-sm fw-semibold ${
                     selectedTag === tag.name 
-                      ? 'btn-primary' 
+                      ? 'btn-primary text-white' 
                       : 'btn-outline-primary'
                   }`}
+                  style={{ letterSpacing: '0.5px', fontSize: '1rem', transition: 'background 0.2s' }}
                   onClick={() => handleTagClick(tag.name)}
                 >
-                  {tag.name} <span className="badge bg-secondary ms-1">{tag.likes}</span>
+                  #{tag.name} <span className="badge bg-secondary ms-2">{tag.likes}</span>
                 </button>
               ))}
             </div>
 
-            <div className="d-flex flex-row overflow-auto gap-3">
+            <div className="d-flex flex-row overflow-auto gap-4 pb-2">
               {selectedTag ? (
                 tagCharacters[selectedTag]?.length > 0 ? (
                   tagCharacters[selectedTag].map(c => (
-                    <CharacterCard key={c.id} character={c} />
+                    <div className="card border-0 shadow-sm rounded-4" style={{ minWidth: 220, maxWidth: 260, transition: 'transform 0.2s', cursor: 'pointer' }}>
+                      <CharacterCard key={c.id} character={c} />
+                    </div>
                   ))
                 ) : (
-                  <div className="text-muted py-3">Loading characters...</div>
+                  <div className="text-muted py-4">Loading characters...</div>
                 )
               ) : (
-                <div className="text-muted py-3">Select a tag to view characters</div>
+                <div className="text-muted py-4">Select a tag to view characters</div>
               )}
             </div>
           </>
         )}
       </section>
-    </>
+    </div>
   );
 }
 
