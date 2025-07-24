@@ -9,13 +9,13 @@ export default function CharacterCard({ character }) {
 
   return (
     <div
-      className="bg-white rounded-4 shadow-sm d-flex flex-column align-items-center justify-content-between position-relative"
-      style={{ width: 220, height: 320, margin: 8, cursor: 'pointer', transition: 'box-shadow 0.2s, transform 0.2s' }}
+      className="bg-white rounded-4 shadow-sm d-flex flex-column align-items-center position-relative"
+      style={{ width: 220, height: 320, margin: 8, cursor: 'pointer', transition: 'box-shadow 0.2s, transform 0.2s', overflow: 'hidden' }}
       onClick={() => navigate(`/chat?character=${encodeURIComponent(id)}`)}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.10)'; e.currentTarget.style.transform = 'translateY(-2px) scale(1.03)'; }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; e.currentTarget.style.transform = 'none'; }}
     >
-      <div className="d-flex flex-column align-items-center pt-3 pb-2 w-100">
+      <div className="d-flex flex-column align-items-center pt-3 pb-2 w-100" style={{ flex: '1 1 auto', minHeight: 0 }}>
         <img
           src={picture || defaultPicture}
           alt={name}
@@ -34,7 +34,7 @@ export default function CharacterCard({ character }) {
           </div>
         )}
       </div>
-      <div className="d-flex justify-content-center align-items-center gap-3 pb-3 w-100">
+      <div className="d-flex justify-content-center align-items-center gap-3 w-100" style={{ paddingBottom: 18 }}>
         <span className="d-flex align-items-center px-3 py-1 rounded-pill bg-light text-secondary" style={{ fontSize: 15 }}>
           <i className="bi bi-chat me-1"></i> {views}
         </span>

@@ -66,19 +66,20 @@ function HomePage() {
   };
 
   return (
-    <div className="container-fluid px-4 py-3" style={{ background: 'var(--bs-body-bg, #f8f9fa)' }}>
+    <div className="container-xl px-5 py-4" style={{ background: 'var(--bs-body-bg, #f8f9fa)', minHeight: '100vh' }}>
       {/* Popular Characters */}
-      <section className="mb-5">
-        <div className="d-flex justify-content-between align-items-center mb-2">
-          <h3 className="fw-bold text-dark">Popular Characters</h3>
+      <section className="mb-5 pb-3 border-bottom" style={{ borderColor: '#e9ecef' }}>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h2 className="fw-bold text-dark" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Popular Characters</h2>
           <button 
-            className="btn btn-outline-primary rounded-pill px-3 py-1 shadow-sm"
+            className="btn btn-outline-primary rounded-pill px-4 py-2 shadow-sm fw-semibold"
+            style={{ fontSize: '1.08rem' }}
             onClick={() => navigate('/browse/popular')}
           >
             More
           </button>
         </div>
-        <div className="d-flex flex-row overflow-auto gap-4 pb-2">
+        <div className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden' }}>
           {popular.length === 0 ? (
             <div className="text-muted py-4">No popular characters found.</div>
           ) : (
@@ -92,17 +93,18 @@ function HomePage() {
       </section>
 
       {/* Recently Uploaded */}
-      <section className="mb-5">
-        <div className="d-flex justify-content-between align-items-center mb-2">
-          <h3 className="fw-bold text-dark">Recently Uploaded</h3>
+      <section className="mb-5 pb-3 border-bottom" style={{ borderColor: '#e9ecef' }}>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h2 className="fw-bold text-dark" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Recently Uploaded</h2>
           <button 
-            className="btn btn-outline-primary rounded-pill px-3 py-1 shadow-sm"
+            className="btn btn-outline-primary rounded-pill px-4 py-2 shadow-sm fw-semibold"
+            style={{ fontSize: '1.08rem' }}
             onClick={() => navigate('/browse/recent')}
           >
             More
           </button>
         </div>
-        <div className="d-flex flex-row overflow-auto gap-4 pb-2">
+        <div className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden' }}>
           {recent.length === 0 ? (
             <div className="text-muted py-4">No recent characters found.</div>
           ) : (
@@ -116,12 +118,13 @@ function HomePage() {
       </section>
 
       {/* Recommended for You */}
-      <section className="mb-5">
-        <div className="d-flex justify-content-between align-items-center mb-2">
-          <h3 className="fw-bold text-dark">Recommended for You</h3>
+      <section className="mb-5 pb-3 border-bottom" style={{ borderColor: '#e9ecef' }}>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h2 className="fw-bold text-dark" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Recommended for You</h2>
           {recommended.length > 0 && (
             <button 
-              className="btn btn-outline-primary rounded-pill px-3 py-1 shadow-sm"
+              className="btn btn-outline-primary rounded-pill px-4 py-2 shadow-sm fw-semibold"
+              style={{ fontSize: '1.08rem' }}
               onClick={() => navigate('/browse/recommended')}
             >
               More
@@ -143,9 +146,9 @@ function HomePage() {
 
       {/* Popular Tags */}
       <section className="mb-4">
-        <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="d-flex justify-content-between align-items-center mb-4">
           <div className="d-flex align-items-center gap-3">
-            <h3 className="fw-bold text-dark mb-0">Popular Tags</h3>
+            <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Popular Tags</h2>
             {selectedTag && (
               <div className="d-flex align-items-center">
                 <span className="text-muted me-2">Showing:</span>
@@ -164,7 +167,8 @@ function HomePage() {
             )}
           </div>
           <button 
-            className="btn btn-outline-primary rounded-pill px-3 py-1 shadow-sm"
+            className="btn btn-outline-primary rounded-pill px-4 py-2 shadow-sm fw-semibold"
+            style={{ fontSize: '1.08rem' }}
             onClick={() => navigate('/browse/tags')}
           >
             More
@@ -196,7 +200,7 @@ function HomePage() {
               ))}
             </div>
 
-            <div className="d-flex flex-row overflow-auto gap-4 pb-2">
+            <div className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden' }}>
               {selectedTag ? (
                 tagCharacters[selectedTag]?.length > 0 ? (
                   tagCharacters[selectedTag].map(c => (
