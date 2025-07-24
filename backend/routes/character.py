@@ -211,7 +211,8 @@ def get_popular_characters(db: Session = Depends(get_db)):
             "picture": c.picture,
             "views": c.views,
             "likes": c.likes,
-            "tagline": c.tagline
+            "tagline": c.tagline,
+            "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
         } for c in chars
     ]
 
@@ -236,7 +237,8 @@ def get_recommended_characters(
             "picture": c.picture,
             "views": c.views,
             "likes": c.likes,
-            "tagline": c.tagline
+            "tagline": c.tagline,
+            "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
         } for c in chars
     ]
 
@@ -261,7 +263,8 @@ def get_characters_by_tag(
             "picture": c.picture,
             "views": c.views,
             "likes": c.likes,
-            "tagline": c.tagline
+            "tagline": c.tagline,
+            "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
         } for c in chars
     ]
 
@@ -276,7 +279,8 @@ def get_recent_characters(db: Session = Depends(get_db)):
             "picture": c.picture,
             "views": c.views,
             "likes": c.likes,
-            "tagline": c.tagline
+            "tagline": c.tagline,
+            "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
         } for c in chars
     ]
 
