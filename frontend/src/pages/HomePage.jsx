@@ -83,7 +83,7 @@ function HomePage() {
             <div className="text-muted py-4">No popular characters found.</div>
           ) : (
             popular.map(c => (
-              <div className="card border-0 shadow-sm rounded-4" style={{ minWidth: 220, maxWidth: 260, transition: 'transform 0.2s', cursor: 'pointer' }}>
+              <div style={{ minWidth: 220, maxWidth: 260 }}>
                 <CharacterCard key={c.id} character={c} />
               </div>
             ))
@@ -107,7 +107,7 @@ function HomePage() {
             <div className="text-muted py-4">No recent characters found.</div>
           ) : (
             recent.map(c => (
-              <div className="card border-0 shadow-sm rounded-4" style={{ minWidth: 220, maxWidth: 260, transition: 'transform 0.2s', cursor: 'pointer' }}>
+              <div style={{ minWidth: 220, maxWidth: 260 }}>
                 <CharacterCard key={c.id} character={c} />
               </div>
             ))
@@ -133,10 +133,8 @@ function HomePage() {
         ) : (
           <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
             {recommended.map(c => (
-              <div className="col">
-                <div className="card border-0 shadow-sm rounded-4 h-100" style={{ transition: 'transform 0.2s', cursor: 'pointer' }}>
-                  <CharacterCard key={c.id} character={c} />
-                </div>
+              <div className="col d-flex">
+                <CharacterCard key={c.id} character={c} />
               </div>
             ))}
           </div>
@@ -202,7 +200,7 @@ function HomePage() {
               {selectedTag ? (
                 tagCharacters[selectedTag]?.length > 0 ? (
                   tagCharacters[selectedTag].map(c => (
-                    <div className="card border-0 shadow-sm rounded-4" style={{ minWidth: 220, maxWidth: 260, transition: 'transform 0.2s', cursor: 'pointer' }}>
+                    <div style={{ minWidth: 220, maxWidth: 260 }}>
                       <CharacterCard key={c.id} character={c} />
                     </div>
                   ))
