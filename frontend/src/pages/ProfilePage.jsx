@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { useNavigate, useLocation } from 'react-router'; // add useLocation
+import { useNavigate, useParams } from 'react-router'; // useParams instead of useLocation
 import CharacterCard from '../components/CharacterCard';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import { AuthContext } from '../components/AuthProvider';
@@ -15,9 +15,7 @@ export default function ProfilePage() {
     SCENES: 'Scenes'
   };
 
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  const profileUserId = params.get('userId'); // if present, viewing public profile
+  const { userId: profileUserId } = useParams(); // get userId from route params
   const { userData, idToken, refreshUserData } = useContext(AuthContext);
 
   // Determine if this is the current user's own profile
