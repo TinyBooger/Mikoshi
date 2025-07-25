@@ -61,7 +61,7 @@ function Topbar() {
   return (
     <div
       className="d-flex align-items-center justify-content-between px-4 py-2 shadow-sm"
-      style={{ height: 64, zIndex: 1030, background: '#18191a', borderBottom: '1.5px solid #232323', fontFamily: 'Inter, sans-serif' }}
+      style={{ height: 64, zIndex: 1030, background: '#fff', borderBottom: '1.5px solid #e9ecef', fontFamily: 'Inter, sans-serif' }}
     >
       {location.pathname !== '/' && (
         <button
@@ -74,7 +74,7 @@ function Topbar() {
       )}
 
       {/* Navigation Tabs - brick style */}
-      <div className="d-flex mx-3" style={{ gap: 0, background: '#232323', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+      <div className="d-flex mx-3" style={{ gap: 0, background: '#f5f6fa', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
         {[
           { key: 'recommended', label: 'For You' },
           { key: 'popular', label: 'Popular' },
@@ -86,10 +86,10 @@ function Topbar() {
             className="fw-bold border-0 px-4 py-2"
             style={{
               background: activeTab === tab.key ? '#fff' : 'transparent',
-              color: activeTab === tab.key ? '#18191a' : '#b0b3b8',
+              color: activeTab === tab.key ? '#232323' : '#888',
               fontWeight: 700,
               fontSize: '1.08rem',
-              borderRight: tab.key !== 'tags' ? '1.5px solid #232323' : 'none',
+              borderRight: tab.key !== 'tags' ? '1.5px solid #e9ecef' : 'none',
               borderRadius: 0,
               transition: 'background 0.18s, color 0.18s',
               boxShadow: activeTab === tab.key ? '0 2px 8px rgba(0,0,0,0.04)' : 'none',
@@ -101,14 +101,14 @@ function Topbar() {
             onClick={() => navigateToTab(tab.key)}
             onMouseEnter={e => {
               if (activeTab !== tab.key) {
-                e.currentTarget.style.background = '#232323';
-                e.currentTarget.style.color = '#fff';
+                e.currentTarget.style.background = '#e9ecef';
+                e.currentTarget.style.color = '#232323';
               }
             }}
             onMouseLeave={e => {
               if (activeTab !== tab.key) {
                 e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = '#b0b3b8';
+                e.currentTarget.style.color = '#888';
               }
             }}
           >
@@ -119,11 +119,11 @@ function Topbar() {
 
       {/* Search Bar */}
       <div className="ms-auto" style={{ width: 270, position: 'relative' }}>
-        <div className="input-group input-group-sm rounded-pill shadow-sm" style={{ background: '#232323', borderRadius: 32 }}>
+        <div className="input-group input-group-sm rounded-pill shadow-sm" style={{ background: '#f5f6fa', borderRadius: 32 }}>
           <input
             type="text"
             className="form-control border-0 rounded-pill"
-            style={{ background: 'transparent', fontSize: '1rem', paddingLeft: 18, color: '#fff' }}
+            style={{ background: 'transparent', fontSize: '1rem', paddingLeft: 18, color: '#232323' }}
             placeholder="Search characters..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -133,22 +133,22 @@ function Topbar() {
             aria-autocomplete="list"
             aria-haspopup="true"
           />
-          <button className="btn rounded-pill px-3" style={{ fontSize: '1.1rem', background: '#fff', color: '#18191a' }} onClick={() => handleSearch()}>
+          <button className="btn rounded-pill px-3" style={{ fontSize: '1.1rem', background: '#232323', color: '#fff' }} onClick={() => handleSearch()}>
             <i className="bi bi-search"></i>
           </button>
         </div>
         {showSuggestions && suggestions.length > 0 && (
           <ul
             className="list-group position-absolute w-100 shadow rounded-4"
-            style={{ top: '100%', zIndex: 1040, maxHeight: 220, overflowY: 'auto', background: '#232323', color: '#fff', border: 'none' }}
+            style={{ top: '100%', zIndex: 1040, maxHeight: 220, overflowY: 'auto', background: '#fff', color: '#232323', border: 'none' }}
           >
             {suggestions.map(({ keyword, count }) => (
               <li
                 key={keyword}
                 className="list-group-item list-group-item-action rounded-3"
-                style={{ cursor: 'pointer', transition: 'background 0.2s', background: 'transparent', color: '#fff', border: 'none' }}
+                style={{ cursor: 'pointer', transition: 'background 0.2s', background: 'transparent', color: '#232323', border: 'none' }}
                 onClick={() => handleSearch(keyword)}
-                onMouseEnter={e => { e.currentTarget.style.background = '#333'; }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
               >
                 <span className="fw-semibold">{keyword}</span> <small className="text-muted">({count})</small>
