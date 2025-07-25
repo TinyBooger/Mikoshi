@@ -71,9 +71,26 @@ function HomePage() {
       <section className="mb-5 pb-3 border-bottom" style={{ borderColor: '#e9ecef' }}>
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2 className="fw-bold text-dark" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Popular Characters</h2>
-          <button 
-            className="btn btn-outline-primary rounded-pill px-4 py-2 shadow-sm fw-semibold"
-            style={{ fontSize: '1.08rem' }}
+          <button
+            className="fw-bold rounded-pill"
+            style={{
+              background: '#18191a',
+              color: '#fff',
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              fontSize: '1.08rem',
+              padding: '0.5rem 2rem',
+              letterSpacing: '0.2px',
+              transition: 'background 0.18s, color 0.18s',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#232323';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '#18191a';
+            }}
             onClick={() => navigate('/browse/popular')}
           >
             More
@@ -96,9 +113,26 @@ function HomePage() {
       <section className="mb-5 pb-3 border-bottom" style={{ borderColor: '#e9ecef' }}>
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2 className="fw-bold text-dark" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Recently Uploaded</h2>
-          <button 
-            className="btn btn-outline-primary rounded-pill px-4 py-2 shadow-sm fw-semibold"
-            style={{ fontSize: '1.08rem' }}
+          <button
+            className="fw-bold rounded-pill"
+            style={{
+              background: '#18191a',
+              color: '#fff',
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              fontSize: '1.08rem',
+              padding: '0.5rem 2rem',
+              letterSpacing: '0.2px',
+              transition: 'background 0.18s, color 0.18s',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#232323';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '#18191a';
+            }}
             onClick={() => navigate('/browse/recent')}
           >
             More
@@ -122,9 +156,26 @@ function HomePage() {
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2 className="fw-bold text-dark" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Recommended for You</h2>
           {recommended.length > 0 && (
-            <button 
-              className="btn btn-outline-primary rounded-pill px-4 py-2 shadow-sm fw-semibold"
-              style={{ fontSize: '1.08rem' }}
+            <button
+              className="fw-bold rounded-pill"
+              style={{
+                background: '#18191a',
+                color: '#fff',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                fontSize: '1.08rem',
+                padding: '0.5rem 2rem',
+                letterSpacing: '0.2px',
+                transition: 'background 0.18s, color 0.18s',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#232323';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = '#18191a';
+              }}
               onClick={() => navigate('/browse/recommended')}
             >
               More
@@ -166,9 +217,26 @@ function HomePage() {
               </div>
             )}
           </div>
-          <button 
-            className="btn btn-outline-primary rounded-pill px-4 py-2 shadow-sm fw-semibold"
-            style={{ fontSize: '1.08rem' }}
+          <button
+            className="fw-bold rounded-pill"
+            style={{
+              background: '#18191a',
+              color: '#fff',
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              fontSize: '1.08rem',
+              padding: '0.5rem 2rem',
+              letterSpacing: '0.2px',
+              transition: 'background 0.18s, color 0.18s',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#232323';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '#18191a';
+            }}
             onClick={() => navigate('/browse/tags')}
           >
             More
@@ -187,15 +255,36 @@ function HomePage() {
               {popularTags.map(tag => (
                 <button
                   key={tag.name}
-                  className={`btn btn-sm px-3 py-2 rounded-pill shadow-sm fw-semibold ${
-                    selectedTag === tag.name 
-                      ? 'btn-primary text-white' 
-                      : 'btn-outline-primary'
-                  }`}
-                  style={{ letterSpacing: '0.5px', fontSize: '1rem', transition: 'background 0.2s' }}
+                  className="fw-bold rounded-pill"
+                  style={{
+                    background: selectedTag === tag.name ? '#18191a' : '#f5f6fa',
+                    color: selectedTag === tag.name ? '#fff' : '#232323',
+                    border: selectedTag === tag.name ? 'none' : '1.5px solid #e9ecef',
+                    fontSize: '1rem',
+                    letterSpacing: '0.5px',
+                    padding: '0.4rem 1.2rem',
+                    boxShadow: selectedTag === tag.name ? '0 2px 8px rgba(0,0,0,0.04)' : 'none',
+                    transition: 'background 0.18s, color 0.18s, border 0.18s',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
                   onClick={() => handleTagClick(tag.name)}
+                  onMouseEnter={e => {
+                    if (selectedTag !== tag.name) {
+                      e.currentTarget.style.background = '#e9ecef';
+                      e.currentTarget.style.color = '#18191a';
+                      e.currentTarget.style.border = '1.5px solid #cfd8dc';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (selectedTag !== tag.name) {
+                      e.currentTarget.style.background = '#f5f6fa';
+                      e.currentTarget.style.color = '#232323';
+                      e.currentTarget.style.border = '1.5px solid #e9ecef';
+                    }
+                  }}
                 >
-                  #{tag.name} <span className="badge bg-secondary ms-2">{tag.likes}</span>
+                  #{tag.name} <span className="badge bg-secondary ms-2" style={{ background: selectedTag === tag.name ? '#232323' : '#e9ecef', color: selectedTag === tag.name ? '#fff' : '#232323', fontWeight: 600 }}>{tag.likes}</span>
                 </button>
               ))}
             </div>
