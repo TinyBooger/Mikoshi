@@ -73,8 +73,8 @@ function Topbar() {
         </button>
       )}
 
-      {/* Navigation Tabs - brick style */}
-      <div className="d-flex mx-3" style={{ gap: 0, background: '#f5f6fa', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+      {/* Navigation Tabs - modern text style */}
+      <div className="d-flex mx-3" style={{ gap: 32, background: 'transparent' }}>
         {[
           { key: 'recommended', label: 'For You' },
           { key: 'popular', label: 'Popular' },
@@ -83,17 +83,17 @@ function Topbar() {
         ].map(tab => (
           <button
             key={tab.key}
-            className="fw-bold border-0 px-4 py-2"
+            className="fw-bold border-0 bg-transparent"
             style={{
-              background: activeTab === tab.key ? '#fff' : 'transparent',
-              color: activeTab === tab.key ? '#232323' : '#888',
+              color: activeTab === tab.key ? '#18191a' : '#888',
               fontWeight: 700,
               fontSize: '1.08rem',
-              borderRight: tab.key !== 'tags' ? '1.5px solid #e9ecef' : 'none',
+              background: 'transparent',
+              borderBottom: activeTab === tab.key ? '2.5px solid #18191a' : '2.5px solid transparent',
               borderRadius: 0,
-              transition: 'background 0.18s, color 0.18s',
-              boxShadow: activeTab === tab.key ? '0 2px 8px rgba(0,0,0,0.04)' : 'none',
               outline: 'none',
+              transition: 'color 0.18s, border-bottom 0.18s',
+              padding: '0.5rem 0',
               minWidth: 90,
               letterSpacing: '0.2px',
               cursor: 'pointer',
@@ -101,14 +101,14 @@ function Topbar() {
             onClick={() => navigateToTab(tab.key)}
             onMouseEnter={e => {
               if (activeTab !== tab.key) {
-                e.currentTarget.style.background = '#e9ecef';
                 e.currentTarget.style.color = '#232323';
+                e.currentTarget.style.borderBottom = '2.5px solid #232323';
               }
             }}
             onMouseLeave={e => {
               if (activeTab !== tab.key) {
-                e.currentTarget.style.background = 'transparent';
                 e.currentTarget.style.color = '#888';
+                e.currentTarget.style.borderBottom = '2.5px solid transparent';
               }
             }}
           >
