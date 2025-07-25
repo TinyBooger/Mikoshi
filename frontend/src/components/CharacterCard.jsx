@@ -16,23 +16,27 @@ export default function CharacterCard({ character }) {
       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; e.currentTarget.style.transform = 'none'; }}
     >
       <div className="d-flex flex-column align-items-center pt-3 pb-2 w-100" style={{ flex: '1 1 auto', minHeight: 0 }}>
-        <img
-          src={picture || defaultPicture}
-          alt={name}
-          className="shadow-sm"
-          style={{ width: 180, height: 180, objectFit: 'cover', borderRadius: '18px', border: '3px solid #e9ecef', background: '#f8f9fa' }}
-        />
-        <h5 className="mt-3 mb-1 fw-bold text-dark text-truncate" style={{ fontSize: '1.18rem', maxWidth: 180, fontFamily: 'Inter, sans-serif', letterSpacing: '0.2px' }}>{name}</h5>
-        {tagline && (
-          <div className="text-secondary text-truncate mb-1 px-2" style={{ fontSize: '1rem', maxWidth: 180, fontFamily: 'Inter, sans-serif', fontWeight: 500, letterSpacing: '0.1px' }}>
-            {tagline}
-          </div>
-        )}
-        {creator && (
-          <div className="text-muted small mb-1 px-2" style={{ fontSize: '0.95rem', maxWidth: 180, fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>
-            <i className="bi bi-person-circle me-1"></i> {typeof creator === 'object' ? creator.name : creator}
-          </div>
-        )}
+        <div style={{ width: 180, height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f9fa', borderRadius: '18px', border: '3px solid #e9ecef', overflow: 'hidden' }}>
+          <img
+            src={picture || defaultPicture}
+            alt={name}
+            className="shadow-sm"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', borderRadius: '15px' }}
+          />
+        </div>
+        <div className="w-100 d-flex flex-column align-items-center" style={{ minHeight: 80, marginTop: 10 }}>
+          <h5 className="mb-1 fw-bold text-dark text-truncate" style={{ fontSize: '1.18rem', maxWidth: 180, fontFamily: 'Inter, sans-serif', letterSpacing: '0.2px' }}>{name}</h5>
+          {tagline && (
+            <div className="text-secondary text-truncate mb-1 px-2" style={{ fontSize: '1rem', maxWidth: 180, fontFamily: 'Inter, sans-serif', fontWeight: 500, letterSpacing: '0.1px', minHeight: 24, lineHeight: '1.2' }}>
+              {tagline}
+            </div>
+          )}
+          {creator && (
+            <div className="text-muted small mb-1 px-2" style={{ fontSize: '0.95rem', maxWidth: 180, fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>
+              <i className="bi bi-person-circle me-1"></i> {typeof creator === 'object' ? creator.name : creator}
+            </div>
+          )}
+        </div>
       </div>
       <div className="d-flex justify-content-center align-items-center gap-3 w-100" style={{ paddingBottom: 18 }}>
         <span className="d-flex align-items-center px-3 py-1 rounded-pill bg-light text-secondary" style={{ fontSize: 15 }}>
