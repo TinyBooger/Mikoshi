@@ -42,10 +42,12 @@ export default function CharacterCard({ character }) {
         justifyContent: 'center', 
         background: '#e9ecef', 
         borderRadius: 12, 
-        margin: 18, 
+        margin: 12, 
         marginRight: 0, 
         overflow: 'hidden', 
-        flexShrink: 0 }}>
+        flexShrink: 0,
+        alignSelf: 'center' 
+        }}>
         <img
           src={picture || defaultPicture}
           alt={name}
@@ -54,9 +56,30 @@ export default function CharacterCard({ character }) {
       </div>
       {/* Info section with fixed layout */}
       <div className="d-flex flex-column justify-content-between ps-3 pe-2 py-2 flex-grow-1" style={{ minWidth: 0, height: '100%' }}>
-        {/* Name */}
-        <div style={{ height: 36, display: 'flex', alignItems: 'center' }}>
-          <h5 className="fw-bold text-dark text-truncate mb-0" style={{ fontSize: '1.22rem', maxWidth: 180, fontFamily: 'Inter, sans-serif', letterSpacing: '0.2px', lineHeight: 1.1 }}>{name}</h5>
+        {/* Name and creator in one block */}
+        <div style={{ minHeight: 50 }}>
+          <h5 className="fw-bold text-dark text-truncate mb-1" style={{ 
+            fontSize: '1.22rem', 
+            maxWidth: 180, 
+            fontFamily: 'Inter, sans-serif', 
+            letterSpacing: '0.2px', 
+            lineHeight: 1.1 
+          }}>
+            {name}
+          </h5>
+          <span className="text-muted small" style={{ 
+            fontSize: '0.85rem', 
+            fontFamily: 'Inter, sans-serif', 
+            fontWeight: 400,
+            display: 'block',
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
+            overflow: 'hidden',
+            maxWidth: '100%'
+          }}>
+            <i className="bi bi-person-circle me-1"></i> 
+            {creator ? (typeof creator === 'object' ? creator.name : creator) : <span style={{ opacity: 0.4 }}>Unknown</span>}
+          </span>
         </div>
         {/* Tagline (fixed area) */}
         <div style={{ flex: 1, padding: '2px 0', display: 'flex', overflow: 'hidden' }}>
@@ -70,7 +93,7 @@ export default function CharacterCard({ character }) {
             display: '-webkit-box', 
             WebkitLineClamp: 3,
             WebkitBoxOrient: 'vertical', 
-            whiteSpace: 'nowrap', 
+            whiteSpace: 'normal', 
             textOverflow: 'ellipsis', 
             overflow: 'hidden' }}>
             {tagline || <span style={{ opacity: 0.4 }}>No tagline</span>}
@@ -78,9 +101,6 @@ export default function CharacterCard({ character }) {
         </div>
         {/* Stats */}
         <div className="d-flex justify-content-between align-items-center" style={{ height: 24 }}>
-          <span className="text-muted small px-1" style={{ fontSize: '0.85rem', maxWidth: 120, fontFamily: 'Inter, sans-serif', fontWeight: 400, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-            <i className="bi bi-person-circle me-1"></i> {creator ? (typeof creator === 'object' ? creator.name : creator) : <span style={{ opacity: 0.4 }}>Unknown</span>}
-          </span>
           <span className="d-flex align-items-center px-3 py-1 text-secondary" style={{ fontSize: 13 }}>
             <i className="bi bi-chat me-1"></i> {views}
           </span>
