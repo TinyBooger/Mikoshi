@@ -96,15 +96,62 @@ function HomePage() {
             More
           </button>
         </div>
-        <div className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-          {popular.length === 0 ? (
-            <div className="text-muted py-4">No popular characters found.</div>
-          ) : (
-            popular.map(c => (
-              <div style={{ minWidth: 220, maxWidth: 260 }}>
-                <CharacterCard key={c.id} character={c} />
-              </div>
-            ))
+        <div style={{ position: 'relative' }}>
+          <div id="popular-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {popular.length === 0 ? (
+              <div className="text-muted py-4">No popular characters found.</div>
+            ) : (
+              popular.map(c => (
+                <div style={{ minWidth: 220, maxWidth: 260 }}>
+                  <CharacterCard key={c.id} character={c} />
+                </div>
+              ))
+            )}
+          </div>
+          {popular.length > 3 && (
+            <button
+              aria-label="Scroll right"
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                height: '100%',
+                width: 48,
+                background: 'linear-gradient(to left, #f8f9fa 80%, rgba(248,249,250,0))',
+                border: 'none',
+                outline: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                zIndex: 2,
+                boxShadow: 'none',
+                transition: 'background 0.2s',
+              }}
+              onClick={() => {
+                const el = document.getElementById('popular-scroll');
+                if (el) el.scrollBy({ left: 400, behavior: 'smooth' });
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to left, #e9ecef 80%, rgba(233,236,239,0))'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to left, #f8f9fa 80%, rgba(248,249,250,0))'; }}
+            >
+              <span style={{
+                display: 'inline-block',
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: 'rgba(24,25,26,0.12)',
+                color: '#232323',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 22,
+                transition: 'background 0.2s',
+              }}>
+                <i className="bi bi-arrow-right" />
+              </span>
+            </button>
           )}
         </div>
       </section>
@@ -138,15 +185,62 @@ function HomePage() {
             More
           </button>
         </div>
-        <div className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-          {recent.length === 0 ? (
-            <div className="text-muted py-4">No recent characters found.</div>
-          ) : (
-            recent.map(c => (
-              <div style={{ minWidth: 220, maxWidth: 260 }}>
-                <CharacterCard key={c.id} character={c} />
-              </div>
-            ))
+        <div style={{ position: 'relative' }}>
+          <div id="recent-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {recent.length === 0 ? (
+              <div className="text-muted py-4">No recent characters found.</div>
+            ) : (
+              recent.map(c => (
+                <div style={{ minWidth: 220, maxWidth: 260 }}>
+                  <CharacterCard key={c.id} character={c} />
+                </div>
+              ))
+            )}
+          </div>
+          {recent.length > 3 && (
+            <button
+              aria-label="Scroll right"
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                height: '100%',
+                width: 48,
+                background: 'linear-gradient(to left, #f8f9fa 80%, rgba(248,249,250,0))',
+                border: 'none',
+                outline: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                zIndex: 2,
+                boxShadow: 'none',
+                transition: 'background 0.2s',
+              }}
+              onClick={() => {
+                const el = document.getElementById('recent-scroll');
+                if (el) el.scrollBy({ left: 400, behavior: 'smooth' });
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to left, #e9ecef 80%, rgba(233,236,239,0))'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to left, #f8f9fa 80%, rgba(248,249,250,0))'; }}
+            >
+              <span style={{
+                display: 'inline-block',
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: 'rgba(24,25,26,0.12)',
+                color: '#232323',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 22,
+                transition: 'background 0.2s',
+              }}>
+                <i className="bi bi-arrow-right" />
+              </span>
+            </button>
           )}
         </div>
       </section>
@@ -289,19 +383,66 @@ function HomePage() {
               ))}
             </div>
 
-            <div className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-              {selectedTag ? (
-                tagCharacters[selectedTag]?.length > 0 ? (
-                  tagCharacters[selectedTag].map(c => (
-                    <div style={{ minWidth: 220, maxWidth: 260 }}>
-                      <CharacterCard key={c.id} character={c} />
-                    </div>
-                  ))
+            <div style={{ position: 'relative' }}>
+              <div id="tag-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {selectedTag ? (
+                  tagCharacters[selectedTag]?.length > 0 ? (
+                    tagCharacters[selectedTag].map(c => (
+                      <div style={{ minWidth: 220, maxWidth: 260 }}>
+                        <CharacterCard key={c.id} character={c} />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-muted py-4">Loading characters...</div>
+                  )
                 ) : (
-                  <div className="text-muted py-4">Loading characters...</div>
-                )
-              ) : (
-                <div className="text-muted py-4">Select a tag to view characters</div>
+                  <div className="text-muted py-4">Select a tag to view characters</div>
+                )}
+              </div>
+              {(selectedTag && tagCharacters[selectedTag]?.length > 3) && (
+                <button
+                  aria-label="Scroll right"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    height: '100%',
+                    width: 48,
+                    background: 'linear-gradient(to left, #f8f9fa 80%, rgba(248,249,250,0))',
+                    border: 'none',
+                    outline: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 2,
+                    boxShadow: 'none',
+                    transition: 'background 0.2s',
+                  }}
+                  onClick={() => {
+                    const el = document.getElementById('tag-scroll');
+                    if (el) el.scrollBy({ left: 400, behavior: 'smooth' });
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to left, #e9ecef 80%, rgba(233,236,239,0))'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to left, #f8f9fa 80%, rgba(248,249,250,0))'; }}
+                >
+                  <span style={{
+                    display: 'inline-block',
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    background: 'rgba(24,25,26,0.12)',
+                    color: '#232323',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 22,
+                    transition: 'background 0.2s',
+                  }}>
+                    <i className="bi bi-arrow-right" />
+                  </span>
+                </button>
               )}
             </div>
           </>

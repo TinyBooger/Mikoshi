@@ -12,8 +12,8 @@ export default function CharacterCard({ character }) {
       className="d-flex flex-row align-items-stretch position-relative"
       style={{
         width: 390,
-        height: 160,
-        margin: 10,
+        height: 200,
+        margin: '22px 18px',
         background: '#f4f6fb', // much lighter than homepage bg
         borderRadius: 18,
         boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
