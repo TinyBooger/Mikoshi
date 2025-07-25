@@ -181,7 +181,7 @@ function HomePage() {
               <div className="text-muted py-4">No popular characters found.</div>
             ) : (
               popular.map(c => (
-                <div style={{ padding: '0 8px' }}>
+                <div style={{ padding: '0 4px' }}>
                   <CharacterCard key={c.id} character={c} />
                 </div>
               ))
@@ -317,7 +317,7 @@ function HomePage() {
               <div className="text-muted py-4">No recent characters found.</div>
             ) : (
               recent.map(c => (
-                <div style={{ padding: '0 8px' }}>
+                <div style={{ padding: '0 4px' }}>
                   <CharacterCard key={c.id} character={c} />
                 </div>
               ))
@@ -561,7 +561,7 @@ function HomePage() {
                 {selectedTag ? (
                   tagCharacters[selectedTag]?.length > 0 ? (
                     tagCharacters[selectedTag].map(c => (
-                      <div style={{ padding: '0 8px' }}>
+                      <div style={{ padding: '0 4px' }}>
                         <CharacterCard key={c.id} character={c} />
                       </div>
                     ))
