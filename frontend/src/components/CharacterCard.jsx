@@ -48,12 +48,13 @@ export default function CharacterCard({ character }) {
           <h5 className="fw-bold text-dark text-truncate mb-0" style={{ fontSize: '1.22rem', maxWidth: 180, fontFamily: 'Inter, sans-serif', letterSpacing: '0.2px', lineHeight: 1.1 }}>{name}</h5>
         </div>
         {/* Tagline (fixed area) */}
-        <div style={{ height: 40, display: 'flex', overflow: 'hidden' }}>
+        <div style={{ height: 44, padding: '2px 0', display: 'flex', overflow: 'hidden' }}>
           <span className="text-secondary px-1" style={{ 
             fontSize: '0.95rem', 
             maxWidth: 200, 
             fontFamily: 'Inter, sans-serif', 
-            fontWeight: 500, letterSpacing: '0.1px', 
+            fontWeight: 500, 
+            letterSpacing: '0.1px', 
             lineHeight: '1.3', 
             display: '-webkit-box', 
             WebkitLineClamp: 2,
