@@ -10,7 +10,7 @@ export default function CharacterCard({ character }) {
   // Enlarged card size
   const CARD_WIDTH = 320;
   const CARD_HEIGHT = 172;
-  const IMAGE_SIZE = 100;
+  const IMAGE_SIZE = CARD_HEIGHT - 24; // Adjusted for padding and margins
 
   return (
     <div
@@ -34,7 +34,18 @@ export default function CharacterCard({ character }) {
       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'none'; }}
     >
       {/* Image section */}
-      <div style={{ width: IMAGE_SIZE, height: IMAGE_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e9ecef', borderRadius: 12, margin: 18, marginRight: 0, overflow: 'hidden', flexShrink: 0 }}>
+      <div style={{ 
+        width: IMAGE_SIZE, 
+        height: IMAGE_SIZE, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        background: '#e9ecef', 
+        borderRadius: 12, 
+        margin: 18, 
+        marginRight: 0, 
+        overflow: 'hidden', 
+        flexShrink: 0 }}>
         <img
           src={picture || defaultPicture}
           alt={name}
@@ -48,7 +59,7 @@ export default function CharacterCard({ character }) {
           <h5 className="fw-bold text-dark text-truncate mb-0" style={{ fontSize: '1.22rem', maxWidth: 180, fontFamily: 'Inter, sans-serif', letterSpacing: '0.2px', lineHeight: 1.1 }}>{name}</h5>
         </div>
         {/* Tagline (fixed area) */}
-        <div style={{ height: 44, padding: '2px 0', display: 'flex', overflow: 'hidden' }}>
+        <div style={{ flex: 1, padding: '2px 0', display: 'flex', overflow: 'hidden' }}>
           <span className="text-secondary px-1" style={{ 
             fontSize: '0.95rem', 
             maxWidth: 200, 
@@ -57,7 +68,7 @@ export default function CharacterCard({ character }) {
             letterSpacing: '0.1px', 
             lineHeight: '1.3', 
             display: '-webkit-box', 
-            WebkitLineClamp: 2,
+            WebkitLineClamp: 3,
             WebkitBoxOrient: 'vertical', 
             whiteSpace: 'nowrap', 
             textOverflow: 'ellipsis', 
@@ -65,18 +76,15 @@ export default function CharacterCard({ character }) {
             {tagline || <span style={{ opacity: 0.4 }}>No tagline</span>}
           </span>
         </div>
-        {/* Creator (fixed area) */}
-        <div style={{ height: 28, display: 'flex', alignItems: 'center' }}>
-          <span className="text-muted small px-1" style={{ fontSize: '1.03rem', maxWidth: 160, fontFamily: 'Inter, sans-serif', fontWeight: 400, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+        {/* Stats */}
+        <div className="d-flex justify-content-between align-items-center" style={{ height: 24 }}>
+          <span className="text-muted small px-1" style={{ fontSize: '0.85rem', maxWidth: 120, fontFamily: 'Inter, sans-serif', fontWeight: 400, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
             <i className="bi bi-person-circle me-1"></i> {creator ? (typeof creator === 'object' ? creator.name : creator) : <span style={{ opacity: 0.4 }}>Unknown</span>}
           </span>
-        </div>
-        {/* Stats */}
-        <div className="d-flex align-items-center gap-2 mt-1" style={{ height: 28 }}>
-          <span className="d-flex align-items-center px-3 py-1 rounded-pill bg-light text-secondary" style={{ fontSize: 15 }}>
+          <span className="d-flex align-items-center px-3 py-1 text-secondary" style={{ fontSize: 13 }}>
             <i className="bi bi-chat me-1"></i> {views}
           </span>
-          <span className="d-flex align-items-center px-3 py-1 rounded-pill bg-light text-secondary" style={{ fontSize: 15 }}>
+          <span className="d-flex align-items-center px-3 py-1 text-secondary" style={{ fontSize: 13 }}>
             <i className="bi bi-hand-thumbs-up me-1"></i> {likes}
           </span>
         </div>
