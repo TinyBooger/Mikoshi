@@ -100,6 +100,7 @@ function HomePage() {
 
   return (
     <div className="container-xl px-5 py-4" style={{ background: 'var(--bs-body-bg, #f8f9fa)', minHeight: '100vh' }}>
+      <div style={{ maxWidth: '1800px', margin: '0 auto', width: '100%' }}>
       {/* Popular Characters */}
       <section className="mb-5 pb-3">
         <div className="d-flex justify-content-between align-items-center mb-3">
@@ -596,6 +597,7 @@ function HomePage() {
           </>
         )}
       </section>
+      </div>
     </div>
   );
 }
