@@ -99,7 +99,20 @@ function HomePage() {
   };
 
   return (
-    <div className="container-xxl px-5 py-4" style={{ background: 'var(--bs-body-bg, #f8f9fa)', minHeight: '100vh' }}>
+    <div
+      style={{
+        width: '80%',
+        margin: '0 auto',
+        background: 'var(--bs-body-bg, #f8f9fa)',
+        minHeight: '100vh',
+        paddingLeft: '2.5rem',
+        paddingRight: '2.5rem',
+        paddingTop: '2rem',
+        paddingBottom: '2rem',
+        boxSizing: 'border-box',
+        maxWidth: '1600px', // Prevents overflow on very large screens
+      }}
+    >
       {/* Popular Characters */}
       <section className="mb-5 pb-3">
         <div className="d-flex justify-content-between align-items-center mb-3">
