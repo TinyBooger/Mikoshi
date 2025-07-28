@@ -18,7 +18,7 @@ export default function CharacterCard({ character }) {
       style={{
         width: CARD_WIDTH,
         height: CARD_HEIGHT,
-        margin: '14px 0px',
+        margin: '14px 18px', // Add horizontal margin for shadow visibility
         background: '#f7f7f7', // Lighter gray for black-and-white hue
         borderRadius: 16,
         boxShadow: '0 3px 16px rgba(0,0,0,0.10)',

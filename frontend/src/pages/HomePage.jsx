@@ -139,41 +139,28 @@ function HomePage() {
                 top: 0,
                 left: 0,
                 height: '100%',
-                width: 48,
-                background: 'linear-gradient(to right, #f8f9fa 80%, rgba(248,249,250,0))',
+                width: 72,
+                background: 'linear-gradient(to right, rgba(247,247,247,0.85) 80%, rgba(247,247,247,0))',
                 border: 'none',
                 outline: 'none',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
+                justifyContent: 'flex-start',
                 cursor: 'pointer',
-                zIndex: 2,
+                zIndex: 3,
                 boxShadow: 'none',
                 transition: 'background 0.2s',
+                opacity: 0.7,
+                pointerEvents: 'auto',
               }}
               onClick={() => {
                 const el = document.getElementById('popular-scroll');
                 if (el) el.scrollBy({ left: -400, behavior: 'smooth' });
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to right, #e9ecef 80%, rgba(233,236,239,0))'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to right, #f8f9fa 80%, rgba(248,249,250,0))'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to right, rgba(233,236,239,0.95) 80%, rgba(233,236,239,0))'; e.currentTarget.style.opacity = 1; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to right, rgba(247,247,247,0.85) 80%, rgba(247,247,247,0))'; e.currentTarget.style.opacity = 0.7; }}
             >
-              <span style={{
-                display: 'inline-block',
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                background: 'rgba(24,25,26,0.12)',
-                color: '#232323',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 22,
-                transition: 'background 0.2s',
-              }}>
-                <i className="bi bi-arrow-left" />
-              </span>
+              <i className="bi bi-arrow-left" style={{ fontSize: 28, color: '#bfc4cb', marginLeft: 12, filter: 'drop-shadow(0 0 2px #fff)' }} />
             </button>
           )}
           <div id="popular-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -196,41 +183,28 @@ function HomePage() {
                 top: 0,
                 right: 0,
                 height: '100%',
-                width: 48,
-                background: 'linear-gradient(to left, #f8f9fa 80%, rgba(248,249,250,0))',
+                width: 72,
+                background: 'linear-gradient(to left, rgba(247,247,247,0.85) 80%, rgba(247,247,247,0))',
                 border: 'none',
                 outline: 'none',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
+                justifyContent: 'flex-end',
                 cursor: 'pointer',
-                zIndex: 2,
+                zIndex: 3,
                 boxShadow: 'none',
                 transition: 'background 0.2s',
+                opacity: 0.7,
+                pointerEvents: 'auto',
               }}
               onClick={() => {
                 const el = document.getElementById('popular-scroll');
                 if (el) el.scrollBy({ left: 400, behavior: 'smooth' });
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to left, #e9ecef 80%, rgba(233,236,239,0))'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to left, #f8f9fa 80%, rgba(248,249,250,0))'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to left, rgba(233,236,239,0.95) 80%, rgba(233,236,239,0))'; e.currentTarget.style.opacity = 1; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to left, rgba(247,247,247,0.85) 80%, rgba(247,247,247,0))'; e.currentTarget.style.opacity = 0.7; }}
             >
-              <span style={{
-                display: 'inline-block',
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                background: 'rgba(24,25,26,0.12)',
-                color: '#232323',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 22,
-                transition: 'background 0.2s',
-              }}>
-                <i className="bi bi-arrow-right" />
-              </span>
+              <i className="bi bi-arrow-right" style={{ fontSize: 28, color: '#bfc4cb', marginRight: 12, filter: 'drop-shadow(0 0 2px #fff)' }} />
             </button>
           )}
         </div>
