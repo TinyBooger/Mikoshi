@@ -99,17 +99,7 @@ function HomePage() {
   };
 
   return (
-    <div
-      className="container-xl px-5 py-4"
-      style={{
-        background: 'var(--bs-body-bg, #f8f9fa)',
-        minHeight: '100vh',
-        maxWidth: '120%', // Make container 20% wider than default
-        width: '120%',
-        marginLeft: 'auto',
-        marginRight: 'auto',
-      }}
-    >
+    <div className="container-xl px-5 py-4" style={{ background: 'var(--bs-body-bg, #f8f9fa)', minHeight: '100vh' }}>
       {/* Popular Characters */}
       <section className="mb-5 pb-3">
         <div className="d-flex justify-content-between align-items-center mb-3">
@@ -139,7 +129,7 @@ function HomePage() {
             More
           </button>
         </div>
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative', width: '100%' }}>
           {/* Scroll Left Button */}
           {popular.length > 3 && popularScroll.left && (
             <button
@@ -173,7 +163,7 @@ function HomePage() {
               <i className="bi bi-arrow-left" style={{ fontSize: 28, color: '#bfc4cb', marginLeft: 12, filter: 'drop-shadow(0 0 2px #fff)' }} />
             </button>
           )}
-          <div id="popular-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <div id="popular-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none', width: '100%' }}>
             {popular.length === 0 ? (
               <div className="text-muted py-4">No popular characters found.</div>
             ) : (
@@ -249,7 +239,7 @@ function HomePage() {
             More
           </button>
         </div>
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative', width: '100%' }}>
           {/* Scroll Left Button */}
           {recent.length > 3 && recentScroll.left && (
             <button
@@ -296,7 +286,7 @@ function HomePage() {
               </span>
             </button>
           )}
-          <div id="recent-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <div id="recent-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none', width: '100%' }}>
             {recent.length === 0 ? (
               <div className="text-muted py-4">No recent characters found.</div>
             ) : (
@@ -494,7 +484,7 @@ function HomePage() {
               ))}
             </div>
 
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', width: '100%' }}>
               {/* Scroll Left Button */}
               {(selectedTag && tagCharacters[selectedTag]?.length > 3 && tagScroll.left) && (
                 <button
@@ -541,7 +531,7 @@ function HomePage() {
                   </span>
                 </button>
               )}
-              <div id="tag-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div id="tag-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none', width: '100%' }}>
                 {selectedTag ? (
                   tagCharacters[selectedTag]?.length > 0 ? (
                     tagCharacters[selectedTag].map(c => (
