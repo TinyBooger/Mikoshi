@@ -7,9 +7,9 @@ export default function CharacterCard({ character }) {
   const navigate = useNavigate();
   const { id, name, picture, views, likes, tagline, creator } = character;
 
-  // Enlarged card size
-  const CARD_WIDTH = 320;
-  const CARD_HEIGHT = 172;
+  // Enlarged card size and gap
+  const CARD_WIDTH = 370;
+  const CARD_HEIGHT = 180;
   const IMAGE_SIZE = CARD_HEIGHT - 24; // Adjusted for padding and margins
 
   return (
@@ -18,14 +18,14 @@ export default function CharacterCard({ character }) {
       style={{
         width: CARD_WIDTH,
         height: CARD_HEIGHT,
-        margin: '14px 0px',
-        background: '#f4f6fb',
+        margin: '14px 12px', // Add horizontal gap between cards
+        background: 'var(--bs-body-bg, #18191a)', // Use page black/gray
         borderRadius: 16,
-        boxShadow: '0 3px 16px rgba(0,0,0,0.10)',
+        boxShadow: '0 3px 16px rgba(0,0,0,0.13)',
         cursor: 'pointer',
         transition: 'box-shadow 0.2s, transform 0.2s',
         overflow: 'hidden',
-        border: '2px solid #e9ecef',
+        border: '2px solid #232323',
         minWidth: CARD_WIDTH,
         maxWidth: CARD_WIDTH,
       }}
@@ -40,7 +40,7 @@ export default function CharacterCard({ character }) {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center', 
-        background: '#e9ecef', 
+        background: '#232323', // dark gray
         borderRadius: 12, 
         margin: 12, 
         marginRight: 0, 
@@ -58,16 +58,16 @@ export default function CharacterCard({ character }) {
       <div className="d-flex flex-column justify-content-between ps-3 pe-2 py-2 flex-grow-1" style={{ minWidth: 0, height: '100%' }}>
         {/* Name and creator in one block */}
         <div style={{ minHeight: 50 }}>
-          <h5 className="fw-bold text-dark text-truncate mb-1" style={{ 
+          <h5 className="fw-bold text-white text-truncate mb-1" style={{ 
             fontSize: '1.22rem', 
-            maxWidth: 180, 
+            maxWidth: 220, 
             fontFamily: 'Inter, sans-serif', 
             letterSpacing: '0.2px', 
             lineHeight: 1.1 
           }}>
             {name}
           </h5>
-          <span className="text-muted small" style={{ 
+          <span className="text-secondary small" style={{ 
             fontSize: '0.85rem', 
             fontFamily: 'Inter, sans-serif', 
             fontWeight: 400,
@@ -84,8 +84,8 @@ export default function CharacterCard({ character }) {
         {/* Tagline (fixed area) */}
         <div style={{ flex: 1, padding: '2px 0', display: 'flex', overflow: 'hidden' }}>
           <span className="text-secondary px-1" style={{ 
-            fontSize: '0.95rem', 
-            maxWidth: 200, 
+            fontSize: '0.98rem', 
+            maxWidth: 240, 
             fontFamily: 'Inter, sans-serif', 
             fontWeight: 500, 
             letterSpacing: '0.1px', 
@@ -101,10 +101,10 @@ export default function CharacterCard({ character }) {
         </div>
         {/* Stats */}
         <div className="d-flex justify-content-between align-items-center" style={{ height: 24 }}>
-          <span className="d-flex align-items-center px-3 py-1 text-secondary" style={{ fontSize: 13 }}>
+          <span className="d-flex align-items-center px-3 py-1 text-light" style={{ fontSize: 13 }}>
             <i className="bi bi-chat me-1"></i> {views}
           </span>
-          <span className="d-flex align-items-center px-3 py-1 text-secondary" style={{ fontSize: 13 }}>
+          <span className="d-flex align-items-center px-3 py-1 text-light" style={{ fontSize: 13 }}>
             <i className="bi bi-hand-thumbs-up me-1"></i> {likes}
           </span>
         </div>

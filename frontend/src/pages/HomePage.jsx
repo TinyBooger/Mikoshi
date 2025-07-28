@@ -101,7 +101,7 @@ function HomePage() {
   return (
     <div className="container-xl px-5 py-4" style={{ background: 'var(--bs-body-bg, #f8f9fa)', minHeight: '100vh' }}>
       {/* Popular Characters */}
-      <section className="mb-5 pb-3 border-bottom" style={{ borderColor: '#e9ecef' }}>
+      <section className="mb-5 pb-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2 className="fw-bold text-dark" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Popular Characters</h2>
           <button
@@ -237,7 +237,7 @@ function HomePage() {
       </section>
 
       {/* Recently Uploaded */}
-      <section className="mb-5 pb-3 border-bottom" style={{ borderColor: '#e9ecef' }}>
+      <section className="mb-5 pb-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2 className="fw-bold text-dark" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Recently Uploaded</h2>
           <button
@@ -373,7 +373,7 @@ function HomePage() {
       </section>
 
       {/* Recommended for You */}
-      <section className="mb-5 pb-3 border-bottom" style={{ borderColor: '#e9ecef' }}>
+      <section className="mb-5 pb-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2 className="fw-bold text-dark" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Recommended for You</h2>
           {recommended.length > 0 && (
