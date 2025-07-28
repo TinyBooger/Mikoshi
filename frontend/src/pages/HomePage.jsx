@@ -101,7 +101,7 @@ function HomePage() {
   return (
     <div
       style={{
-        width: '80%',
+        width: '90%',
         margin: '0 auto',
         background: 'var(--bs-body-bg, #f8f9fa)',
         minHeight: '100vh',
