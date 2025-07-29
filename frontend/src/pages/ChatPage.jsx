@@ -345,13 +345,13 @@ export default function ChatPage() {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fa' }}>
+    <div style={{ display: 'flex', height: '100%', background: '#f8f9fa', minHeight: 0 }}>
       {/* Main Chat Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#fff', borderRadius: '1.5rem', margin: '2rem 0.5rem 2rem 2rem', boxShadow: '0 2px 16px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#fff', borderRadius: '1.5rem', margin: '1.5rem 0.5rem 1.5rem 1.5rem', boxShadow: '0 2px 16px rgba(0,0,0,0.04)', overflow: 'hidden', height: 'auto' }}>
         {/* Messages Area */}
-        <div style={{ flex: 1, padding: '2rem', overflowY: 'auto', background: '#fff' }}>
+        <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', background: '#fff', minHeight: 0 }}>
           {messages.filter(m => m.role !== 'system').length === 0 ? (
-            <div className="text-muted text-center" style={{ marginTop: '6rem', fontSize: '1.2rem' }}>No messages yet. Start the conversation!</div>
+            <div className="text-muted text-center" style={{ marginTop: '4rem', fontSize: '1.1rem' }}>No messages yet. Start the conversation!</div>
           ) : (
             messages
               .filter(m => m.role !== 'system')
@@ -360,7 +360,7 @@ export default function ChatPage() {
                   key={i}
                   style={{
                     display: 'flex',
-                    marginBottom: '1.5rem',
+                    marginBottom: '1.2rem',
                     justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
                   }}
                 >
@@ -373,21 +373,21 @@ export default function ChatPage() {
                     <img
                       src={m.role === 'user' ? (userData?.profile_pic || defaultPic) : (char?.picture || defaultPic)}
                       alt={m.role === 'user' ? 'You' : char?.name}
-                      style={{ width: 38, height: 38, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '2px solid #e9ecef' }}
+                      style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '2px solid #e9ecef' }}
                     />
                     <div style={{
-                      margin: m.role === 'user' ? '0 0.5rem 0 1.25rem' : '0 1.25rem 0 0.5rem',
+                      margin: m.role === 'user' ? '0 0.5rem 0 1.1rem' : '0 1.1rem 0 0.5rem',
                       background: m.role === 'user' ? '#18191a' : '#f5f6fa',
                       color: m.role === 'user' ? '#fff' : '#232323',
-                      borderRadius: '1.25rem',
-                      padding: '1rem 1.5rem',
+                      borderRadius: '1.1rem',
+                      padding: '0.85rem 1.2rem',
                       boxShadow: m.role === 'user' ? '0 2px 8px rgba(24,25,26,0.08)' : '0 2px 8px rgba(0,0,0,0.04)',
-                      fontSize: '1.08rem',
+                      fontSize: '1.02rem',
                       minWidth: 0,
                       wordBreak: 'break-word',
                       maxWidth: '100%'
                     }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, opacity: 0.7 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: 3, opacity: 0.7 }}>
                         {m.role === 'user' ? 'You' : char?.name}
                       </div>
                       <div>{m.content}</div>
@@ -399,16 +399,16 @@ export default function ChatPage() {
         </div>
 
         {/* Input Form */}
-        <div style={{ padding: '1.25rem 2rem', background: '#f8f9fa', borderTop: '1.5px solid #e9ecef' }}>
-          <form style={{ display: 'flex', gap: '1rem', alignItems: 'center' }} onSubmit={handleSubmit}>
+        <div style={{ padding: '1rem 1.5rem', background: '#f8f9fa', borderTop: '1.5px solid #e9ecef' }}>
+          <form style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }} onSubmit={handleSubmit}>
             <input
               style={{
                 flex: 1,
                 borderRadius: '2rem',
                 border: '1.5px solid #e9ecef',
                 background: '#fff',
-                padding: '0.75rem 1.5rem',
-                fontSize: '1.08rem',
+                padding: '0.65rem 1.2rem',
+                fontSize: '1.02rem',
                 outline: 'none',
                 color: '#232323',
                 boxShadow: 'none',
@@ -428,12 +428,12 @@ export default function ChatPage() {
                 color: '#fff',
                 border: 'none',
                 borderRadius: '50%',
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 22,
+                fontSize: 20,
                 boxShadow: '0 2px 8px rgba(24,25,26,0.08)',
                 transition: 'background 0.18s',
                 cursor: 'pointer',
@@ -449,12 +449,12 @@ export default function ChatPage() {
       </div>
 
       {/* Character Sidebar */}
-      <aside style={{ width: 340, minHeight: 0, background: '#fff', borderRadius: '1.5rem', margin: '2rem 2rem 2rem 0', boxShadow: '0 2px 16px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', padding: '2rem 2rem 1.5rem 2rem' }}>
+      <aside style={{ width: 320, minHeight: 0, background: '#fff', borderRadius: '1.5rem', margin: '1.5rem 1.5rem 1.5rem 0', boxShadow: '0 2px 16px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', padding: '1.5rem 1.5rem 1.2rem 1.5rem', height: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem' }}>
           <img
             src={char?.picture || defaultPic}
             alt="Character Avatar"
-            style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: '50%', border: '3px solid #e9ecef', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginRight: 24 }}
+            style={{ width: 128, height: 128, objectFit: 'cover', borderRadius: '50%', border: '3px solid #e9ecef', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginRight: 24 }}
           />
           <div>
             <div style={{ color: '#888', fontSize: 13, marginBottom: 2 }}>
