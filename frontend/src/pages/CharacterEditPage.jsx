@@ -117,21 +117,51 @@ export default function CharacterEditPage() {
   if (!charData) return null;
 
   return (
-    <div className="d-flex" style={{ height: "100vh" }}>
-      <div style={{ width: 250, flexShrink: 0 }}></div>
-      <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-        <div className="flex-shrink-0"></div>
-        <div className="flex-grow-1 p-4">
-          <h2 className="mb-4">Edit Character</h2>
-          <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
-            {["name", "persona", "sample", "tagline", "greeting"].map(field => (
-              <div className="mb-3 position-relative" key={field}>
-                <label className="form-label text-capitalize">{field}</label>
-                {field === "name" || field === "tagline" || field === "greeting" ? (
-                  <>
+    <div
+      style={{
+        width: '90%',
+        margin: '0 auto',
+        background: 'var(--bs-body-bg, #f8f9fa)',
+        minHeight: '100vh',
+        paddingLeft: '2.5rem',
+        paddingRight: '2.5rem',
+        paddingTop: '2rem',
+        paddingBottom: '2rem',
+        boxSizing: 'border-box',
+        maxWidth: '900px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center'
+      }}
+    >
+      <div className="w-100" style={{ maxWidth: 600 }}>
+        <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Edit Character</h2>
+        <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data" style={{
+          background: '#fff',
+          borderRadius: '1.2rem',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
+          padding: '2.5rem 2rem 2rem 2rem',
+          border: '1.5px solid #e9ecef'
+        }}>
+          {["name", "persona", "sample", "tagline", "greeting"].map(field => (
+            <div className="mb-4 position-relative" key={field}>
+              <label className="form-label text-capitalize fw-semibold" style={{ color: '#232323', fontSize: '1.08rem', letterSpacing: '0.2px' }}>{field}</label>
+              {field === "name" || field === "tagline" || field === "greeting" ? (
+                <>
+                  <div className="input-group">
                     <input
                       type="text"
-                      className={`form-control ${editable[field] ? "bg-warning-subtle" : "readonly"}`}
+                      className={`form-control ${editable[field] ? "bg-light border-dark-subtle" : "readonly"}`}
+                      style={{
+                        background: editable[field] ? '#f5f6fa' : '#f8f9fa',
+                        border: editable[field] ? '1.5px solid #232323' : '1.5px solid #e9ecef',
+                        color: '#232323',
+                        fontWeight: 500,
+                        fontSize: '1.05rem',
+                        borderRadius: '0.7rem',
+                        boxShadow: 'none',
+                        paddingRight: "3.5rem"
+                      }}
                       value={charData[field]}
                       readOnly={!editable[field]}
                       maxLength={
@@ -140,102 +170,213 @@ export default function CharacterEditPage() {
                         MAX_GREETING_LENGTH
                       }
                       onChange={e => handleChange(field, e.target.value)}
-                      style={{ paddingRight: "3rem" }}
                     />
-                    {editable[field] && (
-                      <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-                        {charData[field].length}/{
-                          field === "name" ? MAX_NAME_LENGTH :
-                          field === "tagline" ? MAX_TAGLINE_LENGTH :
-                          MAX_GREETING_LENGTH
-                        }
-                      </small>
-                    )}
-                  </>
-                ) : (
-                  <>
+                    <button
+                      type="button"
+                      className={`btn ${editable[field] ? "btn-outline-success" : "btn-outline-secondary"}`}
+                      style={{
+                        borderRadius: '0.7rem',
+                        border: 'none',
+                        marginLeft: '-3rem',
+                        zIndex: 2,
+                        background: editable[field] ? '#e9ecef' : '#f8f9fa'
+                      }}
+                      onClick={() => toggleEdit(field)}
+                      tabIndex={-1}
+                    >
+                      <i className={`bi ${editable[field] ? "bi-check" : "bi-pencil"}`}></i>
+                    </button>
+                  </div>
+                  {editable[field] && (
+                    <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+                      {charData[field].length}/{
+                        field === "name" ? MAX_NAME_LENGTH :
+                        field === "tagline" ? MAX_TAGLINE_LENGTH :
+                        MAX_GREETING_LENGTH
+                      }
+                    </small>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="input-group">
                     <textarea
-                      rows={3}
-                      className={`form-control ${editable[field] ? "bg-warning-subtle" : "readonly"}`}
+                      rows={field === "persona" ? 4 : 3}
+                      className={`form-control ${editable[field] ? "bg-light border-dark-subtle" : "readonly"}`}
+                      style={{
+                        background: editable[field] ? '#f5f6fa' : '#f8f9fa',
+                        border: editable[field] ? '1.5px solid #232323' : '1.5px solid #e9ecef',
+                        color: '#232323',
+                        fontWeight: 500,
+                        fontSize: '1.05rem',
+                        borderRadius: '0.7rem',
+                        boxShadow: 'none',
+                        paddingRight: "3.5rem",
+                        resize: 'vertical'
+                      }}
                       value={charData[field]}
                       readOnly={!editable[field]}
                       maxLength={
                         field === "persona" ? MAX_PERSONA_LENGTH : MAX_SAMPLE_LENGTH
                       }
                       onChange={e => handleChange(field, e.target.value)}
-                      style={{ paddingRight: "3rem" }}
                     />
-                    {editable[field] && (
-                      <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-                        {charData[field].length}/{
-                          field === "persona" ? MAX_PERSONA_LENGTH : MAX_SAMPLE_LENGTH
-                        }
-                      </small>
-                    )}
-                  </>
-                )}
-                <div className="input-group-append">
-                  {!editable[field] ? (
-                    <button type="button" className="btn btn-outline-secondary" onClick={() => toggleEdit(field)}>
-                      <i className="bi bi-pencil"></i>
+                    <button
+                      type="button"
+                      className={`btn ${editable[field] ? "btn-outline-success" : "btn-outline-secondary"}`}
+                      style={{
+                        borderRadius: '0.7rem',
+                        border: 'none',
+                        marginLeft: '-3rem',
+                        zIndex: 2,
+                        background: editable[field] ? '#e9ecef' : '#f8f9fa'
+                      }}
+                      onClick={() => toggleEdit(field)}
+                      tabIndex={-1}
+                    >
+                      <i className={`bi ${editable[field] ? "bi-check" : "bi-pencil"}`}></i>
                     </button>
-                  ) : (
-                    <button type="button" className="btn btn-outline-success" onClick={() => toggleEdit(field)}>
-                      <i className="bi bi-check"></i>
-                    </button>
+                  </div>
+                  {editable[field] && (
+                    <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+                      {charData[field].length}/{
+                        field === "persona" ? MAX_PERSONA_LENGTH : MAX_SAMPLE_LENGTH
+                      }
+                    </small>
                   )}
-                </div>
-              </div>
-            ))}
-
-            <div className="mb-3 position-relative">
-              <label className="form-label">Tags</label>
-              {editable.tags ? (
-                <>
-                  <TagsInput tags={charData.tags} setTags={value => handleChange("tags", value)} maxTags={MAX_TAGS} />
-                  <small className="text-muted">
-                    {charData.tags.length}/{MAX_TAGS} tags
-                  </small>
                 </>
-              ) : (
-                <div className="input-group">
-                  <input
-                    type="text"
-                    className="form-control readonly"
-                    value={charData.tags.join(", ")}
-                    readOnly
-                  />
-                  <button type="button" className="btn btn-outline-secondary" onClick={() => toggleEdit("tags")}>
-                    <i className="bi bi-pencil"></i>
-                  </button>
-                </div>
               )}
             </div>
+          ))}
 
-            <div className="mb-3">
-              <label className="form-label">Profile Picture</label>
-              <input
-                type="file"
-                className="form-control"
-                accept="image/*"
-                onChange={e => setPicture(e.target.files[0])}
-              />
-            </div>
+          <div className="mb-4 position-relative">
+            <label className="form-label fw-semibold" style={{ color: '#232323', fontSize: '1.08rem', letterSpacing: '0.2px' }}>Tags</label>
+            {editable.tags ? (
+              <>
+                <TagsInput tags={charData.tags} setTags={value => handleChange("tags", value)} maxTags={MAX_TAGS} />
+                <small className="text-muted">
+                  {charData.tags.length}/{MAX_TAGS} tags
+                </small>
+                <button
+                  type="button"
+                  className="btn btn-outline-success ms-2"
+                  style={{
+                    borderRadius: '0.7rem',
+                    border: 'none',
+                    background: '#e9ecef',
+                    marginTop: '-2.2rem',
+                    float: 'right'
+                  }}
+                  onClick={() => toggleEdit("tags")}
+                  tabIndex={-1}
+                >
+                  <i className="bi bi-check"></i>
+                </button>
+              </>
+            ) : (
+              <div className="input-group">
+                <input
+                  type="text"
+                  className="form-control readonly"
+                  style={{
+                    background: '#f8f9fa',
+                    border: '1.5px solid #e9ecef',
+                    color: '#232323',
+                    fontWeight: 500,
+                    fontSize: '1.05rem',
+                    borderRadius: '0.7rem'
+                  }}
+                  value={charData.tags.join(", ")}
+                  readOnly
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  style={{
+                    borderRadius: '0.7rem',
+                    border: 'none',
+                    marginLeft: '-3rem',
+                    zIndex: 2,
+                    background: '#f8f9fa'
+                  }}
+                  onClick={() => toggleEdit("tags")}
+                  tabIndex={-1}
+                >
+                  <i className="bi bi-pencil"></i>
+                </button>
+              </div>
+            )}
+          </div>
 
-            <div className="d-flex gap-2 mt-3">
-              <button type="submit" className="btn btn-dark mt-3">
-                <i className="bi bi-save me-2"></i>Save Changes
-              </button>
-              <button
-                type="button"
-                className="btn btn-danger mt-3 ms-2"
-                onClick={handleDelete}
-              >
-                <i className="bi bi-trash me-2"></i>Delete Character
-              </button>
-            </div>
-          </form>
-        </div>
+          <div className="mb-4">
+            <label className="form-label fw-semibold" style={{ color: '#232323', fontSize: '1.08rem', letterSpacing: '0.2px' }}>Profile Picture</label>
+            <input
+              type="file"
+              className="form-control"
+              style={{
+                background: '#f8f9fa',
+                border: '1.5px solid #e9ecef',
+                borderRadius: '0.7rem'
+              }}
+              accept="image/*"
+              onChange={e => setPicture(e.target.files[0])}
+            />
+          </div>
+
+          <div className="d-flex gap-3 mt-4 justify-content-end">
+            <button
+              type="submit"
+              className="fw-bold rounded-pill"
+              style={{
+                background: '#18191a',
+                color: '#fff',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                fontSize: '1.08rem',
+                padding: '0.5rem 2.2rem',
+                letterSpacing: '0.2px',
+                transition: 'background 0.18s, color 0.18s',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#232323';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = '#18191a';
+              }}
+            >
+              <i className="bi bi-save me-2"></i>Save Changes
+            </button>
+            <button
+              type="button"
+              className="fw-bold rounded-pill"
+              style={{
+                background: '#fff',
+                color: '#d32f2f',
+                border: '1.5px solid #d32f2f',
+                boxShadow: 'none',
+                fontSize: '1.08rem',
+                padding: '0.5rem 2.2rem',
+                letterSpacing: '0.2px',
+                transition: 'background 0.18s, color 0.18s, border 0.18s',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#d32f2f';
+                e.currentTarget.style.color = '#fff';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = '#fff';
+                e.currentTarget.style.color = '#d32f2f';
+              }}
+              onClick={handleDelete}
+            >
+              <i className="bi bi-trash me-2"></i>Delete Character
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
