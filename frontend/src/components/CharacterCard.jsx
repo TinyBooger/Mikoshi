@@ -18,8 +18,8 @@ export default function CharacterCard({ character }) {
       style={{
         width: CARD_WIDTH,
         height: CARD_HEIGHT,
-        margin: '14px 18px', // Add horizontal margin for shadow visibility
-        background: '#f7f7f7', // Lighter gray for black-and-white hue
+        margin: '8px 8px', // Reduced margin for closer cards, but enough for shadow
+        background: '#f7f7f7',
         borderRadius: 16,
         boxShadow: '0 3px 16px rgba(0,0,0,0.10)',
         cursor: 'pointer',
@@ -99,15 +99,15 @@ export default function CharacterCard({ character }) {
             {tagline || <span style={{ opacity: 0.4 }}>No tagline</span>}
           </span>
         </div>
-        {/* Stats */}
-        <div className="d-flex justify-content-between align-items-center" style={{ height: 24 }}>
-          <span className="d-flex align-items-center px-3 py-1 text-secondary" style={{ fontSize: 13 }}>
-            <i className="bi bi-chat me-1"></i> {views}
-          </span>
-          <span className="d-flex align-items-center px-3 py-1 text-secondary" style={{ fontSize: 13 }}>
-            <i className="bi bi-hand-thumbs-up me-1"></i> {likes}
-          </span>
-        </div>
+      {/* Stats: compact, bottom right */}
+      <div className="d-flex align-items-center justify-content-end gap-2" style={{ height: 24, width: '100%' }}>
+        <span className="d-flex align-items-center px-2 text-secondary" style={{ fontSize: 13 }}>
+          <i className="bi bi-chat me-1"></i> {views}
+        </span>
+        <span className="d-flex align-items-center px-2 text-secondary" style={{ fontSize: 13 }}>
+          <i className="bi bi-hand-thumbs-up me-1"></i> {likes}
+        </span>
+      </div>
       </div>
       <span className="position-absolute top-0 end-0 m-2 badge bg-primary text-white" style={{ fontSize: 10, borderRadius: 8, padding: '3px 7px', display: 'none' }}>
         {/* Reserved for future status/feature */}
