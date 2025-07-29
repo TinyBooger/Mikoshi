@@ -123,16 +123,28 @@ function BrowsePage() {
 
   if (category !== 'tags') {
     return (
-      <div className="container mt-4">
-        <h2>
+      <div
+        style={{
+          width: '90%',
+          margin: '0 auto',
+          background: 'var(--bs-body-bg, #f8f9fa)',
+          minHeight: '100vh',
+          paddingLeft: '2.5rem',
+          paddingRight: '2.5rem',
+          paddingTop: '2rem',
+          paddingBottom: '2rem',
+          boxSizing: 'border-box',
+          maxWidth: '1600px',
+        }}
+      >
+        <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>
           {category === 'popular' && 'Popular Characters'}
           {category === 'recent' && 'Recently Uploaded'}
           {category === 'recommended' && 'Recommended for You'}
         </h2>
-        
         {isLoading ? (
           <div className="text-center my-5">
-            <div className="spinner-border" role="status">
+            <div className="spinner-border text-primary" role="status">
               <span className="visually-hidden">Loading...</span>
             </div>
           </div>
@@ -143,8 +155,12 @@ function BrowsePage() {
                 No recommendations yet. Please like more characters to unlock personalized suggestions.
               </div>
             ) : (
-              <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
-                {characters.map(c => <CharacterCard key={c.id} character={c} />)}
+              <div className="d-flex flex-wrap gap-2" style={{ marginLeft: '-8px', marginRight: '-8px' }}>
+                {characters.map(c => (
+                  <div style={{ padding: '0 4px' }}>
+                    <CharacterCard key={c.id} character={c} />
+                  </div>
+                ))}
               </div>
             )}
           </>
@@ -154,18 +170,32 @@ function BrowsePage() {
   }
 
   return (
-    <div className="container mt-4">
-      <section className="mb-4">
+    <div
+      style={{
+        width: '90%',
+        margin: '0 auto',
+        background: 'var(--bs-body-bg, #f8f9fa)',
+        minHeight: '100vh',
+        paddingLeft: '2.5rem',
+        paddingRight: '2.5rem',
+        paddingTop: '2rem',
+        paddingBottom: '2rem',
+        boxSizing: 'border-box',
+        maxWidth: '1600px',
+      }}
+    >
+      {/* Popular Tags Section */}
+      <section className="mb-5 pb-3">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <div className="d-flex align-items-center gap-3">
-            <h4 className="mb-0">Popular Tags</h4>
+            <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Popular Tags</h2>
             {selectedTag && (
               <div className="d-flex align-items-center">
                 <span className="text-muted me-2">Showing:</span>
-                <span className="badge bg-primary">
+                <span className="badge bg-gradient-primary text-white px-3 py-2 rounded-pill shadow-sm">
                   #{selectedTag}
-                  <button 
-                    className="btn-close btn-close-white btn-close-sm ms-2" 
+                  <button
+                    className="btn-close btn-close-white btn-close-sm ms-2"
                     onClick={(e) => {
                       e.stopPropagation();
                       clearTagSelection();
@@ -177,10 +207,9 @@ function BrowsePage() {
             )}
           </div>
         </div>
-
         {isLoading ? (
-          <div className="text-center my-3">
-            <div className="spinner-border spinner-border-sm" role="status">
+          <div className="text-center my-4">
+            <div className="spinner-border text-primary" role="status">
               <span className="visually-hidden">Loading...</span>
             </div>
           </div>
@@ -190,19 +219,40 @@ function BrowsePage() {
               {popularTags.map(tag => (
                 <button
                   key={tag.name}
-                  className={`btn btn-sm ${
-                    selectedTag === tag.name 
-                      ? 'btn-primary' 
-                      : 'btn-outline-primary'
-                  }`}
+                  className="fw-bold rounded-pill"
+                  style={{
+                    background: selectedTag === tag.name ? '#18191a' : '#f5f6fa',
+                    color: selectedTag === tag.name ? '#fff' : '#232323',
+                    border: selectedTag === tag.name ? 'none' : '1.5px solid #e9ecef',
+                    fontSize: '1rem',
+                    letterSpacing: '0.5px',
+                    padding: '0.4rem 1.2rem',
+                    boxShadow: selectedTag === tag.name ? '0 2px 8px rgba(0,0,0,0.04)' : 'none',
+                    transition: 'background 0.18s, color 0.18s, border 0.18s',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
                   onClick={() => fetchCharactersByTag(tag.name)}
+                  onMouseEnter={e => {
+                    if (selectedTag !== tag.name) {
+                      e.currentTarget.style.background = '#e9ecef';
+                      e.currentTarget.style.color = '#18191a';
+                      e.currentTarget.style.border = '1.5px solid #cfd8dc';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (selectedTag !== tag.name) {
+                      e.currentTarget.style.background = '#f5f6fa';
+                      e.currentTarget.style.color = '#232323';
+                      e.currentTarget.style.border = '1.5px solid #e9ecef';
+                    }
+                  }}
                 >
-                  {tag.name} <span className="badge bg-secondary ms-1">{tag.likes}</span>
+                  #{tag.name} <span className="badge bg-secondary ms-2" style={{ background: selectedTag === tag.name ? '#232323' : '#e9ecef', color: selectedTag === tag.name ? '#fff' : '#232323', fontWeight: 600 }}>{tag.likes}</span>
                 </button>
               ))}
             </div>
-
-            <div className="d-flex flex-row overflow-auto gap-3">
+            <div className="d-flex flex-row overflow-auto gap-3 pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', width: '100%' }}>
               {selectedTag ? (
                 isLoadingCharacters ? (
                   <div className="text-muted py-3">Loading characters...</div>
@@ -224,7 +274,7 @@ function BrowsePage() {
       {/* All Tags Section */}
       <section className="mb-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h4 className="mb-0">Browse All Tags</h4>
+          <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Browse All Tags</h2>
           <div className="col-md-4">
             <div className="input-group input-group-sm">
               <input
@@ -233,9 +283,10 @@ function BrowsePage() {
                 placeholder="Search tags..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ background: '#f5f6fa', color: '#232323', border: '1.5px solid #e9ecef', borderRadius: 8 }}
               />
-              <button 
-                className="btn btn-outline-secondary" 
+              <button
+                className="btn btn-outline-secondary"
                 onClick={() => setSearchQuery('')}
                 disabled={!searchQuery}
               >
@@ -244,10 +295,9 @@ function BrowsePage() {
             </div>
           </div>
         </div>
-
         {isLoadingAllTags ? (
           <div className="text-center my-3">
-            <div className="spinner-border spinner-border-sm" role="status">
+            <div className="spinner-border spinner-border-sm text-primary" role="status">
               <span className="visually-hidden">Loading...</span>
             </div>
           </div>
@@ -260,26 +310,47 @@ function BrowsePage() {
                   const letters = Object.keys(filteredTags());
                   const columnCount = 3;
                   const perColumn = Math.ceil(letters.length / columnCount);
-                  
                   return Array.from({ length: columnCount }).map((_, colIndex) => (
                     <div key={colIndex} className="col-md-4">
                       {letters.slice(colIndex * perColumn, (colIndex + 1) * perColumn).map(letter => (
                         <div key={letter} className="mb-3">
-                          <h5 className="text-muted mb-2">
+                          <h5 className="text-muted mb-2" style={{ fontWeight: 700, letterSpacing: '0.5px' }}>
                             {letter === '#' ? 'Other Tags' : letter}
                           </h5>
                           <div className="d-flex flex-wrap gap-2">
                             {filteredTags()[letter].map(tag => (
                               <button
                                 key={tag.name}
-                                className={`btn btn-sm ${
-                                  selectedTag === tag.name 
-                                    ? 'btn-primary' 
-                                    : 'btn-outline-secondary'
-                                }`}
+                                className="fw-bold rounded-pill"
+                                style={{
+                                  background: selectedTag === tag.name ? '#18191a' : '#f5f6fa',
+                                  color: selectedTag === tag.name ? '#fff' : '#232323',
+                                  border: selectedTag === tag.name ? 'none' : '1.5px solid #e9ecef',
+                                  fontSize: '1rem',
+                                  letterSpacing: '0.5px',
+                                  padding: '0.4rem 1.2rem',
+                                  boxShadow: selectedTag === tag.name ? '0 2px 8px rgba(0,0,0,0.04)' : 'none',
+                                  transition: 'background 0.18s, color 0.18s, border 0.18s',
+                                  outline: 'none',
+                                  cursor: 'pointer',
+                                }}
                                 onClick={() => fetchCharactersByTag(tag.name)}
+                                onMouseEnter={e => {
+                                  if (selectedTag !== tag.name) {
+                                    e.currentTarget.style.background = '#e9ecef';
+                                    e.currentTarget.style.color = '#18191a';
+                                    e.currentTarget.style.border = '1.5px solid #cfd8dc';
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  if (selectedTag !== tag.name) {
+                                    e.currentTarget.style.background = '#f5f6fa';
+                                    e.currentTarget.style.color = '#232323';
+                                    e.currentTarget.style.border = '1.5px solid #e9ecef';
+                                  }
+                                }}
                               >
-                                {tag.name} <span className="badge bg-secondary ms-1">{tag.count}</span>
+                                #{tag.name} <span className="badge bg-secondary ms-2" style={{ background: selectedTag === tag.name ? '#232323' : '#e9ecef', color: selectedTag === tag.name ? '#fff' : '#232323', fontWeight: 600 }}>{tag.count}</span>
                               </button>
                             ))}
                           </div>

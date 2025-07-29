@@ -345,58 +345,102 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="d-flex h-100 bg-light">
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8f9fa' }}>
       {/* Main Chat Area */}
-      <div className="flex-grow-1 d-flex flex-column p-0 overflow-hidden" style={{ minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#fff', borderRadius: '1.5rem', margin: '2rem 0.5rem 2rem 2rem', boxShadow: '0 2px 16px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
         {/* Messages Area */}
-        <div className="flex-grow-1 p-4 overflow-auto">
-          {messages
-            .filter(m => m.role !== 'system')
-            .map((m, i) => (
-              <div 
-                key={i} 
-                className={`d-flex mb-3 ${m.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}
-              >
-                <div 
-                  className={`d-flex align-items-start ${m.role === 'user' ? 'flex-row-reverse' : ''}`}
-                  style={{ maxWidth: '80%' }}
+        <div style={{ flex: 1, padding: '2rem', overflowY: 'auto', background: '#fff' }}>
+          {messages.filter(m => m.role !== 'system').length === 0 ? (
+            <div className="text-muted text-center" style={{ marginTop: '6rem', fontSize: '1.2rem' }}>No messages yet. Start the conversation!</div>
+          ) : (
+            messages
+              .filter(m => m.role !== 'system')
+              .map((m, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    marginBottom: '1.5rem',
+                    justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
+                  }}
                 >
-                  <img
-                    src={m.role === 'user' 
-                      ? (userData?.profile_pic || defaultPic) 
-                      : (char?.picture || defaultPic)}
-                    alt={m.role === 'user' ? 'You' : char?.name}
-                    className="rounded-circle flex-shrink-0 mt-1"
-                    style={{ width: 36, height: 36, objectFit: 'cover' }}
-                  />
-                  <div 
-                    className={`mx-3 p-3 rounded-4 ${m.role === 'user' 
-                      ? 'bg-primary text-white' 
-                      : 'bg-white border'}`}
-                  >
-                    <div className="fw-bold small mb-1">
-                      {m.role === 'user' ? 'You' : char?.name}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
+                    maxWidth: '80%'
+                  }}>
+                    <img
+                      src={m.role === 'user' ? (userData?.profile_pic || defaultPic) : (char?.picture || defaultPic)}
+                      alt={m.role === 'user' ? 'You' : char?.name}
+                      style={{ width: 38, height: 38, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '2px solid #e9ecef' }}
+                    />
+                    <div style={{
+                      margin: m.role === 'user' ? '0 0.5rem 0 1.25rem' : '0 1.25rem 0 0.5rem',
+                      background: m.role === 'user' ? '#18191a' : '#f5f6fa',
+                      color: m.role === 'user' ? '#fff' : '#232323',
+                      borderRadius: '1.25rem',
+                      padding: '1rem 1.5rem',
+                      boxShadow: m.role === 'user' ? '0 2px 8px rgba(24,25,26,0.08)' : '0 2px 8px rgba(0,0,0,0.04)',
+                      fontSize: '1.08rem',
+                      minWidth: 0,
+                      wordBreak: 'break-word',
+                      maxWidth: '100%'
+                    }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.98rem', marginBottom: 4, opacity: 0.7 }}>
+                        {m.role === 'user' ? 'You' : char?.name}
+                      </div>
+                      <div>{m.content}</div>
                     </div>
-                    <div>{m.content}</div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+          )}
         </div>
 
         {/* Input Form */}
-        <div className="p-3 bg-white border-top">
-          <form className="d-flex gap-2 align-items-center" onSubmit={handleSubmit}>
+        <div style={{ padding: '1.25rem 2rem', background: '#f8f9fa', borderTop: '1.5px solid #e9ecef' }}>
+          <form style={{ display: 'flex', gap: '1rem', alignItems: 'center' }} onSubmit={handleSubmit}>
             <input
-              className="form-control rounded-pill border-0 bg-light"
+              style={{
+                flex: 1,
+                borderRadius: '2rem',
+                border: '1.5px solid #e9ecef',
+                background: '#fff',
+                padding: '0.75rem 1.5rem',
+                fontSize: '1.08rem',
+                outline: 'none',
+                color: '#232323',
+                boxShadow: 'none',
+                transition: 'border 0.18s',
+              }}
               placeholder="Type your message..."
               value={input}
               onChange={e => setInput(e.target.value)}
               required
+              onFocus={e => e.target.style.border = '1.5px solid #18191a'}
+              onBlur={e => e.target.style.border = '1.5px solid #e9ecef'}
             />
-            <button 
-              className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" 
-              style={{ width: 40, height: 40 }}
+            <button
+              type="submit"
+              style={{
+                background: '#18191a',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '50%',
+                width: 44,
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 22,
+                boxShadow: '0 2px 8px rgba(24,25,26,0.08)',
+                transition: 'background 0.18s',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#232323'}
+              onMouseLeave={e => e.currentTarget.style.background = '#18191a'}
             >
               <i className="bi bi-send-fill"></i>
             </button>
@@ -405,59 +449,85 @@ export default function ChatPage() {
       </div>
 
       {/* Character Sidebar */}
-      <aside className="border-start d-flex flex-column bg-white p-4" style={{ width: 320, minHeight: 0 }}>
-        <div className="d-flex align-items-start mb-4">
+      <aside style={{ width: 340, minHeight: 0, background: '#fff', borderRadius: '1.5rem', margin: '2rem 2rem 2rem 0', boxShadow: '0 2px 16px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', padding: '2rem 2rem 1.5rem 2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem' }}>
           <img
             src={char?.picture || defaultPic}
             alt="Character Avatar"
-            className="rounded-circle me-3 shadow-sm"
-            style={{ width: 100, height: 100, objectFit: 'cover', border: '3px solid #e9ecef' }}
+            style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: '50%', border: '3px solid #e9ecef', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginRight: 24 }}
           />
-          
-          <div className="mt-2">
-            <div className="text-muted small mb-1">
-              <i className="bi bi-person-fill me-1"></i> By: 
-              <span 
-                className="ms-1 text-primary fw-medium cursor-pointer"
+          <div>
+            <div style={{ color: '#888', fontSize: 13, marginBottom: 2 }}>
+              <i className="bi bi-person-fill me-1"></i> By:
+              <span
+                style={{ color: '#18191a', fontWeight: 600, marginLeft: 6, cursor: 'pointer' }}
                 onClick={() => navigate(`/profile/${char?.creator_id}`)}
               >
                 {creator?.name || 'Unknown'}
               </span>
             </div>
-            <div className="text-muted small mb-1">
+            <div style={{ color: '#888', fontSize: 13, marginBottom: 2 }}>
               <i className="bi bi-calendar me-1"></i> {char && new Date(char.created_time).toLocaleDateString()}
             </div>
-            <div className="text-muted small">
+            <div style={{ color: '#888', fontSize: 13 }}>
               <i className="bi bi-chat-square-text me-1"></i> {char?.views || 0} chats
             </div>
           </div>
         </div>
 
-        <h3 className="fw-bold text-center mb-2">{char?.name}</h3>
+        <h3 style={{ fontWeight: 700, textAlign: 'center', marginBottom: 8, color: '#18191a', fontSize: '1.5rem', letterSpacing: '0.5px' }}>{char?.name}</h3>
 
         {char?.tagline && (
-          <p className="text-center text-muted mb-4 px-3 fst-italic">
+          <p style={{ textAlign: 'center', color: '#888', marginBottom: 24, fontStyle: 'italic', fontSize: '1.08rem' }}>
             "{char.tagline}"
           </p>
         )}
 
         {/* Always show New Chat button, Persona and Scene selection */}
-        <div className="mb-3">
-          <button 
-            className="btn btn-sm btn-success w-100 mb-2"
+        <div style={{ marginBottom: 24 }}>
+          <button
+            style={{
+              width: '100%',
+              background: '#18191a',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '2rem',
+              fontWeight: 600,
+              fontSize: '1.08rem',
+              padding: '0.6rem 0',
+              marginBottom: 12,
+              boxShadow: '0 2px 8px rgba(24,25,26,0.08)',
+              cursor: 'pointer',
+              transition: 'background 0.18s',
+              outline: 'none',
+            }}
             onClick={startNewChat}
+            onMouseEnter={e => e.currentTarget.style.background = '#232323'}
+            onMouseLeave={e => e.currentTarget.style.background = '#18191a'}
           >
             <i className="bi bi-plus-circle me-2"></i>New Chat
           </button>
 
           {/* Persona dropdown */}
-          <div className="dropdown mb-2">
-            <button 
+          <div className="dropdown" style={{ marginBottom: 12 }}>
+            <button
               className="btn btn-outline-secondary btn-sm dropdown-toggle w-100"
               type="button"
               data-bs-toggle="dropdown"
+              style={{
+                borderRadius: '2rem',
+                fontWeight: 600,
+                fontSize: '1.02rem',
+                background: '#f5f6fa',
+                color: '#232323',
+                border: '1.5px solid #e9ecef',
+                padding: '0.5rem 1.2rem',
+                outline: 'none',
+                boxShadow: 'none',
+                transition: 'background 0.18s, color 0.18s, border 0.18s',
+              }}
             >
-              {selectedPersonaId 
+              {selectedPersonaId
                 ? userData?.personas?.find(p => p.id === selectedPersonaId)?.name || 'Select Persona'
                 : 'Select Persona'}
             </button>
@@ -466,7 +536,7 @@ export default function ChatPage() {
                 <>
                   {userData.personas.map(p => (
                     <li key={p.id}>
-                      <button 
+                      <button
                         className="dropdown-item"
                         onClick={() => handlePersonaSelect(p.id)}
                       >
@@ -482,7 +552,7 @@ export default function ChatPage() {
                 </li>
               )}
               <li>
-                <button 
+                <button
                   className="dropdown-item text-primary"
                   onClick={() => setPersonaModal({ show: true, currentPersona: null })}
                 >
@@ -493,13 +563,25 @@ export default function ChatPage() {
           </div>
 
           {/* Scene dropdown */}
-          <div className="dropdown mb-3">
-            <button 
+          <div className="dropdown">
+            <button
               className="btn btn-outline-secondary btn-sm dropdown-toggle w-100"
               type="button"
               data-bs-toggle="dropdown"
+              style={{
+                borderRadius: '2rem',
+                fontWeight: 600,
+                fontSize: '1.02rem',
+                background: '#f5f6fa',
+                color: '#232323',
+                border: '1.5px solid #e9ecef',
+                padding: '0.5rem 1.2rem',
+                outline: 'none',
+                boxShadow: 'none',
+                transition: 'background 0.18s, color 0.18s, border 0.18s',
+              }}
             >
-              {selectedSceneId 
+              {selectedSceneId
                 ? scenes?.find(s => s.id === selectedSceneId)?.name || 'Select Scene'
                 : 'Select Scene'}
             </button>
@@ -508,7 +590,7 @@ export default function ChatPage() {
                 <>
                   {scenes.map(s => (
                     <li key={s.id}>
-                      <button 
+                      <button
                         className="dropdown-item"
                         onClick={() => handleSceneSelect(s.id)}
                       >
@@ -524,7 +606,7 @@ export default function ChatPage() {
                 </li>
               )}
               <li>
-                <button 
+                <button
                   className="dropdown-item text-primary"
                   onClick={() => setSceneModal({ show: true })}
                 >
@@ -537,140 +619,141 @@ export default function ChatPage() {
 
         {/* Chat History Section */}
         {userData?.chat_history?.length > 0 && (
-          <div className="mb-4">
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <h6 className="fw-bold mb-0">Chat History</h6>
-              <button 
-                className="btn btn-sm btn-outline-primary"
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#18191a' }}>Chat History</h6>
+              <button
+                style={{
+                  background: '#fff',
+                  color: '#18191a',
+                  border: '1.5px solid #e9ecef',
+                  borderRadius: '1.5rem',
+                  fontWeight: 600,
+                  fontSize: '0.98rem',
+                  padding: '0.2rem 1.1rem',
+                  cursor: 'pointer',
+                  transition: 'background 0.18s, color 0.18s, border 0.18s',
+                  outline: 'none',
+                }}
                 onClick={() => setShowChatHistory(!showChatHistory)}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
               >
                 {showChatHistory ? 'Hide' : 'Show'}
               </button>
             </div>
-            
             {showChatHistory && (
-              <div className="list-group" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+              <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 12, background: '#f5f6fa', padding: 8 }}>
                 {userData.chat_history
                   .filter(chat => chat.character_id === characterId)
                   .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated))
                   .map((chat) => (
-                    <div 
+                    <div
                       key={chat.chat_id}
-                      className={`list-group-item list-group-item-action text-start p-2 ${
-                        selectedChat?.chat_id === chat.chat_id ? 'active' : ''
-                      }`}
-                      onClick={() => loadChat(chat)}
                       style={{
                         display: 'flex',
-                        justifyContent: 'space-between',
                         alignItems: 'center',
-                        height: '48px',
-                        overflow: 'hidden',
-                        cursor: 'pointer' // <-- Add this line to force pointer cursor
+                        justifyContent: 'space-between',
+                        padding: '0.5rem 1rem',
+                        borderRadius: 10,
+                        background: selectedChat?.chat_id === chat.chat_id ? '#18191a' : 'transparent',
+                        color: selectedChat?.chat_id === chat.chat_id ? '#fff' : '#232323',
+                        marginBottom: 4,
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                        fontSize: '0.98rem',
+                        transition: 'background 0.18s, color 0.18s',
                       }}
+                      onClick={() => loadChat(chat)}
                     >
-                        {editingChatId === chat.chat_id ? (
-                          <div className="d-flex align-items-center w-100">
-                            <input
-                              type="text"
-                              className="form-control form-control-sm me-2"
-                              value={newTitle}
-                              onChange={(e) => setNewTitle(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleRename(chat.chat_id, chat.title);
-                                if (e.key === 'Escape') setEditingChatId(null);
-                              }}
-                              autoFocus
-                              style={{ flex: 1 }}
-                            />
-                            <button 
-                              className="btn btn-sm btn-success"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRename(chat.chat_id, chat.title);
-                              }}
-                            >
-                              <i className="bi bi-check"></i>
-                            </button>
-                            <button 
-                              className="btn btn-sm btn-danger ms-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingChatId(null);
-                              }}
-                            >
-                              <i className="bi bi-x"></i>
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <span 
-                              className="text-truncate pe-2" 
-                              style={{
-                                flex: 1,
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis'
-                              }}
-                            >
-                              {chat.title || chat.messages.find(m => m.role === 'user')?.content || 'New Chat'}
-                            </span>
-                            
-                            <div className="d-flex align-items-center position-relative">
-                              <small className="text-muted me-2">
-                                {new Date(chat.last_updated).toLocaleDateString()}
-                              </small>
-                              
-                              <div className="dropdown">
-                                <button 
-                                  className="btn btn-sm btn-link text-muted p-0"
-                                  onClick={(e) => toggleMenu(chat.chat_id, e)}
-                                  style={{ 
-                                    position: 'relative',
-                                    zIndex: menuOpenId === chat.chat_id ? 1000 : 'auto'
+                      {editingChatId === chat.chat_id ? (
+                        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                          <input
+                            type="text"
+                            className="form-control form-control-sm me-2"
+                            value={newTitle}
+                            onChange={(e) => setNewTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleRename(chat.chat_id, chat.title);
+                              if (e.key === 'Escape') setEditingChatId(null);
+                            }}
+                            autoFocus
+                            style={{ flex: 1, borderRadius: 8, border: '1.5px solid #e9ecef', fontSize: '0.98rem' }}
+                          />
+                          <button
+                            className="btn btn-sm btn-success"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRename(chat.chat_id, chat.title);
+                            }}
+                          >
+                            <i className="bi bi-check"></i>
+                          </button>
+                          <button
+                            className="btn btn-sm btn-danger ms-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingChatId(null);
+                            }}
+                          >
+                            <i className="bi bi-x"></i>
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {chat.title || chat.messages.find(m => m.role === 'user')?.content || 'New Chat'}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <small style={{ color: selectedChat?.chat_id === chat.chat_id ? '#fff' : '#888', fontWeight: 400 }}>
+                              {new Date(chat.last_updated).toLocaleDateString()}
+                            </small>
+                            <div className="dropdown">
+                              <button
+                                className="btn btn-sm btn-link text-muted p-0"
+                                onClick={(e) => toggleMenu(chat.chat_id, e)}
+                                style={{ position: 'relative', zIndex: menuOpenId === chat.chat_id ? 1000 : 'auto', color: selectedChat?.chat_id === chat.chat_id ? '#fff' : '#888' }}
+                              >
+                                <i className="bi bi-three-dots-vertical"></i>
+                              </button>
+                              {menuOpenId === chat.chat_id && (
+                                <div
+                                  className="dropdown-menu show"
+                                  style={{
+                                    position: 'fixed',
+                                    right: '1rem',
+                                    zIndex: 9999,
+                                    minWidth: '120px',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                                   }}
                                 >
-                                  <i className="bi bi-three-dots-vertical"></i>
-                                </button>
-                                
-                                {menuOpenId === chat.chat_id && (
-                                  <div 
-                                    className="dropdown-menu show"
-                                    style={{
-                                      position: 'fixed',
-                                      right: '1rem',
-                                      zIndex: 9999,
-                                      minWidth: '120px',
-                                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                                  <button
+                                    className="dropdown-item"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setNewTitle(chat.title || '');
+                                      setEditingChatId(chat.chat_id);
+                                      setMenuOpenId(null);
                                     }}
                                   >
-                                    <button 
-                                      className="dropdown-item"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setNewTitle(chat.title || '');
-                                        setEditingChatId(chat.chat_id);
-                                        setMenuOpenId(null);
-                                      }}
-                                    >
-                                      <i className="bi bi-pencil me-2"></i> Rename
-                                    </button>
-                                    <button 
-                                      className="dropdown-item text-danger"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDelete(chat.chat_id);
-                                        setMenuOpenId(null);
-                                      }}
-                                    >
-                                      <i className="bi bi-trash me-2"></i> Delete
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
+                                    <i className="bi bi-pencil me-2"></i> Rename
+                                  </button>
+                                  <button
+                                    className="dropdown-item text-danger"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDelete(chat.chat_id);
+                                      setMenuOpenId(null);
+                                    }}
+                                  >
+                                    <i className="bi bi-trash me-2"></i> Delete
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          </>
-                        )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
               </div>
@@ -678,33 +761,51 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Like Button - YouTube-inspired but cleaner */}
-        <div className="d-flex justify-content-center mb-4">
+        {/* Like Button */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
           <button
-            className={`btn btn-sm px-3 py-1 ${hasLiked ? 'btn-danger disabled' : 'btn-outline-danger'}`}
             onClick={likeCharacter}
             disabled={hasLiked}
             style={{
-              transition: 'all 0.2s ease',
-              ...(hasLiked ? {
-                cursor: 'not-allowed',
-                opacity: 0.8
-              } : {})
+              background: hasLiked ? '#e53935' : '#fff',
+              color: hasLiked ? '#fff' : '#e53935',
+              border: hasLiked ? 'none' : '1.5px solid #e53935',
+              borderRadius: '2rem',
+              fontWeight: 600,
+              fontSize: '1.08rem',
+              padding: '0.4rem 1.5rem',
+              boxShadow: hasLiked ? '0 2px 8px rgba(229,57,53,0.08)' : 'none',
+              cursor: hasLiked ? 'not-allowed' : 'pointer',
+              opacity: hasLiked ? 0.8 : 1,
+              transition: 'all 0.18s',
+              outline: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
             }}
           >
-            <i className={`bi ${hasLiked ? 'bi-heart-fill' : 'bi-heart'} fs-5`}></i>
-            <span className="ms-2 fw-medium">{likes}</span>
+            <i className={`bi ${hasLiked ? 'bi-heart-fill' : 'bi-heart'}`} style={{ fontSize: 20 }}></i>
+            <span style={{ fontWeight: 600 }}>{likes}</span>
           </button>
         </div>
 
         {/* Tags */}
         {char?.tags?.length > 0 && (
-          <div className="mb-4">
-            <h6 className="fw-bold mb-2 text-center">Tags</h6>
-            <div className="d-flex flex-wrap justify-content-center gap-2">
+          <div style={{ marginBottom: 12 }}>
+            <h6 style={{ fontWeight: 700, marginBottom: 8, textAlign: 'center', color: '#18191a', fontSize: '1.02rem' }}>Tags</h6>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
               {char.tags.map((tag, i) => (
-                <span key={i} className="badge bg-light text-dark border">
-                  {tag}
+                <span key={i} style={{
+                  background: '#f5f6fa',
+                  color: '#232323',
+                  border: '1.5px solid #e9ecef',
+                  borderRadius: '1.5rem',
+                  fontWeight: 600,
+                  fontSize: '0.98rem',
+                  padding: '0.3rem 1.1rem',
+                  marginBottom: 2
+                }}>
+                  #{tag}
                 </span>
               ))}
             </div>
