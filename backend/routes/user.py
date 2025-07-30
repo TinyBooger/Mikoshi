@@ -78,9 +78,9 @@ def get_user_created_characters(
         "name": c.name,
         "picture": c.picture,
         "tagline": c.tagline,
-        "creator_id": c.creator_id,
         "likes": c.likes,
-        "views": c.views
+        "views": c.views,
+        "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
     } for c in characters]
 
 @router.get("/api/characters-liked")
@@ -94,9 +94,9 @@ def get_user_liked_characters(current_user: User = Depends(get_current_user), db
         "name": c.name,
         "picture": c.picture,
         "tagline": c.tagline,
-        "creator_id": c.creator_id,
         "likes": c.likes,
-        "views": c.views
+        "views": c.views,
+        "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
     } for c in characters]
 
 @router.get("/api/user/{user_id}/characters")

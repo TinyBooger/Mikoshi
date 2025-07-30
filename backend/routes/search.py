@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 from database import get_db
-from models import SearchTerm, Character
+from models import SearchTerm, Character, User
 from datetime import datetime, UTC
 
 router = APIRouter()
@@ -63,8 +63,8 @@ def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get
             "views": c.views,
             "tags": c.tags,
             "tagline": c.tagline,
-            "creator_id": c.creator_id,
             "created_time": c.created_time.isoformat() if c.created_time else None,
+            "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None,
             "score": scores[i] if sort == "relevance" else None  # Include score for debugging
         } for i, c in enumerate(chars)
     ]
