@@ -46,7 +46,7 @@ export default function SignUpPage() {
       }
 
       // 5. Navigate to home page after successful signup
-      navigate('/');
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.message);
       // Optional: Delete the Firebase user if database creation fails
