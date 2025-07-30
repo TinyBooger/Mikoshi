@@ -5,7 +5,7 @@ import Layout from './components/layout';
 import HomePage from './pages/HomePage';
 import BrowsePage from './pages/BrowsePage.jsx';
 import WelcomePage from './pages/WelcomePage';
-import AccountSetupPage from './pages/AccountSetupPage';
+import SignUpPage from './pages/SignUpPage';
 import CharacterCreatePage from './pages/CharacterCreatePage';
 import CharacterEditPage from './pages/CharacterEditPage';
 import ChatPage from './pages/ChatPage';
@@ -54,8 +54,8 @@ export default function App() {
       ]
     },
     {
-      path: '/account-setup',
-      element: <AccountSetupPage />,
+      path: '/sign-up',
+      element: <SignUpPage />,
     }
   ]);
 

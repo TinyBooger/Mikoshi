@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '../firebase';
 
-export default function AccountSetupPage() {
+export default function SignUpPage() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

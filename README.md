@@ -52,7 +52,7 @@ Mikoshi-MonoRepo
 │     │  └─ topbar.jsx
 │     ├─ main.jsx
 │     ├─ pages
-│     │  ├─ AccountSetupPage.jsx
+│     │  ├─ SignUpPage.jsx
 │     │  ├─ CharacterCreatePage.jsx
 │     │  ├─ CharacterEditPage.jsx
 │     │  ├─ ChatPage.jsx
