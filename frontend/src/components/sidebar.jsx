@@ -176,14 +176,22 @@ export default function Sidebar() {
               <li>
                 <button
                   className="dropdown-item rounded-3 fw-bold"
-                  style={{ color: '#232323', background: 'transparent' }}
+                  style={{ color: '#232323', background: 'transparent', transition: 'background 0.15s, color 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                   onClick={() => { setProfileOpen(false); navigate("/profile"); }}
                 >
                   <i className="bi bi-person-circle me-2"></i> Profile
                 </button>
               </li>
               <li>
-                <button className="dropdown-item rounded-3 fw-bold" style={{ color: '#232323', background: 'transparent' }} onClick={() => { setProfileOpen(false); handleLogout(); }}>
+                <button
+                  className="dropdown-item rounded-3 fw-bold"
+                  style={{ color: '#232323', background: 'transparent', transition: 'background 0.15s, color 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
+                  onClick={() => { setProfileOpen(false); handleLogout(); }}
+                >
                   <i className="bi bi-box-arrow-right me-2"></i> Log out
                 </button>
               </li>
