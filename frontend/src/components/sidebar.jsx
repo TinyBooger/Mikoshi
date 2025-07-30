@@ -135,7 +135,7 @@ export default function Sidebar() {
         {currentUser ? (
           <div className="profile-dropdown-area position-relative">
             <button
-              className={`btn border-0 dropdown-toggle w-100 d-flex align-items-center gap-2 shadow-sm rounded-4 py-2${profileOpen ? ' active' : ''}`}
+              className={`btn border-0 w-100 d-flex align-items-center gap-2 shadow-sm rounded-4 py-2${profileOpen ? ' active' : ''}`}
               style={{ fontSize: '1rem', background: profileOpen ? '#dbeafe' : '#e9ecef', color: '#232323', fontWeight: 700, transition: 'background 0.2s' }}
               onClick={() => setProfileOpen((v) => !v)}
               aria-expanded={profileOpen}
@@ -153,7 +153,7 @@ export default function Sidebar() {
               <span className="flex-grow-1 text-start" style={{ color: '#232323', fontWeight: 700 }}>
                 {userData?.name || currentUser.email}
               </span>
-              <i className={`bi ms-auto ${profileOpen ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i>
+              <i className={`bi ms-auto ${profileOpen ? 'bi-chevron-down' : 'bi-chevron-up'}`}></i>
             </button>
             <ul
               className="dropdown-menu w-100 shadow rounded-4 show"
@@ -163,13 +163,14 @@ export default function Sidebar() {
                 border: 'none',
                 display: profileOpen ? 'block' : 'none',
                 opacity: profileOpen ? 1 : 0,
-                transform: profileOpen ? 'translateY(0)' : 'translateY(10px)',
+                transform: profileOpen ? 'translateY(0)' : 'translateY(-10px)',
                 transition: 'opacity 0.18s, transform 0.18s',
-                marginTop: 4,
+                marginBottom: 4,
                 zIndex: 2000,
                 position: 'absolute',
                 left: 0,
-                right: 0
+                right: 0,
+                bottom: '100%'
               }}
             >
               <li>
