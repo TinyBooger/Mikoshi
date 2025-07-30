@@ -82,9 +82,9 @@ export default function Sidebar() {
   return (
     <aside className="d-flex flex-column h-100 p-4" style={{ minHeight: '100vh', maxWidth: 340, background: '#f5f6fa', color: '#232323', borderRight: '1.5px solid #e9ecef', fontFamily: 'Inter, sans-serif', width: 340 }}>
       {/* Logo at top */}
-      <div className="mb-4 d-flex align-items-center justify-content-center" style={{ minHeight: 80 }}>
+      <div className="mb-4 d-flex align-items-center justify-content-center" style={{ minHeight: 200 }}>
         <a href="/" style={{ display: 'inline-block' }}>
-          <img src={logo} alt="Logo" style={{ height: 72, width: 'auto', objectFit: 'contain', display: 'block', maxWidth: 200 }} />
+          <img src={logo} alt="Logo" style={{ height: 180, width: 'auto', objectFit: 'contain', display: 'block', maxWidth: 200 }} />
         </a>
       </div>
       {/* Top navigation */}
