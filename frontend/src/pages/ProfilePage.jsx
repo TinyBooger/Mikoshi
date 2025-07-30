@@ -298,48 +298,49 @@ export default function ProfilePage() {
           <div
             key={c.id}
             style={{
-              display: 'flex',
-              flexDirection: 'column',
               margin: 0,
               padding: 0,
             }}
           >
-            <CharacterCard character={c} />
-            {/* Edit button below the character card for own created characters */}
-            {activeTab === TAB_TYPES.CREATED && isOwnProfile && (
-              <button
-                className="btn btn-outline-dark btn-sm mt-2"
-                style={{
-                  borderRadius: 20,
-                  border: '1.5px solid #232323',
-                  background: '#fff',
-                  color: '#232323',
-                  fontWeight: 600,
-                  width: '90%',
-                  transition: 'background 0.18s, color 0.18s, border 0.18s',
-                  fontSize: '1rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-                title="Edit Character"
-                onClick={() => navigate(`/character-edit?id=${c.id}`)}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = '#18191a';
-                  e.currentTarget.style.color = '#fff';
-                  e.currentTarget.style.border = '1.5px solid #18191a';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = '#fff';
-                  e.currentTarget.style.color = '#232323';
-                  e.currentTarget.style.border = '1.5px solid #232323';
-                }}
-              >
-                <i className="bi bi-pencil-square"></i>
-                Edit
-              </button>
-            )}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+              <CharacterCard character={c} />
+              {/* Edit button below the character card for own created characters */}
+              {activeTab === TAB_TYPES.CREATED && isOwnProfile && (
+                <button
+                  className="btn btn-outline-dark btn-sm mt-2"
+                  style={{
+                    borderRadius: 20,
+                    border: '1.5px solid #232323',
+                    background: '#fff',
+                    color: '#232323',
+                    fontWeight: 600,
+                    width: '90%',
+                    alignSelf: 'center',
+                    transition: 'background 0.18s, color 0.18s, border 0.18s',
+                    fontSize: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                  title="Edit Character"
+                  onClick={() => navigate(`/character-edit?id=${c.id}`)}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = '#18191a';
+                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.border = '1.5px solid #18191a';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = '#fff';
+                    e.currentTarget.style.color = '#232323';
+                    e.currentTarget.style.border = '1.5px solid #232323';
+                  }}
+                >
+                  <i className="bi bi-pencil-square"></i>
+                  Edit
+                </button>
+              )}
+            </div>
           </div>
         ))}
         {characters.length === 0 && (
