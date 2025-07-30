@@ -282,11 +282,11 @@ export default function ProfilePage() {
 
   const renderCharacters = () => {
     const characters = activeTab === TAB_TYPES.CREATED ? createdCharacters : likedCharacters;
-    
+
     return (
-      <div className="d-flex flex-wrap gap-3 mt-3">
+      <div className="d-flex flex-column align-items-center gap-3 mt-3">
         {characters.map(c => (
-          <div key={c.id} style={{ width: 150, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div key={c.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <CharacterCard character={c} />
             {/* Edit button below the character card for own created characters */}
             {activeTab === TAB_TYPES.CREATED && isOwnProfile && (
