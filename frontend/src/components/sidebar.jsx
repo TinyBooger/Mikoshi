@@ -68,7 +68,7 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="d-flex flex-column h-100 p-4" style={{ minHeight: '100vh', maxWidth: 270, background: '#f5f6fa', color: '#232323', borderRight: '1.5px solid #e9ecef', fontFamily: 'Inter, sans-serif' }}>
+    <aside className="d-flex flex-column h-100 p-4" style={{ minHeight: '100vh', maxWidth: 340, background: '#f5f6fa', color: '#232323', borderRight: '1.5px solid #e9ecef', fontFamily: 'Inter, sans-serif', width: 340 }}>
       {/* Top navigation */}
       <div className="d-flex flex-column gap-3 mb-4">
         <a
@@ -80,7 +80,7 @@ export default function Sidebar() {
         </a>
         <button
           className="fw-bold shadow-sm w-100"
-          style={{ fontSize: '1.08rem', letterSpacing: '0.5px', background: '#fff', color: '#232323', borderRadius: 24, padding: '10px 0', border: 'none' }}
+          style={{ fontSize: '1.08rem', letterSpacing: '0.5px', background: '#fff', color: '#232323', borderRadius: 24, padding: '12px 0 12px 0', border: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
           onClick={() => {
             if (!currentUser) return alert("Please login first");
             navigate("/character-create");
@@ -110,7 +110,7 @@ export default function Sidebar() {
                   src={c.picture || defaultPicture}
                   alt={c.name}
                   className="rounded-circle border"
-                  style={{ width: 36, height: 36, objectFit: 'cover', border: '2px solid #e9ecef' }}
+                  style={{ width: 48, height: 48, objectFit: 'cover', border: '2px solid #e9ecef' }}
                 />
                 <span className="fw-bold text-truncate" style={{ color: '#232323', fontWeight: 700 }}>{c.name}</span>
               </button>
