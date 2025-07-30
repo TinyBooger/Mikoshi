@@ -5,6 +5,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
+import logo from '../assets/images/logo.png';
 
 export default function Sidebar() {
   const [recent, setRecent] = useState([]);
@@ -67,8 +68,25 @@ export default function Sidebar() {
     );
   }
 
+  const [profileOpen, setProfileOpen] = useState(false);
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handleClick = (e) => {
+      if (!e.target.closest('.profile-dropdown-area')) setProfileOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [profileOpen]);
+
   return (
     <aside className="d-flex flex-column h-100 p-4" style={{ minHeight: '100vh', maxWidth: 340, background: '#f5f6fa', color: '#232323', borderRight: '1.5px solid #e9ecef', fontFamily: 'Inter, sans-serif', width: 340 }}>
+      {/* Logo at top */}
+      <div className="mb-3 d-flex align-items-center justify-content-center" style={{ minHeight: 56 }}>
+        <a href="/" style={{ display: 'inline-block' }}>
+          <img src={logo} alt="Logo" style={{ height: 40, width: 'auto', objectFit: 'contain', display: 'block' }} />
+        </a>
+      </div>
       {/* Top navigation */}
       <div className="d-flex flex-column gap-3 mb-4">
         <a
@@ -122,11 +140,14 @@ export default function Sidebar() {
       {/* Profile / Login */}
       <div className="mt-auto px-1">
         {currentUser ? (
-          <div className="dropdown">
+          <div className="profile-dropdown-area position-relative">
             <button
-              className="btn border-0 dropdown-toggle w-100 d-flex align-items-center gap-2 shadow-sm rounded-4 py-2"
-              data-bs-toggle="dropdown"
-              style={{ fontSize: '1rem', background: '#e9ecef', color: '#232323', fontWeight: 700 }}
+              className={`btn border-0 dropdown-toggle w-100 d-flex align-items-center gap-2 shadow-sm rounded-4 py-2${profileOpen ? ' active' : ''}`}
+              style={{ fontSize: '1rem', background: profileOpen ? '#dbeafe' : '#e9ecef', color: '#232323', fontWeight: 700, transition: 'background 0.2s' }}
+              onClick={() => setProfileOpen((v) => !v)}
+              aria-expanded={profileOpen}
+              aria-haspopup="true"
+              tabIndex={0}
             >
               <img
                 src={userData?.profile_pic || defaultAvatar}
@@ -139,19 +160,36 @@ export default function Sidebar() {
               <span className="flex-grow-1 text-start" style={{ color: '#232323', fontWeight: 700 }}>
                 {userData?.name || currentUser.email}
               </span>
+              <i className={`bi ms-auto ${profileOpen ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i>
             </button>
-            <ul className="dropdown-menu w-100 shadow rounded-4" style={{ background: '#fff', color: '#232323', border: 'none' }}>
+            <ul
+              className="dropdown-menu w-100 shadow rounded-4 show"
+              style={{
+                background: '#fff',
+                color: '#232323',
+                border: 'none',
+                display: profileOpen ? 'block' : 'none',
+                opacity: profileOpen ? 1 : 0,
+                transform: profileOpen ? 'translateY(0)' : 'translateY(10px)',
+                transition: 'opacity 0.18s, transform 0.18s',
+                marginTop: 4,
+                zIndex: 2000,
+                position: 'absolute',
+                left: 0,
+                right: 0
+              }}
+            >
               <li>
                 <button
                   className="dropdown-item rounded-3 fw-bold"
                   style={{ color: '#232323', background: 'transparent' }}
-                  onClick={() => navigate("/profile")}
+                  onClick={() => { setProfileOpen(false); navigate("/profile"); }}
                 >
                   <i className="bi bi-person-circle me-2"></i> Profile
                 </button>
               </li>
               <li>
-                <button className="dropdown-item rounded-3 fw-bold" style={{ color: '#232323', background: 'transparent' }} onClick={handleLogout}>
+                <button className="dropdown-item rounded-3 fw-bold" style={{ color: '#232323', background: 'transparent' }} onClick={() => { setProfileOpen(false); handleLogout(); }}>
                   <i className="bi bi-box-arrow-right me-2"></i> Log out
                 </button>
               </li>
