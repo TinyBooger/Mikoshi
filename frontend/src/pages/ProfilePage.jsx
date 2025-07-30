@@ -293,8 +293,8 @@ export default function ProfilePage() {
                 className="btn btn-sm"
                 style={{
                   position: 'absolute',
-                  top: 8,
-                  right: 8,
+                  top: 16, // moved from 8 to 16
+                  right: 16, // moved from 8 to 16
                   zIndex: 2,
                   background: '#fff',
                   color: '#232323',
