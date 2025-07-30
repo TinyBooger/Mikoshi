@@ -52,6 +52,17 @@ export default function LoginPage() {
 
             <button type="submit" className="btn btn-dark w-100">Login</button>
           </form>
+          <div className="text-center mt-3">
+            <span className="me-2">Don't have an account?</span>
+            <button
+              type="button"
+              className="btn btn-outline-dark"
+              style={{ borderWidth: 2 }}
+              onClick={() => navigate('/sign-up')}
+            >
+              Sign Up
+            </button>
+          </div>
         </div>
       </div>
     </div>
