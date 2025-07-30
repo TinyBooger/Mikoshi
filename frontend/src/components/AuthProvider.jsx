@@ -11,36 +11,37 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setLoading(false);
       if (user) {
-        try {
-          // Get the Firebase ID token
-          const freshToken = await user.getIdToken();
+        user.getIdToken().then((freshToken) => {
           setIdToken(freshToken);
-          // Fetch user data from your backend
-          const response = await fetch('/api/users/me', {
+          fetch('/api/users/me', {
             headers: {
               'Authorization': `Bearer ${freshToken}`
             }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setUserData(data); // Set the database user data
-          } else {
-            console.error('Failed to fetch user data');
-          }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-        }
+          })
+            .then(response => {
+              if (response.ok) {
+                return response.json();
+              } else {
+                console.error('Failed to fetch user data');
+                return null;
+              }
+            })
+            .then(data => {
+              if (data) setUserData(data);
+            })
+            .catch(error => {
+              console.error('Error fetching user data:', error);
+            });
+        });
       } else {
-        setUserData(null); // Clear user data when logged out
+        setUserData(null);
+        setIdToken(null);
       }
-      
-      setCurrentUser(user);
-      setLoading(false);
     });
-
     return unsubscribe;
   }, []);
 
