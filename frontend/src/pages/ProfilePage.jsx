@@ -286,27 +286,25 @@ export default function ProfilePage() {
     return (
       <div className="d-flex flex-wrap gap-3 mt-3">
         {characters.map(c => (
-          <div key={c.id} style={{ width: 150, position: 'relative' }}>
-            {/* Edit button in top-right corner for own created characters */}
+          <div key={c.id} style={{ width: 150, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <CharacterCard character={c} />
+            {/* Edit button below the character card for own created characters */}
             {activeTab === TAB_TYPES.CREATED && isOwnProfile && (
               <button
-                className="btn btn-sm"
+                className="btn btn-outline-dark btn-sm mt-2"
                 style={{
-                  position: 'absolute',
-                  top: 16, // moved from 8 to 16
-                  right: 16, // moved from 8 to 16
-                  zIndex: 2,
+                  borderRadius: 20,
+                  border: '1.5px solid #232323',
                   background: '#fff',
                   color: '#232323',
-                  border: '1.5px solid #e9ecef',
-                  borderRadius: '50%',
-                  padding: '0.35rem 0.5rem',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  fontWeight: 600,
+                  width: '90%',
                   transition: 'background 0.18s, color 0.18s, border 0.18s',
-                  fontSize: '1.1rem',
+                  fontSize: '1rem',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  gap: 6,
                 }}
                 title="Edit Character"
                 onClick={() => navigate(`/character-edit?id=${c.id}`)}
@@ -318,13 +316,13 @@ export default function ProfilePage() {
                 onMouseLeave={e => {
                   e.currentTarget.style.background = '#fff';
                   e.currentTarget.style.color = '#232323';
-                  e.currentTarget.style.border = '1.5px solid #e9ecef';
+                  e.currentTarget.style.border = '1.5px solid #232323';
                 }}
               >
                 <i className="bi bi-pencil-square"></i>
+                Edit
               </button>
             )}
-            <CharacterCard character={c} />
           </div>
         ))}
         {characters.length === 0 && (
