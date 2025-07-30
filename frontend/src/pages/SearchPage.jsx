@@ -318,9 +318,12 @@ export default function SearchPage() {
               No results for "{query}"
             </p>
           ) : (
-            <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+            <div
+              className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4"
+              style={{ gap: '2rem 2rem' }} // Add custom gap for more padding
+            >
               {results.map((char) => (
-                <div className="col d-flex" key={char.id}>
+                <div className="col d-flex" key={char.id} style={{ padding: '0.5rem' }}>
                   <CharacterCard character={char} />
                 </div>
               ))}

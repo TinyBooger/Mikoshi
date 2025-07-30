@@ -286,16 +286,45 @@ export default function ProfilePage() {
     return (
       <div className="d-flex flex-wrap gap-3 mt-3">
         {characters.map(c => (
-          <div key={c.id} style={{ width: 150 }}>
-            <CharacterCard character={c} />
+          <div key={c.id} style={{ width: 150, position: 'relative' }}>
+            {/* Edit button in top-right corner for own created characters */}
             {activeTab === TAB_TYPES.CREATED && isOwnProfile && (
               <button
-                className="btn btn-sm btn-outline-secondary w-100 mt-1"
+                className="btn btn-sm"
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  zIndex: 2,
+                  background: '#fff',
+                  color: '#232323',
+                  border: '1.5px solid #e9ecef',
+                  borderRadius: '50%',
+                  padding: '0.35rem 0.5rem',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  transition: 'background 0.18s, color 0.18s, border 0.18s',
+                  fontSize: '1.1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                title="Edit Character"
                 onClick={() => navigate(`/character-edit?id=${c.id}`)}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = '#18191a';
+                  e.currentTarget.style.color = '#fff';
+                  e.currentTarget.style.border = '1.5px solid #18191a';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = '#fff';
+                  e.currentTarget.style.color = '#232323';
+                  e.currentTarget.style.border = '1.5px solid #e9ecef';
+                }}
               >
-                <i className="bi bi-pencil-square"></i> Edit
+                <i className="bi bi-pencil-square"></i>
               </button>
             )}
+            <CharacterCard character={c} />
           </div>
         ))}
         {characters.length === 0 && (
