@@ -285,14 +285,13 @@ export default function ProfilePage() {
 
     return (
       <div
-        className="d-flex flex-wrap justify-content-center align-items-start"
+        className="d-flex flex-wrap align-items-start"
         style={{
           gap: '24px 18px',
           marginTop: 18,
           rowGap: 24,
           columnGap: 18,
           width: '100%',
-          // Remove width restriction on children, let cards define their own width
         }}
       >
         {characters.map(c => (
@@ -301,7 +300,6 @@ export default function ProfilePage() {
             style={{
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
               margin: 0,
               padding: 0,
             }}
