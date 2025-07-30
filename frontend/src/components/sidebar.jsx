@@ -82,20 +82,13 @@ export default function Sidebar() {
   return (
     <aside className="d-flex flex-column h-100 p-4" style={{ minHeight: '100vh', maxWidth: 340, background: '#f5f6fa', color: '#232323', borderRight: '1.5px solid #e9ecef', fontFamily: 'Inter, sans-serif', width: 340 }}>
       {/* Logo at top */}
-      <div className="mb-3 d-flex align-items-center justify-content-center" style={{ minHeight: 56 }}>
+      <div className="mb-4 d-flex align-items-center justify-content-center" style={{ minHeight: 80 }}>
         <a href="/" style={{ display: 'inline-block' }}>
-          <img src={logo} alt="Logo" style={{ height: 40, width: 'auto', objectFit: 'contain', display: 'block' }} />
+          <img src={logo} alt="Logo" style={{ height: 72, width: 'auto', objectFit: 'contain', display: 'block', maxWidth: 200 }} />
         </a>
       </div>
       {/* Top navigation */}
       <div className="d-flex flex-column gap-3 mb-4">
-        <a
-          href="/"
-          className="d-flex align-items-center justify-content-center shadow-sm"
-          style={{ width: 48, height: 48, fontSize: 22, background: '#e9ecef', borderRadius: 16 }}
-        >
-          <i className="bi bi-house-fill" style={{ color: '#232323' }}></i>
-        </a>
         <button
           className="fw-bold shadow-sm w-100"
           style={{ fontSize: '1.08rem', letterSpacing: '0.5px', background: '#fff', color: '#232323', borderRadius: 24, padding: '12px 0 12px 0', border: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
