@@ -62,6 +62,8 @@ def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get
             "picture": c.picture,
             "views": c.views,
             "tags": c.tags,
+            "tagline": c.tagline,
+            "creator_id": c.creator_id,
             "created_time": c.created_time.isoformat() if c.created_time else None,
             "score": scores[i] if sort == "relevance" else None  # Include score for debugging
         } for i, c in enumerate(chars)

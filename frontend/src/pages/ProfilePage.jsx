@@ -413,7 +413,22 @@ export default function ProfilePage() {
   return (
     <div className="d-flex" style={{ height: '100vh', background: '#f8f9fa' }}>
       <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-        <div className="flex-grow-1 p-4" style={{ background: '#fff', borderRadius: 18, margin: '2rem auto', maxWidth: 1100, boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
+        <div
+          className="flex-grow-1 p-4"
+          style={{
+            background: '#fff',
+            borderRadius: 18,
+            margin: '2rem auto',
+            width: '90%',
+            maxWidth: 1100,
+            height: 'calc(100vh - 4rem)', // 2rem top + 2rem bottom margin
+            boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
+            overflowY: 'auto',
+            overflowX: 'visible',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
           <h2 className="mb-4 fw-bold" style={{ color: '#18191a', fontSize: '2.1rem', letterSpacing: '0.5px' }}>My Profile</h2>
           {!isOwnProfile && (
             <div className="alert alert-info" style={{ background: '#f5f6fa', color: '#232323', border: 'none' }}>

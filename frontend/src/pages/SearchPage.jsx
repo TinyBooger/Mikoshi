@@ -99,7 +99,18 @@ export default function SearchPage() {
       padding: 0,
     }}>
       <div id="topbar-container" className="flex-shrink-0"></div>
-      <div className="flex-grow-1 d-flex flex-column align-items-center" style={{ padding: '2.5rem 0 2rem 0', width: '100%' }}>
+      <div
+        className="flex-grow-1 d-flex flex-column align-items-center"
+        style={{
+          padding: '2.5rem 0 2rem 0',
+          width: '90%',
+          maxWidth: 1400,
+          margin: '0 auto',
+          height: 'calc(100vh - 4.5rem)', // fits layout, adjust as needed for topbar
+          overflowY: 'auto',
+          overflowX: 'visible',
+        }}
+      >
         {/* Search Bar */}
         <div className="mb-4" style={{ width: '90%', maxWidth: 500, position: 'relative' }}>
           <div style={{ display: 'flex', borderRadius: 32, background: '#f5f6fa', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1.5px solid #e9ecef', overflow: 'hidden' }}>
