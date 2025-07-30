@@ -319,11 +319,18 @@ export default function SearchPage() {
             </p>
           ) : (
             <div
-              className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4"
-              style={{ gap: '2rem 2rem' }} // Add custom gap for more padding
+              // Remove Bootstrap grid classes, use flexbox for layout
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '2rem',
+                justifyContent: 'flex-start',
+                width: '100%',
+                padding: '0.5rem 0',
+              }}
             >
               {results.map((char) => (
-                <div className="col d-flex" key={char.id} style={{ padding: '0.5rem' }}>
+                <div key={char.id} style={{}}>
                   <CharacterCard character={char} />
                 </div>
               ))}
