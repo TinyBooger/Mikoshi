@@ -284,9 +284,28 @@ export default function ProfilePage() {
     const characters = activeTab === TAB_TYPES.CREATED ? createdCharacters : likedCharacters;
 
     return (
-      <div className="d-flex flex-column align-items-center gap-3 mt-3">
+      <div
+        className="d-flex flex-wrap justify-content-center align-items-start"
+        style={{
+          gap: '24px 18px',
+          marginTop: 18,
+          rowGap: 24,
+          columnGap: 18,
+          width: '100%',
+          // Remove width restriction on children, let cards define their own width
+        }}
+      >
         {characters.map(c => (
-          <div key={c.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div
+            key={c.id}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              margin: 0,
+              padding: 0,
+            }}
+          >
             <CharacterCard character={c} />
             {/* Edit button below the character card for own created characters */}
             {activeTab === TAB_TYPES.CREATED && isOwnProfile && (
@@ -327,8 +346,8 @@ export default function ProfilePage() {
         ))}
         {characters.length === 0 && (
           <p className="text-muted">
-            {activeTab === TAB_TYPES.CREATED 
-              ? "No characters created yet." 
+            {activeTab === TAB_TYPES.CREATED
+              ? "No characters created yet."
               : "No liked characters yet."}
           </p>
         )}
