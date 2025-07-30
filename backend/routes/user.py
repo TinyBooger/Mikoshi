@@ -73,7 +73,15 @@ def get_user_created_characters(
         if not current_user or not current_user.characters_created:
             return []
         characters = db.query(Character).filter(Character.id.in_(current_user.characters_created)).all()
-    return [{"id": c.id, "name": c.name, "picture": c.picture, "likes":c.likes, "views": c.views} for c in characters]
+    return [{
+        "id": c.id,
+        "name": c.name,
+        "picture": c.picture,
+        "tagline": c.tagline,
+        "creator_id": c.creator_id,
+        "likes": c.likes,
+        "views": c.views
+    } for c in characters]
 
 @router.get("/api/characters-liked")
 def get_user_liked_characters(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -81,7 +89,15 @@ def get_user_liked_characters(current_user: User = Depends(get_current_user), db
         return []
 
     characters = db.query(Character).filter(Character.id.in_(current_user.liked_characters)).all()
-    return [{"id": c.id, "name": c.name, "picture": c.picture, "likes":c.likes, "views": c.views} for c in characters]
+    return [{
+        "id": c.id,
+        "name": c.name,
+        "picture": c.picture,
+        "tagline": c.tagline,
+        "creator_id": c.creator_id,
+        "likes": c.likes,
+        "views": c.views
+    } for c in characters]
 
 @router.get("/api/user/{user_id}/characters")
 def get_user_characters(user_id: str, db: Session = Depends(get_db)):

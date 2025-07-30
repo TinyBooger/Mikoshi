@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from "react";
 import { useNavigate, useLocation } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 import { AuthContext } from '../components/AuthProvider';
+import CharacterCard from '../components/CharacterCard';
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -91,7 +92,7 @@ export default function SearchPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'var(--bs-body-bg, #fff)',
+      background: 'var(--bs-body-bg, #f8f9fa)',
       color: '#18191a',
       width: '100%',
       boxSizing: 'border-box',
@@ -186,7 +187,15 @@ export default function SearchPage() {
         </div>
 
         {/* Results Section */}
-        <div style={{ width: '90%', maxWidth: 700, background: '#fff', borderRadius: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: '2.5rem 2rem', margin: '0 auto' }}>
+        <div style={{
+          width: '96%',
+          maxWidth: 1400,
+          background: '#fff',
+          borderRadius: 24,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+          padding: '2.5rem 2rem',
+          margin: '0 auto'
+        }}>
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Search Results</h2>
             <div className="btn-group" role="group">
@@ -298,45 +307,13 @@ export default function SearchPage() {
               No results for "{query}"
             </p>
           ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
               {results.map((char) => (
-                <li
-                  key={char.id}
-                  className="d-flex align-items-center mb-3"
-                  style={{
-                    cursor: 'pointer',
-                    background: '#f5f6fa',
-                    borderRadius: 18,
-                    padding: '0.85rem 1.2rem',
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
-                    border: '1.5px solid #e9ecef',
-                    transition: 'background 0.18s, box-shadow 0.18s',
-                  }}
-                  onClick={() => navigate(`/chat?character=${char.id}`)}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#e9ecef'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.03)'; }}
-                >
-                  <img
-                    src={char.picture || defaultPicture}
-                    alt={char.name}
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: '50%',
-                      marginRight: 18,
-                      objectFit: 'cover',
-                      border: '2px solid #fff',
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                      background: '#fff',
-                    }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, color: '#18191a', fontSize: '1.13rem', letterSpacing: '0.2px' }}>{char.name}</div>
-                    <div style={{ color: '#6c757d', fontSize: '0.98rem', fontWeight: 500, marginTop: 2 }}>{char.persona}</div>
-                  </div>
-                </li>
+                <div className="col d-flex" key={char.id}>
+                  <CharacterCard character={char} />
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       </div>

@@ -81,31 +81,44 @@ export default function ProfilePage() {
       <div className="mt-3">
         {isOwnProfile && (
           <button
-            className="btn btn-primary mb-3"
+            className="fw-bold rounded-pill mb-3"
+            style={{
+              background: '#18191a',
+              color: '#fff',
+              border: 'none',
+              fontSize: '1rem',
+              padding: '0.45rem 1.5rem',
+              letterSpacing: '0.2px',
+              transition: 'background 0.18s, color 0.18s',
+              outline: 'none',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#232323'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#18191a'; }}
             onClick={() => setShowSceneModal(true)}
           >
             <i className="bi bi-plus"></i> Create New Scene
           </button>
         )}
         {scenes.length === 0 ? (
-          <div className="alert alert-info">
+          <div className="alert alert-info" style={{ background: '#f5f6fa', color: '#232323', border: 'none' }}>
             No scenes created yet. {isOwnProfile ? 'Click "Create New Scene" to add one.' : ''}
           </div>
         ) : (
           <div className="list-group">
             {scenes.map(scene => (
-              <div key={scene.id} className="list-group-item">
+              <div key={scene.id} className="list-group-item" style={{ background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 12, marginBottom: 10 }}>
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
-                    <h5>{scene.name}</h5>
+                    <h5 style={{ color: '#18191a', fontWeight: 600 }}>{scene.name}</h5>
                     <p className="mb-0 text-muted">{scene.description}</p>
                   </div>
                   {isOwnProfile && (
                     <div>
-                      <button className="btn btn-sm btn-outline-primary me-2">
+                      <button className="btn btn-sm btn-outline-dark me-2" style={{ borderRadius: 20, border: '1.5px solid #232323', background: '#fff', color: '#232323' }}>
                         <i className="bi bi-pencil"></i>
                       </button>
-                      <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteScene(scene.id)}>
+                      <button className="btn btn-sm btn-outline-danger" style={{ borderRadius: 20, border: '1.5px solid #e53935', background: '#fff', color: '#e53935' }} onClick={() => handleDeleteScene(scene.id)}>
                         <i className="bi bi-trash"></i>
                       </button>
                     </div>
@@ -116,7 +129,7 @@ export default function ProfilePage() {
           </div>
         )}
         {!isOwnProfile && (
-          <div className="alert alert-warning mt-3">
+          <div className="alert alert-warning mt-3" style={{ background: '#fffbe6', color: '#856404', border: 'none' }}>
             Only the profile owner can create or edit scenes.
           </div>
         )}
@@ -299,7 +312,7 @@ export default function ProfilePage() {
   const renderPersonas = () => {
     if (!isOwnProfile) {
       return (
-        <div className="alert alert-warning">
+        <div className="alert alert-warning" style={{ background: '#fffbe6', color: '#856404', border: 'none' }}>
           Personas are private and only visible to the profile owner.
         </div>
       );
@@ -307,34 +320,49 @@ export default function ProfilePage() {
     return (
       <div className="mt-3">
         <button 
-          className="btn btn-primary mb-3"
+          className="fw-bold rounded-pill mb-3"
+          style={{
+            background: '#18191a',
+            color: '#fff',
+            border: 'none',
+            fontSize: '1rem',
+            padding: '0.45rem 1.5rem',
+            letterSpacing: '0.2px',
+            transition: 'background 0.18s, color 0.18s',
+            outline: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#232323'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#18191a'; }}
           onClick={() => setPersonaModal({ show: true, currentPersona: null })}
         >
           <i className="bi bi-plus"></i> Create New Persona
         </button>
 
         {personas.length === 0 ? (
-          <div className="alert alert-info">
+          <div className="alert alert-info" style={{ background: '#f5f6fa', color: '#232323', border: 'none' }}>
             No personas created yet. Click "Create New Persona" to add one.
           </div>
         ) : (
           <div className="list-group">
             {personas.map(persona => (
-              <div key={persona.id} className="list-group-item">
+              <div key={persona.id} className="list-group-item" style={{ background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 12, marginBottom: 10 }}>
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
-                    <h5>{persona.name}</h5>
+                    <h5 style={{ color: '#18191a', fontWeight: 600 }}>{persona.name}</h5>
                     <p className="mb-0 text-muted">{persona.description}</p>
                   </div>
                   <div>
                     <button 
-                      className="btn btn-sm btn-outline-primary me-2"
+                      className="btn btn-sm btn-outline-dark me-2"
+                      style={{ borderRadius: 20, border: '1.5px solid #232323', background: '#fff', color: '#232323' }}
                       onClick={() => editPersona(persona)}
                     >
                       <i className="bi bi-pencil"></i>
                     </button>
                     <button 
                       className="btn btn-sm btn-outline-danger"
+                      style={{ borderRadius: 20, border: '1.5px solid #e53935', background: '#fff', color: '#e53935' }}
                       onClick={() => handleDeletePersona(persona.id)}
                     >
                       <i className="bi bi-trash"></i>
@@ -383,12 +411,12 @@ export default function ProfilePage() {
   if (!displayUser) return null;
 
   return (
-    <div className="d-flex" style={{ height: '100vh' }}>
+    <div className="d-flex" style={{ height: '100vh', background: '#f8f9fa' }}>
       <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-        <div className="flex-grow-1 p-4">
-          <h2 className="mb-4">My Profile</h2>
+        <div className="flex-grow-1 p-4" style={{ background: '#fff', borderRadius: 18, margin: '2rem auto', maxWidth: 1100, boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
+          <h2 className="mb-4 fw-bold" style={{ color: '#18191a', fontSize: '2.1rem', letterSpacing: '0.5px' }}>My Profile</h2>
           {!isOwnProfile && (
-            <div className="alert alert-info">
+            <div className="alert alert-info" style={{ background: '#f5f6fa', color: '#232323', border: 'none' }}>
               <strong>Public Profile View:</strong> You are viewing this profile as a visitor. Editing and some private sections are disabled.
             </div>
           )}
@@ -399,34 +427,61 @@ export default function ProfilePage() {
               className="rounded-circle"
               width="100"
               height="100"
+              style={{ border: '3px solid #e9ecef', background: '#fff' }}
             />
             <div>
               <div className="d-flex align-items-baseline gap-2 mb-1">
-                <h3 className="mb-0">{displayUser.name}</h3>
+                <h3 className="mb-0 fw-bold" style={{ color: '#18191a' }}>{displayUser.name}</h3>
                 <span className="text-muted small">•</span>
                 <div className="d-flex gap-2">
-                  <span className="badge bg-light text-dark">
+                  <span className="badge" style={{ background: '#f5f6fa', color: '#232323', fontWeight: 600 }}>
                     <i className="bi bi-eye me-1"></i>
                     {displayUser.views || 0} views
                   </span>
-                  <span className="badge bg-light text-dark">
+                  <span className="badge" style={{ background: '#f5f6fa', color: '#232323', fontWeight: 600 }}>
                     <i className="bi bi-heart me-1"></i>
                     {displayUser.likes || 0} likes
                   </span>
                 </div>
               </div>
               {isOwnProfile && (
-                <button className="btn btn-outline-primary btn-sm mt-1" onClick={() => setShowModal(true)}>
+                <button
+                  className="fw-bold rounded-pill btn-sm mt-1"
+                  style={{
+                    background: '#18191a',
+                    color: '#fff',
+                    border: 'none',
+                    fontSize: '1rem',
+                    padding: '0.35rem 1.2rem',
+                    letterSpacing: '0.2px',
+                    transition: 'background 0.18s, color 0.18s',
+                    outline: 'none',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#232323'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#18191a'; }}
+                  onClick={() => setShowModal(true)}
+                >
                   Edit Profile
                 </button>
               )}
             </div>
           </div>
           <div className="mb-3">
-            <ul className="nav nav-tabs">
+            <ul className="nav nav-tabs" style={{ borderBottom: '2px solid #e9ecef' }}>
               <li className="nav-item">
                 <button
-                  className={`nav-link ${activeTab === TAB_TYPES.CREATED ? 'active' : ''}`}
+                  className={`nav-link fw-bold ${activeTab === TAB_TYPES.CREATED ? 'active' : ''}`}
+                  style={{
+                    background: activeTab === TAB_TYPES.CREATED ? '#18191a' : '#fff',
+                    color: activeTab === TAB_TYPES.CREATED ? '#fff' : '#232323',
+                    border: 'none',
+                    borderRadius: '18px 18px 0 0',
+                    marginRight: 4,
+                    fontSize: '1.08rem',
+                    padding: '0.6rem 2.2rem',
+                    transition: 'background 0.18s, color 0.18s',
+                  }}
                   onClick={() => setActiveTab(TAB_TYPES.CREATED)}
                 >
                   Created
@@ -435,7 +490,17 @@ export default function ProfilePage() {
               {isOwnProfile && (
                 <li className="nav-item">
                   <button
-                    className={`nav-link ${activeTab === TAB_TYPES.LIKED ? 'active' : ''}`}
+                    className={`nav-link fw-bold ${activeTab === TAB_TYPES.LIKED ? 'active' : ''}`}
+                    style={{
+                      background: activeTab === TAB_TYPES.LIKED ? '#18191a' : '#fff',
+                      color: activeTab === TAB_TYPES.LIKED ? '#fff' : '#232323',
+                      border: 'none',
+                      borderRadius: '18px 18px 0 0',
+                      marginRight: 4,
+                      fontSize: '1.08rem',
+                      padding: '0.6rem 2.2rem',
+                      transition: 'background 0.18s, color 0.18s',
+                    }}
                     onClick={() => setActiveTab(TAB_TYPES.LIKED)}
                   >
                     Liked
@@ -444,7 +509,18 @@ export default function ProfilePage() {
               )}
               <li className="nav-item">
                 <button
-                  className={`nav-link ${activeTab === TAB_TYPES.PERSONAS ? 'active' : ''}`}
+                  className={`nav-link fw-bold ${activeTab === TAB_TYPES.PERSONAS ? 'active' : ''}`}
+                  style={{
+                    background: activeTab === TAB_TYPES.PERSONAS ? '#18191a' : '#fff',
+                    color: activeTab === TAB_TYPES.PERSONAS ? '#fff' : '#232323',
+                    border: 'none',
+                    borderRadius: '18px 18px 0 0',
+                    marginRight: 4,
+                    fontSize: '1.08rem',
+                    padding: '0.6rem 2.2rem',
+                    transition: 'background 0.18s, color 0.18s',
+                    opacity: isOwnProfile ? 1 : 0.5,
+                  }}
                   onClick={() => setActiveTab(TAB_TYPES.PERSONAS)}
                   disabled={!isOwnProfile}
                 >
@@ -453,7 +529,17 @@ export default function ProfilePage() {
               </li>
               <li className="nav-item">
                 <button
-                  className={`nav-link ${activeTab === TAB_TYPES.SCENES ? 'active' : ''}`}
+                  className={`nav-link fw-bold ${activeTab === TAB_TYPES.SCENES ? 'active' : ''}`}
+                  style={{
+                    background: activeTab === TAB_TYPES.SCENES ? '#18191a' : '#fff',
+                    color: activeTab === TAB_TYPES.SCENES ? '#fff' : '#232323',
+                    border: 'none',
+                    borderRadius: '18px 18px 0 0',
+                    marginRight: 4,
+                    fontSize: '1.08rem',
+                    padding: '0.6rem 2.2rem',
+                    transition: 'background 0.18s, color 0.18s',
+                  }}
                   onClick={() => setActiveTab(TAB_TYPES.SCENES)}
                 >
                   Scenes
@@ -474,14 +560,14 @@ export default function ProfilePage() {
       {showModal && isOwnProfile && (
         <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog">
-            <form className="modal-content" onSubmit={handleSave}>
-              <div className="modal-header">
-                <h5 className="modal-title">Edit Profile</h5>
+            <form className="modal-content" onSubmit={handleSave} style={{ borderRadius: 18, border: 'none', background: '#fff' }}>
+              <div className="modal-header" style={{ borderBottom: '1.5px solid #e9ecef' }}>
+                <h5 className="modal-title fw-bold" style={{ color: '#18191a' }}>Edit Profile</h5>
                 <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
               </div>
               <div className="modal-body">
                 <div className="mb-3 position-relative">
-                  <label className="form-label">Name</label>
+                  <label className="form-label fw-bold" style={{ color: '#232323' }}>Name</label>
                   <input
                     type="text"
                     className="form-control"
@@ -489,25 +575,59 @@ export default function ProfilePage() {
                     maxLength={MAX_NAME_LENGTH}
                     onChange={e => setEditName(e.target.value)}
                     required
-                    style={{ paddingRight: "3rem" }}
+                    style={{ paddingRight: "3rem", background: '#f5f6fa', border: '1.5px solid #e9ecef', color: '#232323' }}
                   />
                   <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
                     {editName.length}/{MAX_NAME_LENGTH}
                   </small>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Profile Picture</label>
+                  <label className="form-label fw-bold" style={{ color: '#232323' }}>Profile Picture</label>
                   <input
                     type="file"
                     className="form-control"
                     accept="image/*"
                     onChange={e => setEditPic(e.target.files[0])}
+                    style={{ background: '#f5f6fa', border: '1.5px solid #e9ecef', color: '#232323' }}
                   />
                 </div>
               </div>
-              <div className="modal-footer">
-                <button type="submit" className="btn btn-primary">Save</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+              <div className="modal-footer" style={{ borderTop: '1.5px solid #e9ecef' }}>
+                <button
+                  type="submit"
+                  className="fw-bold rounded-pill"
+                  style={{
+                    background: '#18191a',
+                    color: '#fff',
+                    border: 'none',
+                    fontSize: '1rem',
+                    padding: '0.45rem 1.5rem',
+                    letterSpacing: '0.2px',
+                    transition: 'background 0.18s, color 0.18s',
+                    outline: 'none',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#232323'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#18191a'; }}
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  className="fw-bold rounded-pill"
+                  style={{
+                    background: '#fff',
+                    color: '#232323',
+                    border: '1.5px solid #e9ecef',
+                    fontSize: '1rem',
+                    padding: '0.45rem 1.5rem',
+                    letterSpacing: '0.2px',
+                    transition: 'background 0.18s, color 0.18s',
+                    outline: 'none',
+                  }}
+                  onClick={() => setShowModal(false)}
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
