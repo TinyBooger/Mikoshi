@@ -17,6 +17,19 @@ function HomePage() {
   const [tagScroll, setTagScroll] = useState({ left: false, right: false });
   const navigate = useNavigate();
   const { currentUser, userData, idToken, loading } = useContext(AuthContext);
+  // Show loading spinner if auth or user data is not ready
+  if (loading || !idToken || !userData) {
+    return (
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '100vh' }}>
+        <div className="text-center">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Helper to update scroll state for a given element
   const updateScrollState = (id, setState) => {
     const el = document.getElementById(id);
