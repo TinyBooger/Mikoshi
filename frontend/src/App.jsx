@@ -1,5 +1,6 @@
 import React, { useContext, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router';
+import AuthLayout from './components/AuthLayout';
 import AdminApp from './admin/AdminApp.jsx';
 import Layout from './components/layout';
 import HomePage from './pages/HomePage';
@@ -27,33 +28,40 @@ export default function App() {
   }
 
   const router = createBrowserRouter([
-    {
-      path: '/',
-      element: currentUser ? <Layout /> : <WelcomePage />,
-      children: currentUser ? [
-        { index: true, element: <HomePage /> },
-        { path: 'test', element: <TestPage /> },
-        { path: 'browse/:category', element: <BrowsePage /> },
-        { path: 'character-create', element: <CharacterCreatePage /> },
-        { path: 'character-edit', element: <CharacterEditPage /> },
-        { path: 'chat', element: <ChatPage /> },
-        { path: 'profile', element: <ProfilePage /> },
-        { path: "profile/:userId", element: <ProfilePage publicView={true} /> },
-        { path: "search", element: <SearchPage /> },
-      ] : [
-        { path: 'sign-up', element: <SignUpPage /> }
-      ],
-    },
+    currentUser
+      ? {
+          path: '/',
+          element: <Layout />,
+          children: [
+            { index: true, element: <HomePage /> },
+            { path: 'test', element: <TestPage /> },
+            { path: 'browse/:category', element: <BrowsePage /> },
+            { path: 'character-create', element: <CharacterCreatePage /> },
+            { path: 'character-edit', element: <CharacterEditPage /> },
+            { path: 'chat', element: <ChatPage /> },
+            { path: 'profile', element: <ProfilePage /> },
+            { path: 'profile/:userId', element: <ProfilePage publicView={true} /> },
+            { path: 'search', element: <SearchPage /> },
+          ],
+        }
+      : {
+          path: '/',
+          element: <AuthLayout />,
+          children: [
+            { index: true, element: <WelcomePage /> },
+            { path: 'sign-up', element: <SignUpPage /> },
+          ],
+        },
     {
       path: '/admin',
       element: <AdminApp />,
       children: [
-        {index: true, element: <DashboardPage />},
-        {path: 'users', element: <UsersPage />},
-        {path: 'characters', element: <CharactersPage />},
-        {path: 'tags', element: <TagsPage />},
-        {path: 'search-terms', element: <SearchTermsPage />},
-      ]
+        { index: true, element: <DashboardPage /> },
+        { path: 'users', element: <UsersPage /> },
+        { path: 'characters', element: <CharactersPage /> },
+        { path: 'tags', element: <TagsPage /> },
+        { path: 'search-terms', element: <SearchTermsPage /> },
+      ],
     },
   ]);
 
