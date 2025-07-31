@@ -15,10 +15,12 @@ function HomePage() {
   const [popularScroll, setPopularScroll] = useState({ left: false, right: false });
   const [recentScroll, setRecentScroll] = useState({ left: false, right: false });
   const [tagScroll, setTagScroll] = useState({ left: false, right: false });
+  const [mounted, setMounted] = useState(false);
   const navigate = useNavigate();
   const { currentUser, userData, idToken, loading } = useContext(AuthContext);
-  // Show loading spinner if auth or user data is not ready
-  if (loading || !idToken || !userData) {
+
+  // Only show spinner until mounted and auth/user data is ready (prevents hydration mismatch)
+  if (!mounted || loading || !idToken || !userData) {
     return (
       <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '100vh' }}>
         <div className="text-center">
@@ -32,6 +34,8 @@ function HomePage() {
 
   // Helper to update scroll state for a given element
   const updateScrollState = (id, setState) => {
+    // Only run on client
+    if (typeof window === 'undefined') return;
     const el = document.getElementById(id);
     if (!el) return;
     setState({
@@ -40,7 +44,13 @@ function HomePage() {
     });
   };
 
+  // Set mounted true on client only
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     // Initial scroll state
     updateScrollState('popular-scroll', setPopularScroll);
     updateScrollState('recent-scroll', setRecentScroll);
@@ -49,16 +59,20 @@ function HomePage() {
     const pop = document.getElementById('popular-scroll');
     const rec = document.getElementById('recent-scroll');
     const tag = document.getElementById('tag-scroll');
-    if (pop) pop.addEventListener('scroll', () => updateScrollState('popular-scroll', setPopularScroll));
-    if (rec) rec.addEventListener('scroll', () => updateScrollState('recent-scroll', setRecentScroll));
-    if (tag) tag.addEventListener('scroll', () => updateScrollState('tag-scroll', setTagScroll));
+    const popScroll = () => updateScrollState('popular-scroll', setPopularScroll);
+    const recScroll = () => updateScrollState('recent-scroll', setRecentScroll);
+    const tagScrollFn = () => updateScrollState('tag-scroll', setTagScroll);
+    if (pop) pop.addEventListener('scroll', popScroll);
+    if (rec) rec.addEventListener('scroll', recScroll);
+    if (tag) tag.addEventListener('scroll', tagScrollFn);
     // Cleanup
     return () => {
-      if (pop) pop.removeEventListener('scroll', () => updateScrollState('popular-scroll', setPopularScroll));
-      if (rec) rec.removeEventListener('scroll', () => updateScrollState('recent-scroll', setRecentScroll));
-      if (tag) tag.removeEventListener('scroll', () => updateScrollState('tag-scroll', setTagScroll));
+      if (pop) pop.removeEventListener('scroll', popScroll);
+      if (rec) rec.removeEventListener('scroll', recScroll);
+      if (tag) tag.removeEventListener('scroll', tagScrollFn);
     };
-  }, [popular.length, recent.length, selectedTag, tagCharacters[selectedTag]?.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, popular.length, recent.length, selectedTag, tagCharacters[selectedTag]?.length]);
 
   useEffect(() => {
     // Fetch existing sections
