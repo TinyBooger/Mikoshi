@@ -40,7 +40,9 @@ export default function App() {
         { path: 'profile', element: <ProfilePage /> },
         { path: "profile/:userId", element: <ProfilePage publicView={true} /> },
         { path: "search", element: <SearchPage /> },
-      ] : [],
+      ] : [
+        { path: 'sign-up', element: <SignUpPage /> }
+      ],
     },
     {
       path: '/admin',
@@ -53,10 +55,6 @@ export default function App() {
         {path: 'search-terms', element: <SearchTermsPage />},
       ]
     },
-    {
-      path: '/sign-up',
-      element: <SignUpPage />,
-    }
   ]);
 
   return <RouterProvider router={router} />;
