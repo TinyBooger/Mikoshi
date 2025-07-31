@@ -19,6 +19,9 @@ function HomePage() {
   const navigate = useNavigate();
   const { currentUser, userData, idToken, loading } = useContext(AuthContext);
 
+  // Debug logs
+  console.log('mounted:', mounted, 'loading:', loading, 'currentUser:', currentUser, 'idToken:', idToken, 'userData:', userData);
+
   // Only show spinner until mounted and auth state is ready (prevents hydration mismatch)
   if (!mounted || loading) {
     return (
