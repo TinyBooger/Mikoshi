@@ -75,6 +75,7 @@ function HomePage() {
   }, [mounted, popular.length, recent.length, selectedTag, tagCharacters[selectedTag]?.length]);
 
   useEffect(() => {
+    if (!idToken) return;
     // Fetch existing sections
     fetch(`/api/characters/popular`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
@@ -97,7 +98,6 @@ function HomePage() {
       .then(tags => {
         setPopularTags(tags);
         setLoadingTags(false);
-        
         // Pre-fetch characters for the first few popular tags
         const topTags = tags.slice(0, 3);
         topTags.forEach(tag => {
@@ -105,7 +105,7 @@ function HomePage() {
         });
       })
       .catch(() => setPopularTags([]));
-  }, []);
+  }, [idToken]);
 
   const fetchCharactersByTag = (tagName) => {
     fetch(`/api/characters/by-tag/${encodeURIComponent(tagName)}`, { headers: { 'Authorization': `Bearer ${idToken}` } })
