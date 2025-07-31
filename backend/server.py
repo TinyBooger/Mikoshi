@@ -5,9 +5,15 @@ from fastapi.middleware import Middleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 import os
 
+from dotenv import load_dotenv
+
 from database import engine, Base
 from routes import auth, character, chat, user, search, tags, scene
 from utils.firebase_admin_setup import initialize_firebase_admin
+
+# Only load .env if it exists (for local dev); skip on Render
+if os.path.exists("../.env"):
+    load_dotenv("../.env")
 
 # Middleware
 middleware = [

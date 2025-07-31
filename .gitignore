@@ -1,0 +1,5 @@
+# Ignore environment file
+Mikoshi.env
+
+# Ignore Python virtual environment
+backend/venv/
