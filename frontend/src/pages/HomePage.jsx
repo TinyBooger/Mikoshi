@@ -19,8 +19,8 @@ function HomePage() {
   const navigate = useNavigate();
   const { currentUser, userData, idToken, loading } = useContext(AuthContext);
 
-  // Only show spinner until mounted and auth/user data is ready (prevents hydration mismatch)
-  if (!mounted || loading || !idToken || !userData) {
+  // Only show spinner until mounted and auth state is ready (prevents hydration mismatch)
+  if (!mounted || loading) {
     return (
       <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '100vh' }}>
         <div className="text-center">

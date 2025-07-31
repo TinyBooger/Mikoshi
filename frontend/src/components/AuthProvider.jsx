@@ -6,67 +6,69 @@ export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
-  const [userData, setUserData] = useState(null); // Added for database user data
+  const [userData, setUserData] = useState(null);
   const [idToken, setIdToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [userDataLoading, setUserDataLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Helper to fetch user data and idToken
+  const fetchUserData = async (user) => {
+    setUserDataLoading(true);
+    setError(null);
+    try {
+      const freshToken = await user.getIdToken();
+      setIdToken(freshToken);
+      const response = await fetch('/api/users/me', {
+        headers: {
+          'Authorization': `Bearer ${freshToken}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserData(data);
+      } else {
+        setUserData(null);
+        setError('Failed to fetch user data');
+      }
+    } catch (err) {
+      setUserData(null);
+      setIdToken(null);
+      setError('Error fetching user data');
+    } finally {
+      setUserDataLoading(false);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
-      setLoading(false);
       if (user) {
-        user.getIdToken().then((freshToken) => {
-          setIdToken(freshToken);
-          fetch('/api/users/me', {
-            headers: {
-              'Authorization': `Bearer ${freshToken}`
-            }
-          })
-            .then(response => {
-              if (response.ok) {
-                return response.json();
-              } else {
-                console.error('Failed to fetch user data');
-                return null;
-              }
-            })
-            .then(data => {
-              if (data) setUserData(data);
-            })
-            .catch(error => {
-              console.error('Error fetching user data:', error);
-            });
-        });
+        fetchUserData(user);
       } else {
         setUserData(null);
         setIdToken(null);
+        setUserDataLoading(false);
       }
+      setAuthLoading(false);
     });
     return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Combined loading state
+  const loading = authLoading || (currentUser && userDataLoading);
+
   return (
-    <AuthContext.Provider value={{ 
-      currentUser, 
-      userData,    // Now includes database record
+    <AuthContext.Provider value={{
+      currentUser,
+      userData,
       idToken,
       loading,
-      refreshUserData: async () => {  // Added refresh function
+      error,
+      refreshUserData: async () => {
         if (currentUser) {
-          try {
-            const freshToken = await currentUser.getIdToken();
-            const response = await fetch('/api/users/me', {
-              headers: {
-                'Authorization': `Bearer ${freshToken}`
-              }
-            });
-            if (response.ok) {
-              const data = await response.json();
-              setUserData(data);
-            }
-          } catch (error) {
-            console.error('Error refreshing user data:', error);
-          }
+          await fetchUserData(currentUser);
         }
       }
     }}>
