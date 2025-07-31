@@ -1,5 +1,7 @@
 # Ignore environment file
-Mikoshi.env
+secrets/
 
 # Ignore Python virtual environment
 backend/venv/
+
+**/__pycache__/

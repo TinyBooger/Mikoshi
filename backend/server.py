@@ -4,16 +4,18 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware import Middleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 import os
-
 from dotenv import load_dotenv
+
+print(f"Current working directory: {os.getcwd()}")
+
+# Only load .env if it exists (for local dev); skip on Render
+if os.path.exists("../secrets/Mikoshi.env"):
+    print("Loading environment variables from .env file")
+    load_dotenv("../secrets/Mikoshi.env")
 
 from database import engine, Base
 from routes import auth, character, chat, user, search, tags, scene
 from utils.firebase_admin_setup import initialize_firebase_admin
-
-# Only load .env if it exists (for local dev); skip on Render
-if os.path.exists("../.env"):
-    load_dotenv("../.env")
 
 # Middleware
 middleware = [
@@ -26,9 +28,11 @@ app = FastAPI(middleware=middleware)
 # Initialize Firebase Admin at startup
 initialize_firebase_admin()
 
-# Serve static files from React build
-app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Only mount static files in production (Render)
+if os.getenv("ENVIRONMENT") == "production":
+    # Serve static files from React build
+    app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Create DB tables
 Base.metadata.create_all(bind=engine)
@@ -54,3 +58,13 @@ async def serve_spa(request: Request):
     
     # Otherwise serve index.html for client-side routing
     return FileResponse("static/index.html")
+
+# Add this below all your existing code
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "server:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True if os.getenv("ENVIRONMENT") != "production" else False
+    )
