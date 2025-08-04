@@ -29,6 +29,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     name = Column(String)
     profile_pic = Column(String, nullable=True)
+    bio = Column(Text, nullable=True)  # Short bio, optional
 
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
@@ -38,7 +39,19 @@ class User(Base):
     liked_tags = Column(ARRAY(Text), default=[])
 
     chat_history = Column(ARRAY(JSONB), default=[])
-    personas = Column(ARRAY(JSONB), default=[])
+
+class Persona(Base):
+    __tablename__ = "personas"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    description = Column(Text, nullable=True)
+    intro = Column(Text, nullable=True)  # Short intro for display
+    traits = Column(JSONB, default={})  # JSON for persona traits/details
+    creator_id = Column(String, nullable=False)
+    created_time = Column(DateTime, default=lambda: datetime.now(UTC))
+    likes = Column(Integer, default=0)
+    views = Column(Integer, default=0)
+
 
 class SearchTerm(Base):
     __tablename__ = "search_term"
@@ -59,6 +72,7 @@ class Scene(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     description = Column(Text, nullable=False)
+    intro = Column(Text, nullable=True)  # Short intro for display
     creator_id = Column(String, nullable=False)
     created_time = Column(DateTime, default=lambda: datetime.now(UTC))
     likes = Column(Integer, default=0)

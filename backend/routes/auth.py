@@ -42,6 +42,7 @@ async def get_current_user(
             "email": user.email,
             "name": user.name,
             "profile_pic": user.profile_pic,
+            "bio": getattr(user, "bio", None),
             "characters_created": user.characters_created,
             "liked_characters": user.liked_characters,
             "liked_tags": user.liked_tags,
@@ -88,11 +89,12 @@ async def create_user(
                 detail="User already exists"
             )
         
-        # Create new user record
+        # Create new user record, include bio if present
         db_user = User(
             id=firebase_uid,
             email=user_data['email'],
             name=user_data.get('name', ''),
+            bio=user_data.get('bio', None)
         )
         
         db.add(db_user)

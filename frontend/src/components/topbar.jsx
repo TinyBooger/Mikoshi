@@ -60,22 +60,22 @@ function Topbar() {
 
   return (
     <div
-      className="d-flex align-items-center justify-content-between px-4 py-2 shadow-sm"
-      style={{ height: 64, zIndex: 1030, background: '#fff', borderBottom: '1.5px solid #e9ecef', fontFamily: 'Inter, sans-serif' }}
+      className="d-flex align-items-center justify-content-between px-3 py-1 shadow-sm"
+      style={{ height: 51, zIndex: 100, background: '#f8f9fa', borderBottom: '1.2px solid #e9ecef', fontFamily: 'Inter, sans-serif', position: 'sticky', top: 0 }}
     >
       {location.pathname !== '/' && (
         <button
-          className="btn btn-outline-light rounded-pill me-3"
-          style={{ fontSize: '1.1rem', padding: '0.4rem 1rem', borderColor: '#444', color: '#fff', background: '#232323' }}
+          className="btn btn-outline-light rounded-pill me-2"
+          style={{ fontSize: '0.88rem', padding: '0.32rem 0.8rem', borderColor: '#444', color: '#fff', background: '#232323' }}
           onClick={() => window.history.back()}
         >
-          <i className="bi bi-arrow-left"></i>
+          <i className="bi bi-arrow-left" style={{ fontSize: '0.88rem' }}></i>
         </button>
       )}
 
       {/* Navigation Tabs - modern text style */}
-      <div className="d-flex mx-3" style={{ gap: 32, background: 'transparent' }}>
-        {[
+      <div className="d-flex mx-2" style={{ gap: 25, background: 'transparent' }}>
+        {[ 
           { key: 'recommended', label: 'For You' },
           { key: 'popular', label: 'Popular' },
           { key: 'recent', label: 'Recent' },
@@ -87,28 +87,28 @@ function Topbar() {
             style={{
               color: activeTab === tab.key ? '#18191a' : '#888',
               fontWeight: 700,
-              fontSize: '1.08rem',
+              fontSize: '0.86rem',
               background: 'transparent',
-              borderBottom: activeTab === tab.key ? '2.5px solid #18191a' : '2.5px solid transparent',
+              borderBottom: activeTab === tab.key ? '2px solid #18191a' : '2px solid transparent',
               borderRadius: 0,
               outline: 'none',
-              transition: 'color 0.18s, border-bottom 0.18s',
-              padding: '0.5rem 0',
-              minWidth: 90,
-              letterSpacing: '0.2px',
+              transition: 'color 0.14s, border-bottom 0.14s',
+              padding: '0.4rem 0',
+              minWidth: 72,
+              letterSpacing: '0.16px',
               cursor: 'pointer',
             }}
             onClick={() => navigateToTab(tab.key)}
             onMouseEnter={e => {
               if (activeTab !== tab.key) {
                 e.currentTarget.style.color = '#232323';
-                e.currentTarget.style.borderBottom = '2.5px solid #232323';
+                e.currentTarget.style.borderBottom = '2px solid #232323';
               }
             }}
             onMouseLeave={e => {
               if (activeTab !== tab.key) {
                 e.currentTarget.style.color = '#888';
-                e.currentTarget.style.borderBottom = '2.5px solid transparent';
+                e.currentTarget.style.borderBottom = '2px solid transparent';
               }
             }}
           >
@@ -118,12 +118,12 @@ function Topbar() {
       </div>
 
       {/* Search Bar */}
-      <div className="ms-auto" style={{ width: 270, position: 'relative' }}>
-        <div className="input-group input-group-sm rounded-pill shadow-sm" style={{ background: '#f5f6fa', borderRadius: 32 }}>
+      <div className="ms-auto" style={{ width: 216, position: 'relative' }}>
+        <div className="input-group input-group-sm rounded-pill shadow-sm" style={{ background: '#f5f6fa', borderRadius: 26 }}>
           <input
             type="text"
             className="form-control border-0 rounded-pill"
-            style={{ background: 'transparent', fontSize: '1rem', paddingLeft: 18, color: '#232323' }}
+            style={{ background: 'transparent', fontSize: '0.8rem', paddingLeft: 14, color: '#232323' }}
             placeholder="Search characters..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -133,20 +133,20 @@ function Topbar() {
             aria-autocomplete="list"
             aria-haspopup="true"
           />
-          <button className="btn rounded-pill px-3" style={{ fontSize: '1.1rem', background: '#232323', color: '#fff' }} onClick={() => handleSearch()}>
-            <i className="bi bi-search"></i>
+          <button className="btn rounded-pill px-2" style={{ fontSize: '0.88rem', background: '#232323', color: '#fff' }} onClick={() => handleSearch()}>
+            <i className="bi bi-search" style={{ fontSize: '0.88rem' }}></i>
           </button>
         </div>
         {showSuggestions && suggestions.length > 0 && (
           <ul
             className="list-group position-absolute w-100 shadow rounded-4"
-            style={{ top: '100%', zIndex: 1040, maxHeight: 220, overflowY: 'auto', background: '#fff', color: '#232323', border: 'none' }}
+            style={{ top: '100%', zIndex: 1040, maxHeight: 176, overflowY: 'auto', background: '#fff', color: '#232323', border: 'none', fontSize: '0.8rem' }}
           >
             {suggestions.map(({ keyword, count }) => (
               <li
                 key={keyword}
                 className="list-group-item list-group-item-action rounded-3"
-                style={{ cursor: 'pointer', transition: 'background 0.2s', background: 'transparent', color: '#232323', border: 'none' }}
+                style={{ cursor: 'pointer', transition: 'background 0.16s', background: 'transparent', color: '#232323', border: 'none', fontSize: '0.8rem' }}
                 onClick={() => handleSearch(keyword)}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}

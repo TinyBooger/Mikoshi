@@ -136,8 +136,10 @@ export default function ProfilePage() {
       </div>
     );
   };
+  // Edit profile modal state
   const [showModal, setShowModal] = useState(false);
   const [editName, setEditName] = useState('');
+  const [editBio, setEditBio] = useState('');
   const [editPic, setEditPic] = useState(null);
   const navigate = useNavigate();
   // Replace the showPersonaModal state and related functions with:
@@ -227,10 +229,20 @@ export default function ProfilePage() {
     }
   }, [navigate, idToken, userData, profileUserId, isOwnProfile]);
 
+  // Open edit modal and prefill fields
+  const openEditProfile = () => {
+    setEditName(userData?.name || '');
+    setEditBio(userData?.bio || '');
+    setEditPic(null);
+    setShowModal(true);
+  };
+
+  // Save profile changes
   const handleSave = async (e) => {
     e.preventDefault();
     const formData = new FormData();
     formData.append('name', editName.trim());
+    formData.append('bio', editBio);
     if (editPic) formData.append('profile_pic', editPic);
 
     const res = await fetch('/api/update-profile', {
@@ -453,181 +465,127 @@ export default function ProfilePage() {
 
   // Use correct user data for display
   const displayUser = isOwnProfile ? userData : publicUserData;
-  if (!displayUser) return null;
+  if (!displayUser)
+    return null;
 
   return (
-    <div className="d-flex" style={{ height: '100vh', background: '#f8f9fa' }}>
-      <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-        <div
-          className="flex-grow-1 p-4"
-          style={{
-            background: '#fff',
-            borderRadius: 18,
-            margin: '2rem auto',
-            width: '90%',
-            maxWidth: 1100,
-            height: 'calc(100vh - 4rem)', // 2rem top + 2rem bottom margin
-            boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
-            overflowY: 'auto',
-            overflowX: 'visible',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          <h2 className="mb-4 fw-bold" style={{ color: '#18191a', fontSize: '2.1rem', letterSpacing: '0.5px' }}>My Profile</h2>
-          {!isOwnProfile && (
-            <div className="alert alert-info" style={{ background: '#f5f6fa', color: '#232323', border: 'none' }}>
-              <strong>Public Profile View:</strong> You are viewing this profile as a visitor. Editing and some private sections are disabled.
-            </div>
-          )}
-          <div className="d-flex align-items-center gap-4 mb-4">
-            <img
-              src={displayUser.profile_pic || defaultAvatar}
-              alt="Profile"
-              className="rounded-circle"
-              width="100"
-              height="100"
-              style={{ border: '3px solid #e9ecef', background: '#fff' }}
-            />
-            <div>
-              <div className="d-flex align-items-baseline gap-2 mb-1">
-                <h3 className="mb-0 fw-bold" style={{ color: '#18191a' }}>{displayUser.name}</h3>
-                <span className="text-muted small">•</span>
-                <div className="d-flex gap-2">
-                  <span className="badge" style={{ background: '#f5f6fa', color: '#232323', fontWeight: 600 }}>
-                    <i className="bi bi-eye me-1"></i>
-                    {displayUser.views || 0} views
-                  </span>
-                  <span className="badge" style={{ background: '#f5f6fa', color: '#232323', fontWeight: 600 }}>
-                    <i className="bi bi-heart me-1"></i>
-                    {displayUser.likes || 0} likes
-                  </span>
-                </div>
-              </div>
-              {isOwnProfile && (
-                <button
-                  className="fw-bold rounded-pill btn-sm mt-1"
-                  style={{
-                    background: '#18191a',
-                    color: '#fff',
-                    border: 'none',
-                    fontSize: '1rem',
-                    padding: '0.35rem 1.2rem',
-                    letterSpacing: '0.2px',
-                    transition: 'background 0.18s, color 0.18s',
-                    outline: 'none',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#232323'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#18191a'; }}
-                  onClick={() => setShowModal(true)}
-                >
-                  Edit Profile
-                </button>
-              )}
-            </div>
+    <>
+      <div className="container mt-4" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="d-flex align-items-center mb-3">
+          <img
+            src={displayUser.profile_pic || defaultAvatar}
+            alt="Profile"
+            style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover', border: '2.4px solid #222', marginRight: 24, background: '#fff' }}
+          />
+          <div>
+            <h2 style={{ color: '#111', fontWeight: 700 }}>{displayUser.name}</h2>
+            <p className="mb-0" style={{ fontSize: '1.02rem', maxWidth: 400, whiteSpace: 'pre-line', color: '#444' }}>
+              {displayUser.bio && displayUser.bio.trim()
+                ? displayUser.bio
+                : (isOwnProfile
+                    ? 'You have not added a bio yet. Click edit to add something about yourself!'
+                    : 'This user has not added a bio yet.')}
+            </p>
+            {isOwnProfile && (
+              <button
+                className="btn btn-outline-dark btn-sm mt-2"
+                style={{ borderRadius: 20, border: '1.5px solid #111', background: '#fff', color: '#111', fontWeight: 600 }}
+                onClick={openEditProfile}
+              >
+                <i className="bi bi-pencil"></i> Edit Profile
+              </button>
+            )}
           </div>
-          <div className="mb-3">
-            <ul className="nav nav-tabs" style={{ borderBottom: '2px solid #e9ecef' }}>
-              <li className="nav-item">
-                <button
-                  className={`nav-link fw-bold ${activeTab === TAB_TYPES.CREATED ? 'active' : ''}`}
-                  style={{
-                    background: activeTab === TAB_TYPES.CREATED ? '#18191a' : '#fff',
-                    color: activeTab === TAB_TYPES.CREATED ? '#fff' : '#232323',
-                    border: 'none',
-                    borderRadius: '18px 18px 0 0',
-                    marginRight: 4,
-                    fontSize: '1.08rem',
-                    padding: '0.6rem 2.2rem',
-                    transition: 'background 0.18s, color 0.18s',
-                  }}
-                  onClick={() => setActiveTab(TAB_TYPES.CREATED)}
-                >
-                  Created
-                </button>
-              </li>
-              {isOwnProfile && (
-                <li className="nav-item">
-                  <button
-                    className={`nav-link fw-bold ${activeTab === TAB_TYPES.LIKED ? 'active' : ''}`}
-                    style={{
-                      background: activeTab === TAB_TYPES.LIKED ? '#18191a' : '#fff',
-                      color: activeTab === TAB_TYPES.LIKED ? '#fff' : '#232323',
-                      border: 'none',
-                      borderRadius: '18px 18px 0 0',
-                      marginRight: 4,
-                      fontSize: '1.08rem',
-                      padding: '0.6rem 2.2rem',
-                      transition: 'background 0.18s, color 0.18s',
-                    }}
-                    onClick={() => setActiveTab(TAB_TYPES.LIKED)}
-                  >
-                    Liked
-                  </button>
-                </li>
-              )}
-              <li className="nav-item">
-                <button
-                  className={`nav-link fw-bold ${activeTab === TAB_TYPES.PERSONAS ? 'active' : ''}`}
-                  style={{
-                    background: activeTab === TAB_TYPES.PERSONAS ? '#18191a' : '#fff',
-                    color: activeTab === TAB_TYPES.PERSONAS ? '#fff' : '#232323',
-                    border: 'none',
-                    borderRadius: '18px 18px 0 0',
-                    marginRight: 4,
-                    fontSize: '1.08rem',
-                    padding: '0.6rem 2.2rem',
-                    transition: 'background 0.18s, color 0.18s',
-                    opacity: isOwnProfile ? 1 : 0.5,
-                  }}
-                  onClick={() => setActiveTab(TAB_TYPES.PERSONAS)}
-                  disabled={!isOwnProfile}
-                >
-                  Personas
-                </button>
-              </li>
-              <li className="nav-item">
-                <button
-                  className={`nav-link fw-bold ${activeTab === TAB_TYPES.SCENES ? 'active' : ''}`}
-                  style={{
-                    background: activeTab === TAB_TYPES.SCENES ? '#18191a' : '#fff',
-                    color: activeTab === TAB_TYPES.SCENES ? '#fff' : '#232323',
-                    border: 'none',
-                    borderRadius: '18px 18px 0 0',
-                    marginRight: 4,
-                    fontSize: '1.08rem',
-                    padding: '0.6rem 2.2rem',
-                    transition: 'background 0.18s, color 0.18s',
-                  }}
-                  onClick={() => setActiveTab(TAB_TYPES.SCENES)}
-                >
-                  Scenes
-                </button>
-              </li>
-              {/* Scene Create/Edit Modal */}
-              {isOwnProfile && (
-                <SceneModal show={showSceneModal} onClose={() => setShowSceneModal(false)} onSubmit={handleCreateScene} />
-              )}
-            </ul>
+        </div>
+
+        <div className="d-flex flex-column" style={{ gap: 24 }}>
+          {/* Tabs for navigation */}
+          <div className="d-flex" style={{ borderBottom: '2px solid #111', paddingBottom: 8 }}>
+            <button
+              className={`flex-fill fw-bold py-2 border-0 ${activeTab === TAB_TYPES.CREATED ? '' : ''}`}
+              style={{
+                background: activeTab === TAB_TYPES.CREATED ? '#111' : '#fff',
+                color: activeTab === TAB_TYPES.CREATED ? '#fff' : '#111',
+                borderTopLeftRadius: 12,
+                borderTopRightRadius: 12,
+                border: '1.5px solid #111',
+                borderBottom: activeTab === TAB_TYPES.CREATED ? 'none' : '1.5px solid #111',
+                transition: 'background 0.2s, color 0.2s',
+              }}
+              onClick={() => setActiveTab(TAB_TYPES.CREATED)}
+            >
+              Created
+            </button>
+            {isOwnProfile && (
+              <button
+                className={`flex-fill fw-bold py-2 border-0 ${activeTab === TAB_TYPES.LIKED ? '' : ''}`}
+                style={{
+                  background: activeTab === TAB_TYPES.LIKED ? '#111' : '#fff',
+                  color: activeTab === TAB_TYPES.LIKED ? '#fff' : '#111',
+                  borderTopLeftRadius: 0,
+                  borderTopRightRadius: 12,
+                  border: '1.5px solid #111',
+                  borderBottom: activeTab === TAB_TYPES.LIKED ? 'none' : '1.5px solid #111',
+                  transition: 'background 0.2s, color 0.2s',
+                }}
+                onClick={() => setActiveTab(TAB_TYPES.LIKED)}
+              >
+                Liked
+              </button>
+            )}
+            <button
+              className={`flex-fill fw-bold py-2 border-0 ${activeTab === TAB_TYPES.PERSONAS ? '' : ''}`}
+              style={{
+                background: activeTab === TAB_TYPES.PERSONAS ? '#111' : '#fff',
+                color: activeTab === TAB_TYPES.PERSONAS ? '#fff' : '#111',
+                borderTopLeftRadius: 0,
+                borderTopRightRadius: 12,
+                border: '1.5px solid #111',
+                borderBottom: activeTab === TAB_TYPES.PERSONAS ? 'none' : '1.5px solid #111',
+                opacity: isOwnProfile ? 1 : 0.5,
+                transition: 'background 0.2s, color 0.2s',
+              }}
+              onClick={() => setActiveTab(TAB_TYPES.PERSONAS)}
+              disabled={!isOwnProfile}
+            >
+              Personas
+            </button>
+            <button
+              className={`flex-fill fw-bold py-2 border-0 ${activeTab === TAB_TYPES.SCENES ? '' : ''}`}
+              style={{
+                background: activeTab === TAB_TYPES.SCENES ? '#111' : '#fff',
+                color: activeTab === TAB_TYPES.SCENES ? '#fff' : '#111',
+                borderTopLeftRadius: 0,
+                borderTopRightRadius: 12,
+                border: '1.5px solid #111',
+                borderBottom: activeTab === TAB_TYPES.SCENES ? 'none' : '1.5px solid #111',
+                transition: 'background 0.2s, color 0.2s',
+              }}
+              onClick={() => setActiveTab(TAB_TYPES.SCENES)}
+            >
+              Scenes
+            </button>
           </div>
 
-          {renderContent()}
+          {/* Content based on active tab */}
+          <div className="p-4" style={{ background: '#fff', borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', border: '1.5px solid #111' }}>
+            {renderContent()}
+          </div>
         </div>
       </div>
 
       {/* Profile Edit Modal */}
       {showModal && isOwnProfile && (
-        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <form className="modal-content" onSubmit={handleSave} style={{ borderRadius: 18, border: 'none', background: '#fff' }}>
-              <div className="modal-header" style={{ borderBottom: '1.5px solid #e9ecef' }}>
-                <h5 className="modal-title fw-bold" style={{ color: '#18191a' }}>Edit Profile</h5>
+        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 3000, position: 'fixed', inset: 0, width: '100vw', height: '100vh', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto' }}>
+          <div className="modal-dialog mx-auto" style={{ margin: '7vh auto', maxWidth: 420, width: '100%' }}>
+            <form className="modal-content" onSubmit={handleSave} style={{ borderRadius: 18, border: '2px solid #111', background: '#fff', boxShadow: '0 8px 32px rgba(0,0,0,0.28)', margin: 0 }}>
+              <div className="modal-header" style={{ borderBottom: '2px solid #111', background: '#fff' }}>
+                <h5 className="modal-title fw-bold" style={{ color: '#111' }}>Edit Profile</h5>
                 <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
               </div>
               <div className="modal-body">
                 <div className="mb-3 position-relative">
-                  <label className="form-label fw-bold" style={{ color: '#232323' }}>Name</label>
+                  <label className="form-label fw-bold" style={{ color: '#111' }}>Name</label>
                   <input
                     type="text"
                     className="form-control"
@@ -635,29 +593,41 @@ export default function ProfilePage() {
                     maxLength={MAX_NAME_LENGTH}
                     onChange={e => setEditName(e.target.value)}
                     required
-                    style={{ paddingRight: "3rem", background: '#f5f6fa', border: '1.5px solid #e9ecef', color: '#232323' }}
+                    style={{ paddingRight: "3rem", background: '#fff', border: '1.5px solid #111', color: '#111' }}
                   />
-                  <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+                  <small className="position-absolute" style={{ top: 0, right: 0, color: '#888' }}>
                     {editName.length}/{MAX_NAME_LENGTH}
                   </small>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label fw-bold" style={{ color: '#232323' }}>Profile Picture</label>
+                  <label className="form-label fw-bold" style={{ color: '#111' }}>Short Bio <span style={{ fontWeight: 400, fontSize: '0.9em', color: '#888' }}>(optional)</span></label>
+                  <textarea
+                    className="form-control"
+                    value={editBio}
+                    onChange={e => setEditBio(e.target.value)}
+                    rows={2}
+                    maxLength={500}
+                    placeholder="Tell us a little about yourself (max 500 chars)"
+                    style={{ background: '#fff', border: '1.5px solid #111', color: '#111' }}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-bold" style={{ color: '#111' }}>Profile Picture</label>
                   <input
                     type="file"
                     className="form-control"
                     accept="image/*"
                     onChange={e => setEditPic(e.target.files[0])}
-                    style={{ background: '#f5f6fa', border: '1.5px solid #e9ecef', color: '#232323' }}
+                    style={{ background: '#fff', border: '1.5px solid #111', color: '#111' }}
                   />
                 </div>
               </div>
-              <div className="modal-footer" style={{ borderTop: '1.5px solid #e9ecef' }}>
+              <div className="modal-footer" style={{ borderTop: '2px solid #111', background: '#fff' }}>
                 <button
                   type="submit"
                   className="fw-bold rounded-pill"
                   style={{
-                    background: '#18191a',
+                    background: '#111',
                     color: '#fff',
                     border: 'none',
                     fontSize: '1rem',
@@ -666,8 +636,8 @@ export default function ProfilePage() {
                     transition: 'background 0.18s, color 0.18s',
                     outline: 'none',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#232323'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#18191a'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#222'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#111'; }}
                 >
                   Save
                 </button>
@@ -676,8 +646,8 @@ export default function ProfilePage() {
                   className="fw-bold rounded-pill"
                   style={{
                     background: '#fff',
-                    color: '#232323',
-                    border: '1.5px solid #e9ecef',
+                    color: '#111',
+                    border: '1.5px solid #111',
                     fontSize: '1rem',
                     padding: '0.45rem 1.5rem',
                     letterSpacing: '0.2px',
@@ -703,6 +673,6 @@ export default function ProfilePage() {
           currentPersona={personaModal.currentPersona}
         />
       )}
-    </div>
+    </>
   );
 }

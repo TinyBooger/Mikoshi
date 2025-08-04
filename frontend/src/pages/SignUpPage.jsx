@@ -8,6 +8,7 @@ export default function SignUpPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [bio, setBio] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -36,6 +37,7 @@ export default function SignUpPage() {
         body: JSON.stringify({
           name: name,
           email: email,
+          bio: bio // include bio
           // Include other fields if needed
         })
       });
@@ -98,6 +100,18 @@ export default function SignUpPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 minLength="6"
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Short Bio <span className="text-muted" style={{ fontWeight: 400, fontSize: '0.9em' }}>(optional)</span></label>
+              <textarea
+                className="form-control"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={2}
+                maxLength={200}
+                placeholder="Tell us a little about yourself (max 200 chars)"
               />
             </div>
 

@@ -23,6 +23,7 @@ def get_user_by_id(user_id: str, db: Session = Depends(get_db)):
         "id": user.id,
         "name": user.name,
         "profile_pic": user.profile_pic,
+        "bio": getattr(user, "bio", None),
     }
 
 # Add alias for plural endpoint for frontend compatibility
@@ -34,6 +35,7 @@ def get_user_by_id_alias(user_id: str, db: Session = Depends(get_db)):
 @router.post("/api/update-profile")
 async def update_profile(
     name: str = Form(...),
+    bio: str = Form(None),
     profile_pic: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -46,6 +48,8 @@ async def update_profile(
         raise HTTPException(status_code=400, detail=error)
 
     current_user.name = name
+    if bio is not None:
+        current_user.bio = bio
 
     if profile_pic:
         current_user.profile_pic = upload_avatar(profile_pic.file, current_user.id)

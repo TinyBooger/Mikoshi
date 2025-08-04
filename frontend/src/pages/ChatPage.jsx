@@ -14,6 +14,7 @@ export default function ChatPage() {
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
   const [hasLiked, setHasLiked] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -147,43 +148,41 @@ export default function ChatPage() {
     initializeNewChat();
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!input.trim() || !char) return;
-
+  const handleSend = async (event) => {
+    event.preventDefault(); // Always prevent default
+    if (sending || !input.trim() || !char) return;
+    setSending(true);
     const updatedMessages = [...messages, { role: 'user', content: input.trim() }];
     setMessages(updatedMessages);
     setInput('');
-
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}` 
-      },
-      body: JSON.stringify({
-        character_id: characterId,
-        chat_id: selectedChat?.chat_id,
-        messages: updatedMessages
-      })
-    });
-
-    const data = await res.json();
-    setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
-    
-    // Update selected chat and refresh user data
-    if (data.chat_id) {
-      setSelectedChat({
-        chat_id: data.chat_id,
-        title: data.chat_title || updatedMessages.find(m => m.role === 'user')?.content || 'New Chat',
-        character_id: characterId,
-        messages: [...updatedMessages, { role: 'assistant', content: data.response }],
-        last_updated: new Date().toISOString()
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}` 
+        },
+        body: JSON.stringify({
+          character_id: characterId,
+          chat_id: selectedChat?.chat_id,
+          messages: updatedMessages
+        })
       });
-      
-      // Refresh the user data
-      await refreshUserData();
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+      if (data.chat_id) {
+        setSelectedChat({
+          chat_id: data.chat_id,
+          title: data.chat_title || updatedMessages.find(m => m.role === 'user')?.content || 'New Chat',
+          character_id: characterId,
+          messages: [...updatedMessages, { role: 'assistant', content: data.response }],
+          last_updated: new Date().toISOString()
+        });
+      }
+    } catch (err) {
+      alert('Failed to send message. Please try again.');
     }
+    setSending(false);
   };
 
   const likeCharacter = async () => {
@@ -349,9 +348,9 @@ export default function ChatPage() {
       {/* Main Chat Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#fff', borderRadius: '1.5rem', margin: '1.5rem 0.5rem 1.5rem 1.5rem', boxShadow: '0 2px 16px rgba(0,0,0,0.04)', overflow: 'hidden', height: 'auto' }}>
         {/* Messages Area */}
-        <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', background: '#fff', minHeight: 0 }}>
+        <div style={{ flex: 1, padding: '1.2rem', overflowY: 'auto', background: '#fff', minHeight: 0 }}>
           {messages.filter(m => m.role !== 'system').length === 0 ? (
-            <div className="text-muted text-center" style={{ marginTop: '4rem', fontSize: '1.1rem' }}>No messages yet. Start the conversation!</div>
+            <div className="text-muted text-center" style={{ marginTop: '3.2rem', fontSize: '0.88rem' }}>No messages yet. Start the conversation!</div>
           ) : (
             messages
               .filter(m => m.role !== 'system')
@@ -373,21 +372,21 @@ export default function ChatPage() {
                     <img
                       src={m.role === 'user' ? (userData?.profile_pic || defaultPic) : (char?.picture || defaultPic)}
                       alt={m.role === 'user' ? 'You' : char?.name}
-                      style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '2px solid #e9ecef' }}
+                      style={{ width: 77, height: 77, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef' }}
                     />
                     <div style={{
-                      margin: m.role === 'user' ? '0 0.5rem 0 1.1rem' : '0 1.1rem 0 0.5rem',
+                      margin: m.role === 'user' ? '0 0.4rem 0 0.88rem' : '0 0.88rem 0 0.4rem',
                       background: m.role === 'user' ? '#18191a' : '#f5f6fa',
                       color: m.role === 'user' ? '#fff' : '#232323',
-                      borderRadius: '1.1rem',
-                      padding: '0.85rem 1.2rem',
+                      borderRadius: '0.88rem',
+                      padding: '0.68rem 0.96rem',
                       boxShadow: m.role === 'user' ? '0 2px 8px rgba(24,25,26,0.08)' : '0 2px 8px rgba(0,0,0,0.04)',
-                      fontSize: '1.02rem',
+                      fontSize: '0.82rem',
                       minWidth: 0,
                       wordBreak: 'break-word',
                       maxWidth: '100%'
                     }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: 3, opacity: 0.7 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.76rem', marginBottom: 2, opacity: 0.7 }}>
                         {m.role === 'user' ? 'You' : char?.name}
                       </div>
                       <div>{m.content}</div>
@@ -398,63 +397,69 @@ export default function ChatPage() {
           )}
         </div>
 
-        {/* Input Form */}
-        <div style={{ padding: '1rem 1.5rem', background: '#f8f9fa', borderTop: '1.5px solid #e9ecef' }}>
-          <form style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }} onSubmit={handleSubmit}>
+        {/* Input Area (no form) */}
+        <form onSubmit={handleSend} style={{ padding: '0.8rem 1.2rem', background: '#f8f9fa', borderTop: '1.2px solid #e9ecef' }}>
+          <div style={{ display: 'flex', gap: '0.64rem', alignItems: 'center' }}>
             <input
               style={{
                 flex: 1,
-                borderRadius: '2rem',
-                border: '1.5px solid #e9ecef',
+                borderRadius: '1.6rem',
+                border: '1.2px solid #e9ecef',
                 background: '#fff',
-                padding: '0.65rem 1.2rem',
-                fontSize: '1.02rem',
+                padding: '0.52rem 0.96rem',
+                fontSize: '0.82rem',
                 outline: 'none',
                 color: '#232323',
                 boxShadow: 'none',
-                transition: 'border 0.18s',
+                transition: 'border 0.14s',
               }}
               placeholder="Type your message..."
               value={input}
               onChange={e => setInput(e.target.value)}
               required
-              onFocus={e => e.target.style.border = '1.5px solid #18191a'}
-              onBlur={e => e.target.style.border = '1.5px solid #e9ecef'}
+              onFocus={e => e.target.style.border = '1.2px solid #18191a'}
+              onBlur={e => e.target.style.border = '1.2px solid #e9ecef'}
+              disabled={sending}
             />
             <button
               type="submit"
               style={{
-                background: '#18191a',
+                background: sending ? '#888' : '#18191a',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '50%',
-                width: 40,
-                height: 40,
+                width: 32,
+                height: 32,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 20,
+                fontSize: 16,
                 boxShadow: '0 2px 8px rgba(24,25,26,0.08)',
-                transition: 'background 0.18s',
-                cursor: 'pointer',
+                transition: 'background 0.14s',
+                cursor: sending ? 'not-allowed' : 'pointer',
                 outline: 'none',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = '#232323'}
-              onMouseLeave={e => e.currentTarget.style.background = '#18191a'}
+              onMouseEnter={e => { if (!sending) e.currentTarget.style.background = '#232323'; }}
+              onMouseLeave={e => { if (!sending) e.currentTarget.style.background = '#18191a'; }}
+              disabled={sending}
             >
-              <i className="bi bi-send-fill"></i>
+              {sending ? (
+                <span className="spinner-border spinner-border-sm" style={{ color: '#fff' }}></span>
+              ) : (
+                <i className="bi bi-send-fill"></i>
+              )}
             </button>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
 
       {/* Character Sidebar */}
-      <aside style={{ width: 320, minHeight: 0, background: '#fff', borderRadius: '1.5rem', margin: '1.5rem 1.5rem 1.5rem 0', boxShadow: '0 2px 16px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', padding: '1.5rem 1.5rem 1.2rem 1.5rem', height: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem' }}>
+      <aside style={{ width: 256, minHeight: 0, background: '#fff', borderRadius: '1.2rem', margin: '1.2rem 1.2rem 1.2rem 0', boxShadow: '0 2px 13px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', height: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.6rem' }}>
           <img
             src={char?.picture || defaultPic}
             alt="Character Avatar"
-            style={{ width: 128, height: 128, objectFit: 'cover', borderRadius: '50%', border: '3px solid #e9ecef', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginRight: 24 }}
+            style={{ width: 102, height: 102, objectFit: 'cover', borderRadius: '50%', border: '2.4px solid #e9ecef', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginRight: 19 }}
           />
           <div>
             <div style={{ color: '#888', fontSize: 13, marginBottom: 2 }}>
@@ -475,10 +480,10 @@ export default function ChatPage() {
           </div>
         </div>
 
-        <h3 style={{ fontWeight: 700, textAlign: 'center', marginBottom: 8, color: '#18191a', fontSize: '1.5rem', letterSpacing: '0.5px' }}>{char?.name}</h3>
+        <h3 style={{ fontWeight: 700, textAlign: 'center', marginBottom: 6, color: '#18191a', fontSize: '1.2rem', letterSpacing: '0.4px' }}>{char?.name}</h3>
 
         {char?.tagline && (
-          <p style={{ textAlign: 'center', color: '#888', marginBottom: 24, fontStyle: 'italic', fontSize: '1.08rem' }}>
+          <p style={{ textAlign: 'center', color: '#888', marginBottom: 19, fontStyle: 'italic', fontSize: '0.86rem' }}>
             "{char.tagline}"
           </p>
         )}
@@ -491,14 +496,14 @@ export default function ChatPage() {
               background: '#18191a',
               color: '#fff',
               border: 'none',
-              borderRadius: '2rem',
+              borderRadius: '1.6rem',
               fontWeight: 600,
-              fontSize: '1.08rem',
-              padding: '0.6rem 0',
-              marginBottom: 12,
+              fontSize: '0.86rem',
+              padding: '0.48rem 0',
+              marginBottom: 9,
               boxShadow: '0 2px 8px rgba(24,25,26,0.08)',
               cursor: 'pointer',
-              transition: 'background 0.18s',
+              transition: 'background 0.14s',
               outline: 'none',
             }}
             onClick={startNewChat}
@@ -515,16 +520,16 @@ export default function ChatPage() {
               type="button"
               data-bs-toggle="dropdown"
               style={{
-                borderRadius: '2rem',
+                borderRadius: '1.6rem',
                 fontWeight: 600,
-                fontSize: '1.02rem',
+                fontSize: '0.82rem',
                 background: '#f5f6fa',
                 color: '#232323',
-                border: '1.5px solid #e9ecef',
-                padding: '0.5rem 1.2rem',
+                border: '1.2px solid #e9ecef',
+                padding: '0.4rem 0.96rem',
                 outline: 'none',
                 boxShadow: 'none',
-                transition: 'background 0.18s, color 0.18s, border 0.18s',
+                transition: 'background 0.14s, color 0.14s, border 0.14s',
               }}
             >
               {selectedPersonaId
@@ -569,16 +574,16 @@ export default function ChatPage() {
               type="button"
               data-bs-toggle="dropdown"
               style={{
-                borderRadius: '2rem',
+                borderRadius: '1.6rem',
                 fontWeight: 600,
-                fontSize: '1.02rem',
+                fontSize: '0.82rem',
                 background: '#f5f6fa',
                 color: '#232323',
-                border: '1.5px solid #e9ecef',
-                padding: '0.5rem 1.2rem',
+                border: '1.2px solid #e9ecef',
+                padding: '0.4rem 0.96rem',
                 outline: 'none',
                 boxShadow: 'none',
-                transition: 'background 0.18s, color 0.18s, border 0.18s',
+                transition: 'background 0.14s, color 0.14s, border 0.14s',
               }}
             >
               {selectedSceneId
@@ -766,43 +771,43 @@ export default function ChatPage() {
           <button
             onClick={likeCharacter}
             disabled={hasLiked}
-            style={{
-              background: hasLiked ? '#e53935' : '#fff',
-              color: hasLiked ? '#fff' : '#e53935',
-              border: hasLiked ? 'none' : '1.5px solid #e53935',
-              borderRadius: '2rem',
-              fontWeight: 600,
-              fontSize: '1.08rem',
-              padding: '0.4rem 1.5rem',
-              boxShadow: hasLiked ? '0 2px 8px rgba(229,57,53,0.08)' : 'none',
-              cursor: hasLiked ? 'not-allowed' : 'pointer',
-              opacity: hasLiked ? 0.8 : 1,
-              transition: 'all 0.18s',
-              outline: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8
-            }}
+              style={{
+                background: hasLiked ? '#e53935' : '#fff',
+                color: hasLiked ? '#fff' : '#e53935',
+                border: hasLiked ? 'none' : '1.2px solid #e53935',
+                borderRadius: '1.6rem',
+                fontWeight: 600,
+                fontSize: '0.86rem',
+                padding: '0.32rem 1.2rem',
+                boxShadow: hasLiked ? '0 2px 8px rgba(229,57,53,0.08)' : 'none',
+                cursor: hasLiked ? 'not-allowed' : 'pointer',
+                opacity: hasLiked ? 0.8 : 1,
+                transition: 'all 0.14s',
+                outline: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}
           >
             <i className={`bi ${hasLiked ? 'bi-heart-fill' : 'bi-heart'}`} style={{ fontSize: 20 }}></i>
-            <span style={{ fontWeight: 600 }}>{likes}</span>
+            <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>{likes}</span>
           </button>
         </div>
 
         {/* Tags */}
         {char?.tags?.length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            <h6 style={{ fontWeight: 700, marginBottom: 8, textAlign: 'center', color: '#18191a', fontSize: '1.02rem' }}>Tags</h6>
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
+            <h6 style={{ fontWeight: 700, marginBottom: 6, textAlign: 'center', color: '#18191a', fontSize: '0.82rem' }}>Tags</h6>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6 }}>
               {char.tags.map((tag, i) => (
                 <span key={i} style={{
                   background: '#f5f6fa',
                   color: '#232323',
-                  border: '1.5px solid #e9ecef',
-                  borderRadius: '1.5rem',
+                  border: '1.2px solid #e9ecef',
+                  borderRadius: '1.2rem',
                   fontWeight: 600,
-                  fontSize: '0.98rem',
-                  padding: '0.3rem 1.1rem',
+                  fontSize: '0.78rem',
+                  padding: '0.24rem 0.88rem',
                   marginBottom: 2
                 }}>
                   #{tag}

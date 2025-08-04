@@ -155,7 +155,7 @@ function BrowsePage() {
                 No recommendations yet. Please like more characters to unlock personalized suggestions.
               </div>
             ) : (
-              <div className="d-flex flex-wrap gap-2" style={{ marginLeft: '-8px', marginRight: '-8px' }}>
+      <div className="d-flex flex-wrap gap-2" style={{ marginLeft: '-6px', marginRight: '-6px' }}>
                 {characters.map(c => (
                   <div style={{ padding: '0 4px' }}>
                     <CharacterCard key={c.id} character={c} />

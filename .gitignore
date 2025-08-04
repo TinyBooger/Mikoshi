@@ -5,3 +5,4 @@ secrets/
 backend/venv/
 
 **/__pycache__/
+frontend/node_modules/

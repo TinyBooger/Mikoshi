@@ -80,18 +80,18 @@ export default function Sidebar() {
   }, [profileOpen]);
 
   return (
-    <aside className="d-flex flex-column h-100 p-4" style={{ minHeight: '100vh', maxWidth: 340, background: '#f5f6fa', color: '#232323', borderRight: '1.5px solid #e9ecef', fontFamily: 'Inter, sans-serif', width: 340 }}>
+    <aside className="d-flex flex-column h-100 p-3" style={{ minHeight: '80vh', maxWidth: 272, background: '#f5f6fa', color: '#232323', borderRight: '1.2px solid #e9ecef', fontFamily: 'Inter, sans-serif', width: 272 }}>
       {/* Logo at top */}
-      <div className="mb-4 d-flex align-items-center justify-content-center" style={{ minHeight: 180 }}>
+      <div className="mb-3 d-flex align-items-center justify-content-center" style={{ minHeight: 144 }}>
         <a href="/" style={{ display: 'inline-block' }}>
-          <img src={logo} alt="Logo" style={{ height: 172, width: 'auto', objectFit: 'contain', display: 'block', maxWidth: 200 }} />
+          <img src={logo} alt="Logo" style={{ height: 138, width: 'auto', objectFit: 'contain', display: 'block', maxWidth: 160 }} />
         </a>
       </div>
       {/* Top navigation */}
-      <div className="d-flex flex-column gap-3 mb-4">
+      <div className="d-flex flex-column gap-2 mb-3">
         <button
           className="fw-bold shadow-sm w-100"
-          style={{ fontSize: '1.08rem', letterSpacing: '0.5px', background: '#fff', color: '#232323', borderRadius: 24, padding: '12px 0 12px 0', border: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+          style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: '#fff', color: '#232323', borderRadius: 19, padding: '9px 0 9px 0', border: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
           onClick={() => {
             if (!currentUser) return alert("Please login first");
             navigate("/character-create");
@@ -102,17 +102,17 @@ export default function Sidebar() {
       </div>
 
       {/* Recent chats */}
-      <div className="mb-4">
-        <h6 className="fw-bold mb-2" style={{ color: '#6c757d', fontSize: '1.02rem', letterSpacing: '0.2px' }}>Recent Chats</h6>
+      <div className="mb-3">
+        <h6 className="fw-bold mb-1" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px' }}>Recent Chats</h6>
         <div className="list-group rounded-4" style={{ background: 'transparent', boxShadow: 'none' }}>
           {recent.length === 0 ? (
-            <div className="list-group-item text-center py-3 rounded-4" style={{ background: '#e9ecef', color: '#888', border: 'none' }}>No recent chats</div>
+            <div className="list-group-item text-center py-2 rounded-4" style={{ background: '#e9ecef', color: '#888', border: 'none', fontSize: '0.8rem' }}>No recent chats</div>
           ) : (
             recent.map(c => (
               <button
                 key={c.id}
-                className="list-group-item list-group-item-action d-flex align-items-center gap-3 border-0 rounded-4 mb-1 fw-bold"
-                style={{ background: '#fff', color: '#232323', minHeight: 48, transition: 'background 0.2s, color 0.2s', fontWeight: 600 }}
+                className="list-group-item list-group-item-action d-flex align-items-center gap-2 border-0 rounded-4 mb-1 fw-bold"
+                style={{ background: '#fff', color: '#232323', minHeight: 38, transition: 'background 0.16s, color 0.16s', fontWeight: 600, fontSize: '0.8rem' }}
                 onClick={() => navigate(`/chat?character=${c.id}`)}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#232323'; }}
@@ -121,7 +121,7 @@ export default function Sidebar() {
                   src={c.picture || defaultPicture}
                   alt={c.name}
                   className="rounded-circle border"
-                  style={{ width: 48, height: 48, objectFit: 'cover', border: '2px solid #e9ecef' }}
+                  style={{ width: 38, height: 38, objectFit: 'cover', border: '1.6px solid #e9ecef' }}
                 />
                 <span className="fw-bold text-truncate" style={{ color: '#232323', fontWeight: 700 }}>{c.name}</span>
               </button>
@@ -131,7 +131,7 @@ export default function Sidebar() {
       </div>
 
       {/* Profile / Login */}
-      <div className="mt-auto px-1">
+      <div className="mt-auto px-1" style={{ fontSize: '0.8rem' }}>
         {currentUser ? (
           <div className="profile-dropdown-area position-relative">
             <button
@@ -145,15 +145,15 @@ export default function Sidebar() {
               <img
                 src={userData?.profile_pic || defaultAvatar}
                 className="rounded-circle border"
-                width="36"
-                height="36"
+                width="29"
+                height="29"
                 alt={userData?.name || 'User'}
-                style={{ objectFit: 'cover', border: '2px solid #e9ecef' }}
+                style={{ objectFit: 'cover', border: '1.6px solid #e9ecef' }}
               />
-              <span className="flex-grow-1 text-start" style={{ color: '#232323', fontWeight: 700 }}>
+              <span className="flex-grow-1 text-start" style={{ color: '#232323', fontWeight: 700, fontSize: '0.8rem' }}>
                 {userData?.name || currentUser.email}
               </span>
-              <i className={`bi ms-auto ${profileOpen ? 'bi-chevron-down' : 'bi-chevron-up'}`}></i>
+              <i className={`bi ms-auto ${profileOpen ? 'bi-chevron-down' : 'bi-chevron-up'}`} style={{ fontSize: '0.8rem' }}></i>
             </button>
             <ul
               className="dropdown-menu w-100 shadow rounded-4 show"
@@ -163,20 +163,21 @@ export default function Sidebar() {
                 border: 'none',
                 display: profileOpen ? 'block' : 'none',
                 opacity: profileOpen ? 1 : 0,
-                transform: profileOpen ? 'translateY(0)' : 'translateY(-10px)',
-                transition: 'opacity 0.18s, transform 0.18s',
-                marginBottom: 4,
+                transform: profileOpen ? 'translateY(0)' : 'translateY(-8px)',
+                transition: 'opacity 0.14s, transform 0.14s',
+                marginBottom: 3,
                 zIndex: 2000,
                 position: 'absolute',
                 left: 0,
                 right: 0,
-                bottom: '100%'
+                bottom: '100%',
+                fontSize: '0.8rem'
               }}
             >
               <li>
                 <button
                   className="dropdown-item rounded-3 fw-bold"
-                  style={{ color: '#232323', background: 'transparent', transition: 'background 0.15s, color 0.15s' }}
+                  style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem' }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                   onClick={() => { setProfileOpen(false); navigate("/profile"); }}
@@ -187,7 +188,7 @@ export default function Sidebar() {
               <li>
                 <button
                   className="dropdown-item rounded-3 fw-bold"
-                  style={{ color: '#232323', background: 'transparent', transition: 'background 0.15s, color 0.15s' }}
+                  style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem' }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                   onClick={() => { setProfileOpen(false); handleLogout(); }}
@@ -198,13 +199,13 @@ export default function Sidebar() {
             </ul>
           </div>
         ) : (
-          <div className="text-center small py-3">
+          <div className="text-center small py-2">
             <button 
-              className="btn rounded-pill px-4 py-2 fw-bold shadow-sm" 
-              style={{ background: '#fff', color: '#232323', fontWeight: 700 }}
+              className="btn rounded-pill px-3 py-1 fw-bold shadow-sm" 
+              style={{ background: '#fff', color: '#232323', fontWeight: 700, fontSize: '0.8rem' }}
               onClick={() => navigate('/login')}
             >
-              <i className="bi bi-person-circle me-2"></i> Log in to continue
+              <i className="bi bi-person-circle me-2" style={{ fontSize: '0.8rem' }}></i> Log in to continue
             </button>
           </div>
         )}

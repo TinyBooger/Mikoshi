@@ -23,11 +23,11 @@ function HomePage() {
   console.log('mounted:', mounted, 'loading:', loading, 'currentUser:', currentUser, 'idToken:', idToken, 'userData:', userData);
 
   // Only show spinner until mounted and auth state is ready (prevents hydration mismatch)
-  if (!mounted || loading) {
+  if (loading) {
     return (
-      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '100vh' }}>
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '80vh' }}>
         <div className="text-center">
-          <div className="spinner-border text-primary" role="status">
+          <div className="spinner-border text-primary" role="status" style={{ width: 32, height: 32 }}>
             <span className="visually-hidden">Loading...</span>
           </div>
         </div>
@@ -146,7 +146,7 @@ function HomePage() {
       {/* Popular Characters */}
       <section className="mb-5 pb-3">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="fw-bold text-dark" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Popular Characters</h2>
+      <h2 className="fw-bold text-dark" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>Popular Characters</h2>
           <button
             className="fw-bold rounded-pill"
             style={{
@@ -154,10 +154,10 @@ function HomePage() {
               color: '#fff',
               border: 'none',
               boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              fontSize: '1.08rem',
-              padding: '0.5rem 2rem',
-              letterSpacing: '0.2px',
-              transition: 'background 0.18s, color 0.18s',
+              fontSize: '0.86rem',
+              padding: '0.4rem 1.6rem',
+              letterSpacing: '0.16px',
+              transition: 'background 0.14s, color 0.14s',
               outline: 'none',
               cursor: 'pointer',
             }}
@@ -207,10 +207,12 @@ function HomePage() {
             </button>
           )}
           <div id="popular-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none', width: '100%' }}>
-            {popular.length === 0 ? (
+            {popular === null || typeof popular === 'undefined' ? (
+              <div className="text-muted py-4">Loading characters...</div>
+            ) : popular.length === 0 ? (
               <div className="text-muted py-4">No popular characters found.</div>
             ) : (
-              popular.map(c => (
+              Array.isArray(popular) && popular.map(c => (
                 <div style={{ padding: '0 4px' }}>
                   <CharacterCard key={c.id} character={c} />
                 </div>
@@ -256,7 +258,7 @@ function HomePage() {
       {/* Recently Uploaded */}
       <section className="mb-5 pb-3">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="fw-bold text-dark" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Recently Uploaded</h2>
+      <h2 className="fw-bold text-dark" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>Recently Uploaded</h2>
           <button
             className="fw-bold rounded-pill"
             style={{
@@ -264,10 +266,10 @@ function HomePage() {
               color: '#fff',
               border: 'none',
               boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              fontSize: '1.08rem',
-              padding: '0.5rem 2rem',
-              letterSpacing: '0.2px',
-              transition: 'background 0.18s, color 0.18s',
+              fontSize: '0.86rem',
+              padding: '0.4rem 1.6rem',
+              letterSpacing: '0.16px',
+              transition: 'background 0.14s, color 0.14s',
               outline: 'none',
               cursor: 'pointer',
             }}
@@ -330,10 +332,12 @@ function HomePage() {
             </button>
           )}
           <div id="recent-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none', width: '100%' }}>
-            {recent.length === 0 ? (
+            {recent === null || typeof recent === 'undefined' ? (
+              <div className="text-muted py-4">Loading characters...</div>
+            ) : recent.length === 0 ? (
               <div className="text-muted py-4">No recent characters found.</div>
             ) : (
-              recent.map(c => (
+              Array.isArray(recent) && recent.map(c => (
                 <div style={{ padding: '0 4px' }}>
                   <CharacterCard key={c.id} character={c} />
                 </div>
@@ -392,7 +396,7 @@ function HomePage() {
       {/* Recommended for You */}
       <section className="mb-5 pb-3">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="fw-bold text-dark" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Recommended for You</h2>
+      <h2 className="fw-bold text-dark" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>Recommended for You</h2>
           {recommended.length > 0 && (
             <button
               className="fw-bold rounded-pill"
@@ -401,10 +405,10 @@ function HomePage() {
                 color: '#fff',
                 border: 'none',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                fontSize: '1.08rem',
-                padding: '0.5rem 2rem',
-                letterSpacing: '0.2px',
-                transition: 'background 0.18s, color 0.18s',
+                fontSize: '0.86rem',
+                padding: '0.4rem 1.6rem',
+                letterSpacing: '0.16px',
+                transition: 'background 0.14s, color 0.14s',
                 outline: 'none',
                 cursor: 'pointer',
               }}
@@ -422,9 +426,11 @@ function HomePage() {
         </div>
         {recommended.length === 0 ? (
           <div className="alert alert-info mt-3">No recommendations yet. Please like more characters to unlock personalized suggestions.</div>
+        ) : recommended === null || typeof recommended === 'undefined' ? (
+          <div className="text-muted py-4">Loading characters...</div>
         ) : (
           <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
-            {recommended.map(c => (
+            {Array.isArray(recommended) && recommended.map(c => (
               <div className="col d-flex">
                 <CharacterCard key={c.id} character={c} />
               </div>
@@ -437,11 +443,11 @@ function HomePage() {
       <section className="mb-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div className="d-flex align-items-center gap-3">
-            <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Popular Tags</h2>
+      <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>Popular Tags</h2>
             {selectedTag && (
               <div className="d-flex align-items-center">
                 <span className="text-muted me-2">Showing:</span>
-                <span className="badge bg-gradient-primary text-white px-3 py-2 rounded-pill shadow-sm">
+                <span className="badge bg-gradient-primary px-2 py-1 rounded-pill shadow-sm" style={{ fontSize: '0.8rem', color: '#232323', background: '#fff' }}>
                   #{selectedTag}
                   <button 
                     className="btn-close btn-close-white btn-close-sm ms-2" 
@@ -462,10 +468,10 @@ function HomePage() {
               color: '#fff',
               border: 'none',
               boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              fontSize: '1.08rem',
-              padding: '0.5rem 2rem',
-              letterSpacing: '0.2px',
-              transition: 'background 0.18s, color 0.18s',
+              fontSize: '0.86rem',
+              padding: '0.4rem 1.6rem',
+              letterSpacing: '0.16px',
+              transition: 'background 0.14s, color 0.14s',
               outline: 'none',
               cursor: 'pointer',
             }}
@@ -497,12 +503,12 @@ function HomePage() {
                   style={{
                     background: selectedTag === tag.name ? '#18191a' : '#f5f6fa',
                     color: selectedTag === tag.name ? '#fff' : '#232323',
-                    border: selectedTag === tag.name ? 'none' : '1.5px solid #e9ecef',
-                    fontSize: '1rem',
-                    letterSpacing: '0.5px',
-                    padding: '0.4rem 1.2rem',
+                    border: selectedTag === tag.name ? 'none' : '1.2px solid #e9ecef',
+                    fontSize: '0.8rem',
+                    letterSpacing: '0.4px',
+                    padding: '0.32rem 0.96rem',
                     boxShadow: selectedTag === tag.name ? '0 2px 8px rgba(0,0,0,0.04)' : 'none',
-                    transition: 'background 0.18s, color 0.18s, border 0.18s',
+                    transition: 'background 0.14s, color 0.14s, border 0.14s',
                     outline: 'none',
                     cursor: 'pointer',
                   }}
@@ -522,7 +528,7 @@ function HomePage() {
                     }
                   }}
                 >
-                  #{tag.name} <span className="badge bg-secondary ms-2" style={{ background: selectedTag === tag.name ? '#232323' : '#e9ecef', color: selectedTag === tag.name ? '#fff' : '#232323', fontWeight: 600 }}>{tag.likes}</span>
+                  #{tag.name} <span className="badge bg-secondary ms-2" style={{ background: selectedTag === tag.name ? '#232323' : '#e9ecef', color: selectedTag === tag.name ? '#fff' : '#232323', fontWeight: 600, fontSize: '0.8rem', padding: '0.2em 0.7em' }}>{tag.likes}</span>
                 </button>
               ))}
             </div>
@@ -576,14 +582,16 @@ function HomePage() {
               )}
               <div id="tag-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none', width: '100%' }}>
                 {selectedTag ? (
-                  tagCharacters[selectedTag]?.length > 0 ? (
-                    tagCharacters[selectedTag].map(c => (
+                  tagCharacters[selectedTag] === null || typeof tagCharacters[selectedTag] === 'undefined' ? (
+                    <div className="text-muted py-4">Loading characters...</div>
+                  ) : tagCharacters[selectedTag].length === 0 ? (
+                    <div className="text-muted py-4">No characters found for this tag.</div>
+                  ) : (
+                    Array.isArray(tagCharacters[selectedTag]) && tagCharacters[selectedTag].map(c => (
                       <div style={{ padding: '0 4px' }}>
                         <CharacterCard key={c.id} character={c} />
                       </div>
                     ))
-                  ) : (
-                    <div className="text-muted py-4">Loading characters...</div>
                   )
                 ) : (
                   <div className="text-muted py-4">Select a tag to view characters</div>

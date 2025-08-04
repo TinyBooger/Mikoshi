@@ -112,8 +112,8 @@ export default function SearchPage() {
         }}
       >
         {/* Search Bar */}
-        <div className="mb-4" style={{ width: '90%', maxWidth: 500, position: 'relative' }}>
-          <div style={{ display: 'flex', borderRadius: 32, background: '#f5f6fa', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1.5px solid #e9ecef', overflow: 'hidden' }}>
+        <div className="mb-4" style={{ width: '90%', maxWidth: 400, position: 'relative' }}>
+          <div style={{ display: 'flex', borderRadius: 26, background: '#f5f6fa', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1.2px solid #e9ecef', overflow: 'hidden' }}>
             <input
               type="text"
               className="form-control border-0"
@@ -128,8 +128,8 @@ export default function SearchPage() {
               style={{
                 background: 'transparent',
                 color: '#18191a',
-                fontSize: '1.1rem',
-                padding: '0.8rem 1.2rem',
+                fontSize: '0.88rem',
+                padding: '0.64rem 0.96rem',
                 outline: 'none',
                 boxShadow: 'none',
                 border: 'none',
@@ -141,9 +141,9 @@ export default function SearchPage() {
                 background: '#18191a',
                 color: '#fff',
                 border: 'none',
-                fontSize: '1.2rem',
-                padding: '0 1.5rem',
-                transition: 'background 0.18s, color 0.18s',
+                fontSize: '0.96rem',
+                padding: '0 1.2rem',
+                transition: 'background 0.14s, color 0.14s',
                 outline: 'none',
                 cursor: 'pointer',
                 borderRadius: 0,
@@ -156,7 +156,7 @@ export default function SearchPage() {
               onMouseLeave={e => { e.currentTarget.style.background = '#18191a'; }}
               onClick={() => handleSearch()}
             >
-              <i className="bi bi-search"></i>
+              <i className="bi bi-search" style={{ fontSize: '0.96rem' }}></i>
             </button>
           </div>
           {/* Suggestions dropdown */}
@@ -165,12 +165,13 @@ export default function SearchPage() {
               className="list-group position-absolute w-100 mt-1"
               style={{
                 zIndex: 1040,
-                maxHeight: 200,
+                maxHeight: 160,
                 overflowY: 'auto',
-                borderRadius: 16,
+                borderRadius: 13,
                 boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
                 background: '#fff',
-                border: '1.5px solid #e9ecef',
+                border: '1.2px solid #e9ecef',
+                fontSize: '0.88rem'
               }}
             >
               {suggestions.map(({ keyword, count }) => (
@@ -183,8 +184,8 @@ export default function SearchPage() {
                     color: '#18191a',
                     border: 'none',
                     borderBottom: '1px solid #f0f0f0',
-                    fontSize: '1.05rem',
-                    padding: '0.7rem 1.2rem',
+                    fontSize: '0.88rem',
+                    padding: '0.56rem 0.96rem',
                   }}
                   onClick={() => handleSearch(keyword)}
                   onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; }}
@@ -202,13 +203,13 @@ export default function SearchPage() {
           width: '96%',
           maxWidth: 1400,
           background: '#fff',
-          borderRadius: 24,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-          padding: '2.5rem 2rem',
+          borderRadius: 19,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
+          padding: '2rem 1.6rem',
           margin: '0 auto'
         }}>
           <div className="d-flex justify-content-between align-items-center mb-4">
-            <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>Search Results</h2>
+            <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>Search Results</h2>
             <div className="btn-group" role="group">
               <button
                 type="button"
@@ -216,13 +217,13 @@ export default function SearchPage() {
                 style={{
                   background: sortBy === 'relevance' ? '#18191a' : '#fff',
                   color: sortBy === 'relevance' ? '#fff' : '#232323',
-                  border: sortBy === 'relevance' ? 'none' : '1.5px solid #e9ecef',
+                  border: sortBy === 'relevance' ? 'none' : '1.2px solid #e9ecef',
                   boxShadow: sortBy === 'relevance' ? '0 2px 8px rgba(0,0,0,0.04)' : 'none',
-                  fontSize: '1.05rem',
-                  padding: '0.4rem 1.2rem',
-                  borderRadius: 16,
-                  marginRight: 8,
-                  transition: 'background 0.18s, color 0.18s, border 0.18s',
+                  fontSize: '0.84rem',
+                  padding: '0.32rem 0.96rem',
+                  borderRadius: 13,
+                  marginRight: 6,
+                  transition: 'background 0.14s, color 0.14s, border 0.14s',
                 }}
                 onClick={() => handleSortChange('relevance')}
                 onMouseEnter={e => {
@@ -248,13 +249,13 @@ export default function SearchPage() {
                 style={{
                   background: sortBy === 'popularity' ? '#18191a' : '#fff',
                   color: sortBy === 'popularity' ? '#fff' : '#232323',
-                  border: sortBy === 'popularity' ? 'none' : '1.5px solid #e9ecef',
+                  border: sortBy === 'popularity' ? 'none' : '1.2px solid #e9ecef',
                   boxShadow: sortBy === 'popularity' ? '0 2px 8px rgba(0,0,0,0.04)' : 'none',
-                  fontSize: '1.05rem',
-                  padding: '0.4rem 1.2rem',
-                  borderRadius: 16,
-                  marginRight: 8,
-                  transition: 'background 0.18s, color 0.18s, border 0.18s',
+                  fontSize: '0.84rem',
+                  padding: '0.32rem 0.96rem',
+                  borderRadius: 13,
+                  marginRight: 6,
+                  transition: 'background 0.14s, color 0.14s, border 0.14s',
                 }}
                 onClick={() => handleSortChange('popularity')}
                 onMouseEnter={e => {
@@ -280,12 +281,12 @@ export default function SearchPage() {
                 style={{
                   background: sortBy === 'recent' ? '#18191a' : '#fff',
                   color: sortBy === 'recent' ? '#fff' : '#232323',
-                  border: sortBy === 'recent' ? 'none' : '1.5px solid #e9ecef',
+                  border: sortBy === 'recent' ? 'none' : '1.2px solid #e9ecef',
                   boxShadow: sortBy === 'recent' ? '0 2px 8px rgba(0,0,0,0.04)' : 'none',
-                  fontSize: '1.05rem',
-                  padding: '0.4rem 1.2rem',
-                  borderRadius: 16,
-                  transition: 'background 0.18s, color 0.18s, border 0.18s',
+                  fontSize: '0.84rem',
+                  padding: '0.32rem 0.96rem',
+                  borderRadius: 13,
+                  transition: 'background 0.14s, color 0.14s, border 0.14s',
                 }}
                 onClick={() => handleSortChange('recent')}
                 onMouseEnter={e => {
@@ -314,7 +315,7 @@ export default function SearchPage() {
               </div>
             </div>
           ) : results.length === 0 ? (
-            <p className="text-center text-muted" style={{ fontSize: '1.15rem', padding: '2.5rem 0' }}>
+            <p className="text-center text-muted" style={{ fontSize: '0.92rem', padding: '2rem 0' }}>
               No results for "{query}"
             </p>
           ) : (
@@ -323,10 +324,10 @@ export default function SearchPage() {
               style={{
                 display: 'flex',
                 flexWrap: 'wrap',
-                gap: '2rem',
+                gap: '1.6rem',
                 justifyContent: 'flex-start',
                 width: '100%',
-                padding: '0.5rem 0',
+                padding: '0.4rem 0',
               }}
             >
               {results.map((char) => (
