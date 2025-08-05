@@ -108,7 +108,7 @@ export default function ChatPage() {
   // Fetch user's scenes on mount or when userData changes
   useEffect(() => {
     if (!idToken) return;
-    fetch('/api/scenes', {
+    fetch('/api/scenes/', {
       headers: { 'Authorization': `Bearer ${idToken}` }
     })
       .then(res => res.json())
@@ -327,7 +327,7 @@ export default function ChatPage() {
       const formData = new FormData();
       formData.append('name', sceneData.name);
       formData.append('description', sceneData.description);
-      const res = await fetch('/api/scenes', {
+      const res = await fetch('/api/scenes/', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${idToken}` },
         body: formData

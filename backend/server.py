@@ -15,7 +15,7 @@ if os.path.exists("../secrets/Mikoshi.env"):
     load_dotenv("../secrets/Mikoshi.env")
 
 from database import engine, Base
-from routes import auth, character, chat, user, search, tags, scene
+from routes import auth, character, chat, user, search, tags, scene, persona
 from utils.firebase_admin_setup import initialize_firebase_admin
 
 # Middleware
@@ -72,6 +72,7 @@ app.include_router(chat.router)
 app.include_router(search.router)
 app.include_router(tags.router)
 app.include_router(scene.router)
+app.include_router(persona.router)
 
 # Add this below all your existing code
 if __name__ == "__main__":

@@ -47,7 +47,6 @@ async def get_current_user(
             "liked_characters": user.liked_characters,
             "liked_tags": user.liked_tags,
             "chat_history": user.chat_history,
-            "personas": user.personas,
             "views": user.views,
             "likes": user.likes,
         }

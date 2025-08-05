@@ -46,7 +46,7 @@ class Persona(Base):
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(Text, nullable=True)
     intro = Column(Text, nullable=True)  # Short intro for display
-    traits = Column(JSONB, default={})  # JSON for persona traits/details
+    tags = Column(ARRAY(Text), default=[])  # array of strings
     creator_id = Column(String, nullable=False)
     created_time = Column(DateTime, default=lambda: datetime.now(UTC))
     likes = Column(Integer, default=0)
@@ -73,6 +73,7 @@ class Scene(Base):
     name = Column(String, nullable=False)
     description = Column(Text, nullable=False)
     intro = Column(Text, nullable=True)  # Short intro for display
+    tags = Column(ARRAY(Text), default=[])  # array of strings
     creator_id = Column(String, nullable=False)
     created_time = Column(DateTime, default=lambda: datetime.now(UTC))
     likes = Column(Integer, default=0)

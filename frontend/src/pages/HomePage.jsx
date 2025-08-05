@@ -321,7 +321,6 @@ function HomePage() {
                 background: 'rgba(24,25,26,0.12)',
                 color: '#232323',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: 22,

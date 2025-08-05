@@ -7,8 +7,9 @@ import HomePage from './pages/HomePage';
 import BrowsePage from './pages/BrowsePage.jsx';
 import WelcomePage from './pages/WelcomePage';
 import SignUpPage from './pages/SignUpPage';
-import CharacterCreatePage from './pages/CharacterCreatePage';
-import CharacterEditPage from './pages/CharacterEditPage';
+import PersonaFormPage from './pages/PersonaFormPage';
+import SceneFormPage from './pages/SceneFormPage';
+import CharacterFormPage from './pages/CharacterFormPage';
 import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
 import SearchPage from "./pages/SearchPage";
@@ -36,8 +37,12 @@ export default function App() {
             { index: true, element: <HomePage /> },
             { path: 'test', element: <TestPage /> },
             { path: 'browse/:category', element: <BrowsePage /> },
-            { path: 'character-create', element: <CharacterCreatePage /> },
-            { path: 'character-edit', element: <CharacterEditPage /> },
+            { path: 'character/create', element: <CharacterFormPage /> },
+            { path: 'character/edit/:id', element: <CharacterFormPage /> },
+            { path: 'persona/create', element: <PersonaFormPage /> },
+            { path: 'persona/edit/:id', element: <PersonaFormPage /> },
+            { path: 'scene/create', element: <SceneFormPage /> },
+            { path: 'scene/edit/:id', element: <SceneFormPage /> },
             { path: 'chat', element: <ChatPage /> },
             { path: 'profile', element: <ProfilePage /> },
             { path: 'profile/:userId', element: <ProfilePage publicView={true} /> },

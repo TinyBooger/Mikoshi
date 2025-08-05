@@ -56,6 +56,7 @@ export default function Sidebar() {
     }
   };
 
+
   if (loading) {
     return (
       <aside className="d-flex flex-column h-100 p-3 bg-light border-end" style={{ minHeight: '100vh' }}>
@@ -69,7 +70,8 @@ export default function Sidebar() {
   }
 
   const [profileOpen, setProfileOpen] = useState(false);
-  // Close dropdown on outside click
+  const [createOpen, setCreateOpen] = useState(false);
+  // Close profile dropdown on outside click
   useEffect(() => {
     if (!profileOpen) return;
     const handleClick = (e) => {
@@ -78,6 +80,16 @@ export default function Sidebar() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [profileOpen]);
+
+  // Close create dropdown on outside click
+  useEffect(() => {
+    if (!createOpen) return;
+    const handleClick = (e) => {
+      if (!e.target.closest('.create-dropdown-area')) setCreateOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [createOpen]);
 
   return (
     <aside className="d-flex flex-column h-100 p-3" style={{ minHeight: '80vh', maxWidth: 272, background: '#f5f6fa', color: '#232323', borderRight: '1.2px solid #e9ecef', fontFamily: 'Inter, sans-serif', width: 272 }}>
@@ -88,17 +100,72 @@ export default function Sidebar() {
         </a>
       </div>
       {/* Top navigation */}
-      <div className="d-flex flex-column gap-2 mb-3">
-        <button
-          className="fw-bold shadow-sm w-100"
-          style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: '#fff', color: '#232323', borderRadius: 19, padding: '9px 0 9px 0', border: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-          onClick={() => {
-            if (!currentUser) return alert("Please login first");
-            navigate("/character-create");
-          }}
-        >
-          <i className="bi bi-plus-circle me-2"></i> Create Character
-        </button>
+      <div className="d-flex flex-column gap-2 mb-3 position-relative">
+        <div className="create-dropdown-area" style={{ position: 'relative' }}>
+          <button
+            className={`fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center${createOpen ? ' active' : ''}`}
+            style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: createOpen ? '#dbeafe' : '#fff', color: '#232323', borderRadius: 19, padding: '9px 0', border: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 700, transition: 'background 0.2s' }}
+            onClick={() => setCreateOpen(v => !v)}
+            aria-expanded={createOpen}
+            aria-haspopup="true"
+            tabIndex={0}
+          >
+            <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-plus-circle me-2"></i> Create</span>
+          </button>
+          <ul
+            className="dropdown-menu shadow rounded-4 show"
+            style={{
+              background: '#fff',
+              color: '#232323',
+              border: 'none',
+              display: createOpen ? 'block' : 'none',
+              opacity: createOpen ? 1 : 0,
+              transform: createOpen ? 'translateX(0)' : 'translateX(8px)',
+              transition: 'opacity 0.14s, transform 0.14s',
+              zIndex: 2000,
+              position: 'absolute',
+              left: '100%',
+              top: 0,
+              minWidth: 160,
+              fontSize: '0.86rem',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
+            }}
+          >
+            <li>
+              <button
+                className="dropdown-item rounded-3 fw-bold"
+                style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
+                onClick={() => { setCreateOpen(false); if (!currentUser) return alert('Please login first'); navigate('/character/create'); }}
+              >
+                <i className="bi bi-person-plus me-2"></i> Character
+              </button>
+            </li>
+            <li>
+              <button
+                className="dropdown-item rounded-3 fw-bold"
+                style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
+                onClick={() => { setCreateOpen(false); if (!currentUser) return alert('Please login first'); navigate('/scene/create'); }}
+              >
+                <i className="bi bi-easel2 me-2"></i> Scene
+              </button>
+            </li>
+            <li>
+              <button
+                className="dropdown-item rounded-3 fw-bold"
+                style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
+                onClick={() => { setCreateOpen(false); if (!currentUser) return alert('Please login first'); navigate('/persona/create'); }}
+              >
+                <i className="bi bi-people me-2"></i> Persona
+              </button>
+            </li>
+          </ul>
+        </div>
       </div>
 
       {/* Recent chats */}

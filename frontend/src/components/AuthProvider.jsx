@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState } from 'react';
 import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -12,13 +13,15 @@ export function AuthProvider({ children }) {
   const [userDataLoading, setUserDataLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Helper to fetch user data and idToken
-  const fetchUserData = async (user) => {
+  // Helper to fetch user data and idToken, with retry logic and debug logging
+  const fetchUserData = async (user, attempt = 1) => {
     setUserDataLoading(true);
     setError(null);
+    console.log(`[AuthProvider] fetchUserData called (attempt ${attempt}) for user:`, user);
     try {
       const freshToken = await user.getIdToken();
       setIdToken(freshToken);
+      console.log('[AuthProvider] Got idToken:', freshToken);
       const response = await fetch('/api/users/me', {
         headers: {
           'Authorization': `Bearer ${freshToken}`
@@ -27,14 +30,25 @@ export function AuthProvider({ children }) {
       if (response.ok) {
         const data = await response.json();
         setUserData(data);
+        console.log('[AuthProvider] userData fetched:', data);
       } else {
         setUserData(null);
         setError('Failed to fetch user data');
+        console.error('[AuthProvider] Failed to fetch user data, status:', response.status);
+        // Retry up to 3 times with delay
+        if (attempt < 3) {
+          setTimeout(() => fetchUserData(user, attempt + 1), 1000 * attempt);
+        }
       }
     } catch (err) {
       setUserData(null);
       setIdToken(null);
       setError('Error fetching user data');
+      console.error('[AuthProvider] Error fetching user data:', err);
+      // Retry up to 3 times with delay
+      if (attempt < 3) {
+        setTimeout(() => fetchUserData(user, attempt + 1), 1000 * attempt);
+      }
     } finally {
       setUserDataLoading(false);
     }
@@ -43,12 +57,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
+      console.log('[AuthProvider] onAuthStateChanged:', user);
       if (user) {
         fetchUserData(user);
       } else {
         setUserData(null);
         setIdToken(null);
         setUserDataLoading(false);
+        console.log('[AuthProvider] User signed out, cleared userData and idToken');
       }
       setAuthLoading(false);
     });
@@ -58,6 +74,19 @@ export function AuthProvider({ children }) {
 
   // Combined loading state
   const loading = authLoading || (currentUser && userDataLoading);
+
+  // Debug log for state changes
+  useEffect(() => {
+    console.log('[AuthProvider] State:', {
+      currentUser,
+      userData,
+      idToken,
+      loading,
+      error,
+      authLoading,
+      userDataLoading
+    });
+  }, [currentUser, userData, idToken, loading, error, authLoading, userDataLoading]);
 
   return (
     <AuthContext.Provider value={{
@@ -72,7 +101,29 @@ export function AuthProvider({ children }) {
         }
       }
     }}>
-      {!loading && children}
+      {/* Always render children, but show a loading spinner overlay if loading */}
+      {children}
+      {loading && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(255,255,255,0.7)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner-border text-primary" role="status" style={{ width: 48, height: 48 }}>
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <div style={{ marginTop: 16, color: '#222', fontWeight: 500 }}>Loading user session...</div>
+          </div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 }

@@ -3,92 +3,89 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
-from models import User
+from models import Scene
 from utils.session import get_current_user
 from datetime import datetime, UTC
 
 
 router = APIRouter()
 
-from models import Scene
+# ------------------- SCENE CRUD ROUTES -------------------
 
-# --- Create Scene Route ---
-@router.post("/api/scenes")
-async def create_scene(
+# Create Scene
+@router.post("/api/scenes/", response_model=None)
+def create_scene(
     name: str = Form(...),
     description: str = Form(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    intro: str = Form(None),
+    tags: List[str] = Form([]),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
     scene = Scene(
-        name=name.strip(),
-        description=description.strip(),
-        creator_id=current_user.id
+        name=name,
+        description=description,
+        intro=intro,
+        tags=tags,
+        creator_id=current_user["uid"],
+        created_time=datetime.now(UTC)
     )
     db.add(scene)
     db.commit()
     db.refresh(scene)
-    return {
-        "id": scene.id,
-        "name": scene.name,
-        "description": scene.description,
-        "creator_id": scene.creator_id,
-        "likes": scene.likes,
-        "views": scene.views
-    }
+    return JSONResponse(content={"id": scene.id, "message": "Scene created"})
 
-# --- Get All Scenes for User ---
-@router.get("/api/scenes")
-def get_scenes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    scenes = db.query(Scene).filter(Scene.creator_id == current_user.id).all()
-    return [
-        {
-            "id": s.id,
-            "name": s.name,
-            "description": s.description,
-            "creator_id": s.creator_id,
-            "likes": s.likes,
-            "views": s.views
-        } for s in scenes
-    ]
+# Read all Scenes
+@router.get("/api/scenes/", response_model=None)
+def get_scenes(db: Session = Depends(get_db)):
+    scenes = db.query(Scene).all()
+    return scenes
 
-# --- Delete Scene ---
-@router.delete("/api/scenes/{scene_id}")
-def delete_scene(scene_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+# Read single Scene
+@router.get("/api/scenes/{scene_id}", response_model=None)
+def get_scene(scene_id: int, db: Session = Depends(get_db)):
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
-    if scene.creator_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    db.delete(scene)
-    db.commit()
-    return {"message": "Scene deleted"}
+    return scene
 
-# --- Update Scene ---
-@router.put("/api/scenes/{scene_id}")
+# Update Scene
+@router.put("/api/scenes/{scene_id}", response_model=None)
 def update_scene(
     scene_id: int,
-    name: str = Form(...),
-    description: str = Form(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    name: str = Form(None),
+    description: str = Form(None),
+    intro: str = Form(None),
+    tags: List[str] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
-    if scene.creator_id != current_user.id:
+    if scene.creator_id != current_user["uid"]:
         raise HTTPException(status_code=403, detail="Not authorized")
-    scene.name = name.strip()
-    scene.description = description.strip()
+    if name is not None:
+        scene.name = name
+    if description is not None:
+        scene.description = description
+    if intro is not None:
+        scene.intro = intro
+    if tags is not None:
+        scene.tags = tags
     db.commit()
     db.refresh(scene)
-    return {
-        "id": scene.id,
-        "name": scene.name,
-        "description": scene.description,
-        "creator_id": scene.creator_id,
-        "likes": scene.likes,
-        "views": scene.views
-    }
+    return JSONResponse(content={"id": scene.id, "message": "Scene updated"})
+
+# Delete Scene
+@router.delete("/api/scenes/{scene_id}", response_model=None)
+def delete_scene(scene_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    scene = db.query(Scene).filter(Scene.id == scene_id).first()
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    if scene.creator_id != current_user["uid"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    db.delete(scene)
+    db.commit()
+    return JSONResponse(content={"id": scene_id, "message": "Scene deleted"})
+

@@ -33,7 +33,7 @@ export default function ProfilePage() {
   // Fetch scenes from API
   useEffect(() => {
     if (idToken) {
-      fetch('/api/scenes', { headers: { 'Authorization': `Bearer ${idToken}` } })
+      fetch('/api/scenes/', { headers: { 'Authorization': `Bearer ${idToken}` } })
         .then(res => res.ok ? res.json() : [])
         .then(setScenes)
         .catch(() => setScenes([]));
@@ -45,7 +45,7 @@ export default function ProfilePage() {
     const formData = new FormData();
     formData.append('name', sceneData.name);
     formData.append('description', sceneData.description);
-    const res = await fetch('/api/scenes', {
+    const res = await fetch('/api/scenes/', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${idToken}` },
       body: formData
@@ -148,9 +148,10 @@ export default function ProfilePage() {
     currentPersona: null
   });
 
-  // API call functions
+
+  // API call functions for Persona table endpoints
   const fetchPersonas = async () => {
-    const res = await fetch('/api/personas', {
+    const res = await fetch('/api/personas/', {
       headers: { 'Authorization': `Bearer ${idToken}` }
     });
     if (res.ok) return await res.json();
@@ -158,29 +159,56 @@ export default function ProfilePage() {
   };
 
   const createPersona = async (persona) => {
-    const res = await fetch('/api/personas', {
+    // Persona API expects FormData (not JSON)
+    const formData = new FormData();
+    formData.append('name', persona.name);
+    if (persona.description) formData.append('description', persona.description);
+    if (persona.intro) formData.append('intro', persona.intro);
+    if (persona.tags) {
+      // If tags is array, append each
+      if (Array.isArray(persona.tags)) {
+        persona.tags.forEach(tag => formData.append('tags', tag));
+      } else {
+        formData.append('tags', persona.tags);
+      }
+    }
+    const res = await fetch('/api/personas/', {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}` 
-      },
-      body: JSON.stringify(persona)
+      headers: { 'Authorization': `Bearer ${idToken}` },
+      body: formData
     });
-    if (!res.ok) throw new Error('Failed to create persona');
-    return await res.json();
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || data.message || 'Failed to create persona');
+    }
+    // Persona API returns {id, message}, so refetch list
+    await fetchPersonas().then(setPersonas);
+    return true;
   };
 
   const updatePersona = async (id, persona) => {
+    const formData = new FormData();
+    if (persona.name) formData.append('name', persona.name);
+    if (persona.description) formData.append('description', persona.description);
+    if (persona.intro) formData.append('intro', persona.intro);
+    if (persona.tags) {
+      if (Array.isArray(persona.tags)) {
+        persona.tags.forEach(tag => formData.append('tags', tag));
+      } else {
+        formData.append('tags', persona.tags);
+      }
+    }
     const res = await fetch(`/api/personas/${id}`, {
       method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}` 
-      },
-      body: JSON.stringify(persona)
+      headers: { 'Authorization': `Bearer ${idToken}` },
+      body: formData
     });
-    if (!res.ok) throw new Error('Failed to update persona');
-    return await res.json();
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || data.message || 'Failed to update persona');
+    }
+    await fetchPersonas().then(setPersonas);
+    return true;
   };
 
   const deletePersona = async (id) => {
@@ -188,8 +216,12 @@ export default function ProfilePage() {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${idToken}` }
     });
-    if (!res.ok) throw new Error('Failed to delete persona');
-    return await res.json();
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || data.message || 'Failed to delete persona');
+    }
+    await fetchPersonas().then(setPersonas);
+    return true;
   };
 
   useEffect(() => {
@@ -336,7 +368,7 @@ export default function ProfilePage() {
                     gap: 6,
                   }}
                   title="Edit Character"
-                  onClick={() => navigate(`/character-edit?id=${c.id}`)}
+                  onClick={() => navigate(`/character/edit/${c.id}`)}
                   onMouseEnter={e => {
                     e.currentTarget.style.background = '#18191a';
                     e.currentTarget.style.color = '#fff';
@@ -464,9 +496,61 @@ export default function ProfilePage() {
   };
 
   // Use correct user data for display
+
+  // Loading and error state for user data
+  const [userLoading, setUserLoading] = useState(true);
+  const [userError, setUserError] = useState(null);
+
+  useEffect(() => {
+    // If own profile, wait for userData
+    if (isOwnProfile) {
+      if (userData) {
+        console.log('[ProfilePage] userData received:', userData);
+        setUserLoading(false);
+        setUserError(null);
+      } else {
+        setUserLoading(true);
+      }
+    } else {
+      // For public profile, wait for publicUserData
+      if (profileUserId) {
+        if (publicUserData === null) {
+          setUserLoading(true);
+        } else if (publicUserData && publicUserData.id) {
+          setUserLoading(false);
+          setUserError(null);
+        } else {
+          setUserLoading(false);
+          setUserError('User not found.');
+        }
+      }
+    }
+  }, [isOwnProfile, userData, publicUserData, profileUserId]);
+
   const displayUser = isOwnProfile ? userData : publicUserData;
-  if (!displayUser)
-    return null;
+
+  if (userLoading) {
+    return (
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '60vh' }}>
+        <div className="text-center">
+          <div className="spinner-border text-primary" role="status" style={{ width: 36, height: 36 }}>
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <div className="mt-3 text-muted">Loading profile...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (userError) {
+    return (
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '60vh' }}>
+        <div className="alert alert-danger" style={{ background: '#fff0f0', color: '#b71c1c', border: 'none', fontSize: '1.1rem' }}>
+          {userError}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
