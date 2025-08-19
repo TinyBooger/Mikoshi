@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet } from 'react-router';
-import Sidebar from './Sidebar';
-import Topbar from './Topbar';
+import Sidebar from './Sidebar.jsx';
+import Topbar from './Topbar.jsx';
 // Renamed with Capital
 export default function Layout() {
   // Initialize sidebarVisible based on viewport size
