@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Outlet } from 'react-router';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-
+// Renamed with Capital
 export default function Layout() {
   // Initialize sidebarVisible based on viewport size
   const initialMobile = window.innerWidth < 768;
