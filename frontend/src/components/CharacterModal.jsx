@@ -1,19 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-import PersonaCard from './PersonaCard';
+import CharacterCard from './CharacterCard';
 
-export default function PersonaModal({ show, onClose, onSelect }) {
-  const [popularPersonas, setPopularPersonas] = useState([]);
+export default function CharacterModal({ show, onClose, onSelect }) {
+  const [popularCharacters, setPopularCharacters] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!show) return;
-    // Fetch popular personas on open
-    fetch('/api/personas/popular')
+    // Fetch popular characters on open
+    fetch('/api/characters/popular')
       .then(res => res.json())
-      .then(setPopularPersonas);
+      .then(setPopularCharacters);
   }, [show]);
 
   useEffect(() => {
@@ -23,9 +23,8 @@ export default function PersonaModal({ show, onClose, onSelect }) {
       return;
     }
     setLoading(true);
-    // Search personas by name (search on type)
     const controller = new AbortController();
-    fetch(`/api/personas/?search=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
+    fetch(`/api/characters/search?name=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         setSearchResults(data);
@@ -42,14 +41,14 @@ export default function PersonaModal({ show, onClose, onSelect }) {
       <div className="modal-dialog modal-lg">
         <div className="modal-content">
           <div className="modal-header">
-            <h5 className="modal-title">Select Persona</h5>
+            <h5 className="modal-title">Select Character</h5>
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
           <div className="modal-body">
             <input
               type="text"
               className="form-control mb-3"
-              placeholder="Search personas by name..."
+              placeholder="Search characters by name..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               autoFocus
@@ -60,28 +59,28 @@ export default function PersonaModal({ show, onClose, onSelect }) {
               ) : (
                 <div className="d-flex flex-wrap justify-content-start">
                   {searchResults.length > 0 ? (
-                    searchResults.map(persona => (
-                      <div key={persona.id} onClick={() => onSelect(persona)} style={{ cursor: 'pointer' }}>
-                        <PersonaCard persona={persona} />
+                    searchResults.map(character => (
+                      <div key={character.id} onClick={() => onSelect(character)} style={{ cursor: 'pointer' }}>
+                        <CharacterCard character={character} />
                       </div>
                     ))
                   ) : (
-                    <div className="text-muted w-100 text-center">No personas found.</div>
+                    <div className="text-muted w-100 text-center">No characters found.</div>
                   )}
                 </div>
               )
             ) : (
               <>
-                <h6 className="mb-2">Popular Personas</h6>
+                <h6 className="mb-2">Popular Characters</h6>
                 <div className="d-flex flex-wrap justify-content-start">
-                  {popularPersonas.length > 0 ? (
-                    popularPersonas.map(persona => (
-                      <div key={persona.id} onClick={() => onSelect(persona)} style={{ cursor: 'pointer' }}>
-                        <PersonaCard persona={persona} />
+                  {popularCharacters.length > 0 ? (
+                    popularCharacters.map(character => (
+                      <div key={character.id} onClick={() => onSelect(character)} style={{ cursor: 'pointer' }}>
+                        <CharacterCard character={character} />
                       </div>
                     ))
                   ) : (
-                    <div className="text-muted w-100 text-center">No popular personas found.</div>
+                    <div className="text-muted w-100 text-center">No popular characters found.</div>
                   )}
                 </div>
               </>

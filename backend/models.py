@@ -21,6 +21,7 @@ class Character(Base):
 
     created_time = Column(DateTime, default=lambda: datetime.now(UTC))
     creator_id = Column(String, nullable=False)
+    creator_name = Column(String, nullable=True)
 
 class User(Base):
     __tablename__ = "users"
@@ -47,7 +48,9 @@ class Persona(Base):
     description = Column(Text, nullable=True)
     intro = Column(Text, nullable=True)  # Short intro for display
     tags = Column(ARRAY(Text), default=[])  # array of strings
+    picture = Column(String, nullable=True)  # path or URL to the picture
     creator_id = Column(String, nullable=False)
+    creator_name = Column(String, nullable=True)
     created_time = Column(DateTime, default=lambda: datetime.now(UTC))
     likes = Column(Integer, default=0)
     views = Column(Integer, default=0)
@@ -74,7 +77,9 @@ class Scene(Base):
     description = Column(Text, nullable=False)
     intro = Column(Text, nullable=True)  # Short intro for display
     tags = Column(ARRAY(Text), default=[])  # array of strings
+    picture = Column(String, nullable=True)  # path or URL to the picture
     creator_id = Column(String, nullable=False)
+    creator_name = Column(String, nullable=True)
     created_time = Column(DateTime, default=lambda: datetime.now(UTC))
     likes = Column(Integer, default=0)
     views = Column(Integer, default=0)

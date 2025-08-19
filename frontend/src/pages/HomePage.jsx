@@ -1,11 +1,15 @@
+
 import React, { useState, useEffect, useContext } from 'react';
+import PageWrapper from '../components/PageWrapper';
 import { useNavigate } from 'react-router';
-import CharacterCard from '../components/CharacterCard';
+import EntityCard from '../components/EntityCard';
+import HorizontalCardSection from '../components/HorizontalCardSection';
 import { AuthContext } from '../components/AuthProvider';
 
 
 function HomePage() {
   const [popular, setPopular] = useState([]);
+  const [popularScenes, setPopularScenes] = useState([]);
   const [recent, setRecent] = useState([]);
   const [recommended, setRecommended] = useState([]);
   const [popularTags, setPopularTags] = useState([]);
@@ -16,11 +20,31 @@ function HomePage() {
   const [recentScroll, setRecentScroll] = useState({ left: false, right: false });
   const [tagScroll, setTagScroll] = useState({ left: false, right: false });
   const [mounted, setMounted] = useState(false);
+  const [popularPersonas, setPopularPersonas] = useState([]);
+  const [loadingPersonas, setLoadingPersonas] = useState(true);
+  const [errorPersonas, setErrorPersonas] = useState(null);
   const navigate = useNavigate();
   const { currentUser, userData, idToken, loading } = useContext(AuthContext);
+  // Fetch popular personas
+  useEffect(() => {
+    setLoadingPersonas(true);
+    setErrorPersonas(null);
+    fetch('/api/personas/popular')
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch');
+        return res.json();
+      })
+      .then(data => {
+        setPopularPersonas(data);
+        setLoadingPersonas(false);
+      })
+      .catch(() => {
+        setPopularPersonas([]);
+        setErrorPersonas('Could not load popular personas.');
+        setLoadingPersonas(false);
+      });
+  }, []);
 
-  // Debug logs
-  console.log('mounted:', mounted, 'loading:', loading, 'currentUser:', currentUser, 'idToken:', idToken, 'userData:', userData);
 
   // Only show spinner until mounted and auth state is ready (prevents hydration mismatch)
   if (loading) {
@@ -85,6 +109,12 @@ function HomePage() {
       .then(setPopular)
       .catch(() => setPopular([]));
 
+    // Fetch popular scenes
+    fetch(`/api/scenes/popular`, { headers: { 'Authorization': `Bearer ${idToken}` } })
+      .then(res => res.json())
+      .then(setPopularScenes)
+      .catch(() => setPopularScenes([]));
+
     fetch(`/api/characters/recent`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
       .then(setRecent)
@@ -129,314 +159,63 @@ function HomePage() {
   };
 
   return (
-    <div
-      style={{
-        width: '90%',
-        margin: '0 auto',
-        background: 'var(--bs-body-bg, #f8f9fa)',
-        minHeight: '100vh',
-        paddingLeft: '2.5rem',
-        paddingRight: '2.5rem',
-        paddingTop: '2rem',
-        paddingBottom: '2rem',
-        boxSizing: 'border-box',
-        maxWidth: '1600px', // Prevents overflow on very large screens
-      }}
-    >
-      {/* Popular Characters */}
-      <section className="mb-5 pb-3">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-      <h2 className="fw-bold text-dark" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>Popular Characters</h2>
-          <button
-            className="fw-bold rounded-pill"
-            style={{
-              background: '#18191a',
-              color: '#fff',
-              border: 'none',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              fontSize: '0.86rem',
-              padding: '0.4rem 1.6rem',
-              letterSpacing: '0.16px',
-              transition: 'background 0.14s, color 0.14s',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = '#232323';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = '#18191a';
-            }}
-            onClick={() => navigate('/browse/popular')}
-          >
-            More
-          </button>
+    <PageWrapper>
+      {/* Welcoming message */}
+      <div className="w-100 d-flex flex-column align-items-center justify-content-center mb-4" style={{ minHeight: 64 }}>
+        <h1 className="fw-bold text-dark mb-1" style={{ fontSize: '2.2rem', letterSpacing: '0.5px', textAlign: 'center' }}>
+          Welcome to Mikoshi!
+        </h1>
+        <div className="text-muted" style={{ fontSize: '1.08rem', textAlign: 'center', maxWidth: 520 }}>
+          Chat with your favorite characters
         </div>
-        <div style={{ position: 'relative', width: '100%' }}>
-          {/* Scroll Left Button */}
-          {popular.length > 3 && popularScroll.left && (
-            <button
-              aria-label="Scroll left"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                height: '100%',
-                width: 72,
-                background: 'linear-gradient(to right, rgba(247,247,247,0.85) 80%, rgba(247,247,247,0))',
-                border: 'none',
-                outline: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-                cursor: 'pointer',
-                zIndex: 3,
-                boxShadow: 'none',
-                transition: 'background 0.2s',
-                opacity: 0.7,
-                pointerEvents: 'auto',
-              }}
-              onClick={() => {
-                const el = document.getElementById('popular-scroll');
-                if (el) el.scrollBy({ left: -400, behavior: 'smooth' });
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to right, rgba(233,236,239,0.95) 80%, rgba(233,236,239,0))'; e.currentTarget.style.opacity = 1; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to right, rgba(247,247,247,0.85) 80%, rgba(247,247,247,0))'; e.currentTarget.style.opacity = 0.7; }}
-            >
-              <i className="bi bi-arrow-left" style={{ fontSize: 28, color: '#bfc4cb', marginLeft: 12, filter: 'drop-shadow(0 0 2px #fff)' }} />
-            </button>
-          )}
-          <div id="popular-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none', width: '100%' }}>
-            {popular === null || typeof popular === 'undefined' ? (
-              <div className="text-muted py-4">Loading characters...</div>
-            ) : popular.length === 0 ? (
-              <div className="text-muted py-4">No popular characters found.</div>
-            ) : (
-              Array.isArray(popular) && popular.map(c => (
-                <div style={{ padding: '0 4px' }}>
-                  <CharacterCard key={c.id} character={c} />
-                </div>
-              ))
-            )}
-          </div>
-          {/* Scroll Right Button */}
-          {popular.length > 3 && popularScroll.right && (
-            <button
-              aria-label="Scroll right"
-              style={{
-                position: 'absolute',
-                top: 0,
-                right: 0,
-                height: '100%',
-                width: 72,
-                background: 'linear-gradient(to left, rgba(247,247,247,0.85) 80%, rgba(247,247,247,0))',
-                border: 'none',
-                outline: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                cursor: 'pointer',
-                zIndex: 3,
-                boxShadow: 'none',
-                transition: 'background 0.2s',
-                opacity: 0.7,
-                pointerEvents: 'auto',
-              }}
-              onClick={() => {
-                const el = document.getElementById('popular-scroll');
-                if (el) el.scrollBy({ left: 400, behavior: 'smooth' });
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to left, rgba(233,236,239,0.95) 80%, rgba(233,236,239,0))'; e.currentTarget.style.opacity = 1; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to left, rgba(247,247,247,0.85) 80%, rgba(247,247,247,0))'; e.currentTarget.style.opacity = 0.7; }}
-            >
-              <i className="bi bi-arrow-right" style={{ fontSize: 28, color: '#bfc4cb', marginRight: 12, filter: 'drop-shadow(0 0 2px #fff)' }} />
-            </button>
-          )}
-        </div>
-      </section>
+      </div>
+  {/* Popular Characters */}
+      <HorizontalCardSection
+        title="Popular Characters"
+        moreLink="/browse/popular"
+    contents={Array.isArray(popular) ? popular.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : popular}
+        scrollState={popularScroll}
+        scrollId="popular-scroll"
+        navigate={navigate}
+      />
+
+      <HorizontalCardSection
+        title="Popular Scenes"
+        moreLink="/browse/scenes"
+    contents={Array.isArray(popularScenes) ? popularScenes.map(scene => ({ ...scene, renderCard: () => <EntityCard type="scene" entity={scene} /> })) : popularScenes}
+        scrollState={{ left: false, right: false }}
+        scrollId="scene-scroll"
+        navigate={navigate}
+      />
+
+      <HorizontalCardSection
+        title="Popular Personas"
+        moreLink="/browse/personas"
+    contents={Array.isArray(popularPersonas) ? popularPersonas.map(persona => ({ ...persona, renderCard: () => <EntityCard type="persona" entity={persona} /> })) : popularPersonas}
+        scrollState={{ left: false, right: false }}
+        scrollId="persona-scroll"
+        navigate={navigate}
+      />
 
       {/* Recently Uploaded */}
-      <section className="mb-5 pb-3">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-      <h2 className="fw-bold text-dark" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>Recently Uploaded</h2>
-          <button
-            className="fw-bold rounded-pill"
-            style={{
-              background: '#18191a',
-              color: '#fff',
-              border: 'none',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              fontSize: '0.86rem',
-              padding: '0.4rem 1.6rem',
-              letterSpacing: '0.16px',
-              transition: 'background 0.14s, color 0.14s',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = '#232323';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = '#18191a';
-            }}
-            onClick={() => navigate('/browse/recent')}
-          >
-            More
-          </button>
-        </div>
-        <div style={{ position: 'relative', width: '100%' }}>
-          {/* Scroll Left Button */}
-          {recent.length > 3 && recentScroll.left && (
-            <button
-              aria-label="Scroll left"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                height: '100%',
-                width: 48,
-                background: 'linear-gradient(to right, #f8f9fa 80%, rgba(248,249,250,0))',
-                border: 'none',
-                outline: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                zIndex: 2,
-                boxShadow: 'none',
-                transition: 'background 0.2s',
-              }}
-              onClick={() => {
-                const el = document.getElementById('recent-scroll');
-                if (el) el.scrollBy({ left: -400, behavior: 'smooth' });
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to right, #e9ecef 80%, rgba(233,236,239,0))'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to right, #f8f9fa 80%, rgba(248,249,250,0))'; }}
-            >
-              <span style={{
-                display: 'inline-block',
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                background: 'rgba(24,25,26,0.12)',
-                color: '#232323',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 22,
-                transition: 'background 0.2s',
-              }}>
-                <i className="bi bi-arrow-left" />
-              </span>
-            </button>
-          )}
-          <div id="recent-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none', width: '100%' }}>
-            {recent === null || typeof recent === 'undefined' ? (
-              <div className="text-muted py-4">Loading characters...</div>
-            ) : recent.length === 0 ? (
-              <div className="text-muted py-4">No recent characters found.</div>
-            ) : (
-              Array.isArray(recent) && recent.map(c => (
-                <div style={{ padding: '0 4px' }}>
-                  <CharacterCard key={c.id} character={c} />
-                </div>
-              ))
-            )}
-          </div>
-          {/* Scroll Right Button */}
-          {recent.length > 3 && recentScroll.right && (
-            <button
-              aria-label="Scroll right"
-              style={{
-                position: 'absolute',
-                top: 0,
-                right: 0,
-                height: '100%',
-                width: 48,
-                background: 'linear-gradient(to left, #f8f9fa 80%, rgba(248,249,250,0))',
-                border: 'none',
-                outline: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                zIndex: 2,
-                boxShadow: 'none',
-                transition: 'background 0.2s',
-              }}
-              onClick={() => {
-                const el = document.getElementById('recent-scroll');
-                if (el) el.scrollBy({ left: 400, behavior: 'smooth' });
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to left, #e9ecef 80%, rgba(233,236,239,0))'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to left, #f8f9fa 80%, rgba(248,249,250,0))'; }}
-            >
-              <span style={{
-                display: 'inline-block',
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                background: 'rgba(24,25,26,0.12)',
-                color: '#232323',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 22,
-                transition: 'background 0.2s',
-              }}>
-                <i className="bi bi-arrow-right" />
-              </span>
-            </button>
-          )}
-        </div>
-      </section>
+      <HorizontalCardSection
+        title="Recently Uploaded"
+        moreLink="/browse/recent"
+    contents={Array.isArray(recent) ? recent.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : recent}
+        scrollState={recentScroll}
+        scrollId="recent-scroll"
+        navigate={navigate}
+      />
 
       {/* Recommended for You */}
-      <section className="mb-5 pb-3">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-      <h2 className="fw-bold text-dark" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>Recommended for You</h2>
-          {recommended.length > 0 && (
-            <button
-              className="fw-bold rounded-pill"
-              style={{
-                background: '#18191a',
-                color: '#fff',
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                fontSize: '0.86rem',
-                padding: '0.4rem 1.6rem',
-                letterSpacing: '0.16px',
-                transition: 'background 0.14s, color 0.14s',
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#232323';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = '#18191a';
-              }}
-              onClick={() => navigate('/browse/recommended')}
-            >
-              More
-            </button>
-          )}
-        </div>
-        {recommended.length === 0 ? (
-          <div className="alert alert-info mt-3">No recommendations yet. Please like more characters to unlock personalized suggestions.</div>
-        ) : recommended === null || typeof recommended === 'undefined' ? (
-          <div className="text-muted py-4">Loading characters...</div>
-        ) : (
-          <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
-            {Array.isArray(recommended) && recommended.map(c => (
-              <div className="col d-flex">
-                <CharacterCard key={c.id} character={c} />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <HorizontalCardSection
+        title="Recommended for You"
+        moreLink="/browse/recommended"
+    contents={Array.isArray(recommended) ? recommended.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : recommended}
+        scrollState={{ left: false, right: false }}
+        scrollId="recommended-scroll"
+        navigate={navigate}
+      />
 
       {/* Popular Tags */}
       <section className="mb-4">
@@ -533,120 +312,23 @@ function HomePage() {
             </div>
 
             <div style={{ position: 'relative', width: '100%' }}>
-              {/* Scroll Left Button */}
-              {(selectedTag && tagCharacters[selectedTag]?.length > 3 && tagScroll.left) && (
-                <button
-                  aria-label="Scroll left"
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    height: '100%',
-                    width: 48,
-                    background: 'linear-gradient(to right, #f8f9fa 80%, rgba(248,249,250,0))',
-                    border: 'none',
-                    outline: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    zIndex: 2,
-                    boxShadow: 'none',
-                    transition: 'background 0.2s',
-                  }}
-                  onClick={() => {
-                    const el = document.getElementById('tag-scroll');
-                    if (el) el.scrollBy({ left: -400, behavior: 'smooth' });
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to right, #e9ecef 80%, rgba(233,236,239,0))'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to right, #f8f9fa 80%, rgba(248,249,250,0))'; }}
-                >
-                  <span style={{
-                    display: 'inline-block',
-                    width: 28,
-                    height: 28,
-                    borderRadius: '50%',
-                    background: 'rgba(24,25,26,0.12)',
-                    color: '#232323',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 22,
-                    transition: 'background 0.2s',
-                  }}>
-                    <i className="bi bi-arrow-left" />
-                  </span>
-                </button>
-              )}
-              <div id="tag-scroll" className="d-flex flex-row flex-nowrap gap-4 pb-2" style={{ overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none', width: '100%' }}>
-                {selectedTag ? (
-                  tagCharacters[selectedTag] === null || typeof tagCharacters[selectedTag] === 'undefined' ? (
-                    <div className="text-muted py-4">Loading characters...</div>
-                  ) : tagCharacters[selectedTag].length === 0 ? (
-                    <div className="text-muted py-4">No characters found for this tag.</div>
-                  ) : (
-                    Array.isArray(tagCharacters[selectedTag]) && tagCharacters[selectedTag].map(c => (
-                      <div style={{ padding: '0 4px' }}>
-                        <CharacterCard key={c.id} character={c} />
-                      </div>
-                    ))
-                  )
-                ) : (
-                  <div className="text-muted py-4">Select a tag to view characters</div>
-                )}
-              </div>
-              {/* Scroll Right Button */}
-              {(selectedTag && tagCharacters[selectedTag]?.length > 3 && tagScroll.right) && (
-                <button
-                  aria-label="Scroll right"
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    height: '100%',
-                    width: 48,
-                    background: 'linear-gradient(to left, #f8f9fa 80%, rgba(248,249,250,0))',
-                    border: 'none',
-                    outline: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    zIndex: 2,
-                    boxShadow: 'none',
-                    transition: 'background 0.2s',
-                  }}
-                  onClick={() => {
-                    const el = document.getElementById('tag-scroll');
-                    if (el) el.scrollBy({ left: 400, behavior: 'smooth' });
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(to left, #e9ecef 80%, rgba(233,236,239,0))'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(to left, #f8f9fa 80%, rgba(248,249,250,0))'; }}
-                >
-                  <span style={{
-                    display: 'inline-block',
-                    width: 28,
-                    height: 28,
-                    borderRadius: '50%',
-                    background: 'rgba(24,25,26,0.12)',
-                    color: '#232323',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 22,
-                    transition: 'background 0.2s',
-                  }}>
-                    <i className="bi bi-arrow-right" />
-                  </span>
-                </button>
+              {selectedTag ? (
+                <HorizontalCardSection
+                  title={"Characters for #" + selectedTag}
+                  moreLink={'browse/tags/'}
+                    contents={Array.isArray(tagCharacters[selectedTag]) ? tagCharacters[selectedTag].map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : tagCharacters[selectedTag]}
+                  scrollState={tagScroll}
+                  scrollId="tag-scroll"
+                  navigate={navigate}
+                />
+              ) : (
+                <div className="text-muted py-4">Select a tag to view characters</div>
               )}
             </div>
           </>
         )}
       </section>
-    </div>
+  </PageWrapper>
   );
 }
 

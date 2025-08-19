@@ -2,7 +2,7 @@ import React, { useContext, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import AuthLayout from './components/AuthLayout';
 import AdminApp from './admin/AdminApp.jsx';
-import Layout from './components/layout';
+import Layout from './components/Layout.jsx';
 import HomePage from './pages/HomePage';
 import BrowsePage from './pages/BrowsePage.jsx';
 import WelcomePage from './pages/WelcomePage';

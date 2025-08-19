@@ -1,11 +1,9 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 
-export default function CharacterCard({ character }) {
-  const navigate = useNavigate();
-  const { id, name, picture, views, likes, tagline, creator_name } = character;
+export default function PersonaCard({ persona }) {
+  const { id, name, picture, intro, creator_name, views, likes } = persona;
 
   // Unified vertical card size
   const CARD_WIDTH = 180;
@@ -26,7 +24,6 @@ export default function CharacterCard({ character }) {
         transition: 'box-shadow 0.16s, transform 0.16s',
         cursor: 'pointer',
       }}
-      onClick={() => navigate(`/chat?character=${encodeURIComponent(id)}`)}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.13)'; e.currentTarget.style.transform = 'translateY(-2px) scale(1.018)'; }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.10)'; e.currentTarget.style.transform = 'none'; }}
     >
@@ -53,22 +50,23 @@ export default function CharacterCard({ character }) {
         <h5 className="fw-bold text-dark text-truncate mb-0" style={{ fontSize: '0.92rem', maxWidth: 150, fontFamily: 'Inter, sans-serif' }}>{name}</h5>
         <span className="text-muted small" style={{ fontSize: '0.68rem', fontFamily: 'Inter, sans-serif', fontWeight: 400, display: 'block', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: 150 }}>
           <i className="bi bi-person-circle me-1"></i>
-          {creator_name ? (typeof creator_name === 'object' ? creator_name.name : creator_name) : <span style={{ opacity: 0.4 }}>Unknown</span>}
+          {creator_name
+            ? creator_name
+            : creator
+              ? (typeof creator === 'object' && creator.name ? creator.name : creator)
+              : <span style={{ opacity: 0.4 }}>Unknown</span>}
         </span>
       </div>
-      {/* Tagline/Description */}
+      {/* Description */}
       <div className="px-2" style={{ flex: 1, minHeight: 22, maxHeight: 40, overflow: 'hidden', marginBottom: 2, marginTop: 2 }}>
         <span className="text-secondary" style={{ fontSize: '0.74rem', fontFamily: 'Inter, sans-serif', lineHeight: 1.18, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', whiteSpace: 'normal', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-          {tagline || <span style={{ opacity: 0.4 }}>No tagline</span>}
+          {intro || <span style={{ opacity: 0.4 }}>No description</span>}
         </span>
       </div>
       {/* Stats */}
       <div className="d-flex align-items-center justify-content-between px-2 pb-1" style={{ minHeight: 18 }}>
         <span className="d-flex align-items-center text-secondary" style={{ fontSize: 10 }}>
           <i className="bi bi-eye me-1"></i> {typeof views === 'number' ? views.toLocaleString() : 0} views
-        </span>
-        <span className="d-flex align-items-center text-secondary" style={{ fontSize: 10 }}>
-          <i className="bi bi-hand-thumbs-up me-1"></i> {typeof likes === 'number' ? likes.toLocaleString() : 0} likes
         </span>
       </div>
     </div>

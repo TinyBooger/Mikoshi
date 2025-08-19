@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { AuthContext } from './AuthProvider.jsx'; // Import the AuthContext
 import { signOut } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth } from '../firebase.js';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import logo from '../assets/images/logo.png';
@@ -91,8 +91,24 @@ export default function Sidebar() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [createOpen]);
 
+  // Responsive sidebar width: match layout.jsx
+  const sidebarWidth = typeof window !== 'undefined' && window.innerWidth < 768
+    ? { width: '70vw', maxWidth: '20rem' }
+    : { width: '15rem', maxWidth: '15rem' };
+
   return (
-    <aside className="d-flex flex-column h-100 p-3" style={{ minHeight: '80vh', maxWidth: 272, background: '#f5f6fa', color: '#232323', borderRight: '1.2px solid #e9ecef', fontFamily: 'Inter, sans-serif', width: 272 }}>
+    <aside
+      className="d-flex flex-column h-100 p-3"
+      style={{
+        minHeight: '80vh',
+        background: 'rgba(255, 255, 255, 0.66)',
+        color: '#232323',
+        borderRight: '1.2px solid #e9ecef',
+        fontFamily: 'Inter, sans-serif',
+        borderRadius: '1.5rem',
+        ...sidebarWidth
+      }}
+    >
       {/* Logo at top */}
       <div className="mb-3 d-flex align-items-center justify-content-center" style={{ minHeight: 144 }}>
         <a href="/" style={{ display: 'inline-block' }}>
@@ -167,6 +183,14 @@ export default function Sidebar() {
           </ul>
         </div>
       </div>
+      <button
+        className="fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center"
+        style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: '#fff', color: '#232323', borderRadius: 19, padding: '9px 0', border: 'none', fontWeight: 700, transition: 'background 0.2s', marginBottom: 8 }}
+        onClick={() => navigate('/browse/popular')}
+        tabIndex={0}
+      >
+        <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-compass me-2"></i> Browse</span>
+      </button>
 
       {/* Recent chats */}
       <div className="mb-3">

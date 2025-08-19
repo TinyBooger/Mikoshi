@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate, useParams } from 'react-router'; // useParams instead of useLocation
-import CharacterCard from '../components/CharacterCard';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import { AuthContext } from '../components/AuthProvider';
-import PersonaModal from '../components/PersonaModal';
-import SceneModal from '../components/SceneModal';
+import PageWrapper from '../components/PageWrapper';
+
+import EntityCard from '../components/EntityCard';
+import ButtonRounded from '../components/ButtonRounded';
+import CardSection from '../components/CardSection';
 
 export default function ProfilePage() {
   const MAX_NAME_LENGTH = 50;
@@ -27,8 +29,7 @@ export default function ProfilePage() {
   const [personas, setPersonas] = useState([]);
   const [activeTab, setActiveTab] = useState(TAB_TYPES.CREATED);
   const [scenes, setScenes] = useState([]); // Placeholder for scenes
-  // Placeholder for scene modal state
-  const [showSceneModal, setShowSceneModal] = useState(false);
+
 
   // Fetch scenes from API
   useEffect(() => {
@@ -40,101 +41,111 @@ export default function ProfilePage() {
     }
   }, [idToken]);
 
-  // Create scene handler
-  const handleCreateScene = async (sceneData) => {
-    const formData = new FormData();
-    formData.append('name', sceneData.name);
-    formData.append('description', sceneData.description);
-    const res = await fetch('/api/scenes/', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${idToken}` },
-      body: formData
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      alert(data.detail || data.message || 'Failed to create scene');
-      return;
-    }
-    const newScene = await res.json();
-    setScenes([...scenes, newScene]);
-    setShowSceneModal(false);
-  };
 
-  // Delete scene handler
-  const handleDeleteScene = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this scene?')) return;
-    const res = await fetch(`/api/scenes/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${idToken}` }
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      alert(data.detail || data.message || 'Failed to delete scene');
-      return;
-    }
-    setScenes(scenes.filter(s => s.id !== id));
-  };
 
-  // Render scenes
+
+  // Render scenes using SceneCard, with edit for owner
   const renderScenes = () => {
     return (
-      <div className="mt-3">
-        {isOwnProfile && (
-          <button
-            className="fw-bold rounded-pill mb-3"
-            style={{
-              background: '#18191a',
-              color: '#fff',
-              border: 'none',
-              fontSize: '1rem',
-              padding: '0.45rem 1.5rem',
-              letterSpacing: '0.2px',
-              transition: 'background 0.18s, color 0.18s',
-              outline: 'none',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#232323'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#18191a'; }}
-            onClick={() => setShowSceneModal(true)}
-          >
-            <i className="bi bi-plus"></i> Create New Scene
-          </button>
+      <div
+        className="d-flex flex-wrap align-items-start"
+        style={{
+          gap: '24px 18px',
+          marginTop: 18,
+          rowGap: 24,
+          columnGap: 18,
+          width: '100%',
+        }}>
+        {scenes.length === 0 && (
+          <p className="text-muted" style={{ width: 320 }}>
+            No scenes created yet.
+          </p>
         )}
-        {scenes.length === 0 ? (
-          <div className="alert alert-info" style={{ background: '#f5f6fa', color: '#232323', border: 'none' }}>
-            No scenes created yet. {isOwnProfile ? 'Click "Create New Scene" to add one.' : ''}
+        {scenes.map(scene => (
+          <div key={scene.id} style={{ margin: 0, padding: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+              <EntityCard type="scene" entity={scene} />
+              {isOwnProfile && (
+                <ButtonRounded
+                  title="Edit Scene"
+                  onClick={() => navigate(`/scene/edit/${scene.id}`)}
+                >
+                  <i className="bi bi-pencil-square"></i>
+                  Edit
+                </ButtonRounded>
+              )}
+            </div>
           </div>
-        ) : (
-          <div className="list-group">
-            {scenes.map(scene => (
-              <div key={scene.id} className="list-group-item" style={{ background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 12, marginBottom: 10 }}>
-                <div className="d-flex justify-content-between align-items-center">
-                  <div>
-                    <h5 style={{ color: '#18191a', fontWeight: 600 }}>{scene.name}</h5>
-                    <p className="mb-0 text-muted">{scene.description}</p>
-                  </div>
-                  {isOwnProfile && (
-                    <div>
-                      <button className="btn btn-sm btn-outline-dark me-2" style={{ borderRadius: 20, border: '1.5px solid #232323', background: '#fff', color: '#232323' }}>
-                        <i className="bi bi-pencil"></i>
-                      </button>
-                      <button className="btn btn-sm btn-outline-danger" style={{ borderRadius: 20, border: '1.5px solid #e53935', background: '#fff', color: '#e53935' }} onClick={() => handleDeleteScene(scene.id)}>
-                        <i className="bi bi-trash"></i>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {!isOwnProfile && (
-          <div className="alert alert-warning mt-3" style={{ background: '#fffbe6', color: '#856404', border: 'none' }}>
-            Only the profile owner can create or edit scenes.
-          </div>
-        )}
+        ))}
       </div>
     );
+  };
+  // Unified content renderer for all tabs
+  const renderTabContent = () => {
+    // Helper for CardSection grid
+    const renderEntityCardSection = (entities, type, showEdit, editUrlPrefix, title, emptyMsg) => (
+      <CardSection title={title}>
+        {entities && entities.length === 0 ? (
+          <div className="alert alert-info" style={{ background: '#f5f6fa', color: '#232323', border: 'none', gridColumn: '1/-1' }}>
+            {emptyMsg}
+          </div>
+        ) : (
+          entities && entities.map(entity => (
+            <div key={entity.id} style={{ margin: 0, padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+              <EntityCard type={type} entity={entity} />
+              {showEdit && (
+                <ButtonRounded
+                  title={`Edit ${type.charAt(0).toUpperCase() + type.slice(1)}`}
+                  onClick={() => navigate(`/${editUrlPrefix}/edit/${entity.id}`)}
+                  style={{ marginTop: 8, width: 140 }}
+                >
+                  <i className="bi bi-pencil-square"></i> Edit
+                </ButtonRounded>
+              )}
+            </div>
+          ))
+        )}
+      </CardSection>
+    );
+
+    // Personas tab (private)
+    if (activeTab === TAB_TYPES.PERSONAS) {
+      if (!isOwnProfile) {
+        return (
+          <div className="alert alert-warning" style={{ background: '#fffbe6', color: '#856404', border: 'none' }}>
+            Personas are private and only visible to the profile owner.
+          </div>
+        );
+      }
+      return renderEntityCardSection(personas, 'persona', true, 'persona', 'My Personas', 'No personas created yet.');
+    }
+
+    // Scenes tab
+    if (activeTab === TAB_TYPES.SCENES) {
+      return renderEntityCardSection(
+        scenes,
+        'scene',
+        isOwnProfile,
+        'scene',
+        'My Scenes',
+        'No scenes created yet.'
+      );
+    }
+
+    // Characters tabs (Created or Liked)
+    if (activeTab === TAB_TYPES.CREATED || activeTab === TAB_TYPES.LIKED) {
+      const characters = activeTab === TAB_TYPES.CREATED ? createdCharacters : likedCharacters;
+      const showEdit = activeTab === TAB_TYPES.CREATED && isOwnProfile;
+      return renderEntityCardSection(
+        characters,
+        'character',
+        showEdit,
+        'character',
+        `${activeTab} Characters`,
+        activeTab === TAB_TYPES.CREATED ? 'No characters created yet.' : 'No liked characters yet.'
+      );
+    }
+    return null;
   };
   // Edit profile modal state
   const [showModal, setShowModal] = useState(false);
@@ -142,11 +153,7 @@ export default function ProfilePage() {
   const [editBio, setEditBio] = useState('');
   const [editPic, setEditPic] = useState(null);
   const navigate = useNavigate();
-  // Replace the showPersonaModal state and related functions with:
-  const [personaModal, setPersonaModal] = useState({
-    show: false,
-    currentPersona: null
-  });
+
 
 
   // API call functions for Persona table endpoints
@@ -156,72 +163,6 @@ export default function ProfilePage() {
     });
     if (res.ok) return await res.json();
     throw new Error('Failed to fetch personas');
-  };
-
-  const createPersona = async (persona) => {
-    // Persona API expects FormData (not JSON)
-    const formData = new FormData();
-    formData.append('name', persona.name);
-    if (persona.description) formData.append('description', persona.description);
-    if (persona.intro) formData.append('intro', persona.intro);
-    if (persona.tags) {
-      // If tags is array, append each
-      if (Array.isArray(persona.tags)) {
-        persona.tags.forEach(tag => formData.append('tags', tag));
-      } else {
-        formData.append('tags', persona.tags);
-      }
-    }
-    const res = await fetch('/api/personas/', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${idToken}` },
-      body: formData
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.detail || data.message || 'Failed to create persona');
-    }
-    // Persona API returns {id, message}, so refetch list
-    await fetchPersonas().then(setPersonas);
-    return true;
-  };
-
-  const updatePersona = async (id, persona) => {
-    const formData = new FormData();
-    if (persona.name) formData.append('name', persona.name);
-    if (persona.description) formData.append('description', persona.description);
-    if (persona.intro) formData.append('intro', persona.intro);
-    if (persona.tags) {
-      if (Array.isArray(persona.tags)) {
-        persona.tags.forEach(tag => formData.append('tags', tag));
-      } else {
-        formData.append('tags', persona.tags);
-      }
-    }
-    const res = await fetch(`/api/personas/${id}`, {
-      method: 'PUT',
-      headers: { 'Authorization': `Bearer ${idToken}` },
-      body: formData
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.detail || data.message || 'Failed to update persona');
-    }
-    await fetchPersonas().then(setPersonas);
-    return true;
-  };
-
-  const deletePersona = async (id) => {
-    const res = await fetch(`/api/personas/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${idToken}` }
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.detail || data.message || 'Failed to delete persona');
-    }
-    await fetchPersonas().then(setPersonas);
-    return true;
   };
 
   useEffect(() => {
@@ -291,209 +232,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handlePersonaSave = async (personaData) => {
-    try {
-      if (personaModal.currentPersona) {
-        const updated = await updatePersona(personaModal.currentPersona.id, personaData);
-        setPersonas(personas.map(p => p.id === updated.id ? updated : p));
-      } else {
-        const newPersona = await createPersona(personaData);
-        setPersonas([...personas, newPersona]);
-      }
-      setPersonaModal({ show: false, currentPersona: null });
-    } catch (error) {
-      alert(error.message);
-    }
-  };
-
-  const editPersona = (persona) => {
-    setPersonaModal({
-      show: true,
-      currentPersona: persona
-    });
-  };
-
-  const handleDeletePersona = async (id) => {
-    if (window.confirm('Are you sure you want to delete this persona?')) {
-      try {
-        await deletePersona(id);
-        setPersonas(personas.filter(p => p.id !== id));
-      } catch (error) {
-        alert(error.message);
-      }
-    }
-  };
-
-  const renderCharacters = () => {
-    const characters = activeTab === TAB_TYPES.CREATED ? createdCharacters : likedCharacters;
-
-    return (
-      <div
-        className="d-flex flex-wrap align-items-start"
-        style={{
-          gap: '24px 18px',
-          marginTop: 18,
-          rowGap: 24,
-          columnGap: 18,
-          width: '100%',
-        }}
-      >
-        {characters.map(c => (
-          <div
-            key={c.id}
-            style={{
-              margin: 0,
-              padding: 0,
-            }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-              <CharacterCard character={c} />
-              {/* Edit button below the character card for own created characters */}
-              {activeTab === TAB_TYPES.CREATED && isOwnProfile && (
-                <button
-                  className="btn btn-outline-dark btn-sm mt-2"
-                  style={{
-                    borderRadius: 20,
-                    border: '1.5px solid #232323',
-                    background: '#fff',
-                    color: '#232323',
-                    fontWeight: 600,
-                    width: '90%',
-                    alignSelf: 'center',
-                    transition: 'background 0.18s, color 0.18s, border 0.18s',
-                    fontSize: '1rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                  }}
-                  title="Edit Character"
-                  onClick={() => navigate(`/character/edit/${c.id}`)}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = '#18191a';
-                    e.currentTarget.style.color = '#fff';
-                    e.currentTarget.style.border = '1.5px solid #18191a';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = '#fff';
-                    e.currentTarget.style.color = '#232323';
-                    e.currentTarget.style.border = '1.5px solid #232323';
-                  }}
-                >
-                  <i className="bi bi-pencil-square"></i>
-                  Edit
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-        {characters.length === 0 && (
-          <p className="text-muted">
-            {activeTab === TAB_TYPES.CREATED
-              ? "No characters created yet."
-              : "No liked characters yet."}
-          </p>
-        )}
-      </div>
-    );
-  };
-
-  const renderPersonas = () => {
-    if (!isOwnProfile) {
-      return (
-        <div className="alert alert-warning" style={{ background: '#fffbe6', color: '#856404', border: 'none' }}>
-          Personas are private and only visible to the profile owner.
-        </div>
-      );
-    }
-    return (
-      <div className="mt-3">
-        <button 
-          className="fw-bold rounded-pill mb-3"
-          style={{
-            background: '#18191a',
-            color: '#fff',
-            border: 'none',
-            fontSize: '1rem',
-            padding: '0.45rem 1.5rem',
-            letterSpacing: '0.2px',
-            transition: 'background 0.18s, color 0.18s',
-            outline: 'none',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#232323'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#18191a'; }}
-          onClick={() => setPersonaModal({ show: true, currentPersona: null })}
-        >
-          <i className="bi bi-plus"></i> Create New Persona
-        </button>
-
-        {personas.length === 0 ? (
-          <div className="alert alert-info" style={{ background: '#f5f6fa', color: '#232323', border: 'none' }}>
-            No personas created yet. Click "Create New Persona" to add one.
-          </div>
-        ) : (
-          <div className="list-group">
-            {personas.map(persona => (
-              <div key={persona.id} className="list-group-item" style={{ background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 12, marginBottom: 10 }}>
-                <div className="d-flex justify-content-between align-items-center">
-                  <div>
-                    <h5 style={{ color: '#18191a', fontWeight: 600 }}>{persona.name}</h5>
-                    <p className="mb-0 text-muted">{persona.description}</p>
-                  </div>
-                  <div>
-                    <button 
-                      className="btn btn-sm btn-outline-dark me-2"
-                      style={{ borderRadius: 20, border: '1.5px solid #232323', background: '#fff', color: '#232323' }}
-                      onClick={() => editPersona(persona)}
-                    >
-                      <i className="bi bi-pencil"></i>
-                    </button>
-                    <button 
-                      className="btn btn-sm btn-outline-danger"
-                      style={{ borderRadius: 20, border: '1.5px solid #e53935', background: '#fff', color: '#e53935' }}
-                      onClick={() => handleDeletePersona(persona.id)}
-                    >
-                      <i className="bi bi-trash"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case TAB_TYPES.CREATED:
-      case TAB_TYPES.LIKED:
-        return (
-          <>
-            <h4>{activeTab} Characters</h4>
-            {renderCharacters()}
-          </>
-        );
-      case TAB_TYPES.PERSONAS:
-        return (
-          <>
-            <h4>My Personas</h4>
-            {renderPersonas()}
-          </>
-        );
-      case TAB_TYPES.SCENES:
-        return (
-          <>
-            <h4>My Scenes</h4>
-            {renderScenes()}
-          </>
-        );
-      default:
-        return null;
-    }
-  };
+  // (Old renderCharacters, renderPersonas, renderScenes, renderContent removed and replaced by renderTabContent)
 
   // Use correct user data for display
 
@@ -553,7 +292,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <>
+    <PageWrapper>
       <div className="container mt-4" style={{ position: 'relative', zIndex: 1 }}>
         <div className="d-flex align-items-center mb-3">
           <img
@@ -571,13 +310,9 @@ export default function ProfilePage() {
                     : 'This user has not added a bio yet.')}
             </p>
             {isOwnProfile && (
-              <button
-                className="btn btn-outline-dark btn-sm mt-2"
-                style={{ borderRadius: 20, border: '1.5px solid #111', background: '#fff', color: '#111', fontWeight: 600 }}
-                onClick={openEditProfile}
-              >
+              <ButtonRounded onClick={openEditProfile} style={{ marginTop: 8, width: 160 }}>
                 <i className="bi bi-pencil"></i> Edit Profile
-              </button>
+              </ButtonRounded>
             )}
           </div>
         </div>
@@ -652,9 +387,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Content based on active tab */}
-          <div className="p-4" style={{ background: '#fff', borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', border: '1.5px solid #111' }}>
-            {renderContent()}
-          </div>
+          {renderTabContent()}
         </div>
       </div>
 
@@ -748,15 +481,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Persona Edit/Create Modal */}
-      {isOwnProfile && (
-        <PersonaModal
-          show={personaModal.show}
-          onClose={() => setPersonaModal({ show: false, currentPersona: null })}
-          onSave={handlePersonaSave}
-          currentPersona={personaModal.currentPersona}
-        />
-      )}
-    </>
+
+    </PageWrapper>
   );
 }

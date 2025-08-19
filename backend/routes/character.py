@@ -7,8 +7,9 @@ from typing import List
 from database import get_db
 from models import Character, User, Tag
 from utils.session import verify_session_token, get_current_user
-from utils.cloudinary_utils import upload_character_picture
+from utils.cloudinary_utils import upload_scene_image
 from utils.validators import validate_character_fields
+from schemas import CharacterOut
 
 router = APIRouter()
 
@@ -50,6 +51,7 @@ async def create_character(
         greeting=greeting.strip(),
         example_messages=sample_dialogue.strip(),
         creator_id=current_user.id,
+        creator_name=current_user.name,
         views=0,
         picture=None
     )
@@ -58,7 +60,7 @@ async def create_character(
     db.refresh(char)
 
     if picture:
-        char.picture = upload_character_picture(picture.file, char.id)
+        char.picture = upload_scene_image(picture.file, char.id)
 
     if current_user.characters_created is None:
         current_user.characters_created = []
@@ -99,45 +101,27 @@ async def update_character(
     char.example_messages = sample_dialogue.strip()
 
     if picture:
-        char.picture = upload_character_picture(picture.file, char.id)
+        char.picture = upload_scene_image(picture.file, char.id)
 
     db.commit()
     return {"message": "Character updated successfully"}
 
-@router.get("/api/characters")
-def get_characters(db: Session = Depends(get_db)):
-    chars = db.query(Character).all()
-    return {
-        c.id: {
-            "name": c.name,
-            "persona": c.persona,
-            "example_messages": c.example_messages,
-            "creator_id": c.creator_id,
-            "tagline": c.tagline,
-            "tags": c.tags,
-            "greeting": c.greeting
-        } for c in chars
-    }
+@router.get("/api/characters", response_model=None)
+def get_characters(search: str = None, db: Session = Depends(get_db)):
+    query = db.query(Character)
+    if search:
+        # Case-insensitive search by name
+        query = query.filter(Character.name.ilike(f"%{search}%"))
+    chars = query.all()
+    return chars
 
-@router.get("/api/character/{character_id}")
+
+@router.get("/api/character/{character_id}", response_model=CharacterOut)
 def get_character(character_id: int, db: Session = Depends(get_db)):
     c = db.query(Character).filter(Character.id == character_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Character not found")
-    return {
-        "id": c.id,
-        "name": c.name,
-        "persona": c.persona,
-        "example_messages": c.example_messages,
-        "creator_id": c.creator_id,
-        "likes": c.likes,
-        "views": c.views,
-        "created_time": c.created_time,
-        "picture": c.picture,
-        "tagline": c.tagline,
-        "tags": c.tags,
-        "greeting": c.greeting
-    }
+    return c
 
 @router.delete("/api/character/{character_id}/delete")
 async def delete_character(
@@ -200,89 +184,40 @@ def like_character(
     return {"likes": char.likes}
 
 
-@router.get("/api/characters/popular")
+@router.get("/api/characters/popular", response_model=List[CharacterOut])
 def get_popular_characters(db: Session = Depends(get_db)):
     chars = db.query(Character).order_by(Character.views.desc()).limit(10).all()
-    return [
-        {
-            "id": c.id,
-            "name": c.name,
-            "persona": c.persona,
-            "picture": c.picture,
-            "views": c.views,
-            "likes": c.likes,
-            "tagline": c.tagline,
-            "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
-        } for c in chars
-    ]
+    return chars
 
-@router.get("/api/characters/recommended")
+@router.get("/api/characters/recommended", response_model=List[CharacterOut])
 def get_recommended_characters(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
     ):
     if not current_user.liked_tags:
         return []  # no recommendations
-    
     user_tags = current_user.liked_tags or []
     tags_array = array(user_tags, type_=TEXT)
-
     chars = db.query(Character).filter(Character.tags.overlap(tags_array)).order_by(Character.likes.desc()).limit(12).all()
+    return chars
 
-    return [
-        {
-            "id": c.id,
-            "name": c.name,
-            "persona": c.persona,
-            "picture": c.picture,
-            "views": c.views,
-            "likes": c.likes,
-            "tagline": c.tagline,
-            "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
-        } for c in chars
-    ]
-
-@router.get("/api/characters/by-tag/{tag_name}")
+@router.get("/api/characters/by-tag/{tag_name}", response_model=List[CharacterOut])
 def get_characters_by_tag(
     tag_name: str,
     db: Session = Depends(get_db),
     limit: int = 12
 ):
-    # Find characters that have this tag
     chars = db.query(Character).filter(
         Character.tags.any(tag_name)
     ).order_by(
         Character.likes.desc()
     ).limit(limit).all()
+    return chars
 
-    return [
-        {
-            "id": c.id,
-            "name": c.name,
-            "persona": c.persona,
-            "picture": c.picture,
-            "views": c.views,
-            "likes": c.likes,
-            "tagline": c.tagline,
-            "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
-        } for c in chars
-    ]
-
-@router.get("/api/characters/recent")
+@router.get("/api/characters/recent", response_model=List[CharacterOut])
 def get_recent_characters(db: Session = Depends(get_db)):
     chars = db.query(Character).order_by(Character.created_time.desc()).limit(10).all()
-    return [
-        {
-            "id": c.id,
-            "name": c.name,
-            "persona": c.persona,
-            "picture": c.picture,
-            "views": c.views,
-            "likes": c.likes,
-            "tagline": c.tagline,
-            "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
-        } for c in chars
-    ]
+    return chars
 
 
 @router.post("/api/views/increment")

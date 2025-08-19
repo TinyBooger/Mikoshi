@@ -1,70 +1,97 @@
-import React, { useState } from 'react';
 
-export default function SceneModal({ show, onClose, onSubmit }) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+
+import React, { useState, useEffect } from 'react';
+import SceneCard from './SceneCard';
+
+export default function SceneModal({ show, onClose, onSelect }) {
+  const [popularScenes, setPopularScenes] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  if (!show) return null;
+  useEffect(() => {
+    if (!show) return;
+    // Fetch popular scenes on open
+    fetch('/api/scenes/popular')
+      .then(res => res.json())
+      .then(setPopularScenes);
+  }, [show]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!name.trim() || !description.trim()) {
-      alert('Please enter both name and description.');
+  useEffect(() => {
+    if (!show) return;
+    if (!searchTerm.trim()) {
+      setSearchResults([]);
       return;
     }
     setLoading(true);
-    await onSubmit({ name: name.trim(), description: description.trim() });
-    setLoading(false);
-    setName('');
-    setDescription('');
-  };
+    // Search scenes by name (search on type)
+    const controller = new AbortController();
+    fetch(`/api/scenes/?search=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
+      .then(res => res.json())
+      .then(data => {
+        setSearchResults(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+    return () => controller.abort();
+  }, [searchTerm, show]);
 
-  const handleClose = () => {
-    setName('');
-    setDescription('');
-    onClose();
-  };
+  if (!show) return null;
 
   return (
     <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog">
-        <form className="modal-content" onSubmit={handleSubmit}>
+      <div className="modal-dialog modal-lg">
+        <div className="modal-content">
           <div className="modal-header">
-            <h5 className="modal-title">Create Scene</h5>
-            <button type="button" className="btn-close" onClick={handleClose}></button>
+            <h5 className="modal-title">Select Scene</h5>
+            <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
           <div className="modal-body">
-            <div className="mb-3">
-              <label className="form-label">Name</label>
-              <input
-                type="text"
-                className="form-control"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                maxLength={100}
-                required
-              />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Description</label>
-              <textarea
-                className="form-control"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                rows={3}
-                maxLength={1000}
-                required
-              />
-            </div>
+            <input
+              type="text"
+              className="form-control mb-3"
+              placeholder="Search scenes by name..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              autoFocus
+            />
+            {searchTerm.trim() ? (
+              loading ? (
+                <div className="text-center text-muted">Searching...</div>
+              ) : (
+                <div className="d-flex flex-wrap justify-content-start">
+                  {searchResults.length > 0 ? (
+                    searchResults.map(scene => (
+                      <div key={scene.id} onClick={() => onSelect(scene)} style={{ cursor: 'pointer' }}>
+                        <SceneCard scene={scene} />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-muted w-100 text-center">No scenes found.</div>
+                  )}
+                </div>
+              )
+            ) : (
+              <>
+                <h6 className="mb-2">Popular Scenes</h6>
+                <div className="d-flex flex-wrap justify-content-start">
+                  {popularScenes.length > 0 ? (
+                    popularScenes.map(scene => (
+                      <div key={scene.id} onClick={() => onSelect(scene)} style={{ cursor: 'pointer' }}>
+                        <SceneCard scene={scene} />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-muted w-100 text-center">No popular scenes found.</div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
           <div className="modal-footer">
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Saving...' : 'Save'}
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={handleClose} disabled={loading}>Cancel</button>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

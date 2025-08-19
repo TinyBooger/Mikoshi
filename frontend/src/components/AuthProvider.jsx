@@ -17,11 +17,9 @@ export function AuthProvider({ children }) {
   const fetchUserData = async (user, attempt = 1) => {
     setUserDataLoading(true);
     setError(null);
-    console.log(`[AuthProvider] fetchUserData called (attempt ${attempt}) for user:`, user);
     try {
       const freshToken = await user.getIdToken();
       setIdToken(freshToken);
-      console.log('[AuthProvider] Got idToken:', freshToken);
       const response = await fetch('/api/users/me', {
         headers: {
           'Authorization': `Bearer ${freshToken}`
@@ -30,7 +28,6 @@ export function AuthProvider({ children }) {
       if (response.ok) {
         const data = await response.json();
         setUserData(data);
-        console.log('[AuthProvider] userData fetched:', data);
       } else {
         setUserData(null);
         setError('Failed to fetch user data');
@@ -57,14 +54,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
-      console.log('[AuthProvider] onAuthStateChanged:', user);
       if (user) {
         fetchUserData(user);
       } else {
         setUserData(null);
         setIdToken(null);
         setUserDataLoading(false);
-        console.log('[AuthProvider] User signed out, cleared userData and idToken');
       }
       setAuthLoading(false);
     });
@@ -74,19 +69,6 @@ export function AuthProvider({ children }) {
 
   // Combined loading state
   const loading = authLoading || (currentUser && userDataLoading);
-
-  // Debug log for state changes
-  useEffect(() => {
-    console.log('[AuthProvider] State:', {
-      currentUser,
-      userData,
-      idToken,
-      loading,
-      error,
-      authLoading,
-      userDataLoading
-    });
-  }, [currentUser, userData, idToken, loading, error, authLoading, userDataLoading]);
 
   return (
     <AuthContext.Provider value={{

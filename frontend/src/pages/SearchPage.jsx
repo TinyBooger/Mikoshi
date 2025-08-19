@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 import { AuthContext } from '../components/AuthProvider';
 import CharacterCard from '../components/CharacterCard';
+import PageWrapper from '../components/PageWrapper';
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -90,15 +91,7 @@ export default function SearchPage() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--bs-body-bg, #f8f9fa)',
-      color: '#18191a',
-      width: '100%',
-      boxSizing: 'border-box',
-      padding: 0,
-    }}>
-      <div id="topbar-container" className="flex-shrink-0"></div>
+    <PageWrapper>
       <div
         className="flex-grow-1 d-flex flex-column align-items-center"
         style={{
@@ -339,6 +332,6 @@ export default function SearchPage() {
           )}
         </div>
       </div>
-    </div>
+    </PageWrapper>
   );
 }

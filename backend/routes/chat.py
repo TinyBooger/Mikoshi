@@ -26,6 +26,8 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     messages = data.get("messages")
     character_id = data.get("character_id")
     chat_id = data.get("chat_id")
+    scene_id = data.get("scene_id")
+    persona_id = data.get("persona_id")
 
     if not messages or not isinstance(messages, list):
         return JSONResponse(content={"error": "Invalid or missing messages"}, status_code=400)
@@ -63,6 +65,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             "last_updated": datetime.now(UTC).isoformat(),
             "created_at": datetime.now(UTC).isoformat() if not chat_id else None
         }
+        # Include scene_id and persona_id if provided
+        if scene_id:
+            new_entry["scene_id"] = scene_id
+        if persona_id:
+            new_entry["persona_id"] = persona_id
 
         # Remove existing entry for this chat_id only
         filtered = [h for h in (current_user.chat_history or []) if h.get("chat_id") != chat_id]

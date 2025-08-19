@@ -1,16 +1,18 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams, useOutletContext } from 'react-router';
 import defaultPic from '../assets/images/default-picture.png';
 import { buildSystemMessage } from '../utils/systemTemplate';
 import { AuthContext } from '../components/AuthProvider';
 import PersonaModal from '../components/PersonaModal';
 import SceneModal from '../components/SceneModal';
+import CharacterModal from '../components/CharacterModal';
+import CharacterSidebar from '../components/CharacterSidebar';
+import ChatInitModal from '../components/ChatInitModal';
 
 export default function ChatPage() {
+  const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
   const { userData, idToken, refreshUserData } = useContext(AuthContext);
   const [searchParams] = useSearchParams();
-  const [char, setChar] = useState(null);
-  const [creator, setCreator] = useState(null);
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -21,17 +23,32 @@ export default function ChatPage() {
   const [editingChatId, setEditingChatId] = useState(null);
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
-  const [selectedPersonaId, setSelectedPersonaId] = useState(null);
-  const [selectedSceneId, setSelectedSceneId] = useState(null);
-  const [scenes, setScenes] = useState([]);
-  const [personaModal, setPersonaModal] = useState({
-    show: false,
-    currentPersona: null
-  });
+
+  const [selectedPersona, setSelectedPersona] = useState(null);
+  const [selectedScene, setSelectedScene] = useState(null);
+  const [selectedCharacter, setSelectedCharacter] = useState(null);
+
+  const [personaModal, setPersonaModal] = useState({ show: false });
   const [sceneModal, setSceneModal] = useState({ show: false });
-  const characterId = searchParams.get('character');
+  const [characterModal, setCharacterModal] = useState({ show: false });
+  const [initModal, setInitModal] = useState(false);
+
+  // Mobile detection state
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  // Update isMobile on window resize
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const [characterId, setCharacterId] = useState(searchParams.get('character'));
+  const [sceneId, setSceneId] = useState(searchParams.get('scene'));
+  const [personaId, setPersonaId] = useState(searchParams.get('persona'));
+
   const navigate = useNavigate();
   const initialized = useRef(false);
+  const isNewChat = useRef(true);
 
   // Initialize character data (runs once when characterId changes)
   useEffect(() => {
@@ -40,117 +57,139 @@ export default function ChatPage() {
       return;
     }
 
-    if (!characterId) return;
-
-    // Reset initialization flag when character changes
-    initialized.current = false;
-
-    fetch(`/api/character/${characterId}`, {
-      headers: { 'Authorization': `Bearer ${idToken}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        setChar(data);
-        setLikes(data.likes || 0);
-
-        // Fetch creator info
-        fetch(`/api/user/${data.creator_id}`, {
-          headers: { 'Authorization': `Bearer ${idToken}` }
-        })
-          .then(r => r.json())
-          .then(setCreator);
-
-        // Update recent characters
-        fetch('/api/recent-characters/update', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}` 
-          },
-          body: JSON.stringify({ character_id: characterId })
-        });
-
-        // Increment views
-        fetch('/api/views/increment', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}` 
-          },
-          body: JSON.stringify({ character_id: characterId })
-        });
-      });
-  }, [characterId, navigate, idToken]);
-
-  // Initialize messages and likes (runs once after character is loaded)
-  useEffect(() => {
-    if (!char || !userData || initialized.current) return;
-
-    // Mark as initialized
-    initialized.current = true;
-
-    // Check likes from userData
-    if (userData?.liked_characters?.includes(parseInt(characterId))) {
-      setHasLiked(true);
+    if (!initialized.current) {
+      loadChatHistory();
+      fetchInitialData();
+      initializeChat();
+      initialized.current = true;
+      return;
     }
 
+
+    
+  }, [navigate, idToken]);
+
+  // Fetch character, scene, and persona data if IDs are present
+  const fetchInitialData = () => {
+    if (characterId) {
+      fetch(`/api/character/${characterId}`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
+        .then(res => res.json())
+        .then(character => {
+          setSelectedCharacter(character);
+          setLikes(character.likes || 0);
+        });
+    }
+
+    // Fetch scene if present (handle '0' and empty string)
+    if (sceneId) {
+      fetch(`/api/scenes/${sceneId}`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
+        .then(res => res.json())
+        .then(scene => {
+          setSelectedScene(scene);
+        });
+    }
+
+    // Fetch persona if present (handle '0' and empty string)
+    if (personaId) {
+      fetch(`/api/personas/${personaId}`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
+        .then(res => res.json())
+        .then(persona => {
+          setSelectedPersona(persona);
+        });
+    }
+  };
+
+  // Loads chat history for the current characterId
+  const loadChatHistory = () => {
     // Set messages based on user's chat history
     const entry = userData?.chat_history?.find(
       h => h.character_id === characterId
     );
     if (entry) {
       setMessages([...entry.messages]);
-    } else {
-      initializeNewChat();
+      // Set characterId, sceneId, personaId from entry if present
+      if (entry.character_id) {
+        setCharacterId(entry.character_id);
+      }
+      if (entry.scene_id) {
+        setSceneId(entry.scene_id);
+      }
+      if (entry.persona_id) {
+        setPersonaId(entry.persona_id);
+      }
+      isNewChat.current = false;
     }
-  }, [char, userData, characterId]);
+  };
 
-  // Fetch user's scenes on mount or when userData changes
-  useEffect(() => {
-    if (!idToken) return;
-    fetch('/api/scenes/', {
-      headers: { 'Authorization': `Bearer ${idToken}` }
-    })
-      .then(res => res.json())
-      .then(setScenes);
-  }, [idToken, userData]);
-
-  const initializeNewChat = () => {
-    const userPersonaObj = userData?.personas?.find(p => p.id === selectedPersonaId);
-    const sceneObj = scenes?.find(s => s.id === selectedSceneId);
-    const sys = { 
-      role: "system", 
-      content: buildSystemMessage(
-        char.persona || "", 
-        char.example_messages || "", 
-        userPersonaObj?.description || null,
-        sceneObj?.description || null
-      ) 
-    };
-    let greet = null;
-    if (sceneObj) {
-      greet = { 
-        role: "assistant", 
-        content: `Welcome to the scene: "${sceneObj.name}". ${sceneObj.description}` 
-      };
-    } else if (char.greeting) {
-      greet = { 
-        role: "assistant", 
-        content: char.greeting 
-      };
+  const initializeChat = () => {
+    // Set likes and creator from selectedCharacter
+    if (selectedCharacter) {
+      // Update recent characters
+      fetch('/api/recent-characters/update', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}` 
+        },
+        body: JSON.stringify({ character_id: selectedCharacter.id })
+      });
+      // Increment views
+      fetch('/api/views/increment', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}` 
+        },
+        body: JSON.stringify({ character_id: selectedCharacter.id })
+      });
     }
-    setMessages(greet ? [sys, greet] : [sys]);
+
+    // Check likes from userData
+    if (userData?.liked_characters?.includes(parseInt(characterId))) {
+      setHasLiked(true);
+    }
+
+    if(isNewChat.current) {
+      startNewChat();
+    }
   };
 
   const startNewChat = () => {
+    const sys = {
+      role: "system",
+      content: buildSystemMessage(
+        (selectedCharacter?.persona || ""),
+        (selectedCharacter?.example_messages || ""),
+        selectedPersona?.description || null,
+        selectedScene?.description || null
+      )
+    };
+    let greet = null;
+    if (selectedScene) {
+      greet = {
+        role: "assistant",
+        content: `Welcome to the scene: "${selectedScene.name}". ${selectedScene.description}`
+      };
+    } else if ((selectedCharacter?.greeting )) {
+      greet = {
+        role: "assistant",
+        content: selectedCharacter?.greeting
+      };
+    }
+    setMessages(greet ? [sys, greet] : [sys]);
     setSelectedChat(null);
     setInput('');
-    initializeNewChat();
   };
 
   const handleSend = async (event) => {
     event.preventDefault(); // Always prevent default
-    if (sending || !input.trim() || !char) return;
+    if (sending || !input.trim() || !selectedCharacter) return;
     setSending(true);
     const updatedMessages = [...messages, { role: 'user', content: input.trim() }];
     setMessages(updatedMessages);
@@ -165,6 +204,8 @@ export default function ChatPage() {
         body: JSON.stringify({
           character_id: characterId,
           chat_id: selectedChat?.chat_id,
+          scene_id: selectedScene?.id || null,
+          persona_id: selectedPersona?.id || null,
           messages: updatedMessages
         })
       });
@@ -201,7 +242,7 @@ export default function ChatPage() {
   const loadChat = (chat) => {
     const sys = { 
       role: "system", 
-      content: buildSystemMessage(char.persona || "", char.example_messages || "") 
+      content: buildSystemMessage(selectedCharacter.persona || "", selectedCharacter.example_messages || "") 
     };
     setMessages([sys, ...chat.messages]);
     setSelectedChat({
@@ -281,72 +322,30 @@ export default function ChatPage() {
     setMenuOpenId(menuOpenId === chatId ? null : chatId);
   };
 
-  const handlePersonaSelect = (personaId) => {
-    const confirmed = window.confirm("This will start a new chat, are you sure?");
-    if (!confirmed) return;
-
-    setSelectedPersonaId(personaId);
-    startNewChat(); // reuse existing logic
-  };
-
-  const handlePersonaSave = async (personaData) => {
-    try {
-      const res = await fetch('/api/personas', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}` 
-        },
-        body: JSON.stringify(personaData)
-      });
-
-      if (!res.ok) throw new Error('Failed to create persona');
-      
-      const newPersona = await res.json();
-      await refreshUserData(); // Refresh to get the new persona
-      
-      // Optionally select the new persona immediately
-      setSelectedPersonaId(newPersona.id);
-      startNewChat();
-      
-      setPersonaModal({ show: false, currentPersona: null });
-    } catch (error) {
-      alert(error.message);
-    }
-  };
-
-  const handleSceneSelect = (sceneId) => {
-    const confirmed = window.confirm("This will start a new chat, are you sure?");
-    if (!confirmed) return;
-    setSelectedSceneId(sceneId);
-    startNewChat();
-  };
-
-  const handleSceneSave = async (sceneData) => {
-    try {
-      const formData = new FormData();
-      formData.append('name', sceneData.name);
-      formData.append('description', sceneData.description);
-      const res = await fetch('/api/scenes/', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${idToken}` },
-        body: formData
-      });
-      if (!res.ok) throw new Error('Failed to create scene');
-      const newScene = await res.json();
-      setScenes(prev => [...prev, newScene]);
-      setSelectedSceneId(newScene.id);
-      setSceneModal({ show: false });
-      startNewChat();
-    } catch (error) {
-      alert(error.message);
-    }
-  };
-
   return (
-    <div style={{ display: 'flex', height: '100%', background: '#f8f9fa', minHeight: 0 }}>
+    <div style={{ 
+      display: 'flex', 
+      height: '100%', 
+      background: '#f8f9fa', 
+      minHeight: 0,
+      position: 'relative', // Add this
+      width: '100%', // Add this
+      overflow: 'hidden' // Add this to prevent any odd scrolling
+      }}>
       {/* Main Chat Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#fff', borderRadius: '1.5rem', margin: '1.5rem 0.5rem 1.5rem 1.5rem', boxShadow: '0 2px 16px rgba(0,0,0,0.04)', overflow: 'hidden', height: 'auto' }}>
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        minHeight: 0, 
+        zIndex: 1,
+        background: '#fff', 
+        borderRadius: '1.5rem', 
+        margin: '1.5rem 0.5rem 1.5rem 1.5rem', 
+        boxShadow: '0 2px 16px rgba(0,0,0,0.04)', 
+        overflow: 'hidden', 
+        height: 'auto',
+        }}>
         {/* Messages Area */}
         <div style={{ flex: 1, padding: '1.2rem', overflowY: 'auto', background: '#fff', minHeight: 0 }}>
           {messages.filter(m => m.role !== 'system').length === 0 ? (
@@ -370,8 +369,8 @@ export default function ChatPage() {
                     maxWidth: '80%'
                   }}>
                     <img
-                      src={m.role === 'user' ? (userData?.profile_pic || defaultPic) : (char?.picture || defaultPic)}
-                      alt={m.role === 'user' ? 'You' : char?.name}
+                      src={m.role === 'user' ? (userData?.profile_pic || defaultPic) : (selectedCharacter?.picture || defaultPic)}
+                      alt={m.role === 'user' ? 'You' : selectedCharacter?.name}
                       style={{ width: 77, height: 77, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef' }}
                     />
                     <div style={{
@@ -387,7 +386,7 @@ export default function ChatPage() {
                       maxWidth: '100%'
                     }}>
                       <div style={{ fontWeight: 600, fontSize: '0.76rem', marginBottom: 2, opacity: 0.7 }}>
-                        {m.role === 'user' ? 'You' : char?.name}
+                        {m.role === 'user' ? 'You' : selectedCharacter?.name}
                       </div>
                       <div>{m.content}</div>
                     </div>
@@ -453,380 +452,81 @@ export default function ChatPage() {
         </form>
       </div>
 
-      {/* Character Sidebar */}
-      <aside style={{ width: 256, minHeight: 0, background: '#fff', borderRadius: '1.2rem', margin: '1.2rem 1.2rem 1.2rem 0', boxShadow: '0 2px 13px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', height: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.6rem' }}>
-          <img
-            src={char?.picture || defaultPic}
-            alt="Character Avatar"
-            style={{ width: 102, height: 102, objectFit: 'cover', borderRadius: '50%', border: '2.4px solid #e9ecef', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginRight: 19 }}
-          />
-          <div>
-            <div style={{ color: '#888', fontSize: 13, marginBottom: 2 }}>
-              <i className="bi bi-person-fill me-1"></i> By:
-              <span
-                style={{ color: '#18191a', fontWeight: 600, marginLeft: 6, cursor: 'pointer' }}
-                onClick={() => navigate(`/profile/${char?.creator_id}`)}
-              >
-                {creator?.name || 'Unknown'}
-              </span>
-            </div>
-            <div style={{ color: '#888', fontSize: 13, marginBottom: 2 }}>
-              <i className="bi bi-calendar me-1"></i> {char && new Date(char.created_time).toLocaleDateString()}
-            </div>
-            <div style={{ color: '#888', fontSize: 13 }}>
-              <i className="bi bi-chat-square-text me-1"></i> {char?.views || 0} chats
-            </div>
-          </div>
-        </div>
-
-        <h3 style={{ fontWeight: 700, textAlign: 'center', marginBottom: 6, color: '#18191a', fontSize: '1.2rem', letterSpacing: '0.4px' }}>{char?.name}</h3>
-
-        {char?.tagline && (
-          <p style={{ textAlign: 'center', color: '#888', marginBottom: 19, fontStyle: 'italic', fontSize: '0.86rem' }}>
-            "{char.tagline}"
-          </p>
-        )}
-
-        {/* Always show New Chat button, Persona and Scene selection */}
-        <div style={{ marginBottom: 24 }}>
-          <button
-            style={{
-              width: '100%',
-              background: '#18191a',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '1.6rem',
-              fontWeight: 600,
-              fontSize: '0.86rem',
-              padding: '0.48rem 0',
-              marginBottom: 9,
-              boxShadow: '0 2px 8px rgba(24,25,26,0.08)',
-              cursor: 'pointer',
-              transition: 'background 0.14s',
-              outline: 'none',
-            }}
-            onClick={startNewChat}
-            onMouseEnter={e => e.currentTarget.style.background = '#232323'}
-            onMouseLeave={e => e.currentTarget.style.background = '#18191a'}
-          >
-            <i className="bi bi-plus-circle me-2"></i>New Chat
-          </button>
-
-          {/* Persona dropdown */}
-          <div className="dropdown" style={{ marginBottom: 12 }}>
-            <button
-              className="btn btn-outline-secondary btn-sm dropdown-toggle w-100"
-              type="button"
-              data-bs-toggle="dropdown"
-              style={{
-                borderRadius: '1.6rem',
-                fontWeight: 600,
-                fontSize: '0.82rem',
-                background: '#f5f6fa',
-                color: '#232323',
-                border: '1.2px solid #e9ecef',
-                padding: '0.4rem 0.96rem',
-                outline: 'none',
-                boxShadow: 'none',
-                transition: 'background 0.14s, color 0.14s, border 0.14s',
-              }}
-            >
-              {selectedPersonaId
-                ? userData?.personas?.find(p => p.id === selectedPersonaId)?.name || 'Select Persona'
-                : 'Select Persona'}
-            </button>
-            <ul className="dropdown-menu w-100">
-              {userData?.personas?.length > 0 ? (
-                <>
-                  {userData.personas.map(p => (
-                    <li key={p.id}>
-                      <button
-                        className="dropdown-item"
-                        onClick={() => handlePersonaSelect(p.id)}
-                      >
-                        {p.name}
-                      </button>
-                    </li>
-                  ))}
-                  <li><hr className="dropdown-divider" /></li>
-                </>
-              ) : (
-                <li className="dropdown-item-text small text-muted px-3 py-2">
-                  No personas created yet
-                </li>
-              )}
-              <li>
-                <button
-                  className="dropdown-item text-primary"
-                  onClick={() => setPersonaModal({ show: true, currentPersona: null })}
-                >
-                  <i className="bi bi-plus-circle me-1"></i> Create New Persona
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* Scene dropdown */}
-          <div className="dropdown">
-            <button
-              className="btn btn-outline-secondary btn-sm dropdown-toggle w-100"
-              type="button"
-              data-bs-toggle="dropdown"
-              style={{
-                borderRadius: '1.6rem',
-                fontWeight: 600,
-                fontSize: '0.82rem',
-                background: '#f5f6fa',
-                color: '#232323',
-                border: '1.2px solid #e9ecef',
-                padding: '0.4rem 0.96rem',
-                outline: 'none',
-                boxShadow: 'none',
-                transition: 'background 0.14s, color 0.14s, border 0.14s',
-              }}
-            >
-              {selectedSceneId
-                ? scenes?.find(s => s.id === selectedSceneId)?.name || 'Select Scene'
-                : 'Select Scene'}
-            </button>
-            <ul className="dropdown-menu w-100">
-              {scenes?.length > 0 ? (
-                <>
-                  {scenes.map(s => (
-                    <li key={s.id}>
-                      <button
-                        className="dropdown-item"
-                        onClick={() => handleSceneSelect(s.id)}
-                      >
-                        {s.name}
-                      </button>
-                    </li>
-                  ))}
-                  <li><hr className="dropdown-divider" /></li>
-                </>
-              ) : (
-                <li className="dropdown-item-text small text-muted px-3 py-2">
-                  No scenes created yet
-                </li>
-              )}
-              <li>
-                <button
-                  className="dropdown-item text-primary"
-                  onClick={() => setSceneModal({ show: true })}
-                >
-                  <i className="bi bi-plus-circle me-1"></i> Create New Scene
-                </button>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Chat History Section */}
-        {userData?.chat_history?.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#18191a' }}>Chat History</h6>
-              <button
-                style={{
-                  background: '#fff',
-                  color: '#18191a',
-                  border: '1.5px solid #e9ecef',
-                  borderRadius: '1.5rem',
-                  fontWeight: 600,
-                  fontSize: '0.98rem',
-                  padding: '0.2rem 1.1rem',
-                  cursor: 'pointer',
-                  transition: 'background 0.18s, color 0.18s, border 0.18s',
-                  outline: 'none',
-                }}
-                onClick={() => setShowChatHistory(!showChatHistory)}
-                onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
-              >
-                {showChatHistory ? 'Hide' : 'Show'}
-              </button>
-            </div>
-            {showChatHistory && (
-              <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 12, background: '#f5f6fa', padding: 8 }}>
-                {userData.chat_history
-                  .filter(chat => chat.character_id === characterId)
-                  .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated))
-                  .map((chat) => (
-                    <div
-                      key={chat.chat_id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '0.5rem 1rem',
-                        borderRadius: 10,
-                        background: selectedChat?.chat_id === chat.chat_id ? '#18191a' : 'transparent',
-                        color: selectedChat?.chat_id === chat.chat_id ? '#fff' : '#232323',
-                        marginBottom: 4,
-                        cursor: 'pointer',
-                        fontWeight: 500,
-                        fontSize: '0.98rem',
-                        transition: 'background 0.18s, color 0.18s',
-                      }}
-                      onClick={() => loadChat(chat)}
-                    >
-                      {editingChatId === chat.chat_id ? (
-                        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm me-2"
-                            value={newTitle}
-                            onChange={(e) => setNewTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleRename(chat.chat_id, chat.title);
-                              if (e.key === 'Escape') setEditingChatId(null);
-                            }}
-                            autoFocus
-                            style={{ flex: 1, borderRadius: 8, border: '1.5px solid #e9ecef', fontSize: '0.98rem' }}
-                          />
-                          <button
-                            className="btn btn-sm btn-success"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRename(chat.chat_id, chat.title);
-                            }}
-                          >
-                            <i className="bi bi-check"></i>
-                          </button>
-                          <button
-                            className="btn btn-sm btn-danger ms-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingChatId(null);
-                            }}
-                          >
-                            <i className="bi bi-x"></i>
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {chat.title || chat.messages.find(m => m.role === 'user')?.content || 'New Chat'}
-                          </span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <small style={{ color: selectedChat?.chat_id === chat.chat_id ? '#fff' : '#888', fontWeight: 400 }}>
-                              {new Date(chat.last_updated).toLocaleDateString()}
-                            </small>
-                            <div className="dropdown">
-                              <button
-                                className="btn btn-sm btn-link text-muted p-0"
-                                onClick={(e) => toggleMenu(chat.chat_id, e)}
-                                style={{ position: 'relative', zIndex: menuOpenId === chat.chat_id ? 1000 : 'auto', color: selectedChat?.chat_id === chat.chat_id ? '#fff' : '#888' }}
-                              >
-                                <i className="bi bi-three-dots-vertical"></i>
-                              </button>
-                              {menuOpenId === chat.chat_id && (
-                                <div
-                                  className="dropdown-menu show"
-                                  style={{
-                                    position: 'fixed',
-                                    right: '1rem',
-                                    zIndex: 9999,
-                                    minWidth: '120px',
-                                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                                  }}
-                                >
-                                  <button
-                                    className="dropdown-item"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setNewTitle(chat.title || '');
-                                      setEditingChatId(chat.chat_id);
-                                      setMenuOpenId(null);
-                                    }}
-                                  >
-                                    <i className="bi bi-pencil me-2"></i> Rename
-                                  </button>
-                                  <button
-                                    className="dropdown-item text-danger"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDelete(chat.chat_id);
-                                      setMenuOpenId(null);
-                                    }}
-                                  >
-                                    <i className="bi bi-trash me-2"></i> Delete
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Like Button */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-          <button
-            onClick={likeCharacter}
-            disabled={hasLiked}
-              style={{
-                background: hasLiked ? '#e53935' : '#fff',
-                color: hasLiked ? '#fff' : '#e53935',
-                border: hasLiked ? 'none' : '1.2px solid #e53935',
-                borderRadius: '1.6rem',
-                fontWeight: 600,
-                fontSize: '0.86rem',
-                padding: '0.32rem 1.2rem',
-                boxShadow: hasLiked ? '0 2px 8px rgba(229,57,53,0.08)' : 'none',
-                cursor: hasLiked ? 'not-allowed' : 'pointer',
-                opacity: hasLiked ? 0.8 : 1,
-                transition: 'all 0.14s',
-                outline: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6
-              }}
-          >
-            <i className={`bi ${hasLiked ? 'bi-heart-fill' : 'bi-heart'}`} style={{ fontSize: 20 }}></i>
-            <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>{likes}</span>
-          </button>
-        </div>
-
-        {/* Tags */}
-        {char?.tags?.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <h6 style={{ fontWeight: 700, marginBottom: 6, textAlign: 'center', color: '#18191a', fontSize: '0.82rem' }}>Tags</h6>
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6 }}>
-              {char.tags.map((tag, i) => (
-                <span key={i} style={{
-                  background: '#f5f6fa',
-                  color: '#232323',
-                  border: '1.2px solid #e9ecef',
-                  borderRadius: '1.2rem',
-                  fontWeight: 600,
-                  fontSize: '0.78rem',
-                  padding: '0.24rem 0.88rem',
-                  marginBottom: 2
-                }}>
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </aside>
+      <ChatInitModal
+        show={initModal}
+        onSelectCharacter={() => setCharacterModal({ show: true })}
+        onSelectPersona={() => setPersonaModal({ show: true })}
+        onSelectScene={() => setSceneModal({ show: true })}
+        selectedCharacter={selectedCharacter}
+        selectedPersona={selectedPersona}
+        selectedScene={selectedScene}
+        onStartChat={async () => {
+          setInitModal(false);
+          initializeChat();
+        }}
+        onCancel={() => setInitModal(false)}
+        isMobile={isMobile}
+      />
+      <CharacterSidebar
+        characterSidebarVisible={characterSidebarVisible}
+        onToggleCharacterSidebar={onToggleCharacterSidebar}
+        setInitModal={() => setInitModal(true)}
+        selectedCharacter={selectedCharacter}
+        selectedPersona={selectedPersona}
+        selectedScene={selectedScene}
+        personaModal={personaModal}
+        setPersonaModal={setPersonaModal}
+        sceneModal={sceneModal}
+        setSceneModal={setSceneModal}
+        characterModal={characterModal}
+        setCharacterModal={setCharacterModal}
+        userData={userData}
+        characterId={characterId}
+        selectedChat={selectedChat}
+        editingChatId={editingChatId}
+        newTitle={newTitle}
+        setNewTitle={setNewTitle}
+        setEditingChatId={setEditingChatId}
+        menuOpenId={menuOpenId}
+        setMenuOpenId={setMenuOpenId}
+        handleRename={handleRename}
+        handleDelete={handleDelete}
+        loadChat={loadChat}
+        showChatHistory={showChatHistory}
+        setShowChatHistory={setShowChatHistory}
+        initializeChat={initializeChat}
+        likeCharacter={likeCharacter}
+        hasLiked={hasLiked}
+        likes={likes}
+        setSelectedPersona={setSelectedPersona}
+        setSelectedScene={setSelectedScene}
+        setSelectedCharacter={setSelectedCharacter}
+        navigate={navigate}
+        isMobile={isMobile}
+      />
       <PersonaModal
         show={personaModal.show}
-        onClose={() => setPersonaModal({ show: false, currentPersona: null })}
-        onSave={handlePersonaSave}
-        currentPersona={personaModal.currentPersona}
+        onClose={() => setPersonaModal({ show: false })}
+        onSelect={persona => {
+          setSelectedPersona(persona);
+          setPersonaModal({ show: false });
+        }}
       />
       <SceneModal
         show={sceneModal.show}
         onClose={() => setSceneModal({ show: false })}
-        onSubmit={handleSceneSave}
+        onSelect={scene => {
+          setSelectedScene(scene);
+          setSceneModal({ show: false });
+        }}
+      />
+      <CharacterModal
+        show={characterModal.show}
+        onClose={() => setCharacterModal({ show: false })}
+        onSelect={character => {
+          setSelectedCharacter(character);
+          setCharacterModal({ show: false });
+        }}
       />
     </div>
   );

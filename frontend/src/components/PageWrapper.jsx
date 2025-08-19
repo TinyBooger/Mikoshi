@@ -1,0 +1,47 @@
+import React from 'react';
+import { useState } from 'react';
+
+/**
+ * PageWrapper - reusable wrapper for main display area of pages
+ * Props:
+ *   children: ReactNode
+ *   style: optional style overrides
+ *   className: optional className
+ */
+function PageWrapper({ children, style = {}, className = '' }) {
+  // Use dvh and subtract topbar height (default 51px, can be overridden by CSS var)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
+
+  React.useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth < 600);
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const combinedStyle = {
+    minHeight: 'calc(100dvh - 7dvh)',
+    boxSizing: 'border-box',
+    width: isMobile ? '95%' : '80%',
+    maxWidth: '100vw',
+    background: 'rgba(255, 255, 255, 0.66)',
+    backdropFilter: 'blur(16px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(16px) saturate(160%)',
+    borderRadius: '1.2rem',
+    boxShadow: '0 4px 32px 0 rgba(31, 38, 135, 0.12)',
+    marginTop: '1.2rem', // Add margin top for border visibility
+    marginBottom: '1.2rem',
+    ...style,
+  };
+  return (
+    <div
+      className={`container-fluid g-0 px-2 px-md-3 px-lg-4 py-4 ${className}`.trim()}
+      style={combinedStyle}
+    >
+      {children}
+    </div>
+  );
+}
+
+export default PageWrapper;

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from "react";
 import { useNavigate, useParams } from "react-router";
 import TagsInput from '../components/TagsInput';
 import { AuthContext } from '../components/AuthProvider';
+import PageWrapper from '../components/PageWrapper';
 
 export default function CharacterFormPage() {
   const MAX_NAME_LENGTH = 50;
@@ -127,17 +128,7 @@ export default function CharacterFormPage() {
   if (loading) return null;
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--bs-body-bg, #f8f9fa)',
-      color: '#18191a',
-      width: '100%',
-      boxSizing: 'border-box',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'flex-start',
-      padding: '2.5rem 0',
-    }}>
+    <PageWrapper>
       <div style={{
         width: '100%',
         maxWidth: 700,
@@ -367,6 +358,6 @@ export default function CharacterFormPage() {
           </div>
         </form>
       </div>
-    </div>
+    </PageWrapper>
   );
 }
