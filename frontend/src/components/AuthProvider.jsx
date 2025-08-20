@@ -54,18 +54,24 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
-      if (user) {
-        fetchUserData(user);
-      } else {
+      setAuthLoading(false);
+      if (!user) {
         setUserData(null);
         setIdToken(null);
         setUserDataLoading(false);
       }
-      setAuthLoading(false);
     });
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Delay fetchUserData until authLoading is false and currentUser is available
+  useEffect(() => {
+    if (!authLoading && currentUser) {
+      fetchUserData(currentUser);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, currentUser]);
 
   // Combined loading state
   const loading = authLoading || (currentUser && userDataLoading);

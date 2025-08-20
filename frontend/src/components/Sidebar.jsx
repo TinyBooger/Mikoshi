@@ -15,7 +15,7 @@ export default function Sidebar() {
 
   useEffect(() => {
     const fetchRecentCharacters = async () => {
-      if (!currentUser) {
+      if (!currentUser || !idToken) {
         setRecent([]);
         return;
       }
@@ -44,7 +44,7 @@ export default function Sidebar() {
     };
 
     fetchRecentCharacters();
-  }, [currentUser]);
+  }, [currentUser, idToken]);
 
   const handleLogout = async () => {
     try {
