@@ -4,16 +4,11 @@
 
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import dotenv from 'dotenv';
 import path from 'path';
 
-if (process.env.ENVIRONMENT !== 'production') {
-    import('dotenv').then(dotenv => {
-    dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-    });
-}
-
-const apiBaseUrl = process.env.VITE_API_BASE_URL;
-console.log('VITE_API_BASE_URL for proxy:', apiBaseUrl);
+// Manually load .env from the frontend directory
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 export default defineConfig({
   plugins: [react()],
@@ -24,7 +19,7 @@ export default defineConfig({
     proxy: {
       // Proxy all /api requests to your backend
       '/api': {
-        target: apiBaseUrl,
+        target: process.env.VITE_API_BASE_URL,
         changeOrigin: true,
       },
     },
