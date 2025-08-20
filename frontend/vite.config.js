@@ -20,17 +20,5 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    // ✅ Add this build configuration
-    build: {
-      outDir: 'dist',
-      rollupOptions: {
-        // Ensure _redirects file is copied to build output
-        input: {
-          main: resolve(__dirname, 'index.html'),
-        },
-      },
-    },
-    // ✅ Copy _redirects file to dist folder
-    publicDir: 'public',
-    };
+  };
 });
