@@ -11,7 +11,7 @@ import ChatInitModal from '../components/ChatInitModal';
 
 export default function ChatPage() {
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
-  const { userData, idToken, refreshUserData } = useContext(AuthContext);
+  const { userData, idToken, refreshUserData, loading } = useContext(AuthContext);
   const [searchParams] = useSearchParams();
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
@@ -52,22 +52,23 @@ export default function ChatPage() {
 
   // Initialize character data (runs once when characterId changes)
   useEffect(() => {
-    if (!idToken) {
+    console.log(idToken, loading);
+    if (loading) return;
+
+    // Only navigate if loading is false and idToken is still null (i.e., auth check finished and user is not logged in)
+    if (!loading && !idToken) {
       navigate('/');
       return;
     }
 
-    if (!initialized.current) {
+    if (!initialized.current && idToken) {
       loadChatHistory();
       fetchInitialData();
       initializeChat();
       initialized.current = true;
       return;
     }
-
-
-    
-  }, [navigate, idToken]);
+  }, [navigate, idToken, loading]);
 
   // Fetch character, scene, and persona data if IDs are present
   const fetchInitialData = () => {

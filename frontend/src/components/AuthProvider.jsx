@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
   const [idToken, setIdToken] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [userDataLoading, setUserDataLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Helper to fetch user data and idToken, with retry logic and debug logging
@@ -52,6 +53,8 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
+    setAuthLoading(true);
+    setLoading(true);
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setAuthLoading(false);
@@ -59,6 +62,7 @@ export function AuthProvider({ children }) {
         setUserData(null);
         setIdToken(null);
         setUserDataLoading(false);
+        setLoading(false);
       }
     });
     return unsubscribe;
@@ -68,13 +72,14 @@ export function AuthProvider({ children }) {
   // Delay fetchUserData until authLoading is false and currentUser is available
   useEffect(() => {
     if (!authLoading && currentUser) {
-      fetchUserData(currentUser);
+      setLoading(true);
+      fetchUserData(currentUser).finally(() => setLoading(false));
+    }
+    if (!authLoading && !currentUser) {
+      setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, currentUser]);
-
-  // Combined loading state
-  const loading = authLoading || (currentUser && userDataLoading);
 
   return (
     <AuthContext.Provider value={{
