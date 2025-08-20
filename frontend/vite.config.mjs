@@ -21,12 +21,12 @@ export default defineConfig({
     port: 3000,  // Always use 3000
     strictPort: true,  // Fail if port is occupied
     host: 'localhost',  // Use localhost for development
-    proxy: apiBaseUrl?{
+    proxy: {
       // Proxy all /api requests to your backend
       '/api': {
         target: apiBaseUrl,
         changeOrigin: true,
       },
-    } : undefined,
+    },
   },
 });
