@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         // Ensure _redirects file is copied to build output
         input: {
-          main: resolve(__dirname, 'index.html'),
+          main: resolve(__dirname, 'public/index.html'),
         },
       },
     },
