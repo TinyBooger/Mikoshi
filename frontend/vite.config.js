@@ -1,14 +1,6 @@
-// frontend/vite.config.mjs
-
-
-
+// frontend/vite.config.js
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import dotenv from 'dotenv';
-import path from 'path';
-
-// Manually load .env from the frontend directory
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 export default defineConfig({
   plugins: [react()],
