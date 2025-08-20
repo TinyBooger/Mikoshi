@@ -1,15 +1,25 @@
 // frontend/vite.config.js
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { resolve } from 'path';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig(({ mode }) => {
-  // Load environment variables for the current mode
   const env = loadEnv(mode, process.cwd());
   const isProduction = env.ENVIRONMENT === 'production' || mode === 'production';
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      // ✅ Copy _redirects to dist folder
+      viteStaticCopy({
+        targets: [
+          {
+            src: 'public/_redirects',
+            dest: '.'
+          }
+        ]
+      })
+    ],
     server: {
       port: 3000,
       strictPort: true,
@@ -21,27 +31,9 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    // ✅ Add this build configuration
     build: {
       outDir: 'dist',
-      rollupOptions: {
-        // Ensure _redirects file is copied to build output
-        input: {
-          main: resolve(__dirname, 'index.html'),
-        },
-        // ✅ Add this to copy _redirects file
-        output: {
-          assetFileNames: (assetInfo) => {
-            // Keep original filename for _redirects
-            if (assetInfo.name === '_redirects') {
-              return '[name][extname]';
-            }
-            return 'assets/[name]-[hash][extname]';
-          }
-        }
-      }
     },
-    // ✅ Copy _redirects file to dist folder
     publicDir: 'public',
-    };
+  };
 });
