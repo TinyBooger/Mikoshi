@@ -43,6 +43,19 @@ app.add_middleware(
 # Initialize Firebase Admin at startup
 initialize_firebase_admin()
 
+# Create DB tables
+Base.metadata.create_all(bind=engine)
+
+# Always include API routes
+app.include_router(auth.router)
+app.include_router(user.router)
+app.include_router(character.router)
+app.include_router(chat.router)
+app.include_router(search.router)
+app.include_router(tags.router)
+app.include_router(scene.router)
+app.include_router(persona.router)
+
 if os.getenv("ENVIRONMENT") == "production":
     # Serve static files from React build
     app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
@@ -61,18 +74,6 @@ if os.getenv("ENVIRONMENT") == "production":
         # Otherwise serve index.html for client-side routing
         return FileResponse("static/index.html")
 
-# Create DB tables
-Base.metadata.create_all(bind=engine)
-
-# Always include API routes
-app.include_router(auth.router)
-app.include_router(user.router)
-app.include_router(character.router)
-app.include_router(chat.router)
-app.include_router(search.router)
-app.include_router(tags.router)
-app.include_router(scene.router)
-app.include_router(persona.router)
 
 # Add this below all your existing code
 if __name__ == "__main__":
