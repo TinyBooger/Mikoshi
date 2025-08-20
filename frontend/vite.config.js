@@ -29,7 +29,17 @@ export default defineConfig(({ mode }) => {
         input: {
           main: resolve(__dirname, 'index.html'),
         },
-      },
+        // ✅ Add this to copy _redirects file
+        output: {
+          assetFileNames: (assetInfo) => {
+            // Keep original filename for _redirects
+            if (assetInfo.name === '_redirects') {
+              return '[name][extname]';
+            }
+            return 'assets/[name]-[hash][extname]';
+          }
+        }
+      }
     },
     // ✅ Copy _redirects file to dist folder
     publicDir: 'public',
