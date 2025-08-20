@@ -27,7 +27,7 @@ export default function SearchPage() {
 
     async function fetchCharacters() {
       try {
-        const res = await fetch(`/api/characters/search?q=${encodeURIComponent(q)}&sort=${sort}`, {
+        const res = await fetch(`${window.API_BASE_URL}/api/characters/search?q=${encodeURIComponent(q)}&sort=${sort}`, {
           headers: { 'Authorization': `Bearer ${idToken}` }
         });
         if (!res.ok) throw new Error('Search failed');
@@ -36,7 +36,7 @@ export default function SearchPage() {
 
         // Update search term count (optional)
         if (q.trim()) {
-          fetch("/api/update-search-term", {
+          fetch(`${window.API_BASE_URL}/api/update-search-term`, {
             method: "POST",
             headers: { 
               "Content-Type": "application/json",
@@ -62,14 +62,14 @@ export default function SearchPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (query.trim() === '') {
-        fetch('/api/search-suggestions/popular', {
+        fetch(`${window.API_BASE_URL}/api/search-suggestions/popular`, {
           headers: { 'Authorization': `Bearer ${idToken}` }
         })
           .then(res => res.json())
           .then(setSuggestions)
           .catch(() => setSuggestions([]));
       } else {
-        fetch(`/api/search-suggestions?q=${encodeURIComponent(query.trim())}`, {
+        fetch(`${window.API_BASE_URL}/api/search-suggestions?q=${encodeURIComponent(query.trim())}`, {
           headers: { 'Authorization': `Bearer ${idToken}` }
         })
           .then(res => res.json())

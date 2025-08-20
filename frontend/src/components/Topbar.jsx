@@ -21,14 +21,14 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
     const timer = setTimeout(() => {
       if (!idToken) return;
       if (query.trim() === '') {
-        fetch('/api/search-suggestions/popular', {
+        fetch(`${window.API_BASE_URL}/api/search-suggestions/popular`, {
           headers: { 'Authorization': `Bearer ${idToken}` }
         })
           .then(res => res.json())
           .then(setSuggestions)
           .catch(() => setSuggestions([]));
       } else {
-        fetch(`/api/search-suggestions?q=${encodeURIComponent(query.trim())}`, {
+        fetch(`${window.API_BASE_URL}/api/search-suggestions?q=${encodeURIComponent(query.trim())}`, {
           headers: { 'Authorization': `Bearer ${idToken}` }
         })
           .then(res => res.json())

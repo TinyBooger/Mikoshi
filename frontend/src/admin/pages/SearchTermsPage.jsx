@@ -5,7 +5,7 @@ export default function SearchTermsPage() {
   const [terms, setTerms] = useState([]);
 
   useEffect(() => {
-    fetch('/api/search-terms')
+    fetch(`${window.API_BASE_URL}/api/search-terms`)
       .then(res => res.json())
       .then(data => setTerms(data));
   }, []);

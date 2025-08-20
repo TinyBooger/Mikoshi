@@ -11,8 +11,8 @@ export default function TagsInput({ tags, setTags, maxTags }) {
     const fetchSuggestions = async () => {
       try {
         const url = input.trim() === "" 
-          ? "/api/tag-suggestions" 
-          : `/api/tag-suggestions?q=${encodeURIComponent(input.trim())}`;
+          ? `${window.API_BASE_URL}/api/tag-suggestions` 
+          : `${window.API_BASE_URL}/api/tag-suggestions?q=${encodeURIComponent(input.trim())}`;
         
         const response = await fetch(url, {
           headers: {

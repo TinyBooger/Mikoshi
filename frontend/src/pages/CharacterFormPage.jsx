@@ -42,7 +42,7 @@ export default function CharacterFormPage() {
         navigate("/");
         return;
       }
-      fetch(`/api/character/${id}`, {
+      fetch(`${window.API_BASE_URL}/api/character/${id}`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
       })
         .then(res => {
@@ -92,7 +92,7 @@ export default function CharacterFormPage() {
     formData.append("sample_dialogue", charData.sample.trim());
     if (picture) formData.append("picture", picture);
     try {
-      const res = await fetch(mode === 'edit' ? "/api/update-character" : "/api/create-character", {
+      const res = await fetch(mode === 'edit' ? `${window.API_BASE_URL}/api/update-character` : `${window.API_BASE_URL}/api/create-character`, {
         method: "POST",
         headers: { 'Authorization': `Bearer ${idToken}` },
         body: formData,
@@ -115,7 +115,7 @@ export default function CharacterFormPage() {
       return;
     }
     if (window.confirm("Are you sure you want to delete this character?")) {
-      const res = await fetch(`/api/character/${id}/delete`, {
+      const res = await fetch(`${window.API_BASE_URL}/api/character/${id}/delete`, {
         method: "DELETE",
         headers: { 'Authorization': `Bearer ${idToken}` }
       });

@@ -20,7 +20,7 @@ export function AuthProvider({ children }) {
     try {
       const freshToken = await user.getIdToken();
       setIdToken(freshToken);
-      const response = await fetch('/api/users/me', {
+      const response = await fetch(`${window.API_BASE_URL}/api/users/me`, {
         headers: {
           'Authorization': `Bearer ${freshToken}`
         }

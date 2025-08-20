@@ -72,7 +72,7 @@ export default function ChatPage() {
   // Fetch character, scene, and persona data if IDs are present
   const fetchInitialData = () => {
     if (characterId) {
-      fetch(`/api/character/${characterId}`, {
+      fetch(`${window.API_BASE_URL}/api/character/${characterId}`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
       })
         .then(res => res.json())
@@ -84,7 +84,7 @@ export default function ChatPage() {
 
     // Fetch scene if present (handle '0' and empty string)
     if (sceneId) {
-      fetch(`/api/scenes/${sceneId}`, {
+      fetch(`${window.API_BASE_URL}/api/scenes/${sceneId}`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
       })
         .then(res => res.json())
@@ -95,7 +95,7 @@ export default function ChatPage() {
 
     // Fetch persona if present (handle '0' and empty string)
     if (personaId) {
-      fetch(`/api/personas/${personaId}`, {
+      fetch(`${window.API_BASE_URL}/api/personas/${personaId}`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
       })
         .then(res => res.json())
@@ -131,7 +131,7 @@ export default function ChatPage() {
     // Set likes and creator from selectedCharacter
     if (selectedCharacter) {
       // Update recent characters
-      fetch('/api/recent-characters/update', {
+      fetch(`${window.API_BASE_URL}/api/recent-characters/update`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -140,7 +140,7 @@ export default function ChatPage() {
         body: JSON.stringify({ character_id: selectedCharacter.id })
       });
       // Increment views
-      fetch('/api/views/increment', {
+      fetch(`${window.API_BASE_URL}/api/views/increment`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -195,7 +195,7 @@ export default function ChatPage() {
     setMessages(updatedMessages);
     setInput('');
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(`${window.API_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -227,7 +227,7 @@ export default function ChatPage() {
   };
 
   const likeCharacter = async () => {
-    const res = await fetch(`/api/character/${characterId}/like`, { 
+    const res = await fetch(`${window.API_BASE_URL}/api/character/${characterId}/like`, { 
       method: 'POST',
       headers: { 'Authorization': `Bearer ${idToken}` }
     });
@@ -259,7 +259,7 @@ export default function ChatPage() {
     }
 
     try {
-      const res = await fetch('/api/chat/rename', {
+      const res = await fetch(`${window.API_BASE_URL}/api/chat/rename`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -294,7 +294,7 @@ export default function ChatPage() {
     if (!window.confirm('Are you sure you want to delete this chat?')) return;
 
     try {
-      const res = await fetch('/api/chat/delete', {
+      const res = await fetch(`${window.API_BASE_URL}/api/chat/delete`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

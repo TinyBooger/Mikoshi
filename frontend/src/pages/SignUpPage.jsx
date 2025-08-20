@@ -39,7 +39,7 @@ export default function SignUpPage() {
       const idToken = await userCredential.user.getIdToken();
 
       // 4. Create user record in your database
-      const response = await fetch('/api/users', {
+      const response = await fetch(`${window.API_BASE_URL}/api/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

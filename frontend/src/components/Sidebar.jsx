@@ -22,7 +22,7 @@ export default function Sidebar() {
 
       setLoadingRecent(true);
       try {
-        const response = await fetch('/api/recent-characters', {
+        const response = await fetch(`${window.API_BASE_URL}/api/recent-characters`, {
           headers: {
             'Authorization': `Bearer ${idToken}`
           }

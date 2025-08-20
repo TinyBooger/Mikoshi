@@ -5,7 +5,7 @@ export default function CharactersPage() {
   const [characters, setCharacters] = useState([]);
 
   useEffect(() => {
-    fetch('/api/characters')
+    fetch(`${window.API_BASE_URL}/api/characters`)
       .then(res => res.json())
       .then(data => {
         const list = Object.entries(data).map(([id, c]) => ({

@@ -43,7 +43,7 @@ function BrowsePage() {
     }
 
     setIsLoading(true);
-    fetch(`/api/characters/${category}`, {
+    fetch(`${window.API_BASE_URL}/api/characters/${category}`, {
       headers: { 'Authorization': `Bearer ${idToken}` }
     })
       .then(res => res.json())

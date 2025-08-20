@@ -34,7 +34,7 @@ export default function ProfilePage() {
   // Fetch scenes from API
   useEffect(() => {
     if (idToken) {
-      fetch('/api/scenes/', { headers: { 'Authorization': `Bearer ${idToken}` } })
+      fetch(`${window.API_BASE_URL}/api/scenes/`, { headers: { 'Authorization': `Bearer ${idToken}` } })
         .then(res => res.ok ? res.json() : [])
         .then(setScenes)
         .catch(() => setScenes([]));
@@ -158,7 +158,7 @@ export default function ProfilePage() {
 
   // API call functions for Persona table endpoints
   const fetchPersonas = async () => {
-    const res = await fetch('/api/personas/', {
+    const res = await fetch(`${window.API_BASE_URL}/api/personas/`, {
       headers: { 'Authorization': `Bearer ${idToken}` }
     });
     if (res.ok) return await res.json();
@@ -172,12 +172,12 @@ export default function ProfilePage() {
     }
     // If public profile, fetch user data for that user
     if (profileUserId && (!userData || String(userData.id) !== String(profileUserId))) {
-      fetch(`/api/users/${profileUserId}`)
+      fetch(`${window.API_BASE_URL}/api/users/${profileUserId}`)
         .then(res => res.ok ? res.json() : null)
         .then(setPublicUserData);
     }
 
-    fetch(`/api/characters-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
+    fetch(`${window.API_BASE_URL}/api/characters-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
       headers: { 'Authorization': `Bearer ${idToken}` }
     })
       .then(res => res.ok ? res.json() : [])
@@ -185,7 +185,7 @@ export default function ProfilePage() {
 
     // Only fetch liked characters if own profile
     if (isOwnProfile) {
-      fetch('/api/characters-liked', {
+      fetch(`${window.API_BASE_URL}/api/characters-liked`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
       })
         .then(res => res.ok ? res.json() : [])
@@ -218,7 +218,7 @@ export default function ProfilePage() {
     formData.append('bio', editBio);
     if (editPic) formData.append('profile_pic', editPic);
 
-    const res = await fetch('/api/update-profile', {
+    const res = await fetch(`${window.API_BASE_URL}/api/update-profile`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${idToken}` },
       body: formData

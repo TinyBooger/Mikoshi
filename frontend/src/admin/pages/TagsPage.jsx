@@ -5,7 +5,7 @@ export default function TagsPage() {
   const [tags, setTags] = useState([]);
 
   useEffect(() => {
-    fetch('/api/tags')
+    fetch(`${window.API_BASE_URL}/api/tags`)
       .then(res => res.json())
       .then(data => setTags(data));
   }, []);

@@ -37,7 +37,7 @@ export default function PersonaFormPage() {
         navigate("/");
         return;
       }
-      fetch(`/api/personas/${id}`, {
+      fetch(`${window.API_BASE_URL}/api/personas/${id}`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
       })
         .then(res => {
@@ -84,7 +84,7 @@ export default function PersonaFormPage() {
     personaData.tags.forEach(tag => formData.append("tags", tag));
     if (picture) formData.append("picture", picture);
     try {
-      const res = await fetch(mode === 'edit' ? `/api/personas/${id}` : "/api/personas/", {
+      const res = await fetch(mode === 'edit' ? `${window.API_BASE_URL}/api/personas/${id}` : `${window.API_BASE_URL}/api/personas/`, {
         method: mode === 'edit' ? "PUT" : "POST",
         headers: { 'Authorization': `Bearer ${idToken}` },
         body: formData,
@@ -107,7 +107,7 @@ export default function PersonaFormPage() {
       return;
     }
     if (window.confirm("Are you sure you want to delete this persona?")) {
-      const res = await fetch(`/api/personas/${id}`, {
+      const res = await fetch(`${window.API_BASE_URL}/api/personas/${id}`, {
         method: "DELETE",
         headers: { 'Authorization': `Bearer ${idToken}` }
       });

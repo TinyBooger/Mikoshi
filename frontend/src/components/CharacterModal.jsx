@@ -11,7 +11,7 @@ export default function CharacterModal({ show, onClose, onSelect }) {
   useEffect(() => {
     if (!show) return;
     // Fetch popular characters on open
-    fetch('/api/characters/popular')
+    fetch(`${window.API_BASE_URL}/api/characters/popular`)
       .then(res => res.json())
       .then(setPopularCharacters);
   }, [show]);
@@ -24,7 +24,7 @@ export default function CharacterModal({ show, onClose, onSelect }) {
     }
     setLoading(true);
     const controller = new AbortController();
-    fetch(`/api/characters/search?name=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
+    fetch(`${window.API_BASE_URL}/api/characters/search?name=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         setSearchResults(data);

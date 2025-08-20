@@ -37,7 +37,7 @@ export default function SceneFormPage() {
         navigate("/");
         return;
       }
-      fetch(`/api/scenes/${id}`, {
+      fetch(`${window.API_BASE_URL}/api/scenes/${id}`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
       })
         .then(res => {
@@ -84,7 +84,7 @@ export default function SceneFormPage() {
     sceneData.tags.forEach(tag => formData.append("tags", tag));
     if (picture) formData.append("picture", picture);
     try {
-      const res = await fetch(mode === 'edit' ? `/api/scenes/${id}` : "/api/scenes/", {
+      const res = await fetch(mode === 'edit' ? `${window.API_BASE_URL}/api/scenes/${id}` : `${window.API_BASE_URL}/api/scenes/`, {
         method: mode === 'edit' ? "PUT" : "POST",
         headers: { 'Authorization': `Bearer ${idToken}` },
         body: formData,
@@ -107,7 +107,7 @@ export default function SceneFormPage() {
       return;
     }
     if (window.confirm("Are you sure you want to delete this scene?")) {
-      const res = await fetch(`/api/scenes/${id}`, {
+      const res = await fetch(`${window.API_BASE_URL}/api/scenes/${id}`, {
         method: "DELETE",
         headers: { 'Authorization': `Bearer ${idToken}` }
       });

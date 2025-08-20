@@ -29,7 +29,7 @@ function HomePage() {
   useEffect(() => {
     setLoadingPersonas(true);
     setErrorPersonas(null);
-    fetch('/api/personas/popular')
+    fetch(`${window.API_BASE_URL}/api/personas/popular`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch');
         return res.json();
@@ -104,29 +104,29 @@ function HomePage() {
   useEffect(() => {
     if (!idToken) return;
     // Fetch existing sections
-    fetch(`/api/characters/popular`, { headers: { 'Authorization': `Bearer ${idToken}` } })
+    fetch(`${window.API_BASE_URL}/api/characters/popular`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
       .then(setPopular)
       .catch(() => setPopular([]));
 
     // Fetch popular scenes
-    fetch(`/api/scenes/popular`, { headers: { 'Authorization': `Bearer ${idToken}` } })
+    fetch(`${window.API_BASE_URL}/api/scenes/popular`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
       .then(setPopularScenes)
       .catch(() => setPopularScenes([]));
 
-    fetch(`/api/characters/recent`, { headers: { 'Authorization': `Bearer ${idToken}` } })
+    fetch(`${window.API_BASE_URL}/api/characters/recent`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
       .then(setRecent)
       .catch(() => setRecent([]));
 
-    fetch(`/api/characters/recommended`, { headers: { 'Authorization': `Bearer ${idToken}` } })
+    fetch(`${window.API_BASE_URL}/api/characters/recommended`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
       .then(setRecommended)
       .catch(() => setRecommended([]));
 
     // Fetch popular tags
-    fetch('/api/tag-suggestions', { headers: { 'Authorization': `Bearer ${idToken}` } })
+    fetch(`${window.API_BASE_URL}/api/tag-suggestions`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
       .then(tags => {
         setPopularTags(tags);
@@ -141,7 +141,7 @@ function HomePage() {
   }, [idToken]);
 
   const fetchCharactersByTag = (tagName) => {
-    fetch(`/api/characters/by-tag/${encodeURIComponent(tagName)}`, { headers: { 'Authorization': `Bearer ${idToken}` } })
+    fetch(`${window.API_BASE_URL}/api/characters/by-tag/${encodeURIComponent(tagName)}`, { headers: { 'Authorization': `Bearer ${idToken}` } })
       .then(res => res.json())
       .then(characters => {
         setTagCharacters(prev => ({

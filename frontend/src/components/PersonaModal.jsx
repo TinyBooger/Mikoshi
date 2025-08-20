@@ -11,7 +11,7 @@ export default function PersonaModal({ show, onClose, onSelect }) {
   useEffect(() => {
     if (!show) return;
     // Fetch popular personas on open
-    fetch('/api/personas/popular')
+    fetch(`${window.API_BASE_URL}/api/personas/popular`)
       .then(res => res.json())
       .then(setPopularPersonas);
   }, [show]);
@@ -25,7 +25,7 @@ export default function PersonaModal({ show, onClose, onSelect }) {
     setLoading(true);
     // Search personas by name (search on type)
     const controller = new AbortController();
-    fetch(`/api/personas/?search=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
+    fetch(`${window.API_BASE_URL}/api/personas/?search=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         setSearchResults(data);

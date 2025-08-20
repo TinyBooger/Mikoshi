@@ -34,7 +34,10 @@ if os.getenv("ENVIRONMENT") != "production":
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Your Vite frontend URL
+    allow_origins=[
+        "http://localhost:3000",
+        "https://mikoshi-frontend.onrender.com",
+    ],  # Your Vite frontend URLs
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
     allow_headers=["*"],
@@ -55,25 +58,6 @@ app.include_router(search.router)
 app.include_router(tags.router)
 app.include_router(scene.router)
 app.include_router(persona.router)
-
-if os.getenv("ENVIRONMENT") == "production":
-    # Serve static files from React build
-    app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-
-    # Catch-all route for client-side routing (SPA fallback)
-    @app.get("/{full_path:path}")
-    async def serve_spa(request: Request):
-        full_path = request.path_params['full_path']
-        file_path = os.path.join("static", full_path)
-        
-        # If the requested file exists, serve it
-        if os.path.exists(file_path) and os.path.isfile(file_path) and not full_path.startswith('api/'):
-            return FileResponse(file_path)
-        
-        # Otherwise serve index.html for client-side routing
-        return FileResponse("static/index.html")
-
 
 # Add this below all your existing code
 if __name__ == "__main__":
