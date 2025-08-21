@@ -75,8 +75,6 @@ export default function Layout() {
     };
   }, [isMobile, sidebarVisible]);
 
-  // Remove old toggleSidebar, use handleToggleSidebar instead
-
   // Sidebar animation state
   const sidebarStyle = isMobile
     ? {
@@ -100,7 +98,7 @@ export default function Layout() {
         position: 'relative',
         width: sidebarVisible ? '15rem' : '0',
         minWidth: sidebarVisible ? '15rem' : '0',
-        height: '100dvh',
+        height: '100%',
         zIndex: 1000,
         background: 'transparent',
         transform: sidebarVisible ? 'translateX(0)' : 'translateX(-15rem)',
@@ -114,64 +112,70 @@ export default function Layout() {
 
   return (
     <div
-      className="d-flex"
+      className="d-flex flex-column"
       style={{
         height: '100dvh',
         overflow: 'visible',
-        flexDirection: isMobile ? 'column' : 'row',
-        position: 'relative',
         width: '100%',
-        // background moved to body in index.html
+        position: 'relative',
       }}
     >
-      {/* Sidebar overlays on mobile, inline on desktop */}
-      <div style={sidebarStyle}>
-        <Sidebar />
-      </div>
-      {/* Overlay for mobile sidebar */}
-      {isMobile && sidebarVisible && (
-        <div
-          onClick={handleToggleSidebar}
-          style={{
-            position: 'fixed',
-            top: '7dvh',
-            left: 0,
-            width: '100vw',
-            height: 'calc(100dvh - 7dvh)',
-            background: 'rgba(0,0,0,0.3)',
-            zIndex: 999,
-            cursor: 'pointer',
-            touchAction: 'manipulation',
-          }}
+      {/* Topbar always at the top */}
+      <div style={{ height: '7dvh', flexShrink: 0, width: '100%' }}>
+        <Topbar
+          onToggleSidebar={handleToggleSidebar}
+          sidebarVisible={sidebarVisible}
+          isMobile={isMobile}
+          onToggleCharacterSidebar={handleToggleCharacterSidebar}
+          characterSidebarVisible={characterSidebarVisible}
         />
-      )}
+      </div>
+      {/* Main content area: sidebar and main, side by side on desktop, stacked on mobile */}
       <div
-        className="d-flex flex-column flex-grow-1"
+        className={isMobile ? '' : 'd-flex'}
         style={{
+          flex: 1,
+          display: isMobile ? 'block' : 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          height: 'calc(100dvh - 7dvh)',
           width: '100%',
-          minWidth: 0,
-          transition: 'transform 0.35s cubic-bezier(.4,0,.2,1)',
+          position: 'relative',
           background: 'transparent',
         }}
       >
-        <div style={{ height: '7dvh', flexShrink: 0 }}>
-          <Topbar
-            onToggleSidebar={handleToggleSidebar}
-            sidebarVisible={sidebarVisible}
-            isMobile={isMobile}
-            onToggleCharacterSidebar={handleToggleCharacterSidebar}
-            characterSidebarVisible={characterSidebarVisible}
-          />
+        {/* Sidebar overlays on mobile, inline on desktop */}
+        <div style={sidebarStyle}>
+          <Sidebar />
         </div>
+        {/* Overlay for mobile sidebar */}
+        {isMobile && sidebarVisible && (
+          <div
+            onClick={handleToggleSidebar}
+            style={{
+              position: 'fixed',
+              top: '7dvh',
+              left: 0,
+              width: '100vw',
+              height: 'calc(100dvh - 7dvh)',
+              background: 'rgba(0,0,0,0.3)',
+              zIndex: 999,
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+            }}
+          />
+        )}
         <main
+          className="flex-grow-1 d-flex flex-column"
           style={{
-            flex: 1,
+            width: '100%',
+            minWidth: 0,
+            transition: 'transform 0.35s cubic-bezier(.4,0,.2,1)',
+            background: 'transparent',
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain',
-            height: 'calc(100dvh - 7dvh)',
+            height: '100%',
             position: 'relative',
-            background: 'transparent',
           }}
         >
           <Outlet

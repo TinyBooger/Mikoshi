@@ -53,7 +53,7 @@ export default function CharacterSidebar({
         maxWidth: '20rem',
         height: 'calc(100dvh - 7dvh)',
         zIndex: 1000,
-        background: '#fff',
+        background: 'rgba(255, 255, 255, 0.90)',
         boxShadow: '2px 0 8px rgba(0,0,0,0.1)',
         transform: characterSidebarVisible ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 0.35s cubic-bezier(.4,0,.2,1)',
@@ -63,6 +63,7 @@ export default function CharacterSidebar({
         flexDirection: 'column',
         pointerEvents: characterSidebarVisible ? 'auto' : 'none',
         opacity: characterSidebarVisible ? 1 : 0,
+        borderRadius: '1.5rem',
       }
     : {
         position: 'relative',
@@ -79,6 +80,8 @@ export default function CharacterSidebar({
         pointerEvents: characterSidebarVisible ? 'auto' : 'none',
         opacity: characterSidebarVisible ? 1 : 0,
         flexShrink: 0,
+        background: 'rgba(255, 255, 255, 0.90)',
+        borderRadius: '1.5rem',
       };
   return (
     <>

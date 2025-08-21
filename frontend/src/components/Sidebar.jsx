@@ -101,7 +101,7 @@ export default function Sidebar() {
       className="d-flex flex-column h-100 p-3"
       style={{
         minHeight: '80vh',
-        background: 'rgba(255, 255, 255, 0.66)',
+        background: 'rgba(255, 255, 255, 0.90)',
         color: '#232323',
         borderRight: '1.2px solid #e9ecef',
         fontFamily: 'Inter, sans-serif',
