@@ -236,7 +236,10 @@ export default function ChatPage() {
       const data = await res.json();
       setLikes(data.likes);
       setHasLiked(true);
-      await refreshUserData();
+      // Optionally update userData.liked_characters locally if needed
+      if (userData && userData.liked_characters && !userData.liked_characters.includes(parseInt(characterId))) {
+        userData.liked_characters.push(parseInt(characterId));
+      }
     }
   };
 
@@ -273,17 +276,21 @@ export default function ChatPage() {
       });
 
       if (res.ok) {
-        // Refresh user data
-        await refreshUserData();
         setEditingChatId(null);
         setNewTitle('');
-        
         // Update selected chat if it's the one being renamed
         if (selectedChat?.chat_id === chatId) {
           setSelectedChat(prev => ({
             ...prev,
             title: newTitle.trim()
           }));
+        }
+        // Update chat title in userData.chat_history locally
+        if (userData && userData.chat_history) {
+          const chatIdx = userData.chat_history.findIndex(c => c.chat_id === chatId);
+          if (chatIdx !== -1) {
+            userData.chat_history[chatIdx].title = newTitle.trim();
+          }
         }
       }
     } catch (error) {
@@ -305,9 +312,13 @@ export default function ChatPage() {
       });
 
       if (res.ok) {
-        // Refresh user data
-        await refreshUserData();
-        
+        // Remove chat from userData.chat_history locally
+        if (userData && userData.chat_history) {
+          const idx = userData.chat_history.findIndex(c => c.chat_id === chatId);
+          if (idx !== -1) {
+            userData.chat_history.splice(idx, 1);
+          }
+        }
         // If deleted chat was the selected one, start new chat
         if (selectedChat?.chat_id === chatId) {
           startNewChat();
