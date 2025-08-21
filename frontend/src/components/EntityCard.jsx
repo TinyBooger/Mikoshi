@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 
 /**
@@ -12,6 +13,7 @@ import defaultPicture from '../assets/images/default-picture.png';
 export default function EntityCard({ type, entity, onClick, disableClick = false }) {
   // Mobile viewport detection
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
+  const navigate = useNavigate();
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
     window.addEventListener('resize', handleResize);
@@ -58,7 +60,7 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
       onClick(entity);
     } else if (type === 'character') {
       // Default: navigate to chat for character
-      window.location.href = `/chat?character=${encodeURIComponent(id)}`;
+      navigate(`/chat?character=${encodeURIComponent(id)}`);
     }
   };
 
