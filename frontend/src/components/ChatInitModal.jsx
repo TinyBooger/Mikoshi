@@ -8,6 +8,9 @@ export default function ChatInitModal({
   onSelectCharacter,
   onSelectPersona,
   onSelectScene,
+  setSelectedCharacter,
+  setSelectedPersona,
+  setSelectedScene,
   selectedCharacter,
   selectedPersona,
   selectedScene,
@@ -50,6 +53,27 @@ export default function ChatInitModal({
     minHeight: 0,
   });
 
+  // Remove button style
+  const removeBtnStyle = {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    border: 'none',
+    borderRadius: '50%',
+    background: 'rgba(0,0,0,0.08)',
+    color: '#888',
+    fontWeight: 700,
+    fontSize: 18,
+    cursor: 'pointer',
+    zIndex: 2,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background 0.15s',
+  };
+
   return (
     <div
       className="modal"
@@ -86,8 +110,18 @@ export default function ChatInitModal({
               {/* Character Card/Placeholder */}
               <div
                 style={cardStyle(selectedCharacter)}
-                onClick={onSelectCharacter}
+                onClick={() => { onSelectCharacter(); }}
               >
+                {selectedCharacter && (
+                  <button
+                    type="button"
+                    style={removeBtnStyle}
+                    title="Remove Character"
+                    onClick={e => { e.stopPropagation(); if (setSelectedCharacter) setSelectedCharacter(null); }}
+                  >
+                    ×
+                  </button>
+                )}
                 {selectedCharacter ? (
                   <EntityCard type="character" entity={selectedCharacter} disableClick={true} />
                 ) : (
@@ -100,8 +134,18 @@ export default function ChatInitModal({
               {/* Persona Card/Placeholder */}
               <div
                 style={cardStyle(selectedPersona)}
-                onClick={onSelectPersona}
+                onClick={() => { onSelectPersona(); }}
               >
+                {selectedPersona && (
+                  <button
+                    type="button"
+                    style={removeBtnStyle}
+                    title="Remove Persona"
+                    onClick={e => { e.stopPropagation(); if (setSelectedPersona) setSelectedPersona(null); }}
+                  >
+                    ×
+                  </button>
+                )}
                 {selectedPersona ? (
                   <EntityCard type="persona" entity={selectedPersona} disableClick={true} />
                 ) : (
@@ -114,8 +158,18 @@ export default function ChatInitModal({
               {/* Scene Card/Placeholder */}
               <div
                 style={cardStyle(selectedScene)}
-                onClick={onSelectScene}
+                onClick={() => { onSelectScene(); }}
               >
+                {selectedScene && (
+                  <button
+                    type="button"
+                    style={removeBtnStyle}
+                    title="Remove Scene"
+                    onClick={e => { e.stopPropagation(); if (setSelectedScene) setSelectedScene(null); }}
+                  >
+                    ×
+                  </button>
+                )}
                 {selectedScene ? (
                   <EntityCard type="scene" entity={selectedScene} disableClick={true} />
                 ) : (

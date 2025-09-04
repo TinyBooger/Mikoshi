@@ -43,6 +43,11 @@ export default function CharacterSidebar({
     navigate,
     isMobile = false // allow parent to pass isMobile, default false
 }) {
+  // Fix: Toggle menu for chat history dropdown, prevent event bubbling
+  const toggleMenu = (chatId, e) => {
+    e.stopPropagation();
+    setMenuOpenId(menuOpenId === chatId ? null : chatId);
+  };
   // Sidebar animation style for both mobile and desktop
   const sidebarStyle = isMobile
     ? {

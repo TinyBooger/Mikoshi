@@ -11,7 +11,7 @@ import ChatInitModal from '../components/ChatInitModal';
 
 export default function ChatPage() {
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
-  const { userData, idToken, refreshUserData, loading } = useContext(AuthContext);
+  const { userData, setUserData, idToken, refreshUserData, loading } = useContext(AuthContext);
   const [searchParams] = useSearchParams();
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
@@ -46,13 +46,20 @@ export default function ChatPage() {
   const [sceneId, setSceneId] = useState(searchParams.get('scene'));
   const [personaId, setPersonaId] = useState(searchParams.get('persona'));
 
+  // Update IDs instantly when URL searchParams change
+  useEffect(() => {
+    setCharacterId(searchParams.get('character'));
+    setSceneId(searchParams.get('scene'));
+    setPersonaId(searchParams.get('persona'));
+    initialized.current = false;
+  }, [searchParams]);
+
   const navigate = useNavigate();
   const initialized = useRef(false);
   const isNewChat = useRef(true);
 
   // Initialize character data (runs once when characterId changes)
   useEffect(() => {
-    console.log(idToken, loading);
     if (loading) return;
 
     // Only navigate if loading is false and idToken is still null (i.e., auth check finished and user is not logged in)
@@ -62,13 +69,14 @@ export default function ChatPage() {
     }
 
     if (!initialized.current && idToken) {
-      loadChatHistory();
-      fetchInitialData();
-      initializeChat();
+      if(checkChatHistory()) {
+        fetchInitialData();
+        initializeChat();
+      }
       initialized.current = true;
       return;
     }
-  }, [navigate, idToken, loading]);
+  }, [navigate, idToken, loading, initialized, characterId, sceneId, personaId]);
 
   // Fetch character, scene, and persona data if IDs are present
   const fetchInitialData = () => {
@@ -106,25 +114,36 @@ export default function ChatPage() {
     }
   };
 
-  // Loads chat history for the current characterId
-  const loadChatHistory = () => {
-    // Set messages based on user's chat history
+  const checkChatHistory = () => {
+    // Check if chat history exists for the current characterId
     const entry = userData?.chat_history?.find(
       h => h.character_id === characterId
     );
     if (entry) {
-      setMessages([...entry.messages]);
-      // Set characterId, sceneId, personaId from entry if present
-      if (entry.character_id) {
-        setCharacterId(entry.character_id);
-      }
-      if (entry.scene_id) {
-        setSceneId(entry.scene_id);
-      }
-      if (entry.persona_id) {
-        setPersonaId(entry.persona_id);
-      }
+      loadChatHistory(entry);
       isNewChat.current = false;
+      return true;
+    }
+    else {
+      isNewChat.current = true;
+      setInitModal(true);
+      return false;
+    }
+  };
+
+  // Loads chat history for the current characterId
+  const loadChatHistory = (entry) => {
+    // Set messages based on user's chat history
+    setMessages([...entry.messages]);
+    // Set characterId, sceneId, personaId from entry if present
+    if (entry.character_id) {
+      setCharacterId(entry.character_id);
+    }
+    if (entry.scene_id) {
+      setSceneId(entry.scene_id);
+    }
+    if (entry.persona_id) {
+      setPersonaId(entry.persona_id);
     }
   };
 
@@ -162,11 +181,13 @@ export default function ChatPage() {
   };
 
   const startNewChat = () => {
+    console.log('starting a new chat')
     const sys = {
       role: "system",
       content: buildSystemMessage(
-        (selectedCharacter?.persona || ""),
-        (selectedCharacter?.example_messages || ""),
+        selectedCharacter?.name || "",
+        selectedCharacter?.persona || "",
+        selectedCharacter?.example_messages || "",
         selectedPersona?.description || null,
         selectedScene?.description || null
       )
@@ -213,13 +234,24 @@ export default function ChatPage() {
       const data = await res.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
       if (data.chat_id) {
-        setSelectedChat({
+        const newChat = {
           chat_id: data.chat_id,
           title: data.chat_title || updatedMessages.find(m => m.role === 'user')?.content || 'New Chat',
           character_id: characterId,
           messages: [...updatedMessages, { role: 'assistant', content: data.response }],
           last_updated: new Date().toISOString()
-        });
+        };
+        setSelectedChat(newChat);
+        // Update chat history in userData for instant UI
+        if (userData && userData.chat_history) {
+          // Remove any existing entry for this chat_id
+          const filtered = userData.chat_history.filter(h => h.chat_id !== data.chat_id);
+          // Insert new entry at the top, keep max 30
+          setUserData(prev => ({
+            ...prev,
+            chat_history: [newChat, ...filtered].slice(0, 30)
+          }));
+        }
       }
     } catch (err) {
       alert('Failed to send message. Please try again.');
@@ -285,13 +317,17 @@ export default function ChatPage() {
             title: newTitle.trim()
           }));
         }
-        // Update chat title in userData.chat_history locally
+        // Update chat title in userData.chat_history immutably and update context for instant UI
         if (userData && userData.chat_history) {
-          const chatIdx = userData.chat_history.findIndex(c => c.chat_id === chatId);
-          if (chatIdx !== -1) {
-            userData.chat_history[chatIdx].title = newTitle.trim();
-          }
+          setUserData(prev => ({
+            ...prev,
+            chat_history: prev.chat_history.map(c =>
+              c.chat_id === chatId ? { ...c, title: newTitle.trim() } : c
+            )
+          }));
         }
+        // Optionally refresh from backend for consistency
+        refreshUserData();
       }
     } catch (error) {
       console.error('Error renaming chat:', error);
@@ -312,26 +348,23 @@ export default function ChatPage() {
       });
 
       if (res.ok) {
-        // Remove chat from userData.chat_history locally
+        // Remove chat from userData.chat_history immutably and update context for instant UI
         if (userData && userData.chat_history) {
-          const idx = userData.chat_history.findIndex(c => c.chat_id === chatId);
-          if (idx !== -1) {
-            userData.chat_history.splice(idx, 1);
-          }
+          setUserData(prev => ({
+            ...prev,
+            chat_history: prev.chat_history.filter(c => c.chat_id !== chatId)
+          }));
         }
         // If deleted chat was the selected one, start new chat
         if (selectedChat?.chat_id === chatId) {
           startNewChat();
         }
+        // Optionally refresh from backend for consistency
+        refreshUserData();
       }
     } catch (error) {
       console.error('Error deleting chat:', error);
     }
-  };
-
-  const toggleMenu = (chatId, e) => {
-    e.stopPropagation();
-    setMenuOpenId(menuOpenId === chatId ? null : chatId);
   };
 
   return (
@@ -472,8 +505,13 @@ export default function ChatPage() {
         selectedCharacter={selectedCharacter}
         selectedPersona={selectedPersona}
         selectedScene={selectedScene}
+        setSelectedCharacter={setSelectedCharacter}
+        setSelectedPersona={setSelectedPersona}
+        setSelectedScene={setSelectedScene}
         onStartChat={async () => {
           setInitModal(false);
+          isNewChat.current = true;
+          fetchInitialData();
           initializeChat();
         }}
         onCancel={() => setInitModal(false)}

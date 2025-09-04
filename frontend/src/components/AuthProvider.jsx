@@ -85,6 +85,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       currentUser,
       userData,
+      setUserData, // Expose setter for instant updates
       idToken,
       loading,
       error,

@@ -11,7 +11,7 @@ export default function Layout() {
   const lastIsMobile = useRef(initialMobile);
 
   // Character sidebar state for ChatPage
-  const [characterSidebarVisible, setCharacterSidebarVisible] = useState(false);
+  const [characterSidebarVisible, setCharacterSidebarVisible] = useState(!initialMobile);
 
   // Mutually exclusive toggles for mobile
   const handleToggleSidebar = () => {
