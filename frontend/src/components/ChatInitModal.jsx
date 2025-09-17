@@ -24,15 +24,18 @@ export default function ChatInitModal({
   const CARD_WIDTH = isMobile ? '46dvw' : 180;
   const CARD_HEIGHT = isMobile ? 'calc(46dvw * 1.32)' : 250;
 
-  // Responsive flex direction
+  // Always horizontal layout; enable horizontal scroll on mobile
   const cardsContainerStyle = {
     display: 'flex',
-    flexDirection: isMobile ? 'column' : 'row',
+    flexDirection: 'row',
     gap: isMobile ? '1.2rem' : '2rem',
     justifyContent: 'center',
     alignItems: 'center',
     margin: isMobile ? '1.2rem 0' : '2rem 0',
-    width: '100%',
+    width: isMobile ? 'max-content' : '100%',
+    overflowX: isMobile ? 'auto' : undefined,
+    overflowY: 'hidden',
+    padding: isMobile ? '0 0.5rem' : undefined,
   };
 
   const cardStyle = (selected) => ({

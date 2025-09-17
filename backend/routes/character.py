@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import array, TEXT
 from typing import List
+from datetime import datetime, UTC
 
 from database import get_db
-from models import Character, User, Tag
-from utils.session import verify_session_token, get_current_user
+from models import Character, User, Tag, UserLikedCharacter
+from utils.session import get_current_user
 from utils.cloudinary_utils import upload_scene_image
 from utils.validators import validate_character_fields
 from schemas import CharacterOut
@@ -62,10 +63,6 @@ async def create_character(
     if picture:
         char.picture = upload_scene_image(picture.file, char.id)
 
-    if current_user.characters_created is None:
-        current_user.characters_created = []
-    if char.id not in current_user.characters_created:
-        current_user.characters_created = current_user.characters_created + [char.id]
 
     db.commit()
     db.refresh(current_user)
@@ -137,52 +134,10 @@ async def delete_character(
         print("user id:", current_user.id)
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    # Remove from user's characters_created list
-    if character_id in current_user.characters_created:
-        current_user.characters_created.remove(character_id)
 
     db.delete(char)
     db.commit()
     return {"message": "Character deleted successfully"}
-
-@router.post("/api/character/{character_id}/like")
-def like_character(
-    character_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-    ):
-    char = db.query(Character).filter(Character.id == character_id).first()
-    if not char:
-        raise HTTPException(status_code=404, detail="Character not found")
-    
-    # Get the creator of the character
-    creator = db.query(User).filter(User.id == char.creator_id).first()
-    if not creator:
-        raise HTTPException(status_code=404, detail="Character creator not found")
-
-    # Update character like count
-    char.likes += 1
-
-    # Update creator's total likes count
-    creator.likes = (creator.likes or 0) + 1
-
-    # Update user's liked characters
-    if character_id not in current_user.liked_characters:
-        current_user.liked_characters = current_user.liked_characters + [character_id]
-
-    # Update user's liked tags
-    for tag in char.tags or []:
-        # Increment the likes count for each tag
-        db_tag = db.query(Tag).filter(Tag.name == tag).first()
-        if db_tag:
-            db_tag.likes += 1
-            
-        if tag not in current_user.liked_tags:
-            current_user.liked_tags = current_user.liked_tags + [tag]
-
-    db.commit()
-    return {"likes": char.likes}
-
 
 @router.get("/api/characters/popular", response_model=List[CharacterOut])
 def get_popular_characters(db: Session = Depends(get_db)):
@@ -219,18 +174,102 @@ def get_recent_characters(db: Session = Depends(get_db)):
     chars = db.query(Character).order_by(Character.created_time.desc()).limit(10).all()
     return chars
 
+# ----------------------------------------------------------------
 
-@router.post("/api/views/increment")
-def increment_views(payload: dict, db: Session = Depends(get_db)):
-    character_id = payload.get("character_id")
+@router.get("/api/characters-created")
+def get_user_created_characters(
+    userId: str = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    If userId is provided, fetch that user's created characters (public).
+    Otherwise, fetch current user's created characters.
+    """
+    if userId:
+        characters = db.query(Character).filter(Character.creator_id == userId).all()
+    else:
+        if not current_user:
+            return []
+        characters = db.query(Character).filter(Character.creator_id == current_user.id).all()
+    return [{
+        "id": c.id,
+        "name": c.name,
+        "picture": c.picture,
+        "tagline": c.tagline,
+        "likes": c.likes,
+        "views": c.views,
+        "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
+    } for c in characters]
 
-    if character_id:
-        char = db.query(Character).filter(Character.id == character_id).first()
-        if char:
-            char.views = (char.views or 0) + 1
-            creator = db.query(User).filter(User.id == char.creator_id).first()
-            if creator:
-                creator.views = (creator.views or 0) + 1
+@router.get("/api/characters-liked")
+def get_user_liked_characters(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user:
+        return []
+
+    liked = db.query(UserLikedCharacter.character_id).filter_by(user_id=current_user.id).all()
+    liked_ids = [row.character_id for row in liked]
+    if not liked_ids:
+        return []
+    characters = db.query(Character).filter(Character.id.in_(liked_ids)).all()
+    return [{
+        "id": c.id,
+        "name": c.name,
+        "picture": c.picture,
+        "tagline": c.tagline,
+        "likes": c.likes,
+        "views": c.views,
+        "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
+    } for c in characters]
+
+@router.get("/api/user/{user_id}/characters")
+def get_user_characters(user_id: str, db: Session = Depends(get_db)):
+    characters = db.query(Character).filter(Character.creator_id == user_id).all()
+    return [{"id": c.id, "name": c.name, "picture": c.avatar_url} for c in characters]
+
+@router.get("/api/recent-characters")
+def get_recent_characters(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    
+    if not current_user or not current_user.recent_characters:
+        return []
+
+    # Extract recent characters
+    recent = current_user.recent_characters
+    char_ids = [entry["id"] for entry in recent]
+
+    # Fetch characters from database
+    characters = db.query(Character).filter(Character.id.in_(char_ids)).all()
+    char_map = {str(c.id): c for c in characters}
+
+    # Return formatted response
+    return [
+        {
+            "id": entry["id"],
+            "name": char_map[entry["id"]].name if entry["id"] in char_map else "Unknown",
+            "picture": char_map[entry["id"]].picture if entry["id"] in char_map else None,
+            "timestamp": entry["timestamp"],
+        }
+        for entry in recent if entry["id"] in char_map
+    ]
+
+@router.post("/api/recent-characters/update")
+async def update_recent_characters(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    data = await request.json()
+    char_id = data.get("character_id")
+    if not char_id:
+        raise HTTPException(status_code=400, detail="Missing character_id")
+
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    now_str = datetime.now(UTC).isoformat()
+    recent = current_user.recent_characters or []
+    recent = [entry for entry in recent if entry.get("id") != char_id]
+    recent.insert(0, {"id": char_id, "timestamp": now_str})
+    current_user.recent_characters = recent[:10]
 
     db.commit()
-    return {"message": "views updated"}
+    return {"status": "success"}

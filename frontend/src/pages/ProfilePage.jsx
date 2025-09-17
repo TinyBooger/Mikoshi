@@ -9,12 +9,16 @@ import ButtonRounded from '../components/ButtonRounded';
 import CardSection from '../components/CardSection';
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
   const MAX_NAME_LENGTH = 50;
   const TAB_TYPES = {
     CREATED: 'Created',
     LIKED: 'Liked',
-    PERSONAS: 'Personas',
-    SCENES: 'Scenes'
+  };
+  const SUBTAB_TYPES = {
+    CHARACTERS: 'characters',
+    SCENES: 'scenes',
+    PERSONAS: 'personas',
   };
 
   const { userId: profileUserId } = useParams(); // get userId from route params
@@ -27,19 +31,85 @@ export default function ProfilePage() {
   const [createdCharacters, setCreatedCharacters] = useState([]);
   const [likedCharacters, setLikedCharacters] = useState([]);
   const [personas, setPersonas] = useState([]);
+  const [likedPersonas, setLikedPersonas] = useState([]);
   const [activeTab, setActiveTab] = useState(TAB_TYPES.CREATED);
-  const [scenes, setScenes] = useState([]); // Placeholder for scenes
+  const [activeSubtab, setActiveSubtab] = useState(SUBTAB_TYPES.CHARACTERS);
+  const [scenes, setScenes] = useState([]);
+  const [likedScenes, setLikedScenes] = useState([]);
 
 
-  // Fetch scenes from API
+  // Fetch created and liked entities for profile
   useEffect(() => {
-    if (idToken) {
-      fetch(`${window.API_BASE_URL}/api/scenes/`, { headers: { 'Authorization': `Bearer ${idToken}` } })
-        .then(res => res.ok ? res.json() : [])
-        .then(setScenes)
-        .catch(() => setScenes([]));
+    if (!idToken && !profileUserId) {
+      navigate('/');
+      return;
     }
-  }, [idToken]);
+    // If public profile, fetch user data for that user
+    if (profileUserId && (!userData || String(userData.id) !== String(profileUserId))) {
+      fetch(`${window.API_BASE_URL}/api/users/${profileUserId}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(setPublicUserData);
+    }
+
+    // Created Characters
+    fetch(`${window.API_BASE_URL}/api/characters-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
+      headers: { 'Authorization': `Bearer ${idToken}` }
+    })
+      .then(res => res.ok ? res.json() : [])
+      .then(setCreatedCharacters);
+
+    // Created Scenes
+    fetch(`${window.API_BASE_URL}/api/scenes-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
+      headers: { 'Authorization': `Bearer ${idToken}` }
+    })
+      .then(res => res.ok ? res.json() : [])
+      .then(setScenes);
+
+    // Created Personas (private, only for own profile)
+    if (isOwnProfile) {
+      fetch(`${window.API_BASE_URL}/api/personas-created`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setPersonas)
+        .catch(() => setPersonas([]));
+    } else {
+      setPersonas([]); // hide personas for public view
+    }
+
+    // Liked Characters (only for own profile)
+    if (isOwnProfile) {
+      fetch(`${window.API_BASE_URL}/api/characters-liked`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setLikedCharacters);
+    } else {
+      setLikedCharacters([]);
+    }
+
+    // Liked Scenes (only for own profile)
+    if (isOwnProfile) {
+      fetch(`${window.API_BASE_URL}/api/scenes-liked`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setLikedScenes);
+    } else {
+      setLikedScenes([]);
+    }
+
+    // Liked Personas (only for own profile)
+    if (isOwnProfile) {
+      fetch(`${window.API_BASE_URL}/api/personas-liked`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setLikedPersonas);
+    } else {
+      setLikedPersonas([]);
+    }
+  }, [navigate, idToken, userData, profileUserId, isOwnProfile]);
 
 
 
@@ -80,7 +150,7 @@ export default function ProfilePage() {
       </div>
     );
   };
-  // Unified content renderer for all tabs
+  // Unified content renderer for all tabs and subtabs
   const renderTabContent = () => {
     // Helper for CardSection grid
     const renderEntityCardSection = (entities, type, showEdit, editUrlPrefix, title, emptyMsg) => (
@@ -108,51 +178,76 @@ export default function ProfilePage() {
       </CardSection>
     );
 
-    // Personas tab (private)
-    if (activeTab === TAB_TYPES.PERSONAS) {
-      if (!isOwnProfile) {
-        return (
-          <div className="alert alert-warning" style={{ background: '#fffbe6', color: '#856404', border: 'none' }}>
-            Personas are private and only visible to the profile owner.
-          </div>
-        );
+    // Subtab logic
+    let entities = [];
+    let type = '';
+    let showEdit = false;
+    let editUrlPrefix = '';
+    let title = '';
+    let emptyMsg = '';
+
+    if (activeTab === TAB_TYPES.CREATED) {
+      if (activeSubtab === SUBTAB_TYPES.CHARACTERS) {
+        entities = createdCharacters;
+        type = 'character';
+        showEdit = isOwnProfile;
+        editUrlPrefix = 'character';
+        title = 'Created Characters';
+        emptyMsg = 'No characters created yet.';
+      } else if (activeSubtab === SUBTAB_TYPES.SCENES) {
+        entities = scenes;
+        type = 'scene';
+        showEdit = isOwnProfile;
+        editUrlPrefix = 'scene';
+        title = 'Created Scenes';
+        emptyMsg = 'No scenes created yet.';
+      } else if (activeSubtab === SUBTAB_TYPES.PERSONAS) {
+        if (!isOwnProfile) {
+          return (
+            <div className="alert alert-warning" style={{ background: '#fffbe6', color: '#856404', border: 'none' }}>
+              Personas are private and only visible to the profile owner.
+            </div>
+          );
+        }
+        entities = personas;
+        type = 'persona';
+        showEdit = true;
+        editUrlPrefix = 'persona';
+        title = 'Created Personas';
+        emptyMsg = 'No personas created yet.';
       }
-      return renderEntityCardSection(personas, 'persona', true, 'persona', 'My Personas', 'No personas created yet.');
+    } else if (activeTab === TAB_TYPES.LIKED) {
+      if (activeSubtab === SUBTAB_TYPES.CHARACTERS) {
+        entities = likedCharacters;
+        type = 'character';
+        showEdit = false;
+        editUrlPrefix = 'character';
+        title = 'Liked Characters';
+        emptyMsg = 'No liked characters yet.';
+      } else if (activeSubtab === SUBTAB_TYPES.SCENES) {
+        entities = likedScenes; // Placeholder, not implemented
+        type = 'scene';
+        showEdit = false;
+        editUrlPrefix = 'scene';
+        title = 'Liked Scenes';
+        emptyMsg = 'No liked scenes yet.';
+      } else if (activeSubtab === SUBTAB_TYPES.PERSONAS) {
+        entities = likedPersonas; // Placeholder, not implemented
+        type = 'persona';
+        showEdit = false;
+        editUrlPrefix = 'persona';
+        title = 'Liked Personas';
+        emptyMsg = 'No liked personas yet.';
+      }
     }
-
-    // Scenes tab
-    if (activeTab === TAB_TYPES.SCENES) {
-      return renderEntityCardSection(
-        scenes,
-        'scene',
-        isOwnProfile,
-        'scene',
-        'My Scenes',
-        'No scenes created yet.'
-      );
-    }
-
-    // Characters tabs (Created or Liked)
-    if (activeTab === TAB_TYPES.CREATED || activeTab === TAB_TYPES.LIKED) {
-      const characters = activeTab === TAB_TYPES.CREATED ? createdCharacters : likedCharacters;
-      const showEdit = activeTab === TAB_TYPES.CREATED && isOwnProfile;
-      return renderEntityCardSection(
-        characters,
-        'character',
-        showEdit,
-        'character',
-        `${activeTab} Characters`,
-        activeTab === TAB_TYPES.CREATED ? 'No characters created yet.' : 'No liked characters yet.'
-      );
-    }
-    return null;
+    return renderEntityCardSection(entities, type, showEdit, editUrlPrefix, title, emptyMsg);
   };
   // Edit profile modal state
   const [showModal, setShowModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editPic, setEditPic] = useState(null);
-  const navigate = useNavigate();
+  // ...existing code...
 
 
 
@@ -331,7 +426,7 @@ export default function ProfilePage() {
                 borderBottom: activeTab === TAB_TYPES.CREATED ? 'none' : '1.5px solid #111',
                 transition: 'background 0.2s, color 0.2s',
               }}
-              onClick={() => setActiveTab(TAB_TYPES.CREATED)}
+              onClick={() => { setActiveTab(TAB_TYPES.CREATED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); }}
             >
               Created
             </button>
@@ -347,46 +442,61 @@ export default function ProfilePage() {
                   borderBottom: activeTab === TAB_TYPES.LIKED ? 'none' : '1.5px solid #111',
                   transition: 'background 0.2s, color 0.2s',
                 }}
-                onClick={() => setActiveTab(TAB_TYPES.LIKED)}
+                onClick={() => { setActiveTab(TAB_TYPES.LIKED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); }}
               >
                 Liked
               </button>
             )}
+          </div>
+          {/* Subtabs for Created/Liked */}
+          <div className="d-flex" style={{ borderBottom: '1.5px solid #aaa', paddingBottom: 4, marginTop: 8, gap: 8 }}>
             <button
-              className={`flex-fill fw-bold py-2 border-0 ${activeTab === TAB_TYPES.PERSONAS ? '' : ''}`}
+              className={`fw-bold py-1 px-3 border-0 ${activeSubtab === SUBTAB_TYPES.CHARACTERS ? '' : ''}`}
               style={{
-                background: activeTab === TAB_TYPES.PERSONAS ? '#111' : '#fff',
-                color: activeTab === TAB_TYPES.PERSONAS ? '#fff' : '#111',
-                borderTopLeftRadius: 0,
-                borderTopRightRadius: 12,
-                border: '1.5px solid #111',
-                borderBottom: activeTab === TAB_TYPES.PERSONAS ? 'none' : '1.5px solid #111',
-                opacity: isOwnProfile ? 1 : 0.5,
-                transition: 'background 0.2s, color 0.2s',
+                background: activeSubtab === SUBTAB_TYPES.CHARACTERS ? '#222' : '#f5f5f5',
+                color: activeSubtab === SUBTAB_TYPES.CHARACTERS ? '#fff' : '#222',
+                borderRadius: 8,
+                border: '1.2px solid #222',
+                borderBottom: activeSubtab === SUBTAB_TYPES.CHARACTERS ? 'none' : '1.2px solid #222',
+                marginRight: 8,
+                transition: 'background 0.18s, color 0.18s',
               }}
-              onClick={() => setActiveTab(TAB_TYPES.PERSONAS)}
-              disabled={!isOwnProfile}
+              onClick={() => setActiveSubtab(SUBTAB_TYPES.CHARACTERS)}
             >
-              Personas
+              Characters
             </button>
             <button
-              className={`flex-fill fw-bold py-2 border-0 ${activeTab === TAB_TYPES.SCENES ? '' : ''}`}
+              className={`fw-bold py-1 px-3 border-0 ${activeSubtab === SUBTAB_TYPES.SCENES ? '' : ''}`}
               style={{
-                background: activeTab === TAB_TYPES.SCENES ? '#111' : '#fff',
-                color: activeTab === TAB_TYPES.SCENES ? '#fff' : '#111',
-                borderTopLeftRadius: 0,
-                borderTopRightRadius: 12,
-                border: '1.5px solid #111',
-                borderBottom: activeTab === TAB_TYPES.SCENES ? 'none' : '1.5px solid #111',
-                transition: 'background 0.2s, color 0.2s',
+                background: activeSubtab === SUBTAB_TYPES.SCENES ? '#222' : '#f5f5f5',
+                color: activeSubtab === SUBTAB_TYPES.SCENES ? '#fff' : '#222',
+                borderRadius: 8,
+                border: '1.2px solid #222',
+                borderBottom: activeSubtab === SUBTAB_TYPES.SCENES ? 'none' : '1.2px solid #222',
+                marginRight: 8,
+                transition: 'background 0.18s, color 0.18s',
               }}
-              onClick={() => setActiveTab(TAB_TYPES.SCENES)}
+              onClick={() => setActiveSubtab(SUBTAB_TYPES.SCENES)}
             >
               Scenes
             </button>
+            <button
+              className={`fw-bold py-1 px-3 border-0 ${activeSubtab === SUBTAB_TYPES.PERSONAS ? '' : ''}`}
+              style={{
+                background: activeSubtab === SUBTAB_TYPES.PERSONAS ? '#222' : '#f5f5f5',
+                color: activeSubtab === SUBTAB_TYPES.PERSONAS ? '#fff' : '#222',
+                borderRadius: 8,
+                border: '1.2px solid #222',
+                borderBottom: activeSubtab === SUBTAB_TYPES.PERSONAS ? 'none' : '1.2px solid #222',
+                marginRight: 8,
+                transition: 'background 0.18s, color 0.18s',
+              }}
+              onClick={() => setActiveSubtab(SUBTAB_TYPES.PERSONAS)}
+            >
+              Personas
+            </button>
           </div>
-
-          {/* Content based on active tab */}
+          {/* Content based on active tab and subtab */}
           {renderTabContent()}
         </div>
       </div>

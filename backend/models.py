@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Text
+from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from datetime import datetime, UTC
@@ -20,7 +20,7 @@ class Character(Base):
     greeting = Column(String, nullable=True)
 
     created_time = Column(DateTime, default=lambda: datetime.now(UTC))
-    creator_id = Column(String, nullable=False)
+    creator_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     creator_name = Column(String, nullable=True)
 
 class User(Base):
@@ -34,9 +34,9 @@ class User(Base):
 
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
-    characters_created = Column(ARRAY(Integer), default=[])
     recent_characters = Column(ARRAY(JSONB), default=[])
-    liked_characters = Column(ARRAY(Integer), default=[])
+
+    # liked_characters, liked_scenes, liked_personas removed; now handled by junction tables
     liked_tags = Column(ARRAY(Text), default=[])
 
     chat_history = Column(ARRAY(JSONB), default=[])
@@ -49,7 +49,7 @@ class Persona(Base):
     intro = Column(Text, nullable=True)  # Short intro for display
     tags = Column(ARRAY(Text), default=[])  # array of strings
     picture = Column(String, nullable=True)  # path or URL to the picture
-    creator_id = Column(String, nullable=False)
+    creator_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     creator_name = Column(String, nullable=True)
     created_time = Column(DateTime, default=lambda: datetime.now(UTC))
     likes = Column(Integer, default=0)
@@ -78,8 +78,38 @@ class Scene(Base):
     intro = Column(Text, nullable=True)  # Short intro for display
     tags = Column(ARRAY(Text), default=[])  # array of strings
     picture = Column(String, nullable=True)  # path or URL to the picture
-    creator_id = Column(String, nullable=False)
+    creator_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     creator_name = Column(String, nullable=True)
     created_time = Column(DateTime, default=lambda: datetime.now(UTC))
     likes = Column(Integer, default=0)
     views = Column(Integer, default=0)
+
+# Junction table for character likes
+class UserLikedCharacter(Base):
+    __tablename__ = "user_liked_characters"
+    user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+    character_id = Column(Integer, ForeignKey('characters.id', ondelete='CASCADE'), primary_key=True)
+    liked_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    __table_args__ = (
+        UniqueConstraint('user_id', 'character_id', name='uix_user_character'),
+    )
+
+# Junction table for scene likes
+class UserLikedScene(Base):
+    __tablename__ = "user_liked_scenes"
+    user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+    scene_id = Column(Integer, ForeignKey('scenes.id', ondelete='CASCADE'), primary_key=True)
+    liked_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    __table_args__ = (
+        UniqueConstraint('user_id', 'scene_id', name='uix_user_scene'),
+    )
+
+# Junction table for persona likes
+class UserLikedPersona(Base):
+    __tablename__ = "user_liked_personas"
+    user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+    persona_id = Column(Integer, ForeignKey('personas.id', ondelete='CASCADE'), primary_key=True)
+    liked_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    __table_args__ = (
+        UniqueConstraint('user_id', 'persona_id', name='uix_user_persona'),
+    )

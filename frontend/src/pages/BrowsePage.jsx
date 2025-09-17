@@ -121,7 +121,7 @@ function BrowsePage() {
         ) : (
           Array.isArray(characters)
             ? characters.map(c => (
-                <div key={c.id} style={{ padding: '0 4px' }}>
+                <div key={c.id} style={{ display: 'flex', justifyContent: 'center', padding: '0 0' }}>
                   <EntityCard type="character" entity={c} />
                 </div>
               ))

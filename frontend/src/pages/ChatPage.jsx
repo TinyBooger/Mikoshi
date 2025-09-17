@@ -17,7 +17,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
-  const [hasLiked, setHasLiked] = useState(false);
+  const [hasLiked, setHasLiked] = useState({ character: false, scene: false, persona: false });
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
   const [editingChatId, setEditingChatId] = useState(null);
@@ -90,8 +90,6 @@ export default function ChatPage() {
           setLikes(character.likes || 0);
         });
     }
-
-    // Fetch scene if present (handle '0' and empty string)
     if (sceneId) {
       fetch(`${window.API_BASE_URL}/api/scenes/${sceneId}`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
@@ -101,8 +99,6 @@ export default function ChatPage() {
           setSelectedScene(scene);
         });
     }
-
-    // Fetch persona if present (handle '0' and empty string)
     if (personaId) {
       fetch(`${window.API_BASE_URL}/api/personas/${personaId}`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
@@ -111,6 +107,29 @@ export default function ChatPage() {
         .then(persona => {
           setSelectedPersona(persona);
         });
+    }
+
+    // Fetch liked status for all at once
+    if (characterId || sceneId || personaId) {
+      const params = [];
+      if (characterId) params.push(`character_id=${characterId}`);
+      if (sceneId) params.push(`scene_id=${sceneId}`);
+      if (personaId) params.push(`persona_id=${personaId}`);
+      fetch(`${window.API_BASE_URL}/api/is-liked-multi?${params.join('&')}`, {
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          setHasLiked({
+            character: data.character ? !!data.character.liked : false,
+            scene: data.scene ? !!data.scene.liked : false,
+            persona: data.persona ? !!data.persona.liked : false
+          });
+        })
+        .catch(() => setHasLiked({ character: false, scene: false, persona: false }));
+    } else {
+      setHasLiked({ character: false, scene: false, persona: false });
     }
   };
 
@@ -159,20 +178,20 @@ export default function ChatPage() {
         },
         body: JSON.stringify({ character_id: selectedCharacter.id })
       });
-      // Increment views
-      fetch(`${window.API_BASE_URL}/api/views/increment`, {
+      // Increment views for character, scene, and persona in one call
+      const body = {
+        ...(selectedCharacter && { character_id: selectedCharacter.id }),
+        ...(selectedScene && { scene_id: selectedScene.id }),
+        ...(selectedPersona && { persona_id: selectedPersona.id })
+      };
+      fetch(`${window.API_BASE_URL}/api/views/increment-multi`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}` 
         },
-        body: JSON.stringify({ character_id: selectedCharacter.id })
+        body: JSON.stringify(body)
       });
-    }
-
-    // Check likes from userData
-    if (userData?.liked_characters?.includes(parseInt(characterId))) {
-      setHasLiked(true);
     }
 
     if(isNewChat.current) {
@@ -259,19 +278,29 @@ export default function ChatPage() {
     setSending(false);
   };
 
-  const likeCharacter = async () => {
-    const res = await fetch(`${window.API_BASE_URL}/api/character/${characterId}/like`, { 
+  // Generic like function for character, scene, or persona
+  const likeEntity = async (entityType, entityId) => {
+    const res = await fetch(`${window.API_BASE_URL}/api/like/${entityType}/${entityId}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${idToken}` }
     });
     if (res.ok) {
       const data = await res.json();
       setLikes(data.likes);
-      setHasLiked(true);
-      // Optionally update userData.liked_characters locally if needed
-      if (userData && userData.liked_characters && !userData.liked_characters.includes(parseInt(characterId))) {
-        userData.liked_characters.push(parseInt(characterId));
-      }
+      setHasLiked(prev => ({ ...prev, [entityType]: true }));
+    }
+  };
+
+  // Generic unlike function for character, scene, or persona
+  const unlikeEntity = async (entityType, entityId) => {
+    const res = await fetch(`${window.API_BASE_URL}/api/unlike/${entityType}/${entityId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${idToken}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setLikes(data.likes);
+      setHasLiked(prev => ({ ...prev, [entityType]: false }));
     }
   };
 
@@ -545,9 +574,9 @@ export default function ChatPage() {
         showChatHistory={showChatHistory}
         setShowChatHistory={setShowChatHistory}
         initializeChat={initializeChat}
-        likeCharacter={likeCharacter}
+        likeEntity={likeEntity}
+        unlikeEntity={unlikeEntity}
         hasLiked={hasLiked}
-        likes={likes}
         setSelectedPersona={setSelectedPersona}
         setSelectedScene={setSelectedScene}
         setSelectedCharacter={setSelectedCharacter}
@@ -559,6 +588,7 @@ export default function ChatPage() {
         onClose={() => setPersonaModal({ show: false })}
         onSelect={persona => {
           setSelectedPersona(persona);
+          setPersonaId(persona?.id || null);
           setPersonaModal({ show: false });
         }}
       />
@@ -567,6 +597,7 @@ export default function ChatPage() {
         onClose={() => setSceneModal({ show: false })}
         onSelect={scene => {
           setSelectedScene(scene);
+          setSceneId(scene?.id || null);
           setSceneModal({ show: false });
         }}
       />
@@ -575,6 +606,7 @@ export default function ChatPage() {
         onClose={() => setCharacterModal({ show: false })}
         onSelect={character => {
           setSelectedCharacter(character);
+          setCharacterId(character?.id || null);
           setCharacterModal({ show: false });
         }}
       />

@@ -1,11 +1,10 @@
-
-from fastapi import APIRouter, Request, Depends, HTTPException, Form, UploadFile, File
+from fastapi import APIRouter, Request, Depends, HTTPException, Form, UploadFile, File, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List
 
 from database import get_db
-from models import Persona, User, Tag
+from models import Persona, User, Tag, UserLikedPersona
 from utils.cloudinary_utils import upload_persona_picture
 from utils.session import get_current_user
 from datetime import datetime, UTC
@@ -44,6 +43,7 @@ async def create_persona(
     db.add(persona)
     db.commit()
     db.refresh(persona)
+    db.commit()
     if picture:
         persona.picture = upload_persona_picture(picture.file, persona.id)
         db.commit()
@@ -111,3 +111,38 @@ def delete_persona(persona_id: int, db: Session = Depends(get_db), current_user:
     db.delete(persona)
     db.commit()
     return JSONResponse(content={"id": persona_id, "message": "Persona deleted"})
+
+# ------------------- ADDITIONAL ROUTES -------------------
+# Get personas created by a specific user (for profile page)
+@router.get("/api/personas-created", response_model=List[PersonaOut])
+def get_personas_created(userId: str = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    If userId is provided, fetch that user's created personas (public).
+    Otherwise, fetch current user's created personas.
+    """
+    if userId:
+        personas = db.query(Persona).filter(Persona.creator_id == userId).order_by(Persona.created_time.desc()).all()
+    else:
+        if not current_user:
+            return []
+        personas = db.query(Persona).filter(Persona.creator_id == current_user.id).order_by(Persona.created_time.desc()).all()
+    return personas
+
+# Get personas liked by a user
+@router.get("/api/personas-liked", response_model=List[PersonaOut])
+def get_personas_liked(userId: str = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    If userId is provided, fetch that user's liked personas.
+    Otherwise, fetch current user's liked personas.
+    """
+    if userId:
+        liked_persona_ids = db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == userId).all()
+    else:
+        if not current_user:
+            return []
+        liked_persona_ids = db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id).all()
+    persona_ids = [pid for (pid,) in liked_persona_ids]
+    if not persona_ids:
+        return []
+    personas = db.query(Persona).filter(Persona.id.in_(persona_ids)).all()
+    return personas

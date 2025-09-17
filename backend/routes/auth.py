@@ -42,8 +42,6 @@ async def get_current_user(
             "name": user.name,
             "profile_pic": user.profile_pic,
             "bio": getattr(user, "bio", None),
-            "characters_created": user.characters_created,
-            "liked_characters": user.liked_characters,
             "liked_tags": user.liked_tags,
             "chat_history": user.chat_history,
             "views": user.views,

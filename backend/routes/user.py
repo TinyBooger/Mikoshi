@@ -3,11 +3,10 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import firebase_admin
 from firebase_admin import auth as firebase_auth
 from sqlalchemy.orm import Session
-from datetime import datetime, UTC
 
 from database import get_db
-from models import User, Character
-from utils.session import verify_session_token, get_current_user
+from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona
+from utils.session import get_current_user
 from utils.cloudinary_utils import upload_avatar
 from utils.validators import validate_account_fields
 
@@ -58,100 +57,191 @@ async def update_profile(
     db.refresh(current_user)
     return {"message": "Profile updated"}
 
-@router.get("/api/characters-created")
-def get_user_created_characters(
-    userId: str = Query(None),
+# -------------------------- Like/Unlike Endpoints --------------------------
+
+@router.post("/api/like/{entity_type}/{entity_id}")
+def like_entity(
+    entity_type: str,
+    entity_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    If userId is provided, fetch that user's created characters (public).
-    Otherwise, fetch current user's created characters.
-    """
-    if userId:
-        user = db.query(User).filter(User.id == userId).first()
-        if not user or not user.characters_created:
-            return []
-        characters = db.query(Character).filter(Character.id.in_(user.characters_created)).all()
-    else:
-        if not current_user or not current_user.characters_created:
-            return []
-        characters = db.query(Character).filter(Character.id.in_(current_user.characters_created)).all()
-    return [{
-        "id": c.id,
-        "name": c.name,
-        "picture": c.picture,
-        "tagline": c.tagline,
-        "likes": c.likes,
-        "views": c.views,
-        "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
-    } for c in characters]
+    entity_map = {
+        "character": (Character, UserLikedCharacter, "character_id"),
+        "scene": (Scene, UserLikedScene, "scene_id"),
+        "persona": (Persona, UserLikedPersona, "persona_id"),
+    }
+    if entity_type not in entity_map:
+        raise HTTPException(status_code=400, detail="Invalid entity type")
 
-@router.get("/api/characters-liked")
-def get_user_liked_characters(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if not current_user or not current_user.liked_characters:
-        return []
+    Model, LikeModel, id_field = entity_map[entity_type]
+    entity = db.query(Model).filter(getattr(Model, "id") == entity_id).first()
+    if not entity:
+        raise HTTPException(status_code=404, detail=f"{entity_type.capitalize()} not found")
 
-    characters = db.query(Character).filter(Character.id.in_(current_user.liked_characters)).all()
-    return [{
-        "id": c.id,
-        "name": c.name,
-        "picture": c.picture,
-        "tagline": c.tagline,
-        "likes": c.likes,
-        "views": c.views,
-        "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
-    } for c in characters]
+    # Get the creator of the entity
+    creator = db.query(User).filter(User.id == entity.creator_id).first() if getattr(entity, "creator_id", None) else None
+    if not creator:
+        raise HTTPException(status_code=404, detail=f"{entity_type.capitalize()} creator not found")
 
-@router.get("/api/user/{user_id}/characters")
-def get_user_characters(user_id: str, db: Session = Depends(get_db)):
-    characters = db.query(Character).filter(Character.creator_id == user_id).all()
-    return [{"id": c.id, "name": c.name, "picture": c.avatar_url} for c in characters]
+    # Check if user already liked this entity
+    filter_kwargs = {"user_id": current_user.id, id_field: entity_id}
+    existing_like = db.query(LikeModel).filter_by(**filter_kwargs).first()
+    if existing_like:
+        raise HTTPException(status_code=400, detail=f"Already liked this {entity_type}")
 
-@router.get("/api/recent-characters")
-def get_recent_characters(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    
-    if not current_user or not current_user.recent_characters:
-        return []
+    # Create like record
+    like = LikeModel(user_id=current_user.id, **{id_field: entity_id})
+    db.add(like)
 
-    # Extract recent characters
-    recent = current_user.recent_characters
-    char_ids = [entry["id"] for entry in recent]
+    # Update entity like count
+    entity.likes = (entity.likes or 0) + 1
 
-    # Fetch characters from database
-    characters = db.query(Character).filter(Character.id.in_(char_ids)).all()
-    char_map = {str(c.id): c for c in characters}
+    # Update creator's total likes count
+    creator.likes = (creator.likes or 0) + 1
 
-    # Return formatted response
-    return [
-        {
-            "id": entry["id"],
-            "name": char_map[entry["id"]].name if entry["id"] in char_map else "Unknown",
-            "picture": char_map[entry["id"]].picture if entry["id"] in char_map else None,
-            "timestamp": entry["timestamp"],
-        }
-        for entry in recent if entry["id"] in char_map
-    ]
-
-@router.post("/api/recent-characters/update")
-async def update_recent_characters(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    data = await request.json()
-    char_id = data.get("character_id")
-    if not char_id:
-        raise HTTPException(status_code=400, detail="Missing character_id")
-
-    if not current_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    now_str = datetime.now(UTC).isoformat()
-    recent = current_user.recent_characters or []
-    recent = [entry for entry in recent if entry.get("id") != char_id]
-    recent.insert(0, {"id": char_id, "timestamp": now_str})
-    current_user.recent_characters = recent[:10]
+    # Update user's liked tags (if entity has tags)
+    tags = getattr(entity, "tags", [])
+    for tag in tags or []:
+        db_tag = db.query(Tag).filter(Tag.name == tag).first()
+        if db_tag:
+            db_tag.likes += 1
+        if tag not in current_user.liked_tags:
+            current_user.liked_tags = current_user.liked_tags + [tag]
 
     db.commit()
-    return {"status": "success"}
+    return {"likes": entity.likes}
+
+# Unlike route for character, scene, or persona
+@router.post("/api/unlike/{entity_type}/{entity_id}")
+def unlike_entity(
+    entity_type: str,
+    entity_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    entity_map = {
+        "character": (Character, UserLikedCharacter, "character_id"),
+        "scene": (Scene, UserLikedScene, "scene_id"),
+        "persona": (Persona, UserLikedPersona, "persona_id"),
+    }
+    if entity_type not in entity_map:
+        raise HTTPException(status_code=400, detail="Invalid entity type")
+
+    Model, LikeModel, id_field = entity_map[entity_type]
+    entity = db.query(Model).filter(getattr(Model, "id") == entity_id).first()
+    if not entity:
+        raise HTTPException(status_code=404, detail=f"{entity_type.capitalize()} not found")
+
+    creator = db.query(User).filter(User.id == entity.creator_id).first() if getattr(entity, "creator_id", None) else None
+    if not creator:
+        raise HTTPException(status_code=404, detail=f"{entity_type.capitalize()} creator not found")
+
+    filter_kwargs = {"user_id": current_user.id, id_field: entity_id}
+    existing_like = db.query(LikeModel).filter_by(**filter_kwargs).first()
+    if not existing_like:
+        raise HTTPException(status_code=400, detail=f"You have not liked this {entity_type}")
+
+    db.delete(existing_like)
+
+    # Update entity like count
+    if entity.likes and entity.likes > 0:
+        entity.likes -= 1
+
+    # Update creator's total likes count
+    if creator.likes and creator.likes > 0:
+        creator.likes -= 1
+
+    # Update user's liked tags (if entity has tags)
+    tags = getattr(entity, "tags", [])
+    for tag in tags or []:
+        db_tag = db.query(Tag).filter(Tag.name == tag).first()
+        if db_tag and db_tag.likes and db_tag.likes > 0:
+            db_tag.likes -= 1
+        if tag in current_user.liked_tags:
+            # Remove tag if user has no more likes for this tag
+            # (Optional: check if user still likes any entity with this tag)
+            current_user.liked_tags = [t for t in current_user.liked_tags if t != tag]
+
+    db.commit()
+    return {"likes": entity.likes}
+
+
+from typing import Optional
+
+# ...existing code...
+
+# -------------------------- Check Liked Status for Multiple Entities --------------------------
+
+@router.get("/api/is-liked-multi")
+def is_liked_multi(
+    character_id: Optional[int] = Query(None),
+    scene_id: Optional[int] = Query(None),
+    persona_id: Optional[int] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    result = {}
+
+    if character_id is not None:
+        like = db.query(UserLikedCharacter).filter_by(user_id=current_user.id, character_id=character_id).first()
+        result["character"] = {"id": character_id, "liked": bool(like)}
+
+    if scene_id is not None:
+        like = db.query(UserLikedScene).filter_by(user_id=current_user.id, scene_id=scene_id).first()
+        result["scene"] = {"id": scene_id, "liked": bool(like)}
+
+    if persona_id is not None:
+        like = db.query(UserLikedPersona).filter_by(user_id=current_user.id, persona_id=persona_id).first()
+        result["persona"] = {"id": persona_id, "liked": bool(like)}
+
+    return result
+
+
+# -------------------------- Increment Views for Multiple Entities --------------------------
+from fastapi import Body
+
+@router.post("/api/views/increment-multi")
+def increment_views_multi(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    character_id = payload.get("character_id")
+    scene_id = payload.get("scene_id")
+    persona_id = payload.get("persona_id")
+
+    updated = {}
+
+    if character_id is not None:
+        char = db.query(Character).filter(Character.id == character_id).first()
+        if char:
+            char.views = (char.views or 0) + 1
+            updated["character"] = {"id": character_id, "views": char.views}
+            creator = db.query(User).filter(User.id == char.creator_id).first() if char.creator_id else None
+            if creator:
+                creator.views = (creator.views or 0) + 1
+
+    if scene_id is not None:
+        scene = db.query(Scene).filter(Scene.id == scene_id).first()
+        if scene:
+            scene.views = (scene.views or 0) + 1
+            updated["scene"] = {"id": scene_id, "views": scene.views}
+            creator = db.query(User).filter(User.id == scene.creator_id).first() if scene.creator_id else None
+            if creator:
+                creator.views = (creator.views or 0) + 1
+
+    if persona_id is not None:
+        persona = db.query(Persona).filter(Persona.id == persona_id).first()
+        if persona:
+            persona.views = (persona.views or 0) + 1
+            updated["persona"] = {"id": persona_id, "views": persona.views}
+            creator = db.query(User).filter(User.id == persona.creator_id).first() if persona.creator_id else None
+            if creator:
+                creator.views = (creator.views or 0) + 1
+
+    db.commit()
+    return {"message": "views updated", "updated": updated}
 

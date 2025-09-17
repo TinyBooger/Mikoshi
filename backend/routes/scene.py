@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
-from models import Scene, User
+from models import Scene, User, UserLikedScene
 from utils.cloudinary_utils import upload_scene_image
 from utils.session import get_current_user
 from datetime import datetime, UTC
@@ -38,6 +38,7 @@ async def create_scene(
     db.add(scene)
     db.commit()
     db.refresh(scene)
+    db.commit()
     if picture:
         scene.picture = upload_scene_image(picture.file, scene.id)
         db.commit()
@@ -125,3 +126,37 @@ def delete_scene(scene_id: int, db: Session = Depends(get_db), current_user: Use
     db.commit()
     return JSONResponse(content={"id": scene_id, "message": "Scene deleted"})
 
+# ----------------------- END SCENE CRUD ROUTES -------------------
+
+@router.get("/api/scenes-created", response_model=List[SceneOut])
+def get_scenes_created(userId: str = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    If userId is provided, fetch that user's created scenes (public).
+    Otherwise, fetch current user's created scenes.
+    """
+    if userId:
+        scenes = db.query(Scene).filter(Scene.creator_id == userId).order_by(Scene.created_time.desc()).all()
+    else:
+        if not current_user:
+            return []
+        scenes = db.query(Scene).filter(Scene.creator_id == current_user.id).order_by(Scene.created_time.desc()).all()
+    return scenes
+
+# Get scenes liked by a user
+@router.get("/api/scenes-liked", response_model=List[SceneOut])
+def get_scenes_liked(userId: str = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    If userId is provided, fetch that user's liked scenes.
+    Otherwise, fetch current user's liked scenes.
+    """
+    if userId:
+        liked_scene_ids = db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == userId).all()
+    else:
+        if not current_user:
+            return []
+        liked_scene_ids = db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == current_user.id).all()
+    scene_ids = [sid for (sid,) in liked_scene_ids]
+    if not scene_ids:
+        return []
+    scenes = db.query(Scene).filter(Scene.id.in_(scene_ids)).all()
+    return scenes
