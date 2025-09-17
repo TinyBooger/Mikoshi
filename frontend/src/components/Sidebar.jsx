@@ -70,7 +70,13 @@ export default function Sidebar() {
     );
   }
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const [lang, setLang] = useState(i18n.language === 'zh' ? 'zh' : 'en');
+  const handleLangToggle = () => {
+    const newLang = lang === 'zh' ? 'en' : 'zh';
+    i18n.changeLanguage(newLang);
+    setLang(newLang);
+  };
   const [profileOpen, setProfileOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   // Close profile dropdown on outside click
@@ -302,6 +308,36 @@ export default function Sidebar() {
             </button>
           </div>
         )}
+      </div>
+      {/* Language Toggle Button */}
+      <div className="d-flex justify-content-center mt-3 mb-1">
+        <button
+          onClick={handleLangToggle}
+          style={{
+            border: 'none',
+            borderRadius: '999px',
+            background: '#232323',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: '0.78rem',
+            padding: '2.5px 10px',
+            letterSpacing: '0.08em',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+            cursor: 'pointer',
+            transition: 'background 0.18s, color 0.18s',
+            outline: 'none',
+            minWidth: 38,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+          }}
+          aria-label={lang === 'zh' ? '切换到英文' : 'Switch to Chinese'}
+        >
+          <span style={{ opacity: lang === 'zh' ? 1 : 0.5, fontWeight: lang === 'zh' ? 700 : 400 }}>中</span>
+          <span style={{ margin: '0 3px', color: '#fff', opacity: 0.4 }}>|</span>
+          <span style={{ opacity: lang === 'en' ? 1 : 0.5, fontWeight: lang === 'en' ? 700 : 400 }}>En</span>
+        </button>
       </div>
     </aside>
   );
