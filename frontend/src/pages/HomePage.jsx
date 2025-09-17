@@ -1,13 +1,14 @@
-
 import React, { useState, useEffect, useContext } from 'react';
 import PageWrapper from '../components/PageWrapper';
 import { useNavigate } from 'react-router';
 import EntityCard from '../components/EntityCard';
 import HorizontalCardSection from '../components/HorizontalCardSection';
 import { AuthContext } from '../components/AuthProvider';
+import { useTranslation } from 'react-i18next';
 
 
 function HomePage() {
+  const { t } = useTranslation();
   const [popular, setPopular] = useState([]);
   const [popularScenes, setPopularScenes] = useState([]);
   const [recent, setRecent] = useState([]);
@@ -163,15 +164,15 @@ function HomePage() {
       {/* Welcoming message */}
       <div className="w-100 d-flex flex-column align-items-center justify-content-center mb-4" style={{ minHeight: 64 }}>
         <h1 className="fw-bold text-dark mb-1" style={{ fontSize: '2.2rem', letterSpacing: '0.5px', textAlign: 'center' }}>
-          Welcome to Mikoshi!
+          {t('home.welcome')}
         </h1>
         <div className="text-muted" style={{ fontSize: '1.08rem', textAlign: 'center', maxWidth: 520 }}>
-          Chat with your favorite characters
+          {t('home.description')}
         </div>
       </div>
   {/* Popular Characters */}
       <HorizontalCardSection
-        title="Popular Characters"
+        title={t('home.popular_characters')}
         moreLink="/browse/popular"
     contents={Array.isArray(popular) ? popular.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : popular}
         scrollState={popularScroll}
@@ -180,7 +181,7 @@ function HomePage() {
       />
 
       <HorizontalCardSection
-        title="Popular Scenes"
+        title={t('home.popular_scenes')}
         moreLink="/browse/scenes"
     contents={Array.isArray(popularScenes) ? popularScenes.map(scene => ({ ...scene, renderCard: () => <EntityCard type="scene" entity={scene} /> })) : popularScenes}
         scrollState={{ left: false, right: false }}
@@ -189,7 +190,7 @@ function HomePage() {
       />
 
       <HorizontalCardSection
-        title="Popular Personas"
+        title={t('home.popular_personas')}
         moreLink="/browse/personas"
     contents={Array.isArray(popularPersonas) ? popularPersonas.map(persona => ({ ...persona, renderCard: () => <EntityCard type="persona" entity={persona} /> })) : popularPersonas}
         scrollState={{ left: false, right: false }}
@@ -199,7 +200,7 @@ function HomePage() {
 
       {/* Recently Uploaded */}
       <HorizontalCardSection
-        title="Recently Uploaded"
+        title={t('home.recently_uploaded')}
         moreLink="/browse/recent"
     contents={Array.isArray(recent) ? recent.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : recent}
         scrollState={recentScroll}
@@ -209,7 +210,7 @@ function HomePage() {
 
       {/* Recommended for You */}
       <HorizontalCardSection
-        title="Recommended for You"
+        title={t('home.recommended_for_you')}
         moreLink="/browse/recommended"
     contents={Array.isArray(recommended) ? recommended.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : recommended}
         scrollState={{ left: false, right: false }}
@@ -221,10 +222,10 @@ function HomePage() {
       <section className="mb-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div className="d-flex align-items-center gap-3">
-      <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>Popular Tags</h2>
+      <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>{t('home.popular_tags')}</h2>
             {selectedTag && (
               <div className="d-flex align-items-center">
-                <span className="text-muted me-2">Showing:</span>
+                <span className="text-muted me-2">{t('home.showing')}</span>
                 <span className="badge bg-gradient-primary px-2 py-1 rounded-pill shadow-sm" style={{ fontSize: '0.8rem', color: '#232323', background: '#fff' }}>
                   #{selectedTag}
                   <button 
@@ -233,7 +234,7 @@ function HomePage() {
                       e.stopPropagation();
                       setSelectedTag(null);
                     }}
-                    aria-label="Clear selection"
+                    aria-label={t('home.clear_selection')}
                   />
                 </span>
               </div>
@@ -261,14 +262,14 @@ function HomePage() {
             }}
             onClick={() => navigate('/browse/tags')}
           >
-            More
+            {t('home.more')}
           </button>
         </div>
 
         {loadingTags ? (
           <div className="text-center my-4">
             <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
+              <span className="visually-hidden">{t('home.loading')}</span>
             </div>
           </div>
         ) : (
@@ -314,7 +315,7 @@ function HomePage() {
             <div style={{ position: 'relative', width: '100%' }}>
               {selectedTag ? (
                 <HorizontalCardSection
-                  title={"Characters for #" + selectedTag}
+                  title={t('home.characters_for_tag', { tag: selectedTag })}
                   moreLink={'browse/tags/'}
                     contents={Array.isArray(tagCharacters[selectedTag]) ? tagCharacters[selectedTag].map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : tagCharacters[selectedTag]}
                   scrollState={tagScroll}
@@ -322,7 +323,7 @@ function HomePage() {
                   navigate={navigate}
                 />
               ) : (
-                <div className="text-muted py-4">Select a tag to view characters</div>
+                <div className="text-muted py-4">{t('home.select_tag_to_view_characters')}</div>
               )}
             </div>
           </>

@@ -4,8 +4,10 @@ import defaultPicture from '../assets/images/default-picture.png';
 import { AuthContext } from '../components/AuthProvider';
 import CharacterCard from '../components/CharacterCard';
 import PageWrapper from '../components/PageWrapper';
+import { useTranslation } from 'react-i18next';
 
 export default function SearchPage() {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -110,7 +112,7 @@ export default function SearchPage() {
             <input
               type="text"
               className="form-control border-0"
-              placeholder="Search characters..."
+              placeholder={t('search.input_placeholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -177,7 +179,6 @@ export default function SearchPage() {
                     color: '#18191a',
                     border: 'none',
                     borderBottom: '1px solid #f0f0f0',
-                    fontSize: '0.88rem',
                     padding: '0.56rem 0.96rem',
                   }}
                   onClick={() => handleSearch(keyword)}
@@ -202,7 +203,7 @@ export default function SearchPage() {
           margin: '0 auto'
         }}>
           <div className="d-flex justify-content-between align-items-center mb-4">
-            <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>Search Results</h2>
+            <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>{t('search.results_title')}</h2>
             <div className="btn-group" role="group">
               <button
                 type="button"
@@ -234,7 +235,7 @@ export default function SearchPage() {
                   }
                 }}
               >
-                Relevance
+                {t('search.relevance')}
               </button>
               <button
                 type="button"
@@ -266,7 +267,7 @@ export default function SearchPage() {
                   }
                 }}
               >
-                Popularity
+                {t('search.popularity')}
               </button>
               <button
                 type="button"
@@ -297,19 +298,19 @@ export default function SearchPage() {
                   }
                 }}
               >
-                Recent
+                {t('search.recent')}
               </button>
             </div>
           </div>
           {loading ? (
             <div className="text-center my-5">
               <div className="spinner-border text-dark" role="status">
-                <span className="visually-hidden">Loading...</span>
+                <span className="visually-hidden">{t('search.loading')}</span>
               </div>
             </div>
           ) : results.length === 0 ? (
             <p className="text-center text-muted" style={{ fontSize: '0.92rem', padding: '2rem 0' }}>
-              No results for "{query}"
+              {t('search.no_results', { query })}
             </p>
           ) : (
             <div

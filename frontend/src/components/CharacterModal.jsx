@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import CharacterCard from './CharacterCard';
 
 export default function CharacterModal({ show, onClose, onSelect }) {
+  const { t } = useTranslation();
   const [popularCharacters, setPopularCharacters] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -41,21 +43,21 @@ export default function CharacterModal({ show, onClose, onSelect }) {
       <div className="modal-dialog modal-lg">
         <div className="modal-content">
           <div className="modal-header">
-            <h5 className="modal-title">Select Character</h5>
+            <h5 className="modal-title">{t('character_modal.title')}</h5>
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
           <div className="modal-body">
             <input
               type="text"
               className="form-control mb-3"
-              placeholder="Search characters by name..."
+              placeholder={t('character_modal.search_placeholder')}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               autoFocus
             />
             {searchTerm.trim() ? (
               loading ? (
-                <div className="text-center text-muted">Searching...</div>
+                <div className="text-center text-muted">{t('character_modal.searching')}</div>
               ) : (
                 <div className="d-flex flex-wrap justify-content-start">
                   {searchResults.length > 0 ? (
@@ -65,13 +67,13 @@ export default function CharacterModal({ show, onClose, onSelect }) {
                       </div>
                     ))
                   ) : (
-                    <div className="text-muted w-100 text-center">No characters found.</div>
+                    <div className="text-muted w-100 text-center">{t('character_modal.no_characters_found')}</div>
                   )}
                 </div>
               )
             ) : (
               <>
-                <h6 className="mb-2">Popular Characters</h6>
+                <h6 className="mb-2">{t('character_modal.popular_characters')}</h6>
                 <div className="d-flex flex-wrap justify-content-start">
                   {popularCharacters.length > 0 ? (
                     popularCharacters.map(character => (
@@ -80,14 +82,14 @@ export default function CharacterModal({ show, onClose, onSelect }) {
                       </div>
                     ))
                   ) : (
-                    <div className="text-muted w-100 text-center">No popular characters found.</div>
+                    <div className="text-muted w-100 text-center">{t('character_modal.no_popular_characters')}</div>
                   )}
                 </div>
               </>
             )}
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>{t('character_modal.cancel')}</button>
           </div>
         </div>
       </div>

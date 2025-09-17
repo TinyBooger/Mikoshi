@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import { useNavigate, useSearchParams, useOutletContext } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import defaultPic from '../assets/images/default-picture.png';
 import { buildSystemMessage } from '../utils/systemTemplate';
 import { AuthContext } from '../components/AuthProvider';
@@ -10,6 +11,7 @@ import CharacterSidebar from '../components/CharacterSidebar';
 import ChatInitModal from '../components/ChatInitModal';
 
 export default function ChatPage() {
+  const { t } = useTranslation();
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
   const { userData, setUserData, idToken, refreshUserData, loading } = useContext(AuthContext);
   const [searchParams] = useSearchParams();
@@ -402,9 +404,9 @@ export default function ChatPage() {
       height: '100%', 
       background: '#f8f9fa', 
       minHeight: 0,
-      position: 'relative', // Add this
-      width: '100%', // Add this
-      overflow: 'hidden' // Add this to prevent any odd scrolling
+      position: 'relative',
+      width: '100%',
+      overflow: 'hidden'
       }}>
       {/* Main Chat Area */}
       <div style={{ 
@@ -423,7 +425,7 @@ export default function ChatPage() {
         {/* Messages Area */}
         <div style={{ flex: 1, padding: '1.2rem', overflowY: 'auto', background: '#fff', minHeight: 0 }}>
           {messages.filter(m => m.role !== 'system').length === 0 ? (
-            <div className="text-muted text-center" style={{ marginTop: '3.2rem', fontSize: '0.88rem' }}>No messages yet. Start the conversation!</div>
+            <div className="text-muted text-center" style={{ marginTop: '3.2rem', fontSize: '0.88rem' }}>{t('chat.no_messages')}</div>
           ) : (
             messages
               .filter(m => m.role !== 'system')
@@ -444,7 +446,7 @@ export default function ChatPage() {
                   }}>
                     <img
                       src={m.role === 'user' ? (userData?.profile_pic || defaultPic) : (selectedCharacter?.picture || defaultPic)}
-                      alt={m.role === 'user' ? 'You' : selectedCharacter?.name}
+                      alt={m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
                       style={{ width: 77, height: 77, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef' }}
                     />
                     <div style={{
@@ -460,7 +462,7 @@ export default function ChatPage() {
                       maxWidth: '100%'
                     }}>
                       <div style={{ fontWeight: 600, fontSize: '0.76rem', marginBottom: 2, opacity: 0.7 }}>
-                        {m.role === 'user' ? 'You' : selectedCharacter?.name}
+                        {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
                       </div>
                       <div>{m.content}</div>
                     </div>
@@ -486,7 +488,7 @@ export default function ChatPage() {
                 boxShadow: 'none',
                 transition: 'border 0.14s',
               }}
-              placeholder="Type your message..."
+              placeholder={t('chat.input_placeholder')}
               value={input}
               onChange={e => setInput(e.target.value)}
               required

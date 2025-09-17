@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { AuthContext } from './AuthProvider.jsx'; // Import the AuthContext
 import { signOut } from 'firebase/auth';
@@ -69,6 +70,7 @@ export default function Sidebar() {
     );
   }
 
+  const { t } = useTranslation();
   const [profileOpen, setProfileOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   // Close profile dropdown on outside click
@@ -126,7 +128,7 @@ export default function Sidebar() {
             aria-haspopup="true"
             tabIndex={0}
           >
-            <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-plus-circle me-2"></i> Create</span>
+            <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-plus-circle me-2"></i> {t('sidebar.create')}</span>
           </button>
           <ul
             className="dropdown-menu shadow rounded-4 show"
@@ -155,7 +157,7 @@ export default function Sidebar() {
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { setCreateOpen(false); if (!currentUser) return alert('Please login first'); navigate('/character/create'); }}
               >
-                <i className="bi bi-person-plus me-2"></i> Character
+                <i className="bi bi-person-plus me-2"></i> {t('sidebar.create_character')}
               </button>
             </li>
             <li>
@@ -166,7 +168,7 @@ export default function Sidebar() {
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { setCreateOpen(false); if (!currentUser) return alert('Please login first'); navigate('/scene/create'); }}
               >
-                <i className="bi bi-easel2 me-2"></i> Scene
+                <i className="bi bi-easel2 me-2"></i> {t('sidebar.create_scene')}
               </button>
             </li>
             <li>
@@ -177,7 +179,7 @@ export default function Sidebar() {
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { setCreateOpen(false); if (!currentUser) return alert('Please login first'); navigate('/persona/create'); }}
               >
-                <i className="bi bi-people me-2"></i> Persona
+                <i className="bi bi-people me-2"></i> {t('sidebar.create_persona')}
               </button>
             </li>
           </ul>
@@ -189,15 +191,15 @@ export default function Sidebar() {
         onClick={() => navigate('/browse/popular')}
         tabIndex={0}
       >
-        <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-compass me-2"></i> Browse</span>
+        <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-compass me-2"></i> {t('sidebar.browse')}</span>
       </button>
 
       {/* Recent chats */}
       <div className="mb-3">
-        <h6 className="fw-bold mb-1" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px' }}>Recent Chats</h6>
+  <h6 className="fw-bold mb-1" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px' }}>{t('sidebar.recent_chats')}</h6>
         <div className="list-group rounded-4" style={{ background: 'transparent', boxShadow: 'none' }}>
           {recent.length === 0 ? (
-            <div className="list-group-item text-center py-2 rounded-4" style={{ background: '#e9ecef', color: '#888', border: 'none', fontSize: '0.8rem' }}>No recent chats</div>
+            <div className="list-group-item text-center py-2 rounded-4" style={{ background: '#e9ecef', color: '#888', border: 'none', fontSize: '0.8rem' }}>{t('sidebar.no_recent_chats')}</div>
           ) : (
             recent.map(c => (
               <button
@@ -273,7 +275,7 @@ export default function Sidebar() {
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                   onClick={() => { setProfileOpen(false); navigate("/profile"); }}
                 >
-                  <i className="bi bi-person-circle me-2"></i> Profile
+                  <i className="bi bi-person-circle me-2"></i> {t('sidebar.profile')}
                 </button>
               </li>
               <li>
@@ -284,7 +286,7 @@ export default function Sidebar() {
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                   onClick={() => { setProfileOpen(false); handleLogout(); }}
                 >
-                  <i className="bi bi-box-arrow-right me-2"></i> Log out
+                  <i className="bi bi-box-arrow-right me-2"></i> {t('sidebar.logout')}
                 </button>
               </li>
             </ul>
@@ -296,7 +298,7 @@ export default function Sidebar() {
               style={{ background: '#fff', color: '#232323', fontWeight: 700, fontSize: '0.8rem' }}
               onClick={() => navigate('/login')}
             >
-              <i className="bi bi-person-circle me-2" style={{ fontSize: '0.8rem' }}></i> Log in to continue
+              <i className="bi bi-person-circle me-2" style={{ fontSize: '0.8rem' }}></i> {t('sidebar.login_to_continue')}
             </button>
           </div>
         )}

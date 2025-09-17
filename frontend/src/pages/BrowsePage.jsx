@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import EntityCard from '../components/EntityCard';
 import CardSection from '../components/CardSection';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
 
 function BrowsePage() {
+  const { t } = useTranslation();
   const { idToken } = useContext(AuthContext);
   const [characters, setCharacters] = useState([]);
   const [popularTags, setPopularTags] = useState([]);
@@ -57,10 +59,10 @@ function BrowsePage() {
     <PageWrapper>
       {/* Tabs UI moved from Topbar */}
       <div className="d-flex mx-2 mb-4" style={{ gap: 25, background: 'transparent' }}>
-        {[ 
-          { key: 'recommended', label: 'For You' },
-          { key: 'popular', label: 'Popular' },
-          { key: 'recent', label: 'Recent' }
+        {[
+          { key: 'recommended', label: t('browse.for_you') },
+          { key: 'popular', label: t('browse.popular') },
+          { key: 'recent', label: t('browse.recent') }
         ].map(tab => (
           <button
             key={tab.key}
@@ -100,23 +102,23 @@ function BrowsePage() {
       <CardSection
         title={
           category === 'popular'
-            ? 'Popular Characters'
+            ? t('browse.popular_characters')
             : category === 'recent'
-            ? 'Recently Uploaded'
+            ? t('browse.recently_uploaded')
             : category === 'recommended'
-            ? 'Recommended for You'
+            ? t('browse.recommended_for_you')
             : ''
         }
       >
         {isLoading ? (
           <div className="text-center my-5">
             <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
+              <span className="visually-hidden">{t('browse.loading')}</span>
             </div>
           </div>
         ) : category === 'recommended' && characters.length === 0 ? (
           <div className="alert alert-info">
-            No recommendations yet. Please like more characters to unlock personalized suggestions.
+            {t('browse.no_recommendations')}
           </div>
         ) : (
           Array.isArray(characters)

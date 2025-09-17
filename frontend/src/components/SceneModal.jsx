@@ -1,9 +1,11 @@
 
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import SceneCard from './SceneCard';
 
 export default function SceneModal({ show, onClose, onSelect }) {
+  const { t } = useTranslation();
   const [popularScenes, setPopularScenes] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -43,21 +45,21 @@ export default function SceneModal({ show, onClose, onSelect }) {
       <div className="modal-dialog modal-lg">
         <div className="modal-content">
           <div className="modal-header">
-            <h5 className="modal-title">Select Scene</h5>
+            <h5 className="modal-title">{t('scene_modal.title')}</h5>
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
           <div className="modal-body">
             <input
               type="text"
               className="form-control mb-3"
-              placeholder="Search scenes by name..."
+              placeholder={t('scene_modal.search_placeholder')}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               autoFocus
             />
             {searchTerm.trim() ? (
               loading ? (
-                <div className="text-center text-muted">Searching...</div>
+                <div className="text-center text-muted">{t('scene_modal.searching')}</div>
               ) : (
                 <div className="d-flex flex-wrap justify-content-start">
                   {searchResults.length > 0 ? (
@@ -67,13 +69,13 @@ export default function SceneModal({ show, onClose, onSelect }) {
                       </div>
                     ))
                   ) : (
-                    <div className="text-muted w-100 text-center">No scenes found.</div>
+                    <div className="text-muted w-100 text-center">{t('scene_modal.no_scenes_found')}</div>
                   )}
                 </div>
               )
             ) : (
               <>
-                <h6 className="mb-2">Popular Scenes</h6>
+                <h6 className="mb-2">{t('scene_modal.popular_scenes')}</h6>
                 <div className="d-flex flex-wrap justify-content-start">
                   {popularScenes.length > 0 ? (
                     popularScenes.map(scene => (
@@ -82,14 +84,14 @@ export default function SceneModal({ show, onClose, onSelect }) {
                       </div>
                     ))
                   ) : (
-                    <div className="text-muted w-100 text-center">No popular scenes found.</div>
+                    <div className="text-muted w-100 text-center">{t('scene_modal.no_popular_scenes')}</div>
                   )}
                 </div>
               </>
             )}
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>{t('scene_modal.cancel')}</button>
           </div>
         </div>
       </div>

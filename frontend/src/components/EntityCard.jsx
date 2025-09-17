@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 
@@ -11,6 +12,7 @@ import defaultPicture from '../assets/images/default-picture.png';
  * @param {boolean} [props.disableClick] Optional flag to disable click behavior
  */
 export default function EntityCard({ type, entity, onClick, disableClick = false }) {
+  const { t } = useTranslation();
   // Mobile viewport detection
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
   const navigate = useNavigate();
@@ -46,11 +48,11 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
   const IMAGE_SIZE = CARD_WIDTH;
 
   // Creator name logic
-  let creatorDisplay = 'Unknown';
+  let creatorDisplay = t('entity_card.unknown');
   if (creator_name) {
     creatorDisplay = typeof creator_name === 'object' ? creator_name.name : creator_name;
   } else if (entity.creator) {
-    creatorDisplay = typeof entity.creator === 'object' && entity.creator.name ? entity.creator.name : entity.creator || 'Unknown';
+    creatorDisplay = typeof entity.creator === 'object' && entity.creator.name ? entity.creator.name : entity.creator || t('entity_card.unknown');
   }
 
   // Card click logic
@@ -136,18 +138,18 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
           overflow: 'hidden',
           display: 'block',
         }}>
-          {description || <span style={{ opacity: 0.4 }}>No description</span>}
+          {description || <span style={{ opacity: 0.4 }}>{t('entity_card.no_description')}</span>}
         </span>
       </div>
       {/* Stats */}
       <div className="d-flex align-items-center justify-content-between px-2 pb-1" style={{ minHeight: isMobile ? '0.875rem' : '1.125rem' }}> {/* 14px/18px */}
         <span className="d-flex align-items-center text-secondary" style={{ fontSize: isMobile ? '0.5625rem' : '0.625rem' }}> {/* 9px/10px */}
-          <i className="bi bi-eye me-1"></i> {typeof views === 'number' ? views.toLocaleString() : 0} views
+          <i className="bi bi-eye me-1"></i> {typeof views === 'number' ? views.toLocaleString() : 0} {t('entity_card.views')}
         </span>
         {/* Only show likes for character/scene */}
         {(type === 'character' || type === 'scene') && (
           <span className="d-flex align-items-center text-secondary" style={{ fontSize: isMobile ? '0.5625rem' : '0.625rem' }}>
-            <i className="bi bi-hand-thumbs-up me-1"></i> {typeof likes === 'number' ? likes.toLocaleString() : 0} likes
+            <i className="bi bi-hand-thumbs-up me-1"></i> {typeof likes === 'number' ? likes.toLocaleString() : 0} {t('entity_card.likes')}
           </span>
         )}
       </div>

@@ -3,12 +3,14 @@ import { useNavigate, useParams } from 'react-router'; // useParams instead of u
 import defaultAvatar from '../assets/images/default-avatar.png';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
+import { useTranslation } from 'react-i18next';
 
 import EntityCard from '../components/EntityCard';
 import ButtonRounded from '../components/ButtonRounded';
 import CardSection from '../components/CardSection';
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const MAX_NAME_LENGTH = 50;
   const TAB_TYPES = {
@@ -128,7 +130,7 @@ export default function ProfilePage() {
         }}>
         {scenes.length === 0 && (
           <p className="text-muted" style={{ width: 320 }}>
-            No scenes created yet.
+            {t('profile.no_scenes_created')}
           </p>
         )}
         {scenes.map(scene => (
@@ -137,11 +139,11 @@ export default function ProfilePage() {
               <EntityCard type="scene" entity={scene} />
               {isOwnProfile && (
                 <ButtonRounded
-                  title="Edit Scene"
+                  title={t('profile.edit_scene')}
                   onClick={() => navigate(`/scene/edit/${scene.id}`)}
                 >
                   <i className="bi bi-pencil-square"></i>
-                  Edit
+                  {t('profile.edit')}
                 </ButtonRounded>
               )}
             </div>
@@ -169,7 +171,7 @@ export default function ProfilePage() {
                   onClick={() => navigate(`/${editUrlPrefix}/edit/${entity.id}`)}
                   style={{ marginTop: 8, width: 140 }}
                 >
-                  <i className="bi bi-pencil-square"></i> Edit
+                  <i className="bi bi-pencil-square"></i> {t('profile.edit')}
                 </ButtonRounded>
               )}
             </div>
@@ -192,20 +194,20 @@ export default function ProfilePage() {
         type = 'character';
         showEdit = isOwnProfile;
         editUrlPrefix = 'character';
-        title = 'Created Characters';
-        emptyMsg = 'No characters created yet.';
+        title = t('profile.created_characters');
+        emptyMsg = t('profile.no_characters_created');
       } else if (activeSubtab === SUBTAB_TYPES.SCENES) {
         entities = scenes;
         type = 'scene';
         showEdit = isOwnProfile;
         editUrlPrefix = 'scene';
-        title = 'Created Scenes';
-        emptyMsg = 'No scenes created yet.';
+        title = t('profile.created_scenes');
+        emptyMsg = t('profile.no_scenes_created');
       } else if (activeSubtab === SUBTAB_TYPES.PERSONAS) {
         if (!isOwnProfile) {
           return (
             <div className="alert alert-warning" style={{ background: '#fffbe6', color: '#856404', border: 'none' }}>
-              Personas are private and only visible to the profile owner.
+              {t('profile.personas_private')}
             </div>
           );
         }
@@ -213,8 +215,8 @@ export default function ProfilePage() {
         type = 'persona';
         showEdit = true;
         editUrlPrefix = 'persona';
-        title = 'Created Personas';
-        emptyMsg = 'No personas created yet.';
+        title = t('profile.created_personas');
+        emptyMsg = t('profile.no_personas_created');
       }
     } else if (activeTab === TAB_TYPES.LIKED) {
       if (activeSubtab === SUBTAB_TYPES.CHARACTERS) {
@@ -222,22 +224,22 @@ export default function ProfilePage() {
         type = 'character';
         showEdit = false;
         editUrlPrefix = 'character';
-        title = 'Liked Characters';
-        emptyMsg = 'No liked characters yet.';
+        title = t('profile.liked_characters');
+        emptyMsg = t('profile.no_liked_characters');
       } else if (activeSubtab === SUBTAB_TYPES.SCENES) {
         entities = likedScenes; // Placeholder, not implemented
         type = 'scene';
         showEdit = false;
         editUrlPrefix = 'scene';
-        title = 'Liked Scenes';
-        emptyMsg = 'No liked scenes yet.';
+        title = t('profile.liked_scenes');
+        emptyMsg = t('profile.no_liked_scenes');
       } else if (activeSubtab === SUBTAB_TYPES.PERSONAS) {
         entities = likedPersonas; // Placeholder, not implemented
         type = 'persona';
         showEdit = false;
         editUrlPrefix = 'persona';
-        title = 'Liked Personas';
-        emptyMsg = 'No liked personas yet.';
+        title = t('profile.liked_personas');
+        emptyMsg = t('profile.no_liked_personas');
       }
     }
     return renderEntityCardSection(entities, type, showEdit, editUrlPrefix, title, emptyMsg);
@@ -368,9 +370,9 @@ export default function ProfilePage() {
       <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '60vh' }}>
         <div className="text-center">
           <div className="spinner-border text-primary" role="status" style={{ width: 36, height: 36 }}>
-            <span className="visually-hidden">Loading...</span>
+            <span className="visually-hidden">{t('profile.loading')}</span>
           </div>
-          <div className="mt-3 text-muted">Loading profile...</div>
+          <div className="mt-3 text-muted">{t('profile.loading_profile')}</div>
         </div>
       </div>
     );
@@ -401,12 +403,12 @@ export default function ProfilePage() {
               {displayUser.bio && displayUser.bio.trim()
                 ? displayUser.bio
                 : (isOwnProfile
-                    ? 'You have not added a bio yet. Click edit to add something about yourself!'
-                    : 'This user has not added a bio yet.')}
+                    ? t('profile.bio_prompt')
+                    : t('profile.bio_not_set'))}
             </p>
             {isOwnProfile && (
               <ButtonRounded onClick={openEditProfile} style={{ marginTop: 8, width: 160 }}>
-                <i className="bi bi-pencil"></i> Edit Profile
+                <i className="bi bi-pencil"></i> {t('profile.edit_profile')}
               </ButtonRounded>
             )}
           </div>
@@ -428,7 +430,7 @@ export default function ProfilePage() {
               }}
               onClick={() => { setActiveTab(TAB_TYPES.CREATED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); }}
             >
-              Created
+              {t('profile.created')}
             </button>
             {isOwnProfile && (
               <button
@@ -444,7 +446,7 @@ export default function ProfilePage() {
                 }}
                 onClick={() => { setActiveTab(TAB_TYPES.LIKED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); }}
               >
-                Liked
+                {t('profile.liked')}
               </button>
             )}
           </div>
@@ -463,7 +465,7 @@ export default function ProfilePage() {
               }}
               onClick={() => setActiveSubtab(SUBTAB_TYPES.CHARACTERS)}
             >
-              Characters
+              {t('profile.characters')}
             </button>
             <button
               className={`fw-bold py-1 px-3 border-0 ${activeSubtab === SUBTAB_TYPES.SCENES ? '' : ''}`}
@@ -478,7 +480,7 @@ export default function ProfilePage() {
               }}
               onClick={() => setActiveSubtab(SUBTAB_TYPES.SCENES)}
             >
-              Scenes
+              {t('profile.scenes')}
             </button>
             <button
               className={`fw-bold py-1 px-3 border-0 ${activeSubtab === SUBTAB_TYPES.PERSONAS ? '' : ''}`}
@@ -493,7 +495,7 @@ export default function ProfilePage() {
               }}
               onClick={() => setActiveSubtab(SUBTAB_TYPES.PERSONAS)}
             >
-              Personas
+              {t('profile.personas')}
             </button>
           </div>
           {/* Content based on active tab and subtab */}
@@ -507,12 +509,12 @@ export default function ProfilePage() {
           <div className="modal-dialog mx-auto" style={{ margin: '7vh auto', maxWidth: 420, width: '100%' }}>
             <form className="modal-content" onSubmit={handleSave} style={{ borderRadius: 18, border: '2px solid #111', background: '#fff', boxShadow: '0 8px 32px rgba(0,0,0,0.28)', margin: 0 }}>
               <div className="modal-header" style={{ borderBottom: '2px solid #111', background: '#fff' }}>
-                <h5 className="modal-title fw-bold" style={{ color: '#111' }}>Edit Profile</h5>
+                <h5 className="modal-title fw-bold" style={{ color: '#111' }}>{t('profile.edit_profile')}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
               </div>
               <div className="modal-body">
                 <div className="mb-3 position-relative">
-                  <label className="form-label fw-bold" style={{ color: '#111' }}>Name</label>
+                  <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.name')}</label>
                   <input
                     type="text"
                     className="form-control"
@@ -527,19 +529,19 @@ export default function ProfilePage() {
                   </small>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label fw-bold" style={{ color: '#111' }}>Short Bio <span style={{ fontWeight: 400, fontSize: '0.9em', color: '#888' }}>(optional)</span></label>
+                  <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.short_bio')} <span style={{ fontWeight: 400, fontSize: '0.9em', color: '#888' }}>(optional)</span></label>
                   <textarea
                     className="form-control"
                     value={editBio}
                     onChange={e => setEditBio(e.target.value)}
                     rows={2}
                     maxLength={500}
-                    placeholder="Tell us a little about yourself (max 500 chars)"
+                    placeholder={t('profile.bio_placeholder')}
                     style={{ background: '#fff', border: '1.5px solid #111', color: '#111' }}
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label fw-bold" style={{ color: '#111' }}>Profile Picture</label>
+                  <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.profile_picture')}</label>
                   <input
                     type="file"
                     className="form-control"
@@ -566,7 +568,7 @@ export default function ProfilePage() {
                   onMouseEnter={e => { e.currentTarget.style.background = '#222'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = '#111'; }}
                 >
-                  Save
+                  {t('profile.save')}
                 </button>
                 <button
                   type="button"
@@ -583,7 +585,7 @@ export default function ProfilePage() {
                   }}
                   onClick={() => setShowModal(false)}
                 >
-                  Cancel
+                  {t('profile.cancel')}
                 </button>
               </div>
             </form>

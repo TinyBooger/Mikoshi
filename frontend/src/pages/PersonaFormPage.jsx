@@ -3,8 +3,10 @@ import { useNavigate, useParams } from "react-router";
 import TagsInput from '../components/TagsInput';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from "../components/PageWrapper";
+import { useTranslation } from 'react-i18next';
 
 export default function PersonaFormPage() {
+  const { t } = useTranslation();
   const MAX_NAME_LENGTH = 50;
   const MAX_DESC_LENGTH = 500;
   const MAX_INTRO_LENGTH = 1000;
@@ -118,7 +120,6 @@ export default function PersonaFormPage() {
   };
 
   if (loading) return null;
-
   return (
     <PageWrapper>
       <div style={{
@@ -130,11 +131,11 @@ export default function PersonaFormPage() {
         padding: '2.5rem 2rem',
         margin: '0 auto',
       }}>
-        <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? 'Edit Persona' : 'Create New Persona'}</h2>
+        <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? t('persona_form.edit_title') : t('persona_form.create_title')}</h2>
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           {/* Profile Picture */}
           <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>Profile Picture</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('persona_form.picture')}</label>
             <input
               type="file"
               accept="image/*"
@@ -154,7 +155,7 @@ export default function PersonaFormPage() {
           </div>
           {/* Name */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>Name</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('persona_form.name')}</label>
             <input
               className="form-control"
               required
@@ -180,7 +181,7 @@ export default function PersonaFormPage() {
 
           {/* Description */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>Description</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('persona_form.description')}</label>
             <textarea
               className="form-control"
               rows="2"
@@ -207,7 +208,7 @@ export default function PersonaFormPage() {
 
           {/* Intro */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>Intro (optional)</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('persona_form.intro')}</label>
             <textarea
               className="form-control"
               rows="3"
@@ -233,66 +234,21 @@ export default function PersonaFormPage() {
           </div>
 
           {/* Tags */}
-          <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>Tags</label>
-            <TagsInput tags={personaData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} />
-            <small className="text-muted" style={{ top: 0, right: 0 }}>
-              {personaData.tags.length}/{MAX_TAGS} tags
-            </small>
+          <div className="mb-4">
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('persona_form.tags')}</label>
+            <TagsInput
+              value={personaData.tags}
+              onChange={tags => handleChange('tags', tags)}
+              maxTags={MAX_TAGS}
+            />
           </div>
-
-          <div className="d-flex gap-3 mt-4 justify-content-end">
-            <button
-              type="submit"
-              className="fw-bold rounded-pill"
-              style={{
-                background: '#18191a',
-                color: '#fff',
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                fontSize: '1.08rem',
-                padding: '0.5rem 2.2rem',
-                letterSpacing: '0.2px',
-                transition: 'background 0.18s, color 0.18s',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#232323';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = '#18191a';
-              }}
-            >
-              <i className="bi bi-save me-2"></i>{mode === 'edit' ? 'Save Changes' : 'Save Persona'}
+          <div className="d-flex gap-3 mt-4">
+            <button type="submit" className="btn btn-dark px-4 fw-bold">
+              {mode === 'edit' ? t('persona_form.save') : t('persona_form.create')}
             </button>
             {mode === 'edit' && (
-              <button
-                type="button"
-                className="fw-bold rounded-pill"
-                style={{
-                  background: '#fff',
-                  color: '#d32f2f',
-                  border: '1.5px solid #d32f2f',
-                  boxShadow: 'none',
-                  fontSize: '1.08rem',
-                  padding: '0.5rem 2.2rem',
-                  letterSpacing: '0.2px',
-                  transition: 'background 0.18s, color 0.18s, border 0.18s',
-                  outline: 'none',
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = '#d32f2f';
-                  e.currentTarget.style.color = '#fff';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = '#fff';
-                  e.currentTarget.style.color = '#d32f2f';
-                }}
-                onClick={handleDelete}
-              >
-                <i className="bi bi-trash me-2"></i>Delete Persona
+              <button type="button" className="btn btn-outline-danger px-4 fw-bold" onClick={handleDelete}>
+                {t('persona_form.delete')}
               </button>
             )}
           </div>

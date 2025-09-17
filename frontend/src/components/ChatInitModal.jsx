@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import EntityCard from '../components/EntityCard';
 
@@ -18,6 +19,7 @@ export default function ChatInitModal({
   onCancel,
   isMobile
 }) {
+  const { t } = useTranslation();
   if (!show) return null;
 
   // Responsive card sizing
@@ -97,7 +99,7 @@ export default function ChatInitModal({
       <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? '98vw' : undefined, margin: 'auto' }}>
         <div className="modal-content" style={{ maxHeight: '96vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
           <div className="modal-header">
-            <h5 className="modal-title">Initialize Chat</h5>
+            <h5 className="modal-title">{t('chat_init_modal.title')}</h5>
           </div>
           <div
             className="modal-body"
@@ -119,7 +121,7 @@ export default function ChatInitModal({
                   <button
                     type="button"
                     style={removeBtnStyle}
-                    title="Remove Character"
+                    title={t('chat_init_modal.remove_character')}
                     onClick={e => { e.stopPropagation(); if (setSelectedCharacter) setSelectedCharacter(null); }}
                   >
                     ×
@@ -130,7 +132,7 @@ export default function ChatInitModal({
                 ) : (
                   <>
                     <i className="bi bi-person" style={{ fontSize: 48, color: '#bbb', marginBottom: 12 }}></i>
-                    <div style={{ fontWeight: 600, fontSize: '1.02rem', color: '#888', textAlign: 'center' }}>Select Character</div>
+                    <div style={{ fontWeight: 600, fontSize: '1.02rem', color: '#888', textAlign: 'center' }}>{t('chat_init_modal.select_character')}</div>
                   </>
                 )}
               </div>
@@ -143,7 +145,7 @@ export default function ChatInitModal({
                   <button
                     type="button"
                     style={removeBtnStyle}
-                    title="Remove Persona"
+                    title={t('chat_init_modal.remove_persona')}
                     onClick={e => { e.stopPropagation(); if (setSelectedPersona) setSelectedPersona(null); }}
                   >
                     ×
@@ -154,7 +156,7 @@ export default function ChatInitModal({
                 ) : (
                   <>
                     <i className="bi bi-person-badge" style={{ fontSize: 48, color: '#bbb', marginBottom: 12 }}></i>
-                    <div style={{ fontWeight: 600, fontSize: '1.02rem', color: '#888', textAlign: 'center' }}>Select Persona</div>
+                    <div style={{ fontWeight: 600, fontSize: '1.02rem', color: '#888', textAlign: 'center' }}>{t('chat_init_modal.select_persona')}</div>
                   </>
                 )}
               </div>
@@ -167,7 +169,7 @@ export default function ChatInitModal({
                   <button
                     type="button"
                     style={removeBtnStyle}
-                    title="Remove Scene"
+                    title={t('chat_init_modal.remove_scene')}
                     onClick={e => { e.stopPropagation(); if (setSelectedScene) setSelectedScene(null); }}
                   >
                     ×
@@ -178,7 +180,7 @@ export default function ChatInitModal({
                 ) : (
                   <>
                     <i className="bi bi-easel" style={{ fontSize: 48, color: '#bbb', marginBottom: 12 }}></i>
-                    <div style={{ fontWeight: 600, fontSize: '1.02rem', color: '#888', textAlign: 'center' }}>Select Scene</div>
+                    <div style={{ fontWeight: 600, fontSize: '1.02rem', color: '#888', textAlign: 'center' }}>{t('chat_init_modal.select_scene')}</div>
                   </>
                 )}
               </div>
@@ -190,7 +192,7 @@ export default function ChatInitModal({
               style={{ borderRadius: '1.6rem', fontWeight: 600, fontSize: '1.02rem' }}
               onClick={onCancel}
             >
-              Cancel
+              {t('chat_init_modal.cancel')}
             </button>
             <button
               className="btn btn-primary px-5 py-2"
@@ -198,7 +200,7 @@ export default function ChatInitModal({
               onClick={onStartChat}
               disabled={!selectedCharacter}
             >
-              Start Chat
+              {t('chat_init_modal.start_chat')}
             </button>
           </div>
         </div>

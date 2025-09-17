@@ -2,6 +2,7 @@
 import React, { createContext, useEffect, useState } from 'react';
 import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { useTranslation } from 'react-i18next';
 
 export const AuthContext = createContext();
 
@@ -15,6 +16,7 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null);
 
   // Helper to fetch user data and idToken, with retry logic and debug logging
+  const { t } = useTranslation();
   const fetchUserData = async (user, attempt = 1) => {
     setUserDataLoading(true);
     setError(null);
@@ -112,9 +114,9 @@ export function AuthProvider({ children }) {
         }}>
           <div style={{ textAlign: 'center' }}>
             <div className="spinner-border text-primary" role="status" style={{ width: 48, height: 48 }}>
-              <span className="visually-hidden">Loading...</span>
+              <span className="visually-hidden">{t('auth_provider.loading')}</span>
             </div>
-            <div style={{ marginTop: 16, color: '#222', fontWeight: 500 }}>Loading user session...</div>
+            <div style={{ marginTop: 16, color: '#222', fontWeight: 500 }}>{t('auth_provider.loading_user_session')}</div>
           </div>
         </div>
       )}

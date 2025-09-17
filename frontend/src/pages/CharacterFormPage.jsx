@@ -3,8 +3,10 @@ import { useNavigate, useParams } from "react-router";
 import TagsInput from '../components/TagsInput';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
+import { useTranslation } from 'react-i18next';
 
 export default function CharacterFormPage() {
+  const { t } = useTranslation();
   const MAX_NAME_LENGTH = 50;
   const MAX_PERSONA_LENGTH = 1000;
   const MAX_TAGLINE_LENGTH = 200;
@@ -126,7 +128,6 @@ export default function CharacterFormPage() {
   };
 
   if (loading) return null;
-
   return (
     <PageWrapper>
       <div style={{
@@ -138,11 +139,11 @@ export default function CharacterFormPage() {
         padding: '2.5rem 2rem',
         margin: '0 auto',
       }}>
-        <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? 'Edit Character' : 'Create New Character'}</h2>
+        <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? t('character_form.edit_title') : t('character_form.create_title')}</h2>
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           {/* Name */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>Name</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.name')}</label>
             <input
               className="form-control"
               required
@@ -168,7 +169,7 @@ export default function CharacterFormPage() {
 
           {/* Persona */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>Persona</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.persona')}</label>
             <textarea
               className="form-control"
               rows="3"
@@ -196,7 +197,7 @@ export default function CharacterFormPage() {
 
           {/* Tagline */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>Tagline</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.tagline')}</label>
             <input
               className="form-control"
               value={charData.tagline}
@@ -221,7 +222,7 @@ export default function CharacterFormPage() {
 
           {/* Greeting */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>Greeting (optional)</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.greeting')}</label>
             <input
               className="form-control"
               value={charData.greeting}
@@ -246,7 +247,7 @@ export default function CharacterFormPage() {
 
           {/* Tags */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>Tags</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.tags')}</label>
             <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} />
             <small className="text-muted" style={{ top: 0, right: 0 }}>
               {charData.tags.length}/{MAX_TAGS} tags
@@ -255,7 +256,7 @@ export default function CharacterFormPage() {
 
           {/* Sample Dialogue */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>Sample Dialogue</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.sample_dialogue')}</label>
             <textarea
               className="form-control"
               rows="3"
@@ -282,7 +283,7 @@ export default function CharacterFormPage() {
 
           {/* Profile Picture */}
           <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>Profile Picture</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.picture')}</label>
             <input
               type="file"
               accept="image/*"
@@ -324,7 +325,7 @@ export default function CharacterFormPage() {
                 e.currentTarget.style.background = '#18191a';
               }}
             >
-              <i className="bi bi-save me-2"></i>{mode === 'edit' ? 'Save Changes' : 'Save Character'}
+              <i className="bi bi-save me-2"></i>{mode === 'edit' ? t('character_form.save') : t('character_form.create')}
             </button>
             {mode === 'edit' && (
               <button
@@ -352,7 +353,7 @@ export default function CharacterFormPage() {
                 }}
                 onClick={handleDelete}
               >
-                <i className="bi bi-trash me-2"></i>Delete Character
+                <i className="bi bi-trash me-2"></i>{t('character_form.delete')}
               </button>
             )}
           </div>

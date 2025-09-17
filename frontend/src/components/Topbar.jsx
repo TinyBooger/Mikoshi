@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router';
 import { AuthContext } from './AuthProvider';
 
 
 function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, characterSidebarVisible }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { idToken } = useContext(AuthContext);
@@ -77,10 +79,10 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
           transition: 'color 0.15s',
         }}
         onClick={onToggleSidebar}
-        aria-label={sidebarVisible ? 'Hide sidebar' : 'Show sidebar'}
+        aria-label={sidebarVisible ? t('topbar.hide_sidebar') : t('topbar.show_sidebar')}
         tabIndex={0}
-  onMouseEnter={e => { e.currentTarget.style.color = '#232323'; }}
-  onMouseLeave={e => { e.currentTarget.style.color = '#232323'; }}
+        onMouseEnter={e => { e.currentTarget.style.color = '#232323'; }}
+        onMouseLeave={e => { e.currentTarget.style.color = '#232323'; }}
       >
         <i
           className={`bi ${sidebarVisible ? 'bi-arrow-bar-left' : 'bi-layout-sidebar'}`}
@@ -108,7 +110,7 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
             transition: 'color 0.15s',
           }}
           onClick={onToggleCharacterSidebar}
-          aria-label={characterSidebarVisible ? 'Hide character sidebar' : 'Show character sidebar'}
+          aria-label={characterSidebarVisible ? t('topbar.hide_character_sidebar') : t('topbar.show_character_sidebar')}
           tabIndex={0}
           onMouseEnter={e => { e.currentTarget.style.color = '#232323'; }}
           onMouseLeave={e => { e.currentTarget.style.color = '#232323'; }}
@@ -128,7 +130,7 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
               type="text"
               className="form-control border-0 rounded-pill"
               style={{ background: 'transparent', fontSize: '0.8rem', paddingLeft: 14, color: '#232323' }}
-              placeholder="Search characters..."
+              placeholder={t('topbar.search_placeholder')}
               value={query}
               onChange={e => setQuery(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
@@ -153,7 +155,7 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
                   onClick={() => handleSearch(keyword)}
                   onMouseEnter={e => { e.currentTarget.style.background = '#232323'; e.currentTarget.style.color = '#fff'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}>
-                  <span className="fw-semibold">{keyword}</span> <small className="text-muted">({count})</small>
+                  <span className="fw-semibold">{keyword}</span> <small className="text-muted">{t('topbar.suggestion_count', { count })}</small>
                 </li>
               ))}
             </ul>
