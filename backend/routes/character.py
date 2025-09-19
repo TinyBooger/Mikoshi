@@ -103,7 +103,7 @@ async def update_character(
     db.commit()
     return {"message": "Character updated successfully"}
 
-@router.get("/api/characters", response_model=None)
+@router.get("/api/characters", response_model=List[CharacterOut])
 def get_characters(search: str = None, db: Session = Depends(get_db)):
     query = db.query(Character)
     if search:
@@ -176,7 +176,9 @@ def get_recent_characters(db: Session = Depends(get_db)):
 
 # ----------------------------------------------------------------
 
-@router.get("/api/characters-created")
+from typing import List
+
+@router.get("/api/characters-created", response_model=List[CharacterOut])
 def get_user_created_characters(
     userId: str = Query(None),
     current_user: User = Depends(get_current_user),
@@ -192,17 +194,9 @@ def get_user_created_characters(
         if not current_user:
             return []
         characters = db.query(Character).filter(Character.creator_id == current_user.id).all()
-    return [{
-        "id": c.id,
-        "name": c.name,
-        "picture": c.picture,
-        "tagline": c.tagline,
-        "likes": c.likes,
-        "views": c.views,
-        "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
-    } for c in characters]
+    return characters
 
-@router.get("/api/characters-liked")
+@router.get("/api/characters-liked", response_model=List[CharacterOut])
 def get_user_liked_characters(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not current_user:
         return []
@@ -212,27 +206,18 @@ def get_user_liked_characters(current_user: User = Depends(get_current_user), db
     if not liked_ids:
         return []
     characters = db.query(Character).filter(Character.id.in_(liked_ids)).all()
-    return [{
-        "id": c.id,
-        "name": c.name,
-        "picture": c.picture,
-        "tagline": c.tagline,
-        "likes": c.likes,
-        "views": c.views,
-        "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None
-    } for c in characters]
+    return characters
 
-@router.get("/api/user/{user_id}/characters")
+@router.get("/api/user/{user_id}/characters", response_model=List[CharacterOut])
 def get_user_characters(user_id: str, db: Session = Depends(get_db)):
     characters = db.query(Character).filter(Character.creator_id == user_id).all()
-    return [{"id": c.id, "name": c.name, "picture": c.avatar_url} for c in characters]
+    return characters
 
-@router.get("/api/recent-characters")
+@router.get("/api/recent-characters", response_model=List[CharacterOut])
 def get_recent_characters(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    
     if not current_user or not current_user.recent_characters:
         return []
 
@@ -242,18 +227,10 @@ def get_recent_characters(
 
     # Fetch characters from database
     characters = db.query(Character).filter(Character.id.in_(char_ids)).all()
+    # Return characters in the order of recent char_ids
     char_map = {str(c.id): c for c in characters}
-
-    # Return formatted response
-    return [
-        {
-            "id": entry["id"],
-            "name": char_map[entry["id"]].name if entry["id"] in char_map else "Unknown",
-            "picture": char_map[entry["id"]].picture if entry["id"] in char_map else None,
-            "timestamp": entry["timestamp"],
-        }
-        for entry in recent if entry["id"] in char_map
-    ]
+    ordered = [char_map[str(cid)] for cid in char_ids if str(cid) in char_map]
+    return ordered
 
 @router.post("/api/recent-characters/update")
 async def update_recent_characters(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

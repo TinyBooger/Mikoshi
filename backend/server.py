@@ -43,10 +43,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Initialize Firebase Admin at startup
 initialize_firebase_admin()
 
-# Create DB tables
+# Wake up Neon PostgreSQL database and wait for it to be available
+import time
+from sqlalchemy.exc import OperationalError
+from sqlalchemy import text
+
+def wait_for_neon_db(max_retries=20, delay=3):
+    for attempt in range(1, max_retries + 1):
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            print(f"Neon database is available (attempt {attempt}).")
+            return True
+        except OperationalError as e:
+            print(f"Attempt {attempt}: Neon database not available yet: {e}")
+            time.sleep(delay)
+    print("Failed to connect to Neon database after retries. Exiting.")
+    exit(1)
+
+wait_for_neon_db()
+
+# Create DB tables after confirming DB is up
 Base.metadata.create_all(bind=engine)
 
 
@@ -60,17 +81,8 @@ app.include_router(tags.router)
 app.include_router(scene.router)
 app.include_router(persona.router)
 
-# Wake up Neon PostgreSQL database at startup
-from sqlalchemy import text
 
-@app.on_event("startup")
-async def wake_up_neon_db():
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        print("Neon database wake-up call sent.")
-    except Exception as e:
-        print(f"Failed to wake up Neon database: {e}")
+# (Optional) You can still keep the async wake-up for later pings if needed
 
 # Add this below all your existing code
 if __name__ == "__main__":

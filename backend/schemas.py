@@ -34,8 +34,6 @@ class PersonaOut(BaseModel):
     class Config:
         from_attributes = True
         
-
-# CharacterOut model
 class CharacterOut(BaseModel):
     id: int
     name: str
@@ -50,6 +48,21 @@ class CharacterOut(BaseModel):
     created_time: Any
     creator_id: str
     creator_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+# CharacterOut model
+class UserOut(BaseModel):
+    id: str
+    email: Optional[EmailStr] = None
+    name: Optional[str] = None
+    profile_pic: Optional[str] = None
+    bio: Optional[str] = None
+    liked_tags: list[str] = []
+    chat_history: list[Any] = []
+    views: int = 0
+    likes: int = 0
 
     class Config:
         from_attributes = True

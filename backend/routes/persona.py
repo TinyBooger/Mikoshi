@@ -65,8 +65,9 @@ async def create_persona(
     return JSONResponse(content={"id": persona.id, "message": "Persona created"})
 
 
+
 # Read all Personas or search by name
-@router.get("/api/personas/", response_model=None)
+@router.get("/api/personas/", response_model=List[PersonaOut])
 def get_personas(search: str = None, db: Session = Depends(get_db)):
     query = db.query(Persona)
     if search:
@@ -76,7 +77,7 @@ def get_personas(search: str = None, db: Session = Depends(get_db)):
     return personas
 
 # Read single Persona
-@router.get("/api/personas/{persona_id}", response_model=None)
+@router.get("/api/personas/{persona_id}", response_model=PersonaOut)
 def get_persona(persona_id: int, db: Session = Depends(get_db)):
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:

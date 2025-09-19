@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form, Query
+from schemas import UserOut
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import firebase_admin
 from firebase_admin import auth as firebase_auth
@@ -13,22 +14,17 @@ from utils.validators import validate_account_fields
 router = APIRouter()
 security = HTTPBearer()
 
-@router.get("/api/user/{user_id}")
+@router.get("/api/user/{user_id}", response_model=UserOut)
 def get_user_by_id(user_id: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {
-        "id": user.id,
-        "name": user.name,
-        "profile_pic": user.profile_pic,
-        "bio": getattr(user, "bio", None),
-    }
+    # Note: email, liked_tags, chat_history, views, likes are not returned if not present in DB
+    return user
 
 # Add alias for plural endpoint for frontend compatibility
-@router.get("/api/users/{user_id}")
+@router.get("/api/users/{user_id}", response_model=UserOut)
 def get_user_by_id_alias(user_id: str, db: Session = Depends(get_db)):
-    # Just call the original function
     return get_user_by_id(user_id, db)
 
 @router.post("/api/update-profile")

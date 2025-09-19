@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 
 from database import get_db
 from models import User
+from schemas import UserOut
 from utils.session import create_session_token, verify_session_token
 from utils.cloudinary_utils import upload_avatar
 from utils.validators import validate_account_fields
@@ -17,7 +18,7 @@ security = HTTPBearer()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-@router.get("/api/users/me")
+@router.get("/api/users/me", response_model=UserOut)
 async def get_current_user(
     db: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Depends(security)
@@ -35,18 +36,8 @@ async def get_current_user(
                 detail="User not found in database"
             )
         
-        # Return user data (excluding sensitive fields if needed)
-        return {
-            "id": user.id,
-            "email": user.email,
-            "name": user.name,
-            "profile_pic": user.profile_pic,
-            "bio": getattr(user, "bio", None),
-            "liked_tags": user.liked_tags,
-            "chat_history": user.chat_history,
-            "views": user.views,
-            "likes": user.likes,
-        }
+        # Return user model directly for response_model
+        return user
         
     except firebase_admin.exceptions.FirebaseError as e:
         raise HTTPException(

@@ -51,8 +51,8 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
   let creatorDisplay = t('entity_card.unknown');
   if (creator_name) {
     creatorDisplay = typeof creator_name === 'object' ? creator_name.name : creator_name;
-  } else if (entity.creator) {
-    creatorDisplay = typeof entity.creator === 'object' && entity.creator.name ? entity.creator.name : entity.creator || t('entity_card.unknown');
+  } else if (entity.creator_name) {
+    creatorDisplay = entity.creator_name ? entity.creator_name : t('entity_card.unknown');
   }
 
   // Card click logic

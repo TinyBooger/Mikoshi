@@ -50,8 +50,9 @@ async def create_scene(
 
 
 
+
 # Read all Scenes or search by name
-@router.get("/api/scenes/", response_model=None)
+@router.get("/api/scenes/", response_model=List[SceneOut])
 def get_scenes(search: str = None, db: Session = Depends(get_db)):
     query = db.query(Scene)
     if search:
@@ -97,7 +98,7 @@ def get_recommended_scenes(
     return [SceneOut.from_orm(s) for s in scenes]
 
 # Read single Scene
-@router.get("/api/scenes/{scene_id}", response_model=None)
+@router.get("/api/scenes/{scene_id}", response_model=SceneOut)
 def get_scene(scene_id: int, db: Session = Depends(get_db)):
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if not scene:
