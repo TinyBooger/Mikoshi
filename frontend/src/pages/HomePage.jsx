@@ -180,23 +180,30 @@ function HomePage() {
         navigate={navigate}
       />
 
-      <HorizontalCardSection
-        title={t('home.popular_scenes')}
-        moreLink="/browse/scenes"
-    contents={Array.isArray(popularScenes) ? popularScenes.map(scene => ({ ...scene, renderCard: () => <EntityCard type="scene" entity={scene} /> })) : popularScenes}
-        scrollState={{ left: false, right: false }}
-        scrollId="scene-scroll"
-        navigate={navigate}
-      />
 
-      <HorizontalCardSection
-        title={t('home.popular_personas')}
-        moreLink="/browse/personas"
-    contents={Array.isArray(popularPersonas) ? popularPersonas.map(persona => ({ ...persona, renderCard: () => <EntityCard type="persona" entity={persona} /> })) : popularPersonas}
-        scrollState={{ left: false, right: false }}
-        scrollId="persona-scroll"
-        navigate={navigate}
-      />
+      {/* Popular Scenes & Personas side by side */}
+      <div className="row mb-4" style={{ gap: 0 }}>
+        <div className="col-12 col-md-6 mb-4 mb-md-0">
+          <HorizontalCardSection
+            title={t('home.popular_scenes')}
+            moreLink="/browse/scenes"
+            contents={Array.isArray(popularScenes) ? popularScenes.map(scene => ({ ...scene, renderCard: () => <EntityCard type="scene" entity={scene} /> })) : popularScenes}
+            scrollState={{ left: false, right: false }}
+            scrollId="scene-scroll"
+            navigate={navigate}
+          />
+        </div>
+        <div className="col-12 col-md-6">
+          <HorizontalCardSection
+            title={t('home.popular_personas')}
+            moreLink="/browse/personas"
+            contents={Array.isArray(popularPersonas) ? popularPersonas.map(persona => ({ ...persona, renderCard: () => <EntityCard type="persona" entity={persona} /> })) : popularPersonas}
+            scrollState={{ left: false, right: false }}
+            scrollId="persona-scroll"
+            navigate={navigate}
+          />
+        </div>
+      </div>
 
       {/* Recently Uploaded */}
       <HorizontalCardSection

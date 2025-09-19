@@ -49,6 +49,7 @@ initialize_firebase_admin()
 # Create DB tables
 Base.metadata.create_all(bind=engine)
 
+
 # Always include API routes
 app.include_router(auth.router)
 app.include_router(user.router)
@@ -58,6 +59,18 @@ app.include_router(search.router)
 app.include_router(tags.router)
 app.include_router(scene.router)
 app.include_router(persona.router)
+
+# Wake up Neon PostgreSQL database at startup
+from sqlalchemy import text
+
+@app.on_event("startup")
+async def wake_up_neon_db():
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print("Neon database wake-up call sent.")
+    except Exception as e:
+        print(f"Failed to wake up Neon database: {e}")
 
 # Add this below all your existing code
 if __name__ == "__main__":

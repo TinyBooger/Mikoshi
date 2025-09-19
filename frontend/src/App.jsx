@@ -36,7 +36,8 @@ export default function App() {
           children: [
             { index: true, element: <HomePage /> },
             { path: 'test', element: <TestPage /> },
-            { path: 'browse/:category', element: <BrowsePage /> },
+            { path: 'browse/:mainTab/:subTab', element: <BrowsePage /> },
+            { path: 'browse/:mainTab', element: <BrowsePage /> },
             { path: 'character/create', element: <CharacterFormPage /> },
             { path: 'character/edit/:id', element: <CharacterFormPage /> },
             { path: 'persona/create', element: <PersonaFormPage /> },

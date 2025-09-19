@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -8,6 +9,7 @@ from utils.cloudinary_utils import upload_scene_image
 from utils.session import get_current_user
 from datetime import datetime, UTC
 from schemas import SceneOut
+from sqlalchemy.dialects.postgresql import array, TEXT
 
 
 router = APIRouter()
@@ -67,12 +69,31 @@ def get_scenes_created(userId: int = None, db: Session = Depends(get_db)):
     scenes = query.order_by(Scene.created_time.desc()).all()
     return [SceneOut.from_orm(s) for s in scenes]
 
+
+# Popular Scenes
 @router.get("/api/scenes/popular", response_model=List[SceneOut])
 def get_popular_scenes(db: Session = Depends(get_db)):
-    if hasattr(Scene, 'likes'):
-        scenes = db.query(Scene).order_by(Scene.likes.desc()).limit(12).all()
-    else:
-        scenes = db.query(Scene).order_by(Scene.created_time.desc()).limit(12).all()
+    scenes = db.query(Scene).order_by(Scene.likes.desc()).limit(12).all()
+    return [SceneOut.from_orm(s) for s in scenes]
+
+# Recent Scenes
+@router.get("/api/scenes/recent", response_model=List[SceneOut])
+def get_recent_scenes(db: Session = Depends(get_db)):
+    scenes = db.query(Scene).order_by(Scene.created_time.desc()).limit(12).all()
+    return [SceneOut.from_orm(s) for s in scenes]
+
+
+# Recommended Scenes (personalized by liked_tags)
+@router.get("/api/scenes/recommended", response_model=List[SceneOut])
+def get_recommended_scenes(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user.liked_tags:
+        return []  # no recommendations
+    user_tags = current_user.liked_tags or []
+    tags_array = array(user_tags, type_=TEXT)
+    scenes = db.query(Scene).filter(Scene.tags.overlap(tags_array)).order_by(Scene.likes.desc()).limit(12).all()
     return [SceneOut.from_orm(s) for s in scenes]
 
 # Read single Scene

@@ -12,9 +12,23 @@ from schemas import PersonaOut
 
 router = APIRouter()
 
+
+# Popular Personas
 @router.get("/api/personas/popular", response_model=List[PersonaOut])
 def get_popular_personas(db: Session = Depends(get_db)):
     personas = db.query(Persona).order_by(Persona.likes.desc()).limit(12).all()
+    return personas
+
+# Recent Personas
+@router.get("/api/personas/recent", response_model=List[PersonaOut])
+def get_recent_personas(db: Session = Depends(get_db)):
+    personas = db.query(Persona).order_by(Persona.created_time.desc()).limit(12).all()
+    return personas
+
+# Recommended Personas (simple: most liked, fallback to recent)
+@router.get("/api/personas/recommended", response_model=List[PersonaOut])
+def get_recommended_personas(db: Session = Depends(get_db)):
+    personas = db.query(Persona).order_by(Persona.likes.desc(), Persona.created_time.desc()).limit(12).all()
     return personas
 
 # ------------------- PERSONA CRUD ROUTES -------------------
