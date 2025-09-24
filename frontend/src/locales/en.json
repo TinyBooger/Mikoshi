@@ -91,13 +91,16 @@
     "passwords_no_match": "Passwords do not match"
   },
   "search": {
-    "input_placeholder": "Search characters...",
+    "input_placeholder": "Search characters, scenes, personas...",
     "results_title": "Search Results",
     "relevance": "Relevance",
     "popularity": "Popularity",
     "recent": "Recent",
     "loading": "Loading...",
-    "no_results": "No results for \"{{query}}\""
+    "no_results": "No results for \"{{query}}\"",
+    "characters_tab": "Characters",
+    "scenes_tab": "Scenes",
+    "personas_tab": "Personas"
   },
   "character_form": {
     "edit_title": "Edit Character",

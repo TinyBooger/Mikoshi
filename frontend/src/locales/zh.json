@@ -91,13 +91,16 @@
     "passwords_no_match": "两次输入的密码不一致"
   },
   "search": {
-    "input_placeholder": "搜索角色...",
+    "input_placeholder": "搜索角色、场景或人格...",
     "results_title": "搜索结果",
     "relevance": "相关性",
     "popularity": "人气",
     "recent": "最新",
     "loading": "加载中...",
-    "no_results": "没有找到与“{{query}}”相关的结果"
+    "no_results": "没有找到与“{{query}}”相关的结果",
+    "characters_tab": "角色",
+    "scenes_tab": "场景",
+    "personas_tab": "人格"
   },
   "character_form": {
     "edit_title": "编辑角色",

@@ -1,13 +1,17 @@
+from typing import List
 from fastapi import APIRouter, Request, Depends, HTTPException
 from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 from database import get_db
-from models import SearchTerm, Character, User
+from models import SearchTerm, Character, User, Scene, Persona
+from schemas import CharacterOut, SceneOut, PersonaOut
+
 from datetime import datetime, UTC
 
 router = APIRouter()
 
-@router.get("/api/characters/search")
+
+@router.get("/api/characters/search", response_model=List[CharacterOut])
 def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get_db)):
 
     # Create a case-insensitive pattern
@@ -54,20 +58,77 @@ def search_characters(q: str, sort: str = "relevance", db: Session = Depends(get
     else:
         chars = query.all()
     
-    return [
-        {
-            "id": c.id,
-            "name": c.name,
-            "persona": c.persona,
-            "picture": c.picture,
-            "views": c.views,
-            "tags": c.tags,
-            "tagline": c.tagline,
-            "created_time": c.created_time.isoformat() if c.created_time else None,
-            "creator": db.query(User).filter(User.id == c.creator_id).first().name if c.creator_id else None,
-            "score": scores[i] if sort == "relevance" else None  # Include score for debugging
-        } for i, c in enumerate(chars)
-    ]
+    return chars
+
+# --- Scene Search Endpoint ---
+@router.get("/api/scenes/search", response_model=List[SceneOut])
+def search_scenes(q: str, sort: str = "relevance", db: Session = Depends(get_db)):
+    ilike_pattern = f"%{q}%"
+    query = db.query(Scene).filter(
+        Scene.name.ilike(ilike_pattern) |
+        Scene.description.ilike(ilike_pattern) |
+        func.array_to_string(Scene.tags, ',').ilike(ilike_pattern)
+    )
+    if sort == "relevance":
+        NAME_WEIGHT = 3.0
+        TAG_WEIGHT = 2.0
+        DESC_WEIGHT = 1.0
+        score_case = case(
+            (Scene.name.ilike(ilike_pattern), NAME_WEIGHT),
+            (func.array_to_string(Scene.tags, ',').ilike(ilike_pattern), TAG_WEIGHT),
+            (Scene.description.ilike(ilike_pattern), DESC_WEIGHT),
+            else_=0
+        ).label("relevance_score")
+        query = query.add_columns(score_case)
+        query = query.group_by(Scene.id)
+        query = query.order_by(score_case.desc(), Scene.views.desc())
+        results = query.all()
+        scenes = [r[0] for r in results]
+    elif sort == "popularity":
+        query = query.order_by(Scene.views.desc())
+        scenes = query.all()
+    elif sort == "recent":
+        query = query.order_by(Scene.created_time.desc())
+        scenes = query.all()
+    else:
+        query = query.order_by(Scene.name.asc())
+        scenes = query.all()
+    return scenes
+
+# --- Persona Search Endpoint ---
+@router.get("/api/personas/search", response_model=List[PersonaOut])
+def search_personas(q: str, sort: str = "relevance", db: Session = Depends(get_db)):
+    ilike_pattern = f"%{q}%"
+    query = db.query(Persona).filter(
+        Persona.name.ilike(ilike_pattern) |
+        Persona.description.ilike(ilike_pattern) |
+        func.array_to_string(Persona.tags, ',').ilike(ilike_pattern)
+    )
+    if sort == "relevance":
+        NAME_WEIGHT = 3.0
+        TAG_WEIGHT = 2.0
+        DESC_WEIGHT = 1.0
+        score_case = case(
+            (Persona.name.ilike(ilike_pattern), NAME_WEIGHT),
+            (func.array_to_string(Persona.tags, ',').ilike(ilike_pattern), TAG_WEIGHT),
+            (Persona.description.ilike(ilike_pattern), DESC_WEIGHT),
+            else_=0
+        ).label("relevance_score")
+        query = query.add_columns(score_case)
+        query = query.group_by(Persona.id)
+        query = query.order_by(score_case.desc(), Persona.views.desc())
+        results = query.all()
+        personas = [r[0] for r in results]
+    elif sort == "popularity":
+        query = query.order_by(Persona.views.desc())
+        personas = query.all()
+    elif sort == "recent":
+        query = query.order_by(Persona.created_time.desc())
+        personas = query.all()
+    else:
+        query = query.order_by(Persona.name.asc())
+        personas = query.all()
+    return personas
 
 @router.post("/api/update-search-term")
 async def update_search_term(request: Request, db: Session = Depends(get_db)):
