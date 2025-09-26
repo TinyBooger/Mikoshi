@@ -217,7 +217,7 @@ export default function Sidebar() {
                 onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#232323'; }}
               >
                 <img
-                  src={c.picture || defaultPicture}
+                  src={c.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${c.picture.replace(/^\//, '')}` : defaultPicture}
                   alt={c.name}
                   className="rounded-circle border"
                   style={{ width: 38, height: 38, objectFit: 'cover', border: '1.6px solid #e9ecef' }}
@@ -242,7 +242,7 @@ export default function Sidebar() {
               tabIndex={0}
             >
               <img
-                src={userData?.profile_pic || defaultAvatar}
+                src={userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar}
                 className="rounded-circle border"
                 width="29"
                 height="29"

@@ -393,7 +393,7 @@ export default function ProfilePage() {
       <div className="container mt-4" style={{ position: 'relative', zIndex: 1 }}>
         <div className="d-flex align-items-center mb-3">
           <img
-            src={displayUser.profile_pic || defaultAvatar}
+            src={displayUser.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${displayUser.profile_pic.replace(/^\//, '')}` : defaultAvatar}
             alt="Profile"
             style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover', border: '2.4px solid #222', marginRight: 24, background: '#fff' }}
           />

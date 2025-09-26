@@ -445,7 +445,15 @@ export default function ChatPage() {
                     maxWidth: '80%'
                   }}>
                     <img
-                      src={m.role === 'user' ? (userData?.profile_pic || defaultPic) : (selectedCharacter?.picture || defaultPic)}
+                      src={
+                        m.role === 'user'
+                          ? (userData?.profile_pic
+                              ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}`
+                              : defaultPic)
+                          : (selectedCharacter?.picture
+                              ? `${window.API_BASE_URL.replace(/\/$/, '')}/${selectedCharacter.picture.replace(/^\//, '')}`
+                              : defaultPic)
+                      }
                       alt={m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
                       style={{ width: 77, height: 77, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef' }}
                     />

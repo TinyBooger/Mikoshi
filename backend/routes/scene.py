@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
 from models import Scene, User, UserLikedScene
-from utils.cloudinary_utils import upload_scene_image
+from utils.local_storage_utils import save_image
 from utils.session import get_current_user
 from datetime import datetime, UTC
 from schemas import SceneOut
@@ -42,7 +42,7 @@ async def create_scene(
     db.refresh(scene)
     db.commit()
     if picture:
-        scene.picture = upload_scene_image(picture.file, scene.id)
+        scene.picture = save_image(picture.file, 'scene', scene.id, picture.filename)
         db.commit()
         db.refresh(scene)
     return JSONResponse(content={"id": scene.id, "message": "Scene created"})
@@ -131,7 +131,7 @@ async def update_scene(
     if tags is not None:
         scene.tags = tags
     if picture:
-        scene.picture = upload_scene_image(picture.file, scene.id)
+        scene.picture = save_image(picture.file, 'scene', scene.id, picture.filename)
     db.commit()
     db.refresh(scene)
     return JSONResponse(content={"id": scene.id, "message": "Scene updated"})

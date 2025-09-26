@@ -107,7 +107,7 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
         padding: 0,
       }}>
         <img
-          src={picture || defaultPicture}
+          src={picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${picture.replace(/^\//, '')}` : defaultPicture}
           alt={name}
           style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0, border: 'none' }}
         />

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona
 from utils.session import get_current_user
-from utils.cloudinary_utils import upload_avatar
+from utils.local_storage_utils import save_image
 from utils.validators import validate_account_fields
 
 router = APIRouter()
@@ -47,7 +47,8 @@ async def update_profile(
         current_user.bio = bio
 
     if profile_pic:
-        current_user.profile_pic = upload_avatar(profile_pic.file, current_user.id)
+        # Save the uploaded profile picture locally and store the relative path
+        current_user.profile_pic = save_image(profile_pic.file, 'user', current_user.id, profile_pic.filename)
 
     db.commit()
     db.refresh(current_user)

@@ -19,7 +19,7 @@ def upload_avatar(file, user_id):
     return upload_res.get("secure_url")
 
 
-def upload_scene_image(file, char_id):
+def upload_character_image(file, char_id):
     upload_res = cloudinary.uploader.upload(
         file,
         folder="characters",

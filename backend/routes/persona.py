@@ -5,7 +5,7 @@ from typing import List
 
 from database import get_db
 from models import Persona, User, Tag, UserLikedPersona
-from utils.cloudinary_utils import upload_persona_picture
+from utils.local_storage_utils import save_image
 from utils.session import get_current_user
 from datetime import datetime, UTC
 from schemas import PersonaOut
@@ -59,7 +59,7 @@ async def create_persona(
     db.refresh(persona)
     db.commit()
     if picture:
-        persona.picture = upload_persona_picture(picture.file, persona.id)
+        persona.picture = save_image(picture.file, 'persona', persona.id, picture.filename)
         db.commit()
         db.refresh(persona)
     return JSONResponse(content={"id": persona.id, "message": "Persona created"})
@@ -110,7 +110,7 @@ async def update_persona(
     if tags is not None:
         persona.tags = tags
     if picture:
-        persona.picture = upload_persona_picture(picture.file, persona.id)
+        persona.picture = save_image(picture.file, 'persona', persona.id, picture.filename)
     db.commit()
     db.refresh(persona)
     return JSONResponse(content={"id": persona.id, "message": "Persona updated"})

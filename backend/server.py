@@ -71,6 +71,14 @@ wait_for_neon_db()
 Base.metadata.create_all(bind=engine)
 
 
+
+# Serve static files (images, etc.) at /static
+app.mount(
+    "/static",
+    StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")),
+    name="static",
+)
+
 # Always include API routes
 app.include_router(auth.router)
 app.include_router(user.router)

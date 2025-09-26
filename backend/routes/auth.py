@@ -10,7 +10,6 @@ from database import get_db
 from models import User
 from schemas import UserOut
 from utils.session import create_session_token, verify_session_token
-from utils.cloudinary_utils import upload_avatar
 from utils.validators import validate_account_fields
 
 router = APIRouter()

@@ -8,7 +8,7 @@ from datetime import datetime, UTC
 from database import get_db
 from models import Character, User, Tag, UserLikedCharacter
 from utils.session import get_current_user
-from utils.cloudinary_utils import upload_scene_image
+from utils.local_storage_utils import save_image
 from utils.validators import validate_character_fields
 from schemas import CharacterOut
 
@@ -61,7 +61,7 @@ async def create_character(
     db.refresh(char)
 
     if picture:
-        char.picture = upload_scene_image(picture.file, char.id)
+        char.picture = save_image(picture.file, 'character', char.id, picture.filename)
 
 
     db.commit()
@@ -98,7 +98,7 @@ async def update_character(
     char.example_messages = sample_dialogue.strip()
 
     if picture:
-        char.picture = upload_scene_image(picture.file, char.id)
+        char.picture = save_image(picture.file, 'character', char.id, picture.filename)
 
     db.commit()
     return {"message": "Character updated successfully"}
