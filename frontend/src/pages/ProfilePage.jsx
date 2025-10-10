@@ -67,17 +67,13 @@ export default function ProfilePage() {
       .then(res => res.ok ? res.json() : [])
       .then(setScenes);
 
-    // Created Personas (private, only for own profile)
-    if (isOwnProfile) {
-      fetch(`${window.API_BASE_URL}/api/personas-created`, {
-        headers: { 'Authorization': `Bearer ${idToken}` }
-      })
-        .then(res => res.ok ? res.json() : [])
-        .then(setPersonas)
-        .catch(() => setPersonas([]));
-    } else {
-      setPersonas([]); // hide personas for public view
-    }
+    // Created Personas (only for own profile)
+    fetch(`${window.API_BASE_URL}/api/personas-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
+      headers: { 'Authorization': `Bearer ${idToken}` }
+    })
+      .then(res => res.ok ? res.json() : [])
+      .then(setPersonas)
+      .catch(() => setPersonas([]));
 
     // Liked Characters (only for own profile)
     if (isOwnProfile) {
@@ -227,14 +223,14 @@ export default function ProfilePage() {
         title = t('profile.liked_characters');
         emptyMsg = t('profile.no_liked_characters');
       } else if (activeSubtab === SUBTAB_TYPES.SCENES) {
-        entities = likedScenes; // Placeholder, not implemented
+        entities = likedScenes;
         type = 'scene';
         showEdit = false;
         editUrlPrefix = 'scene';
         title = t('profile.liked_scenes');
         emptyMsg = t('profile.no_liked_scenes');
       } else if (activeSubtab === SUBTAB_TYPES.PERSONAS) {
-        entities = likedPersonas; // Placeholder, not implemented
+        entities = likedPersonas;
         type = 'persona';
         showEdit = false;
         editUrlPrefix = 'persona';

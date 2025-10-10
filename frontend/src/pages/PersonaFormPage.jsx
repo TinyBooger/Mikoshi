@@ -237,8 +237,8 @@ export default function PersonaFormPage() {
           <div className="mb-4">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('persona_form.tags')}</label>
             <TagsInput
-              value={personaData.tags}
-              onChange={tags => handleChange('tags', tags)}
+              tags={personaData.tags}
+              setTags={tags => handleChange('tags', tags)}
               maxTags={MAX_TAGS}
             />
           </div>

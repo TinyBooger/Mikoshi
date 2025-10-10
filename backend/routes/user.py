@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form, Query
 from schemas import UserOut
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import firebase_admin
-from firebase_admin import auth as firebase_auth
 from sqlalchemy.orm import Session
 
 from database import get_db

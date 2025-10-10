@@ -52,7 +52,7 @@ export default function InfoCard({
       <div style={{ marginBottom: '1.6rem' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <img
-            src={resolvedAvatar || defaultPic}
+            src={resolvedAvatar ? `${window.API_BASE_URL.replace(/\/$/, '')}/${resolvedAvatar.replace(/^\//, '')}` : defaultPic}
             alt="Avatar"
             style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%', border: '2.4px solid #e9ecef', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginRight: 14 }}
           />

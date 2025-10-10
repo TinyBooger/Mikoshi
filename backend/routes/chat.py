@@ -41,14 +41,14 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 break
 
     try:
-        response = client.chat_completion(
-            model="mistralai/Mistral-7B-Instruct-v0.3",
+        response = client.chat.completions.create(
+            model="deepseek-chat",
             messages=messages,
             max_tokens=250,
-            temperature=0.7,
+            temperature=1.3,
             top_p=0.9
         )
-        reply = response["choices"][0]["message"]["content"].strip()
+        reply = response.choices[0].message.content.strip()
     except Exception:
         return JSONResponse(content={"error": "Server busy, please try again later."}, status_code=503)
 

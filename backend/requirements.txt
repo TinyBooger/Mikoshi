@@ -1,6 +1,5 @@
 fastapi
 uvicorn
-huggingface_hub
 sqlalchemy 
 psycopg2-binary
 passlib[bcrypt]
@@ -11,3 +10,4 @@ bcrypt<4.0
 cloudinary
 firebase-admin
 python-dotenv
+openai

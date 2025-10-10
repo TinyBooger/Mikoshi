@@ -47,7 +47,7 @@ app.add_middleware(
 # Initialize Firebase Admin at startup
 initialize_firebase_admin()
 
-# Wake up Neon PostgreSQL database and wait for it to be available
+# Wake up PostgreSQL database and wait for it to be available
 import time
 from sqlalchemy.exc import OperationalError
 from sqlalchemy import text
@@ -57,12 +57,12 @@ def wait_for_neon_db(max_retries=20, delay=3):
         try:
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
-            print(f"Neon database is available (attempt {attempt}).")
+            print(f"Database is available (attempt {attempt}).")
             return True
         except OperationalError as e:
-            print(f"Attempt {attempt}: Neon database not available yet: {e}")
+            print(f"Attempt {attempt}: Database not available yet: {e}")
             time.sleep(delay)
-    print("Failed to connect to Neon database after retries. Exiting.")
+    print("Failed to connect to database after retries. Exiting.")
     exit(1)
 
 wait_for_neon_db()

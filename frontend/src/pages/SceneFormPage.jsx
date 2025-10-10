@@ -237,8 +237,8 @@ export default function SceneFormPage() {
           <div className="mb-4">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('scene_form.tags')}</label>
             <TagsInput
-              value={sceneData.tags}
-              onChange={tags => handleChange('tags', tags)}
+              tags={sceneData.tags}
+              setTags={tags => handleChange('tags', tags)}
               maxTags={MAX_TAGS}
             />
           </div>
