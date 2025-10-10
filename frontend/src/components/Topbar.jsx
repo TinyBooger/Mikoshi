@@ -8,7 +8,7 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { idToken } = useContext(AuthContext);
+  const { sessionToken } = useContext(AuthContext);
 
   // Only use search bar if not on ChatPage
   const isChatPage = location.pathname.startsWith('/chat');
@@ -21,17 +21,17 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
   useEffect(() => {
     if (isChatPage) return;
     const timer = setTimeout(() => {
-      if (!idToken) return;
+  if (!sessionToken) return;
       if (query.trim() === '') {
         fetch(`${window.API_BASE_URL}/api/search-suggestions/popular`, {
-          headers: { 'Authorization': `Bearer ${idToken}` }
+          headers: { 'Authorization': `Bearer ${sessionToken}` }
         })
           .then(res => res.json())
           .then(setSuggestions)
           .catch(() => setSuggestions([]));
       } else {
         fetch(`${window.API_BASE_URL}/api/search-suggestions?q=${encodeURIComponent(query.trim())}`, {
-          headers: { 'Authorization': `Bearer ${idToken}` }
+          headers: { 'Authorization': `Bearer ${sessionToken}` }
         })
           .then(res => res.json())
           .then(setSuggestions)
@@ -39,7 +39,7 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [query, idToken, isChatPage]);
+  }, [query, sessionToken, isChatPage]);
 
   const handleSearch = (q = query) => {
     const trimmed = q.trim();

@@ -17,7 +17,7 @@ export default function PersonaFormPage() {
   const mode = id ? 'edit' : 'create';
   console.log("PersonaFormPage mode:", mode, id ? `(id: ${id})` : '');
 
-  const { idToken } = useContext(AuthContext);
+  const { sessionToken } = useContext(AuthContext);
   const navigate = useNavigate();
   const [personaData, setPersonaData] = useState({
     name: '',
@@ -35,12 +35,12 @@ export default function PersonaFormPage() {
         navigate("/");
         return;
       }
-      if (!idToken) {
+  if (!sessionToken) {
         navigate("/");
         return;
       }
       fetch(`${window.API_BASE_URL}/api/personas/${id}`, {
-        headers: { 'Authorization': `Bearer ${idToken}` }
+  headers: { 'Authorization': sessionToken }
       })
         .then(res => {
           if (!res.ok) {
@@ -61,7 +61,7 @@ export default function PersonaFormPage() {
           setLoading(false);
         });
     }
-  }, [mode, id, navigate, idToken]);
+  }, [mode, id, navigate, sessionToken]);
 
   const handleChange = (field, value) => {
     setPersonaData(prev => ({ ...prev, [field]: value }));
@@ -69,7 +69,7 @@ export default function PersonaFormPage() {
 
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!idToken) {
+  if (!sessionToken) {
       alert("You need to be logged in.");
       navigate("/");
       return;
@@ -88,7 +88,7 @@ export default function PersonaFormPage() {
     try {
       const res = await fetch(mode === 'edit' ? `${window.API_BASE_URL}/api/personas/${id}` : `${window.API_BASE_URL}/api/personas/`, {
         method: mode === 'edit' ? "PUT" : "POST",
-        headers: { 'Authorization': `Bearer ${idToken}` },
+  headers: { 'Authorization': sessionToken },
         body: formData,
       });
       const data = await res.json();
@@ -104,14 +104,14 @@ export default function PersonaFormPage() {
   };
 
   const handleDelete = async () => {
-    if (!idToken) {
+  if (!sessionToken) {
       navigate("/");
       return;
     }
     if (window.confirm("Are you sure you want to delete this persona?")) {
       const res = await fetch(`${window.API_BASE_URL}/api/personas/${id}`, {
         method: "DELETE",
-        headers: { 'Authorization': `Bearer ${idToken}` }
+  headers: { 'Authorization': sessionToken }
       });
       const data = await res.json();
       alert(data.message || data.detail || "Persona deleted");

@@ -5,7 +5,7 @@ export default function TagsInput({ tags, setTags, maxTags }) {
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const { idToken } = useContext(AuthContext);
+  const { sessionToken } = useContext(AuthContext);
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -16,7 +16,7 @@ export default function TagsInput({ tags, setTags, maxTags }) {
         
         const response = await fetch(url, {
           headers: {
-            'Authorization': `Bearer ${idToken}`
+            'Authorization': `Bearer ${sessionToken}`
           }
         });
 
@@ -32,10 +32,10 @@ export default function TagsInput({ tags, setTags, maxTags }) {
       }
     };
 
-    if (idToken) {
+    if (sessionToken) {
       fetchSuggestions();
     }
-  }, [input, idToken]);
+  }, [input, sessionToken]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && input.trim()) {

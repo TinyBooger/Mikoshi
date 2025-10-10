@@ -20,16 +20,17 @@ import CharactersPage from './admin/pages/CharactersPage.jsx';
 import TagsPage from './admin/pages/TagsPage.jsx';
 import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
 import TestPage from './pages/TestPage.jsx';
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 
 export default function App() {
-  const { currentUser, loading } = useContext(AuthContext);
+  const { userData, loading } = useContext(AuthContext);
 
   if (loading) {
     return null; // Or a loading spinner
   }
 
   const router = createBrowserRouter([
-    currentUser
+    userData
       ? {
           path: '/',
           element: <Layout />,
@@ -56,6 +57,7 @@ export default function App() {
           children: [
             { index: true, element: <WelcomePage /> },
             { path: 'sign-up', element: <SignUpPage /> },
+            { path: 'reset-password', element: <ResetPasswordPage /> },
           ],
         },
     {

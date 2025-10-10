@@ -2,8 +2,6 @@ import React, { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { AuthContext } from './AuthProvider.jsx'; // Import the AuthContext
-import { signOut } from 'firebase/auth';
-import { auth } from '../firebase.js';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import logo from '../assets/images/logo.png';
@@ -12,11 +10,11 @@ export default function Sidebar() {
   const [recent, setRecent] = useState([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
   const navigate = useNavigate();
-  const { currentUser, userData, idToken, loading } = useContext(AuthContext); // Get user data from context
+  const { userData, sessionToken, loading } = useContext(AuthContext); // Get user data from context
 
   useEffect(() => {
     const fetchRecentCharacters = async () => {
-      if (!currentUser || !idToken) {
+      if (!sessionToken) {
         setRecent([]);
         return;
       }
@@ -25,7 +23,7 @@ export default function Sidebar() {
       try {
         const response = await fetch(`${window.API_BASE_URL}/api/recent-characters`, {
           headers: {
-            'Authorization': `Bearer ${idToken}`
+            'Authorization': `Bearer ${sessionToken}`
           }
         });
         
@@ -45,12 +43,12 @@ export default function Sidebar() {
     };
 
     fetchRecentCharacters();
-  }, [currentUser, idToken]);
+  }, [sessionToken]);
 
   const handleLogout = async () => {
     try {
-      await signOut(auth); // Firebase sign out
-      navigate('/'); // Redirect to login page
+      localStorage.removeItem('sessionToken');
+      window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
       alert('Logout failed. Please try again.');
@@ -161,7 +159,7 @@ export default function Sidebar() {
                 style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                onClick={() => { setCreateOpen(false); if (!currentUser) return alert('Please login first'); navigate('/character/create'); }}
+                onClick={() => { setCreateOpen(false); if (!userData) return alert('Please login first'); navigate('/character/create'); }}
               >
                 <i className="bi bi-person-plus me-2"></i> {t('sidebar.create_character')}
               </button>
@@ -172,7 +170,7 @@ export default function Sidebar() {
                 style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                onClick={() => { setCreateOpen(false); if (!currentUser) return alert('Please login first'); navigate('/scene/create'); }}
+                onClick={() => { setCreateOpen(false); if (!userData) return alert('Please login first'); navigate('/scene/create'); }}
               >
                 <i className="bi bi-easel2 me-2"></i> {t('sidebar.create_scene')}
               </button>
@@ -183,7 +181,7 @@ export default function Sidebar() {
                 style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                onClick={() => { setCreateOpen(false); if (!currentUser) return alert('Please login first'); navigate('/persona/create'); }}
+                onClick={() => { setCreateOpen(false); if (!userData) return alert('Please login first'); navigate('/persona/create'); }}
               >
                 <i className="bi bi-people me-2"></i> {t('sidebar.create_persona')}
               </button>
@@ -231,7 +229,7 @@ export default function Sidebar() {
 
       {/* Profile / Login */}
       <div className="mt-auto px-1" style={{ fontSize: '0.8rem' }}>
-        {currentUser ? (
+  {userData ? (
           <div className="profile-dropdown-area position-relative">
             <button
               className={`btn border-0 w-100 d-flex align-items-center gap-2 shadow-sm rounded-4 py-2${profileOpen ? ' active' : ''}`}
@@ -250,7 +248,7 @@ export default function Sidebar() {
                 style={{ objectFit: 'cover', border: '1.6px solid #e9ecef' }}
               />
               <span className="flex-grow-1 text-start" style={{ color: '#232323', fontWeight: 700, fontSize: '0.8rem' }}>
-                {userData?.name || currentUser.email}
+                {userData?.name || userData?.email}
               </span>
               <i className={`bi ms-auto ${profileOpen ? 'bi-chevron-down' : 'bi-chevron-up'}`} style={{ fontSize: '0.8rem' }}></i>
             </button>

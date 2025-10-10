@@ -20,7 +20,7 @@ export default function CharacterFormPage() {
   const MAX_SAMPLE_LENGTH = 1000;
   const MAX_TAGS = 20;
 
-  const { idToken } = useContext(AuthContext);
+  const { sessionToken } = useContext(AuthContext);
   const navigate = useNavigate();
   const [charData, setCharData] = useState({
     name: '',
@@ -40,12 +40,12 @@ export default function CharacterFormPage() {
         navigate("/");
         return;
       }
-      if (!idToken) {
+  if (!sessionToken) {
         navigate("/");
         return;
       }
       fetch(`${window.API_BASE_URL}/api/character/${id}`, {
-        headers: { 'Authorization': `Bearer ${idToken}` }
+  headers: { 'Authorization': sessionToken }
       })
         .then(res => {
           if (!res.ok) {
@@ -67,7 +67,7 @@ export default function CharacterFormPage() {
           setLoading(false);
         });
     }
-  }, [mode, id, navigate, idToken]);
+  }, [mode, id, navigate, sessionToken]);
 
   const handleChange = (field, value) => {
     setCharData(prev => ({ ...prev, [field]: value }));
@@ -75,7 +75,7 @@ export default function CharacterFormPage() {
 
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!idToken) {
+  if (!sessionToken) {
       alert("You need to be logged in.");
       navigate("/");
       return;
@@ -96,7 +96,7 @@ export default function CharacterFormPage() {
     try {
       const res = await fetch(mode === 'edit' ? `${window.API_BASE_URL}/api/update-character` : `${window.API_BASE_URL}/api/create-character`, {
         method: "POST",
-        headers: { 'Authorization': `Bearer ${idToken}` },
+  headers: { 'Authorization': sessionToken },
         body: formData,
       });
       const data = await res.json();
@@ -112,14 +112,14 @@ export default function CharacterFormPage() {
   };
 
   const handleDelete = async () => {
-    if (!idToken) {
+  if (!sessionToken) {
       navigate("/");
       return;
     }
     if (window.confirm("Are you sure you want to delete this character?")) {
       const res = await fetch(`${window.API_BASE_URL}/api/character/${id}/delete`, {
         method: "DELETE",
-        headers: { 'Authorization': `Bearer ${idToken}` }
+  headers: { 'Authorization': sessionToken }
       });
       const data = await res.json();
       alert(data.message || data.detail || "Character deleted");

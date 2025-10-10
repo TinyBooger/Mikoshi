@@ -18,7 +18,7 @@ export default function SearchPage() {
   const [activeTab, setActiveTab] = useState("characters");
   const navigate = useNavigate();
   const location = useLocation();
-  const { idToken } = useContext(AuthContext);
+  const { sessionToken } = useContext(AuthContext);
 
   // Fetch search results when URL or tab changes
   useEffect(() => {
@@ -35,7 +35,7 @@ export default function SearchPage() {
       if (activeTab === "personas") endpoint = "/api/personas/search";
       try {
         const res = await fetch(`${window.API_BASE_URL}${endpoint}?q=${encodeURIComponent(q)}&sort=${sort}`, {
-          headers: { 'Authorization': `Bearer ${idToken}` }
+          headers: { 'Authorization': sessionToken }
         });
         if (!res.ok) throw new Error('Search failed');
         const data = await res.json();
@@ -47,7 +47,7 @@ export default function SearchPage() {
             method: "POST",
             headers: { 
               "Content-Type": "application/json",
-              'Authorization': `Bearer ${idToken}`
+              'Authorization': sessionToken
             },
             body: JSON.stringify({ keyword: q.trim() }),
           });
@@ -59,24 +59,24 @@ export default function SearchPage() {
         setLoading(false);
       }
     }
-    if (idToken) {
+    if (sessionToken) {
       fetchResults();
     }
-  }, [location.search, idToken, activeTab]);
+  }, [location.search, sessionToken, activeTab]);
 
   // Fetch suggestions (debounced)
   useEffect(() => {
     const timer = setTimeout(() => {
       if (query.trim() === '') {
         fetch(`${window.API_BASE_URL}/api/search-suggestions/popular`, {
-          headers: { 'Authorization': `Bearer ${idToken}` }
+          headers: { 'Authorization': sessionToken }
         })
           .then(res => res.json())
           .then(setSuggestions)
           .catch(() => setSuggestions([]));
       } else {
         fetch(`${window.API_BASE_URL}/api/search-suggestions?q=${encodeURIComponent(query.trim())}`, {
-          headers: { 'Authorization': `Bearer ${idToken}` }
+          headers: { 'Authorization': sessionToken }
         })
           .then(res => res.json())
           .then(setSuggestions)
@@ -85,7 +85,7 @@ export default function SearchPage() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [query, idToken]);
+  }, [query, sessionToken]);
 
   const handleSearch = (q = query) => {
     const trimmed = q.trim();

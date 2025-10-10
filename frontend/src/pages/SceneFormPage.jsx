@@ -17,7 +17,7 @@ export default function SceneFormPage() {
   const mode = id ? 'edit' : 'create';
   console.log("SceneFormPage mode:", mode, id ? `(id: ${id})` : '');
 
-  const { idToken } = useContext(AuthContext);
+  const { sessionToken } = useContext(AuthContext);
   const navigate = useNavigate();
   const [sceneData, setSceneData] = useState({
     name: '',
@@ -35,12 +35,12 @@ export default function SceneFormPage() {
         navigate("/");
         return;
       }
-      if (!idToken) {
+      if (!sessionToken) {
         navigate("/");
         return;
       }
       fetch(`${window.API_BASE_URL}/api/scenes/${id}`, {
-        headers: { 'Authorization': `Bearer ${idToken}` }
+        headers: { 'Authorization': sessionToken }
       })
         .then(res => {
           if (!res.ok) {
@@ -61,7 +61,7 @@ export default function SceneFormPage() {
           setLoading(false);
         });
     }
-  }, [mode, id, navigate, idToken]);
+  }, [mode, id, navigate, sessionToken]);
 
   const handleChange = (field, value) => {
     setSceneData(prev => ({ ...prev, [field]: value }));
@@ -69,7 +69,7 @@ export default function SceneFormPage() {
 
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!idToken) {
+    if (!sessionToken) {
       alert("You need to be logged in.");
       navigate("/");
       return;
@@ -88,7 +88,7 @@ export default function SceneFormPage() {
     try {
       const res = await fetch(mode === 'edit' ? `${window.API_BASE_URL}/api/scenes/${id}` : `${window.API_BASE_URL}/api/scenes/`, {
         method: mode === 'edit' ? "PUT" : "POST",
-        headers: { 'Authorization': `Bearer ${idToken}` },
+        headers: { 'Authorization': sessionToken },
         body: formData,
       });
       const data = await res.json();
@@ -104,14 +104,14 @@ export default function SceneFormPage() {
   };
 
   const handleDelete = async () => {
-    if (!idToken) {
+    if (!sessionToken) {
       navigate("/");
       return;
     }
     if (window.confirm("Are you sure you want to delete this scene?")) {
       const res = await fetch(`${window.API_BASE_URL}/api/scenes/${id}`, {
         method: "DELETE",
-        headers: { 'Authorization': `Bearer ${idToken}` }
+        headers: { 'Authorization': sessionToken }
       });
       const data = await res.json();
       alert(data.message || data.detail || "Scene deleted");

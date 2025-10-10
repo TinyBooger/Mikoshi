@@ -13,7 +13,7 @@ import ChatInitModal from '../components/ChatInitModal';
 export default function ChatPage() {
   const { t } = useTranslation();
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
-  const { userData, setUserData, idToken, refreshUserData, loading } = useContext(AuthContext);
+  const { userData, setUserData, sessionToken, refreshUserData, loading } = useContext(AuthContext);
   const [searchParams] = useSearchParams();
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
@@ -64,13 +64,13 @@ export default function ChatPage() {
   useEffect(() => {
     if (loading) return;
 
-    // Only navigate if loading is false and idToken is still null (i.e., auth check finished and user is not logged in)
-    if (!loading && !idToken) {
+  // Only navigate if loading is false and sessionToken is still null (i.e., auth check finished and user is not logged in)
+  if (!loading && !sessionToken) {
       navigate('/');
       return;
     }
 
-    if (!initialized.current && idToken) {
+  if (!initialized.current && sessionToken) {
       if(checkChatHistory()) {
         fetchInitialData();
         initializeChat();
@@ -78,13 +78,13 @@ export default function ChatPage() {
       initialized.current = true;
       return;
     }
-  }, [navigate, idToken, loading, initialized, characterId, sceneId, personaId]);
+  }, [navigate, sessionToken, loading, initialized, characterId, sceneId, personaId]);
 
   // Fetch character, scene, and persona data if IDs are present
   const fetchInitialData = () => {
     if (characterId) {
       fetch(`${window.API_BASE_URL}/api/character/${characterId}`, {
-        headers: { 'Authorization': `Bearer ${idToken}` }
+  headers: { 'Authorization': sessionToken }
       })
         .then(res => res.json())
         .then(character => {
@@ -94,7 +94,7 @@ export default function ChatPage() {
     }
     if (sceneId) {
       fetch(`${window.API_BASE_URL}/api/scenes/${sceneId}`, {
-        headers: { 'Authorization': `Bearer ${idToken}` }
+  headers: { 'Authorization': sessionToken }
       })
         .then(res => res.json())
         .then(scene => {
@@ -103,7 +103,7 @@ export default function ChatPage() {
     }
     if (personaId) {
       fetch(`${window.API_BASE_URL}/api/personas/${personaId}`, {
-        headers: { 'Authorization': `Bearer ${idToken}` }
+  headers: { 'Authorization': sessionToken }
       })
         .then(res => res.json())
         .then(persona => {
@@ -119,7 +119,7 @@ export default function ChatPage() {
       if (personaId) params.push(`persona_id=${personaId}`);
       fetch(`${window.API_BASE_URL}/api/is-liked-multi?${params.join('&')}`, {
         credentials: 'include',
-        headers: { 'Authorization': `Bearer ${idToken}` }
+  headers: { 'Authorization': sessionToken }
       })
         .then(res => res.json())
         .then(data => {
@@ -176,7 +176,7 @@ export default function ChatPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}` 
+          'Authorization': `Bearer ${sessionToken}` 
         },
         body: JSON.stringify({ character_id: selectedCharacter.id })
       });
@@ -190,7 +190,7 @@ export default function ChatPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}` 
+          'Authorization': `Bearer ${sessionToken}` 
         },
         body: JSON.stringify(body)
       });
@@ -242,7 +242,7 @@ export default function ChatPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}` 
+          'Authorization': `Bearer ${sessionToken}` 
         },
         body: JSON.stringify({
           character_id: characterId,
@@ -284,7 +284,7 @@ export default function ChatPage() {
   const likeEntity = async (entityType, entityId) => {
     const res = await fetch(`${window.API_BASE_URL}/api/like/${entityType}/${entityId}`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${idToken}` }
+  headers: { 'Authorization': sessionToken }
     });
     if (res.ok) {
       const data = await res.json();
@@ -297,7 +297,7 @@ export default function ChatPage() {
   const unlikeEntity = async (entityType, entityId) => {
     const res = await fetch(`${window.API_BASE_URL}/api/unlike/${entityType}/${entityId}`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${idToken}` }
+  headers: { 'Authorization': sessionToken }
     });
     if (res.ok) {
       const data = await res.json();
@@ -330,7 +330,7 @@ export default function ChatPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}` 
+          'Authorization': sessionToken 
         },
         body: JSON.stringify({
           chat_id: chatId,
@@ -373,7 +373,7 @@ export default function ChatPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}` 
+          'Authorization': sessionToken 
         },
         body: JSON.stringify({ chat_id: chatId })
       });

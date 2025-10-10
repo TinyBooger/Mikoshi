@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import logo from '../assets/images/logo.png';
+import { AuthContext } from '../components/AuthProvider';
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -11,15 +10,16 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const { login, loading } = useContext(AuthContext);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
+    const success = await login(email, password);
+    if (success) {
       navigate('/');
-    } catch (err) {
-      setError(err.message);
+    } else {
+      setError('Invalid email or password');
     }
   };
 
@@ -38,6 +38,17 @@ export default function LoginPage() {
           </p>
         </div>
         {error && <div className="alert alert-danger">{error}</div>}
+        <div className="text-center mt-3">
+          <button
+            type="button"
+            className="btn btn-link"
+            style={{ fontSize: '1rem', textDecoration: 'underline', color: '#007bff' }}
+            onClick={() => navigate('/reset-password')}
+          >
+            Forgot password?
+          </button>
+        </div>
+  {loading && <div className="text-center"><div className="spinner-border text-primary" role="status"></div></div>}
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
             <label className="form-label">{t('welcome.email')}</label>

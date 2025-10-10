@@ -25,7 +25,7 @@ function HomePage() {
   const [loadingPersonas, setLoadingPersonas] = useState(true);
   const [errorPersonas, setErrorPersonas] = useState(null);
   const navigate = useNavigate();
-  const { currentUser, userData, idToken, loading } = useContext(AuthContext);
+  const { userData, sessionToken, loading } = useContext(AuthContext);
   // Fetch popular personas
   useEffect(() => {
     setLoadingPersonas(true);
@@ -103,31 +103,31 @@ function HomePage() {
   }, [mounted, popular.length, recent.length, selectedTag, tagCharacters[selectedTag]?.length]);
 
   useEffect(() => {
-    if (!idToken) return;
+  if (!sessionToken) return;
     // Fetch existing sections
-    fetch(`${window.API_BASE_URL}/api/characters/popular`, { headers: { 'Authorization': `Bearer ${idToken}` } })
+  fetch(`${window.API_BASE_URL}/api/characters/popular`, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
       .then(setPopular)
       .catch(() => setPopular([]));
 
     // Fetch popular scenes
-    fetch(`${window.API_BASE_URL}/api/scenes/popular`, { headers: { 'Authorization': `Bearer ${idToken}` } })
+  fetch(`${window.API_BASE_URL}/api/scenes/popular`, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
       .then(setPopularScenes)
       .catch(() => setPopularScenes([]));
 
-    fetch(`${window.API_BASE_URL}/api/characters/recent`, { headers: { 'Authorization': `Bearer ${idToken}` } })
+  fetch(`${window.API_BASE_URL}/api/characters/recent`, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
       .then(setRecent)
       .catch(() => setRecent([]));
 
-    fetch(`${window.API_BASE_URL}/api/characters/recommended`, { headers: { 'Authorization': `Bearer ${idToken}` } })
+  fetch(`${window.API_BASE_URL}/api/characters/recommended`, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
       .then(setRecommended)
       .catch(() => setRecommended([]));
 
     // Fetch popular tags
-    fetch(`${window.API_BASE_URL}/api/tag-suggestions`, { headers: { 'Authorization': `Bearer ${idToken}` } })
+  fetch(`${window.API_BASE_URL}/api/tag-suggestions`, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
       .then(tags => {
         setPopularTags(tags);
@@ -139,10 +139,10 @@ function HomePage() {
         });
       })
       .catch(() => setPopularTags([]));
-  }, [idToken]);
+  }, [sessionToken]);
 
   const fetchCharactersByTag = (tagName) => {
-    fetch(`${window.API_BASE_URL}/api/characters/by-tag/${encodeURIComponent(tagName)}`, { headers: { 'Authorization': `Bearer ${idToken}` } })
+  fetch(`${window.API_BASE_URL}/api/characters/by-tag/${encodeURIComponent(tagName)}`, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
       .then(characters => {
         setTagCharacters(prev => ({

@@ -31,6 +31,7 @@ class User(Base):
     name = Column(String)
     profile_pic = Column(String, nullable=True)
     bio = Column(Text, nullable=True)  # Short bio, optional
+    hashed_password = Column(String, nullable=False)  # Store password hash
 
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)

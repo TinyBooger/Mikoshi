@@ -1,13 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-  // Go Back handler
-  const handleGoBack = () => {
-    window.history.length > 1 ? window.history.back() : navigate('/');
-  };
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { auth } from '../firebase';
 import PageWrapper from '../components/PageWrapper';
+import { AuthContext } from '../components/AuthProvider';
 
 export default function SignUpPage() {
   const { t } = useTranslation();
@@ -18,60 +13,24 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [bio, setBio] = useState('');
   const [error, setError] = useState('');
+  const { register, loading } = useContext(AuthContext);
+
+  const handleGoBack = () => {
+    navigate(-1);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-
-    try {
-      // 1. Create user with email and password in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-
-      // 2. Update profile with display name in Firebase Auth
-      await updateProfile(userCredential.user, {
-        displayName: name
-      });
-
-      // 3. Get Firebase ID token for backend verification
-      const idToken = await userCredential.user.getIdToken();
-
-      // 4. Create user record in your database
-      const response = await fetch(`${window.API_BASE_URL}/api/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          name: name,
-          email: email,
-          bio: bio // include bio
-          // Include other fields if needed
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to create user record');
-      }
-
-      // 5. Navigate to home page after successful signup
+    const success = await register(email, name, password, bio);
+    if (success) {
       navigate('/', { replace: true });
-    } catch (err) {
-      setError(err.message);
-      // Optional: Delete the Firebase user if database creation fails
-      if (auth.currentUser) {
-        try {
-          await auth.currentUser.delete();
-        } catch (deleteError) {
-          console.error("Error cleaning up Firebase user:", deleteError);
-        }
-      }
+    } else {
+      setError('Registration failed');
     }
   };
 
@@ -90,6 +49,7 @@ export default function SignUpPage() {
           <div className="mx-auto" style={{ maxWidth: 400 }}>
             <h2 className="mb-4 text-center fw-bold py-4" style={{ fontWeight: 700, paddingTop: '2rem', paddingBottom: '2rem' }}>{t('signup.title')}</h2>
             {error && <div className="alert alert-danger">{error}</div>}
+            {loading && <div className="text-center"><div className="spinner-border text-primary" role="status"></div></div>}
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
                 <label className="form-label">{t('signup.name')}</label>

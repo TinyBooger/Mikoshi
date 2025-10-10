@@ -1,8 +1,6 @@
-from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from schemas import UserOut
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-
 from database import get_db
 from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona
 from utils.session import get_current_user
@@ -10,7 +8,6 @@ from utils.local_storage_utils import save_image
 from utils.validators import validate_account_fields
 
 router = APIRouter()
-security = HTTPBearer()
 
 @router.get("/api/user/{user_id}", response_model=UserOut)
 def get_user_by_id(user_id: str, db: Session = Depends(get_db)):

@@ -10,7 +10,7 @@ import PageWrapper from '../components/PageWrapper';
 
 function BrowsePage() {
   const { t } = useTranslation();
-  const { idToken } = useContext(AuthContext);
+  const { sessionToken } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
   const { category, entityType } = useParams();
@@ -56,7 +56,7 @@ function BrowsePage() {
 
   // Fetch data
   useEffect(() => {
-    if (!idToken) {
+  if (!sessionToken) {
       navigate('/');
       return;
     }
@@ -69,7 +69,7 @@ function BrowsePage() {
     } else if (activeMainTab === 'personas') {
       url = `${window.API_BASE_URL}/api/personas/${activeSubTab}`;
     }
-    fetch(url, { headers: { 'Authorization': `Bearer ${idToken}` } })
+  fetch(url, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
       .then(data => {
         setEntities(Array.isArray(data) ? data : []);
@@ -79,7 +79,7 @@ function BrowsePage() {
         setEntities([]);
         setIsLoading(false);
       });
-  }, [activeMainTab, activeSubTab, idToken, navigate]);
+  }, [activeMainTab, activeSubTab, sessionToken, navigate]);
 
   // Title logic
   const getSectionTitle = () => {

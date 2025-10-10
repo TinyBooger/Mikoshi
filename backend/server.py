@@ -16,7 +16,6 @@ if os.path.exists("../secrets/Mikoshi.env"):
 
 from database import engine, Base
 from routes import auth, character, chat, user, search, tags, scene, persona
-from utils.firebase_admin_setup import initialize_firebase_admin
 
 # Middleware
 middleware = []
@@ -42,10 +41,6 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
     allow_headers=["*"],
 )
-
-
-# Initialize Firebase Admin at startup
-initialize_firebase_admin()
 
 # Wake up PostgreSQL database and wait for it to be available
 import time

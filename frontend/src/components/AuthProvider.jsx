@@ -1,31 +1,31 @@
 
+
 import React, { createContext, useEffect, useState } from 'react';
-import { auth } from '../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 import { useTranslation } from 'react-i18next';
+
 
 export const AuthContext = createContext();
 
-export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const [idToken, setIdToken] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [userDataLoading, setUserDataLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  // Helper to fetch user data and idToken, with retry logic and debug logging
+export function AuthProvider({ children }) {
+  const [sessionToken, setSessionToken] = useState(() => localStorage.getItem('sessionToken'));
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const { t } = useTranslation();
-  const fetchUserData = async (user, attempt = 1) => {
-    setUserDataLoading(true);
+
+  // Fetch user data using session token
+  const fetchUserData = async () => {
+    if (!sessionToken) {
+      setUserData(null);
+      return;
+    }
+    setLoading(true);
     setError(null);
     try {
-      const freshToken = await user.getIdToken();
-      setIdToken(freshToken);
       const response = await fetch(`${window.API_BASE_URL}/api/users/me`, {
         headers: {
-          'Authorization': `Bearer ${freshToken}`
+          'Authorization': sessionToken
         }
       });
       if (response.ok) {
@@ -34,70 +34,110 @@ export function AuthProvider({ children }) {
       } else {
         setUserData(null);
         setError('Failed to fetch user data');
-        console.error('[AuthProvider] Failed to fetch user data, status:', response.status);
-        // Retry up to 3 times with delay
-        if (attempt < 3) {
-          setTimeout(() => fetchUserData(user, attempt + 1), 1000 * attempt);
-        }
       }
     } catch (err) {
       setUserData(null);
-      setIdToken(null);
       setError('Error fetching user data');
-      console.error('[AuthProvider] Error fetching user data:', err);
-      // Retry up to 3 times with delay
-      if (attempt < 3) {
-        setTimeout(() => fetchUserData(user, attempt + 1), 1000 * attempt);
-      }
     } finally {
-      setUserDataLoading(false);
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    setAuthLoading(true);
+  // Login function
+  const login = async (email, password) => {
     setLoading(true);
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setAuthLoading(false);
-      if (!user) {
+    setError(null);
+    try {
+      const response = await fetch(`${window.API_BASE_URL}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ email, password })
+      });
+      const result = await response.json();
+      if (response.ok && result.token) {
+        setSessionToken(result.token);
+        localStorage.setItem('sessionToken', result.token);
+        setUserData(result.user);
+        setError(null);
+        return true;
+      } else {
+        setError(result.detail || 'Login failed');
         setUserData(null);
-        setIdToken(null);
-        setUserDataLoading(false);
-        setLoading(false);
+        setSessionToken(null);
+        localStorage.removeItem('sessionToken');
+        return false;
       }
-    });
-    return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Delay fetchUserData until authLoading is false and currentUser is available
-  useEffect(() => {
-    if (!authLoading && currentUser) {
-      setLoading(true);
-      fetchUserData(currentUser).finally(() => setLoading(false));
-    }
-    if (!authLoading && !currentUser) {
+    } catch (err) {
+      setError('Login error');
+      setUserData(null);
+      setSessionToken(null);
+      localStorage.removeItem('sessionToken');
+      return false;
+    } finally {
       setLoading(false);
     }
+  };
+
+  // Registration function
+  const register = async (email, name, password, bio) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${window.API_BASE_URL}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ email, name, password, bio })
+      });
+      const result = await response.json();
+      if (response.ok && result.token) {
+        setSessionToken(result.token);
+        localStorage.setItem('sessionToken', result.token);
+        setUserData(result.user);
+        setError(null);
+        return true;
+      } else {
+        setError(result.detail || 'Registration failed');
+        setUserData(null);
+        setSessionToken(null);
+        localStorage.removeItem('sessionToken');
+        return false;
+      }
+    } catch (err) {
+      setError('Registration error');
+      setUserData(null);
+      setSessionToken(null);
+      localStorage.removeItem('sessionToken');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Logout function
+  const logout = () => {
+    setSessionToken(null);
+    setUserData(null);
+    localStorage.removeItem('sessionToken');
+  };
+
+  // Fetch user data on mount or when sessionToken changes
+  useEffect(() => {
+    fetchUserData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, currentUser]);
+  }, [sessionToken]);
 
   return (
     <AuthContext.Provider value={{
-      currentUser,
       userData,
-      setUserData, // Expose setter for instant updates
-      idToken,
+      setUserData,
+      sessionToken,
       loading,
       error,
-      refreshUserData: async () => {
-        if (currentUser) {
-          await fetchUserData(currentUser);
-        }
-      }
+      login,
+      register,
+      logout,
+      refreshUserData: fetchUserData
     }}>
-      {/* Always render children, but show a loading spinner overlay if loading */}
       {children}
       {loading && (
         <div style={{
