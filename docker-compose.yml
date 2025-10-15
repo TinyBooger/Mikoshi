@@ -17,6 +17,16 @@ services:
     environment:
       - DATABASE_URL=postgresql://user:password@postgres:5432/mydb
     depends_on:
+      - db-init
+
+  db-init:
+    build: ./backend
+    command: ["python", "init_db.py"]
+    env_file:
+      - ./secrets/Mikoshi.env
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/mydb
+    depends_on:
       - postgres
 
   postgres:

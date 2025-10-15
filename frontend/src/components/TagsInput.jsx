@@ -16,7 +16,7 @@ export default function TagsInput({ tags, setTags, maxTags }) {
         
         const response = await fetch(url, {
           headers: {
-            'Authorization': `Bearer ${sessionToken}`
+            'Authorization': sessionToken
           }
         });
 

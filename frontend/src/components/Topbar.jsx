@@ -24,14 +24,14 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
   if (!sessionToken) return;
       if (query.trim() === '') {
         fetch(`${window.API_BASE_URL}/api/search-suggestions/popular`, {
-          headers: { 'Authorization': `Bearer ${sessionToken}` }
+          headers: { 'Authorization': sessionToken }
         })
           .then(res => res.json())
           .then(setSuggestions)
           .catch(() => setSuggestions([]));
       } else {
         fetch(`${window.API_BASE_URL}/api/search-suggestions?q=${encodeURIComponent(query.trim())}`, {
-          headers: { 'Authorization': `Bearer ${sessionToken}` }
+          headers: { 'Authorization': sessionToken }
         })
           .then(res => res.json())
           .then(setSuggestions)

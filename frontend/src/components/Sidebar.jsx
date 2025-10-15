@@ -23,7 +23,7 @@ export default function Sidebar() {
       try {
         const response = await fetch(`${window.API_BASE_URL}/api/recent-characters`, {
           headers: {
-            'Authorization': `Bearer ${sessionToken}`
+            'Authorization': sessionToken
           }
         });
         

@@ -55,21 +55,21 @@ export default function ProfilePage() {
 
     // Created Characters
     fetch(`${window.API_BASE_URL}/api/characters-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
-  headers: { 'Authorization': `Bearer ${sessionToken}` }
+  headers: { 'Authorization': sessionToken }
     })
       .then(res => res.ok ? res.json() : [])
       .then(setCreatedCharacters);
 
     // Created Scenes
     fetch(`${window.API_BASE_URL}/api/scenes-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
-  headers: { 'Authorization': `Bearer ${sessionToken}` }
+  headers: { 'Authorization': sessionToken }
     })
       .then(res => res.ok ? res.json() : [])
       .then(setScenes);
 
     // Created Personas (only for own profile)
     fetch(`${window.API_BASE_URL}/api/personas-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
-  headers: { 'Authorization': `Bearer ${sessionToken}` }
+  headers: { 'Authorization': sessionToken }
     })
       .then(res => res.ok ? res.json() : [])
       .then(setPersonas)
@@ -78,7 +78,7 @@ export default function ProfilePage() {
     // Liked Characters (only for own profile)
     if (isOwnProfile) {
       fetch(`${window.API_BASE_URL}/api/characters-liked`, {
-  headers: { 'Authorization': `Bearer ${sessionToken}` }
+  headers: { 'Authorization': sessionToken }
       })
         .then(res => res.ok ? res.json() : [])
         .then(setLikedCharacters);
@@ -89,7 +89,7 @@ export default function ProfilePage() {
     // Liked Scenes (only for own profile)
     if (isOwnProfile) {
       fetch(`${window.API_BASE_URL}/api/scenes-liked`, {
-  headers: { 'Authorization': `Bearer ${sessionToken}` }
+  headers: { 'Authorization': sessionToken }
       })
         .then(res => res.ok ? res.json() : [])
         .then(setLikedScenes);
@@ -100,7 +100,7 @@ export default function ProfilePage() {
     // Liked Personas (only for own profile)
     if (isOwnProfile) {
       fetch(`${window.API_BASE_URL}/api/personas-liked`, {
-  headers: { 'Authorization': `Bearer ${sessionToken}` }
+  headers: { 'Authorization': sessionToken }
       })
         .then(res => res.ok ? res.json() : [])
         .then(setLikedPersonas);
@@ -252,7 +252,7 @@ export default function ProfilePage() {
   // API call functions for Persona table endpoints
   const fetchPersonas = async () => {
     const res = await fetch(`${window.API_BASE_URL}/api/personas/`, {
-  headers: { 'Authorization': `Bearer ${sessionToken}` }
+  headers: { 'Authorization': sessionToken }
     });
     if (res.ok) return await res.json();
     throw new Error('Failed to fetch personas');
@@ -271,7 +271,7 @@ export default function ProfilePage() {
     }
 
     fetch(`${window.API_BASE_URL}/api/characters-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
-  headers: { 'Authorization': `Bearer ${sessionToken}` }
+  headers: { 'Authorization': sessionToken }
     })
       .then(res => res.ok ? res.json() : [])
       .then(setCreatedCharacters);
@@ -279,7 +279,7 @@ export default function ProfilePage() {
     // Only fetch liked characters if own profile
     if (isOwnProfile) {
       fetch(`${window.API_BASE_URL}/api/characters-liked`, {
-  headers: { 'Authorization': `Bearer ${sessionToken}` }
+  headers: { 'Authorization': sessionToken }
       })
         .then(res => res.ok ? res.json() : [])
         .then(setLikedCharacters);
@@ -313,7 +313,7 @@ export default function ProfilePage() {
 
     const res = await fetch(`${window.API_BASE_URL}/api/update-profile`, {
       method: 'POST',
-        headers: { 'Authorization': `Bearer ${sessionToken}` },
+        headers: { 'Authorization': sessionToken },
       body: formData
     });
 

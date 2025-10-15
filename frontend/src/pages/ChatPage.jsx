@@ -176,7 +176,7 @@ export default function ChatPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionToken}` 
+          'Authorization': sessionToken 
         },
         body: JSON.stringify({ character_id: selectedCharacter.id })
       });
@@ -190,7 +190,7 @@ export default function ChatPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionToken}` 
+          'Authorization': sessionToken 
         },
         body: JSON.stringify(body)
       });
@@ -242,7 +242,7 @@ export default function ChatPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionToken}` 
+          'Authorization': sessionToken 
         },
         body: JSON.stringify({
           character_id: characterId,

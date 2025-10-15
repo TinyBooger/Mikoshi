@@ -9,7 +9,7 @@ import { AuthProvider } from './components/AuthProvider';
 
 // Set global API base URL - this runs before any component code
 window.API_BASE_URL = import.meta.env.PROD
-  ? 'https://chatbox-landing-page.onrender.com'  // Production
+  ? 'http://localhost:8000'  // Production
   : 'http://localhost:8000';                     // Development
 
 ReactDOM.createRoot(document.getElementById('root')).render(
