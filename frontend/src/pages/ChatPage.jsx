@@ -35,6 +35,9 @@ export default function ChatPage() {
   const [characterModal, setCharacterModal] = useState({ show: false });
   const [initModal, setInitModal] = useState(false);
 
+  // Loading state for initial data fetch
+  const [initLoading, setInitLoading] = useState(false);
+
   // Mobile detection state
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   // Update isMobile on window resize
@@ -60,6 +63,16 @@ export default function ChatPage() {
   const initialized = useRef(false);
   const isNewChat = useRef(true);
 
+  // Fetch initial entity data when modal opens and IDs are present
+  useEffect(() => {
+    if (initModal && (characterId || sceneId || personaId)) {
+      setInitLoading(true);
+      fetchInitialData().then(() => {
+        setInitLoading(false);
+      });
+    }
+  }, [initModal, characterId, sceneId, personaId]);
+
   // Initialize character data (runs once when characterId changes)
   useEffect(() => {
     if (loading) return;
@@ -72,8 +85,9 @@ export default function ChatPage() {
 
   if (!initialized.current && sessionToken) {
       if(checkChatHistory()) {
-        fetchInitialData();
-        initializeChat();
+        fetchInitialData().then(() => {
+          initializeChat();
+        });
       }
       initialized.current = true;
       return;
@@ -82,57 +96,73 @@ export default function ChatPage() {
 
   // Fetch character, scene, and persona data if IDs are present
   const fetchInitialData = () => {
-    if (characterId) {
-      fetch(`${window.API_BASE_URL}/api/character/${characterId}`, {
-  headers: { 'Authorization': sessionToken }
-      })
-        .then(res => res.json())
-        .then(character => {
-          setSelectedCharacter(character);
-          setLikes(character.likes || 0);
-        });
-    }
-    if (sceneId) {
-      fetch(`${window.API_BASE_URL}/api/scenes/${sceneId}`, {
-  headers: { 'Authorization': sessionToken }
-      })
-        .then(res => res.json())
-        .then(scene => {
-          setSelectedScene(scene);
-        });
-    }
-    if (personaId) {
-      fetch(`${window.API_BASE_URL}/api/personas/${personaId}`, {
-  headers: { 'Authorization': sessionToken }
-      })
-        .then(res => res.json())
-        .then(persona => {
-          setSelectedPersona(persona);
-        });
-    }
+    setInitLoading(true);
+    return new Promise((resolve) => {
+      const promises = [];
+      if (characterId) {
+        promises.push(
+          fetch(`${window.API_BASE_URL}/api/character/${characterId}`, {
+            headers: { 'Authorization': sessionToken }
+          })
+            .then(res => res.json())
+            .then(character => {
+              setSelectedCharacter(character);
+              setLikes(character.likes || 0);
+            })
+        );
+      }
+      if (sceneId) {
+        promises.push(
+          fetch(`${window.API_BASE_URL}/api/scenes/${sceneId}`, {
+            headers: { 'Authorization': sessionToken }
+          })
+            .then(res => res.json())
+            .then(scene => {
+              setSelectedScene(scene);
+            })
+        );
+      }
+      if (personaId) {
+        promises.push(
+          fetch(`${window.API_BASE_URL}/api/personas/${personaId}`, {
+            headers: { 'Authorization': sessionToken }
+          })
+            .then(res => res.json())
+            .then(persona => {
+              setSelectedPersona(persona);
+            })
+        );
+      }
 
-    // Fetch liked status for all at once
-    if (characterId || sceneId || personaId) {
-      const params = [];
-      if (characterId) params.push(`character_id=${characterId}`);
-      if (sceneId) params.push(`scene_id=${sceneId}`);
-      if (personaId) params.push(`persona_id=${personaId}`);
-      fetch(`${window.API_BASE_URL}/api/is-liked-multi?${params.join('&')}`, {
-        credentials: 'include',
-  headers: { 'Authorization': sessionToken }
-      })
-        .then(res => res.json())
-        .then(data => {
-          setHasLiked({
-            character: data.character ? !!data.character.liked : false,
-            scene: data.scene ? !!data.scene.liked : false,
-            persona: data.persona ? !!data.persona.liked : false
-          });
-        })
-        .catch(() => setHasLiked({ character: false, scene: false, persona: false }));
-    } else {
-      setHasLiked({ character: false, scene: false, persona: false });
-    }
+      // Fetch liked status for all at once
+      if (characterId || sceneId || personaId) {
+        const params = [];
+        if (characterId) params.push(`character_id=${characterId}`);
+        if (sceneId) params.push(`scene_id=${sceneId}`);
+        if (personaId) params.push(`persona_id=${personaId}`);
+        promises.push(
+          fetch(`${window.API_BASE_URL}/api/is-liked-multi?${params.join('&')}`, {
+            credentials: 'include',
+            headers: { 'Authorization': sessionToken }
+          })
+            .then(res => res.json())
+            .then(data => {
+              setHasLiked({
+                character: data.character ? !!data.character.liked : false,
+                scene: data.scene ? !!data.scene.liked : false,
+                persona: data.persona ? !!data.persona.liked : false
+              });
+            })
+            .catch(() => setHasLiked({ character: false, scene: false, persona: false }))
+        );
+      } else {
+        setHasLiked({ character: false, scene: false, persona: false });
+      }
+      Promise.all(promises).then(() => {
+        setInitLoading(false);
+        resolve();
+      });
+    });
   };
 
   const checkChatHistory = () => {
@@ -169,8 +199,9 @@ export default function ChatPage() {
   };
 
   const initializeChat = () => {
+    console.log('Initializing chat with:', { characterId, sceneId, personaId });
     // Set likes and creator from selectedCharacter
-    if (selectedCharacter) {
+    if (characterId) {
       // Update recent characters
       fetch(`${window.API_BASE_URL}/api/recent-characters/update`, {
         method: 'POST',
@@ -178,7 +209,9 @@ export default function ChatPage() {
           'Content-Type': 'application/json',
           'Authorization': sessionToken 
         },
-        body: JSON.stringify({ character_id: selectedCharacter.id })
+        body: JSON.stringify({ character_id: characterId })
+      }).then(() => {
+        console.log('Recent characters updated:', characterId);
       });
       // Increment views for character, scene, and persona in one call
       const body = {
@@ -538,6 +571,7 @@ export default function ChatPage() {
 
       <ChatInitModal
         show={initModal}
+        loading={initLoading}
         onSelectCharacter={() => setCharacterModal({ show: true })}
         onSelectPersona={() => setPersonaModal({ show: true })}
         onSelectScene={() => setSceneModal({ show: true })}
@@ -550,8 +584,11 @@ export default function ChatPage() {
         onStartChat={async () => {
           setInitModal(false);
           isNewChat.current = true;
-          fetchInitialData();
-          initializeChat();
+          setInitLoading(true);
+          fetchInitialData().then(() => {
+            setInitLoading(false);
+            initializeChat();
+          });
         }}
         onCancel={() => setInitModal(false)}
         isMobile={isMobile}

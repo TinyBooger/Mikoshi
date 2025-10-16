@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import SceneCard from './SceneCard';
+import EntityCard from './EntityCard';
 
 export default function SceneModal({ show, onClose, onSelect }) {
   const { t } = useTranslation();
@@ -65,7 +65,7 @@ export default function SceneModal({ show, onClose, onSelect }) {
                   {searchResults.length > 0 ? (
                     searchResults.map(scene => (
                       <div key={scene.id} onClick={() => onSelect(scene)} style={{ cursor: 'pointer' }}>
-                        <SceneCard scene={scene} />
+                        <EntityCard type="scene" entity={scene} />
                       </div>
                     ))
                   ) : (
@@ -80,7 +80,7 @@ export default function SceneModal({ show, onClose, onSelect }) {
                   {popularScenes.length > 0 ? (
                     popularScenes.map(scene => (
                       <div key={scene.id} onClick={() => onSelect(scene)} style={{ cursor: 'pointer' }}>
-                        <SceneCard scene={scene} />
+                        <EntityCard type="scene" entity={scene} />
                       </div>
                     ))
                   ) : (

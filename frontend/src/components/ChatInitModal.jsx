@@ -6,6 +6,7 @@ import EntityCard from '../components/EntityCard';
 
 export default function ChatInitModal({
   show,
+  loading,
   onSelectCharacter,
   onSelectPersona,
   onSelectScene,
@@ -21,6 +22,39 @@ export default function ChatInitModal({
 }) {
   const { t } = useTranslation();
   if (!show) return null;
+
+  if (loading) {
+    return (
+      <div
+        className="modal"
+        tabIndex="-1"
+        style={{
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 1050,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? '98vw' : undefined, margin: 'auto' }}>
+          <div className="modal-content" style={{ maxHeight: '96vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
+            <div className="modal-header">
+              <h5 className="modal-title">{t('chat_init_modal.title')}</h5>
+            </div>
+            <div className="modal-body" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+              <span className="spinner-border spinner-border-lg" style={{ color: '#18191a', marginRight: 12 }}></span>
+              <span style={{ fontWeight: 600, fontSize: '1.08rem', color: '#232323' }}>{t('chat_init_modal.loading')}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Responsive card sizing
   const CARD_WIDTH = isMobile ? '46dvw' : 180;

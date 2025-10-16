@@ -65,10 +65,10 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
       navigate(`/chat?character=${encodeURIComponent(id)}`);
     } else if (type === 'scene') {
       // Navigate to scene page (adjust route as needed)
-      navigate(`/scene/scene=${encodeURIComponent(id)}`);
+      navigate(`/chat?scene=${encodeURIComponent(id)}`);
     } else if (type === 'persona') {
       // Navigate to persona page (adjust route as needed)
-      navigate(`/persona/persona=${encodeURIComponent(id)}`);
+      navigate(`/chat?persona=${encodeURIComponent(id)}`);
     }
   };
 

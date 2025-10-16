@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import CharacterCard from './CharacterCard';
+import EntityCard from './EntityCard';
 
 export default function CharacterModal({ show, onClose, onSelect }) {
   const { t } = useTranslation();
@@ -63,7 +63,7 @@ export default function CharacterModal({ show, onClose, onSelect }) {
                   {searchResults.length > 0 ? (
                     searchResults.map(character => (
                       <div key={character.id} onClick={() => onSelect(character)} style={{ cursor: 'pointer' }}>
-                        <CharacterCard character={character} />
+                        <EntityCard type="character" entity={character} />
                       </div>
                     ))
                   ) : (
@@ -78,7 +78,7 @@ export default function CharacterModal({ show, onClose, onSelect }) {
                   {popularCharacters.length > 0 ? (
                     popularCharacters.map(character => (
                       <div key={character.id} onClick={() => onSelect(character)} style={{ cursor: 'pointer' }}>
-                        <CharacterCard character={character} />
+                        <EntityCard type="character" entity={character} />
                       </div>
                     ))
                   ) : (

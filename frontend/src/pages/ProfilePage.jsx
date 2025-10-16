@@ -109,45 +109,6 @@ export default function ProfilePage() {
     }
   }, [navigate, sessionToken, userData, profileUserId, isOwnProfile]);
 
-
-
-
-  // Render scenes using SceneCard, with edit for owner
-  const renderScenes = () => {
-    return (
-      <div
-        className="d-flex flex-wrap align-items-start"
-        style={{
-          gap: '24px 18px',
-          marginTop: 18,
-          rowGap: 24,
-          columnGap: 18,
-          width: '100%',
-        }}>
-        {scenes.length === 0 && (
-          <p className="text-muted" style={{ width: 320 }}>
-            {t('profile.no_scenes_created')}
-          </p>
-        )}
-        {scenes.map(scene => (
-          <div key={scene.id} style={{ margin: 0, padding: 0 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-              <EntityCard type="scene" entity={scene} />
-              {isOwnProfile && (
-                <ButtonRounded
-                  title={t('profile.edit_scene')}
-                  onClick={() => navigate(`/scene/edit/${scene.id}`)}
-                >
-                  <i className="bi bi-pencil-square"></i>
-                  {t('profile.edit')}
-                </ButtonRounded>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
   // Unified content renderer for all tabs and subtabs
   const renderTabContent = () => {
     // Helper for CardSection grid

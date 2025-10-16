@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import PersonaCard from './PersonaCard';
+import EntityCard from './EntityCard';
 
 export default function PersonaModal({ show, onClose, onSelect }) {
   const { t } = useTranslation();
@@ -64,7 +64,7 @@ export default function PersonaModal({ show, onClose, onSelect }) {
                   {searchResults.length > 0 ? (
                     searchResults.map(persona => (
                       <div key={persona.id} onClick={() => onSelect(persona)} style={{ cursor: 'pointer' }}>
-                        <PersonaCard persona={persona} />
+                        <EntityCard type="persona" entity={persona} />
                       </div>
                     ))
                   ) : (
@@ -79,7 +79,7 @@ export default function PersonaModal({ show, onClose, onSelect }) {
                   {popularPersonas.length > 0 ? (
                     popularPersonas.map(persona => (
                       <div key={persona.id} onClick={() => onSelect(persona)} style={{ cursor: 'pointer' }}>
-                        <PersonaCard persona={persona} />
+                        <EntityCard type="persona" entity={persona} />
                       </div>
                     ))
                   ) : (
