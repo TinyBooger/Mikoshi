@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ButtonBlack from './ButtonBlack';
+import { useTranslation } from 'react-i18next';
 
 /**
  * HorizontalCardSection - reusable section for displaying cards with scroll buttons and header
@@ -12,7 +13,8 @@ import ButtonBlack from './ButtonBlack';
  *   onMore: function (optional, overrides navigation)
  *   navigate: function (for navigation)
  */
-function HorizontalCardSection({ title, moreLink, contents, scrollState, scrollId, navigate, onMore }) {
+function HorizontalCardSection({ title, moreLink, contents, scrollState, scrollId, navigate, onMore, showMoreButton = true }) {
+  const { t } = useTranslation();
   // Mobile viewport detection
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
   useEffect(() => {
@@ -22,35 +24,46 @@ function HorizontalCardSection({ title, moreLink, contents, scrollState, scrollI
   }, []);
   return (
     <section className={isMobile ? "mb-3 pb-2" : "mb-5 pb-3"}>
-        <div
-          className="d-flex mb-3"
-          style={
-            isMobile
-              ? {
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                  gap: 0,
-                }
-              : {
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }
-          }
-        >
+      <div
+        className="d-flex mb-3"
+        style={{
+          ...(isMobile
+            ? {
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                gap: 0,
+                paddingLeft: '1rem',
+                paddingRight: '1rem',
+              }
+            : {
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingLeft: '2rem',
+                paddingRight: '2rem',
+              }
+          ),
+        }}
+      >
         <h2
           className="fw-bold text-dark"
-            style={isMobile ? { fontSize: '1.18rem', letterSpacing: '0.2px', marginBottom: 0 } : { fontSize: '1.68rem', letterSpacing: '0.4px' }}
+          style={isMobile
+            ? { fontSize: '1.18rem', letterSpacing: '0.2px', marginBottom: 0 }
+            : { fontSize: '1.68rem', letterSpacing: '0.4px' }}
         >
           {title}
         </h2>
-        <ButtonBlack
-          isMobile={isMobile}
-          onClick={() => onMore ? onMore() : navigate(moreLink)}
-        >
-          More
-        </ButtonBlack>
+        <div style={{ paddingLeft: isMobile ? '0.5rem' : '1rem' }}>
+          {showMoreButton && (onMore || moreLink) ? (
+            <ButtonBlack
+              isMobile={isMobile}
+              onClick={() => onMore ? onMore() : navigate(moreLink)}
+            >
+              {t('home.more')}
+            </ButtonBlack>
+          ) : null}
+        </div>
       </div>
       <div style={{ position: 'relative', width: '100%' }}>
           {/* Scroll Left Button */}
@@ -113,9 +126,9 @@ function HorizontalCardSection({ title, moreLink, contents, scrollState, scrollI
           }}
         >
           {contents === null || typeof contents === 'undefined' ? (
-            <div className="text-muted py-4">Loading...</div>
+            <div className="text-muted py-4">{t('home.loading')}</div>
           ) : contents.length === 0 ? (
-            <div className="text-muted py-4">No items found.</div>
+            <div className="text-muted py-4">{t('home.no_items')}</div>
           ) : (
             Array.isArray(contents) && contents.map(c => {
               // Card width/height logic

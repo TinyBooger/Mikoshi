@@ -32,7 +32,23 @@ def save_image(file: BinaryIO, category: str, id_value, original_filename: str) 
     _, ext = os.path.splitext(original_filename)
     if not ext:
         ext = ".img"  # fallback if no extension
-    file_path = os.path.join(folder, f"{category}_{id_str}{ext}")
+
+    # Remove any existing files for this id (to avoid orphaned files and stale cache)
+    try:
+        for fname in os.listdir(folder):
+            if fname.startswith(f"{category}_{id_str}"):
+                try:
+                    os.remove(os.path.join(folder, fname))
+                except Exception:
+                    # non-fatal; continue
+                    pass
+    except FileNotFoundError:
+        pass
+
+    # Use a timestamp suffix to ensure the filename is unique so browsers won't cache the old image
+    import time
+    ts = int(time.time())
+    file_path = os.path.join(folder, f"{category}_{id_str}_{ts}{ext}")
     with open(file_path, 'wb') as out_file:
         shutil.copyfileobj(file, out_file)
     return os.path.relpath(file_path, os.path.dirname(os.path.dirname(__file__)))

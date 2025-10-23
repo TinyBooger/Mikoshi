@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router';
 import { AuthContext } from './AuthProvider';
+import logoText from '../assets/images/logo_text.png';
 
 
 function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, characterSidebarVisible }) {
@@ -89,6 +90,16 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
           style={{ fontSize: '1.6rem', pointerEvents: 'none' }}
         ></i>
       </button>
+
+      {/* Logo (click to go home) */}
+      <img
+        src={logoText}
+        alt="Mikoshi"
+        draggable={false}
+        className="ms-2 d-none d-sm-block"
+        style={{ height: 34, objectFit: 'contain', cursor: 'pointer' }}
+        onClick={() => navigate('/')}
+      />
 
       {/* Character Sidebar Toggle Button for ChatPage only */}
       {isChatPage && (

@@ -12,9 +12,16 @@
     "clear_selection": "清除选择",
     "more": "更多",
     "loading": "加载中...",
+  "no_items": "未找到项目。",
     "characters_for_tag": "#{{tag}} 的角色",
     "select_tag_to_view_characters": "请选择标签以查看角色",
     "button_start": "开始"
+  },
+
+  "info_card": {
+    "show_more": "显示更多",
+    "show_less": "显示更少",
+    "no_selection": "[未选择 {{name}}]"
   },
   "browse": {
     "for_you": "为您推荐",
@@ -29,7 +36,15 @@
   "chat": {
     "no_messages": "暂无消息，快来开始对话吧！",
     "you": "你",
-    "input_placeholder": "输入您的消息..."
+    "input_placeholder": "输入您的消息...",
+  "input_notation_hint": "提示：将简短的角色动作用 *号包起，如 *微笑*；将场景或环境说明放在括号内，如 (雷声滚过)。",
+    "welcome_title": "正在与 {{name}} 对话",
+    "welcome_body_intro": "此对话关联角色：{{character}}。",
+    "welcome_body_persona": "人设：\"{{persona}}\"。",
+    "welcome_body_scene": "场景：\"{{scene}}\"。",
+    "welcome_body_cta": "点击下方输入框，向对方打个招呼或提出问题。",
+    "welcome_scene_title": "欢迎来到场景 {{scene}}",
+    "error_generating_greeting": "生成问候失败，请重试。"
   },
   "profile": {
     "created": "已创建",
@@ -66,6 +81,24 @@
     "no_bio": "您还没有添加简介，点击编辑来完善自己吧！",
     "no_bio_other": "该用户还没有添加简介。",
     "tell_about": "简单介绍一下自己（最多500字）"
+    ,
+    "settings": "设置"
+  },
+  "settings": {
+    "title": "设置",
+    "security": "安全",
+    "change_password": "修改密码",
+    "current_password": "当前密码",
+    "new_password": "新密码",
+    "confirm_new_password": "确认新密码",
+    "change_email": "修改邮箱",
+    "current_email": "当前：",
+    "danger_zone": "危险操作",
+    "delete_account": "删除账号",
+    "delete_account_confirm": "您确定要删除账号吗？此操作不可恢复。",
+    "passwords_no_match": "两次输入的密码不一致",
+    "email_updated": "邮箱已更新",
+    "password_changed": "密码已更改"
   },
   "welcome": {
     "title": "欢迎来到Mikoshi",
@@ -74,7 +107,8 @@
     "password": "密码",
     "login": "登录",
     "no_account": "还没有账号？",
-    "sign_up": "注册"
+    "sign_up": "注册",
+    "invalid_credentials": "邮箱或密码不正确"
   },
   "signup": {
     "go_back": "返回",
@@ -85,8 +119,9 @@
     "password": "密码",
     "confirm_password": "确认密码",
     "short_bio": "简介",
-    "optional": "（可选）",
-    "bio_placeholder": "简单介绍一下自己（最多200字）",
+  "optional": "（可选）",
+  "bio_placeholder": "简单介绍一下自己（最多200字）",
+  "profile_picture": "头像",
     "submit": "提交",
     "passwords_no_match": "两次输入的密码不一致"
   },
@@ -107,14 +142,24 @@
     "create_title": "新建角色",
     "name": "名称",
     "persona": "人设",
+    "required_marker": "*",
     "tagline": "标语",
     "tags": "标签",
     "greeting": "问候语",
+    "improvise_greeting": "即兴问候",
+    "greeting_improvising_placeholder": "开始对话时会动态生成问候语",
     "sample_dialogue": "示例对话",
     "picture": "角色图片",
     "save": "保存",
     "create": "创建",
-    "delete": "删除"
+    "delete": "删除",
+    "missing_id": "缺少角色 ID",
+    "not_logged_in": "您需要登录才能操作。",
+    "name_required": "名称和人设为必填项。",
+    "updated": "角色已更新！",
+    "created": "角色已创建！",
+    "deleted": "已删除角色",
+    "error": "发生错误。"
   },
   "persona_form": {
     "edit_title": "编辑人格",
@@ -126,7 +171,16 @@
     "picture": "头像",
     "save": "保存",
     "create": "创建",
-    "delete": "删除"
+    "delete": "删除",
+    "required_marker": "*"
+    ,
+    "missing_id": "缺少人格 ID",
+    "not_logged_in": "您需要登录才能操作。",
+    "name_required": "名称为必填项。",
+    "updated": "人格已更新！",
+    "created": "人格已创建！",
+    "deleted": "已删除人格",
+    "error": "发生错误。"
   },
   "scene_form": {
     "edit_title": "编辑场景",
@@ -138,7 +192,26 @@
     "picture": "场景图片",
     "save": "保存",
     "create": "创建",
-    "delete": "删除"
+    "delete": "删除",
+    "required_marker": "*"
+    ,
+    "missing_id": "缺少场景 ID",
+    "not_logged_in": "您需要登录才能操作。",
+    "name_required": "名称和描述为必填项。",
+    "updated": "场景已更新！",
+    "created": "场景已创建！",
+    "deleted": "已删除场景",
+    "error": "发生错误。"
+  },
+  
+  "common": {
+    "confirm": "确认",
+    "cancel": "取消",
+    "save": "保存",
+    "create": "创建",
+    "delete": "删除",
+    "no_picture": "暂无图片",
+    "ok": "确定"
   },
   "topbar": {
     "show_sidebar": "显示侧边栏",
@@ -186,6 +259,7 @@
     "title": "选择人格",
     "search_placeholder": "按名称搜索人格...",
     "searching": "搜索中...",
+    "required_marker": "*",
     "no_personas_found": "未找到人格。",
     "popular_personas": "热门人格",
     "no_popular_personas": "暂无热门人格。",
@@ -193,6 +267,7 @@
   },
   "chat_init_modal": {
     "title": "初始化对话",
+    "loading": "加载中...",
     "select_character": "选择角色",
     "select_persona": "选择人格",
     "select_scene": "选择场景",
@@ -201,6 +276,25 @@
     "remove_scene": "移除场景",
     "cancel": "取消",
     "start_chat": "开始对话"
+  },
+  "confirm": {
+    "delete_chat": {
+      "title": "删除会话",
+      "message": "您确定要删除此会话吗？"
+    }
+    ,
+    "delete_scene": {
+      "title": "删除场景",
+      "message": "您确定要删除此场景吗？"
+    },
+    "delete_persona": {
+      "title": "删除人格",
+      "message": "您确定要删除此人格吗？"
+    },
+    "delete_character": {
+      "title": "删除角色",
+      "message": "您确定要删除此角色吗？"
+    }
   },
   "entity_card": {
     "unknown": "未知",

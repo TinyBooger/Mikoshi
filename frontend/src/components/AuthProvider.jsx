@@ -79,15 +79,29 @@ export function AuthProvider({ children }) {
   };
 
   // Registration function
-  const register = async (email, name, password, bio) => {
+  const register = async (email, name, password, bio, profileFile = null) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${window.API_BASE_URL}/api/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ email, name, password, bio })
-      });
+      let response;
+      if (profileFile) {
+        const formData = new FormData();
+        formData.append('email', email);
+        formData.append('name', name);
+        formData.append('password', password);
+        if (bio) formData.append('bio', bio);
+        formData.append('profile_pic', profileFile);
+        response = await fetch(`${window.API_BASE_URL}/api/users`, {
+          method: 'POST',
+          body: formData
+        });
+      } else {
+        response = await fetch(`${window.API_BASE_URL}/api/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ email, name, password, bio })
+        });
+      }
       const result = await response.json();
       if (response.ok && result.token) {
         setSessionToken(result.token);

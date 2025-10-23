@@ -1,4 +1,6 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
 import defaultPic from '../assets/images/default-picture.png';
 
 export default function InfoCard({
@@ -21,6 +23,7 @@ export default function InfoCard({
   rightLabel = 'Persona',
   isPlaceholder = false
 }) {
+  const { t } = useTranslation();
   // Pick the first non-null entity
   const entity = character || scene || persona || {};
   // Determine entity type for field mapping
@@ -32,6 +35,7 @@ export default function InfoCard({
   // For chatCount/views: all have 'views', fallback to chatCount prop
   const resolvedChatCount = typeof entity.views === 'number' ? entity.views : chatCount;
   const resolvedTags = entity.tags || [];
+  const navigate = useNavigate();
   // Tagline: 'tagline' for character, 'intro' for scene/persona
   let resolvedTagline = '';
   if (entityType === 'character') {
@@ -58,7 +62,7 @@ export default function InfoCard({
           />
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <div style={{ fontWeight: 700, color: '#18191a', fontSize: '1.02rem', letterSpacing: '0.2px', marginBottom: 2, wordBreak: 'break-word', lineHeight: 1.2 }}>
-              {isPlaceholder ? <span style={{ color: '#bbb', fontStyle: 'italic' }}>[No {resolvedName} Selected]</span> : resolvedName}
+              {isPlaceholder ? <span style={{ color: '#bbb', fontStyle: 'italic' }}>{t('info_card.no_selection', { name: resolvedName })}</span> : resolvedName}
             </div>
             <div style={{ color: '#888', fontSize: 13, marginBottom: 2, display: 'flex', alignItems: 'center' }}>
               <i className="bi bi-person-fill me-1"></i>
@@ -76,7 +80,7 @@ export default function InfoCard({
                 onMouseEnter={() => setCreatorHover && setCreatorHover(true)}
                 onMouseLeave={() => setCreatorHover && setCreatorHover(false)}
               >
-                {resolvedCreatorName || 'Unknown'}
+                {resolvedCreatorName || t('entity_card.unknown')}
               </span>
             </div>
             {typeof resolvedChatCount === 'number' && (
@@ -142,7 +146,7 @@ export default function InfoCard({
                 }}
                 onClick={() => setShowFullTagline(v => !v)}
               >
-                {showFullTagline ? 'Show less' : 'Show more'}
+                {showFullTagline ? t('info_card.show_less') : t('info_card.show_more')}
               </button>
             </>
           ) : (
@@ -152,21 +156,31 @@ export default function InfoCard({
       )}
       {resolvedTags.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 4 }}>
-          {resolvedTags.map((tag, i) => (
-            <span key={i} style={{
-              background: '#f5f6fa',
-              color: '#232323',
-              border: '1px solid #e9ecef',
-              borderRadius: '1rem',
-              fontWeight: 500,
-              fontSize: '0.68rem',
-              padding: '0.12rem 0.6rem',
-              marginBottom: 1,
-              lineHeight: 1.2,
-              letterSpacing: '0.01em',
-            }}>
+              {resolvedTags.map((tag, i) => (
+            <button
+              key={i}
+              onClick={() => navigate(`/search?q=${encodeURIComponent(tag)}`)}
+              className="btn"
+              aria-label={`Search tag ${tag}`}
+              style={{
+                background: '#f5f6fa',
+                color: '#232323',
+                border: '1px solid #e9ecef',
+                borderRadius: '1rem',
+                fontWeight: 500,
+                fontSize: '0.68rem',
+                padding: '0.12rem 0.6rem',
+                marginBottom: 1,
+                lineHeight: 1.2,
+                letterSpacing: '0.01em',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
               #{tag}
-            </span>
+            </button>
           ))}
         </div>
       )}

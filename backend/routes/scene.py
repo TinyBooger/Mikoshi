@@ -63,11 +63,17 @@ def get_scenes(search: str = None, db: Session = Depends(get_db)):
 
 # Get scenes created by a specific user (for profile page)
 @router.get("/api/scenes-created", response_model=List[SceneOut])
-def get_scenes_created(userId: int = None, db: Session = Depends(get_db)):
-    query = db.query(Scene)
-    if userId is not None:
-        query = query.filter(Scene.creator_id == userId)
-    scenes = query.order_by(Scene.created_time.desc()).all()
+def get_scenes_created(userId: str = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    If userId is provided, fetch that user's created scenes (public).
+    Otherwise, fetch current user's created scenes.
+    """
+    if userId:
+        scenes = db.query(Scene).filter(Scene.creator_id == userId).order_by(Scene.created_time.desc()).all()
+    else:
+        if not current_user:
+            return []
+        scenes = db.query(Scene).filter(Scene.creator_id == current_user.id).order_by(Scene.created_time.desc()).all()
     return [SceneOut.from_orm(s) for s in scenes]
 
 
@@ -149,20 +155,6 @@ def delete_scene(scene_id: int, db: Session = Depends(get_db), current_user: Use
     return JSONResponse(content={"id": scene_id, "message": "Scene deleted"})
 
 # ----------------------- END SCENE CRUD ROUTES -------------------
-
-@router.get("/api/scenes-created", response_model=List[SceneOut])
-def get_scenes_created(userId: str = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """
-    If userId is provided, fetch that user's created scenes (public).
-    Otherwise, fetch current user's created scenes.
-    """
-    if userId:
-        scenes = db.query(Scene).filter(Scene.creator_id == userId).order_by(Scene.created_time.desc()).all()
-    else:
-        if not current_user:
-            return []
-        scenes = db.query(Scene).filter(Scene.creator_id == current_user.id).order_by(Scene.created_time.desc()).all()
-    return scenes
 
 # Get scenes liked by a user
 @router.get("/api/scenes-liked", response_model=List[SceneOut])

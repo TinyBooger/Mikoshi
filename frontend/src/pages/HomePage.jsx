@@ -15,11 +15,15 @@ function HomePage() {
   const [recommended, setRecommended] = useState([]);
   const [popularTags, setPopularTags] = useState([]);
   const [tagCharacters, setTagCharacters] = useState({});
+  const [loadingTagCharacters, setLoadingTagCharacters] = useState(false);
   const [loadingTags, setLoadingTags] = useState(true);
   const [selectedTag, setSelectedTag] = useState(null);
   const [popularScroll, setPopularScroll] = useState({ left: false, right: false });
   const [recentScroll, setRecentScroll] = useState({ left: false, right: false });
   const [tagScroll, setTagScroll] = useState({ left: false, right: false });
+  const [sceneScroll, setSceneScroll] = useState({ left: false, right: false });
+  const [personaScroll, setPersonaScroll] = useState({ left: false, right: false });
+  const [recommendedScroll, setRecommendedScroll] = useState({ left: false, right: false });
   const [mounted, setMounted] = useState(false);
   const [popularPersonas, setPopularPersonas] = useState([]);
   const [loadingPersonas, setLoadingPersonas] = useState(true);
@@ -79,28 +83,43 @@ function HomePage() {
 
   useEffect(() => {
     if (!mounted) return;
-    // Initial scroll state
-    updateScrollState('popular-scroll', setPopularScroll);
-    updateScrollState('recent-scroll', setRecentScroll);
-    updateScrollState('tag-scroll', setTagScroll);
-    // Add scroll listeners
-    const pop = document.getElementById('popular-scroll');
-    const rec = document.getElementById('recent-scroll');
-    const tag = document.getElementById('tag-scroll');
-    const popScroll = () => updateScrollState('popular-scroll', setPopularScroll);
-    const recScroll = () => updateScrollState('recent-scroll', setRecentScroll);
-    const tagScrollFn = () => updateScrollState('tag-scroll', setTagScroll);
-    if (pop) pop.addEventListener('scroll', popScroll);
-    if (rec) rec.addEventListener('scroll', recScroll);
-    if (tag) tag.addEventListener('scroll', tagScrollFn);
+  // Initial scroll state for all horizontal sections
+  updateScrollState('popular-scroll', setPopularScroll);
+  updateScrollState('recent-scroll', setRecentScroll);
+  updateScrollState('tag-scroll', setTagScroll);
+  updateScrollState('scene-scroll', setSceneScroll);
+  updateScrollState('persona-scroll', setPersonaScroll);
+  updateScrollState('recommended-scroll', setRecommendedScroll);
+  // Add scroll listeners
+  const pop = document.getElementById('popular-scroll');
+  const rec = document.getElementById('recent-scroll');
+  const tag = document.getElementById('tag-scroll');
+  const sceneEl = document.getElementById('scene-scroll');
+  const personaEl = document.getElementById('persona-scroll');
+  const popScroll = () => updateScrollState('popular-scroll', setPopularScroll);
+  const recScroll = () => updateScrollState('recent-scroll', setRecentScroll);
+  const tagScrollFn = () => updateScrollState('tag-scroll', setTagScroll);
+  const sceneScrollFn = () => updateScrollState('scene-scroll', setSceneScroll);
+  const personaScrollFn = () => updateScrollState('persona-scroll', setPersonaScroll);
+  const recommendedScrollFn = () => updateScrollState('recommended-scroll', setRecommendedScroll);
+  if (pop) pop.addEventListener('scroll', popScroll);
+  if (rec) rec.addEventListener('scroll', recScroll);
+  if (tag) tag.addEventListener('scroll', tagScrollFn);
+  if (sceneEl) sceneEl.addEventListener('scroll', sceneScrollFn);
+  if (personaEl) personaEl.addEventListener('scroll', personaScrollFn);
+  const recm = document.getElementById('recommended-scroll');
+  if (recm) recm.addEventListener('scroll', recommendedScrollFn);
     // Cleanup
     return () => {
-      if (pop) pop.removeEventListener('scroll', popScroll);
-      if (rec) rec.removeEventListener('scroll', recScroll);
-      if (tag) tag.removeEventListener('scroll', tagScrollFn);
+  if (pop) pop.removeEventListener('scroll', popScroll);
+  if (rec) rec.removeEventListener('scroll', recScroll);
+  if (tag) tag.removeEventListener('scroll', tagScrollFn);
+  if (sceneEl) sceneEl.removeEventListener('scroll', sceneScrollFn);
+  if (personaEl) personaEl.removeEventListener('scroll', personaScrollFn);
+  if (recm) recm.removeEventListener('scroll', recommendedScrollFn);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted, popular.length, recent.length, selectedTag, tagCharacters[selectedTag]?.length]);
+  }, [mounted, popular.length, recent.length, selectedTag, loadingTagCharacters]);
 
   useEffect(() => {
   if (!sessionToken) return;
@@ -132,7 +151,15 @@ function HomePage() {
       .then(tags => {
         setPopularTags(tags);
         setLoadingTags(false);
-        // Pre-fetch characters for the first few popular tags
+        // Pre-select the first tag (if any) and pre-fetch characters for the top few tags
+        if (Array.isArray(tags) && tags.length > 0) {
+          const first = tags[0].name;
+          // Only set initial selection if user hasn't already selected a tag
+          if (!selectedTag) {
+            setSelectedTag(first);
+            fetchCharactersByTag(first);
+          }
+        }
         const topTags = tags.slice(0, 3);
         topTags.forEach(tag => {
           fetchCharactersByTag(tag.name);
@@ -142,13 +169,22 @@ function HomePage() {
   }, [sessionToken]);
 
   const fetchCharactersByTag = (tagName) => {
-  fetch(`${window.API_BASE_URL}/api/characters/by-tag/${encodeURIComponent(tagName)}`, { headers: { 'Authorization': sessionToken } })
+    setLoadingTagCharacters(true);
+    fetch(`${window.API_BASE_URL}/api/characters/by-tag/${encodeURIComponent(tagName)}`, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
       .then(characters => {
         setTagCharacters(prev => ({
           ...prev,
           [tagName]: characters
         }));
+        setLoadingTagCharacters(false);
+      })
+      .catch(() => {
+        setTagCharacters(prev => ({
+          ...prev,
+          [tagName]: []
+        }));
+        setLoadingTagCharacters(false);
       });
   };
 
@@ -170,11 +206,12 @@ function HomePage() {
           {t('home.description')}
         </div>
       </div>
-  {/* Popular Characters */}
+
+      {/* Popular Characters */}
       <HorizontalCardSection
         title={t('home.popular_characters')}
         moreLink="/browse/popular"
-    contents={Array.isArray(popular) ? popular.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : popular}
+        contents={Array.isArray(popular) ? popular.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : popular}
         scrollState={popularScroll}
         scrollId="popular-scroll"
         navigate={navigate}
@@ -188,7 +225,7 @@ function HomePage() {
             title={t('home.popular_scenes')}
             moreLink="/browse/scenes"
             contents={Array.isArray(popularScenes) ? popularScenes.map(scene => ({ ...scene, renderCard: () => <EntityCard type="scene" entity={scene} /> })) : popularScenes}
-            scrollState={{ left: false, right: false }}
+            scrollState={sceneScroll}
             scrollId="scene-scroll"
             navigate={navigate}
           />
@@ -198,7 +235,7 @@ function HomePage() {
             title={t('home.popular_personas')}
             moreLink="/browse/personas"
             contents={Array.isArray(popularPersonas) ? popularPersonas.map(persona => ({ ...persona, renderCard: () => <EntityCard type="persona" entity={persona} /> })) : popularPersonas}
-            scrollState={{ left: false, right: false }}
+            scrollState={personaScroll}
             scrollId="persona-scroll"
             navigate={navigate}
           />
@@ -209,7 +246,7 @@ function HomePage() {
       <HorizontalCardSection
         title={t('home.recently_uploaded')}
         moreLink="/browse/recent"
-    contents={Array.isArray(recent) ? recent.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : recent}
+        contents={Array.isArray(recent) ? recent.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : recent}
         scrollState={recentScroll}
         scrollId="recent-scroll"
         navigate={navigate}
@@ -219,8 +256,8 @@ function HomePage() {
       <HorizontalCardSection
         title={t('home.recommended_for_you')}
         moreLink="/browse/recommended"
-    contents={Array.isArray(recommended) ? recommended.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : recommended}
-        scrollState={{ left: false, right: false }}
+        contents={Array.isArray(recommended) ? recommended.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : recommended}
+        scrollState={recommendedScroll}
         scrollId="recommended-scroll"
         navigate={navigate}
       />
@@ -229,7 +266,7 @@ function HomePage() {
       <section className="mb-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div className="d-flex align-items-center gap-3">
-      <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>{t('home.popular_tags')}</h2>
+            <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>{t('home.popular_tags')}</h2>
             {selectedTag && (
               <div className="d-flex align-items-center">
                 <span className="text-muted me-2">{t('home.showing')}</span>
@@ -267,7 +304,12 @@ function HomePage() {
             onMouseLeave={e => {
               e.currentTarget.style.background = '#18191a';
             }}
-            onClick={() => navigate('/browse/tags')}
+            onClick={() => {
+              // If a tag is selected, search using that tag as keyword; otherwise go to tag browser
+              if (selectedTag) {
+                navigate(`/search?q=${encodeURIComponent(selectedTag)}`);
+              }
+            }}
           >
             {t('home.more')}
           </button>
@@ -321,14 +363,23 @@ function HomePage() {
 
             <div style={{ position: 'relative', width: '100%' }}>
               {selectedTag ? (
-                <HorizontalCardSection
-                  title={t('home.characters_for_tag', { tag: selectedTag })}
-                  moreLink={'browse/tags/'}
-                    contents={Array.isArray(tagCharacters[selectedTag]) ? tagCharacters[selectedTag].map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : tagCharacters[selectedTag]}
-                  scrollState={tagScroll}
-                  scrollId="tag-scroll"
-                  navigate={navigate}
-                />
+                loadingTagCharacters ? (
+                  <div className="text-center my-4">
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">{t('home.loading')}</span>
+                    </div>
+                  </div>
+                ) : Array.isArray(tagCharacters[selectedTag]) ? (
+                  <HorizontalCardSection
+                    title={t('home.characters_for_tag', { tag: selectedTag })}
+                    /* hide child more button to avoid duplicate - use parent header for 'more' */
+                    showMoreButton={false}
+                    contents={tagCharacters[selectedTag].map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> }))}
+                    scrollState={tagScroll}
+                    scrollId="tag-scroll"
+                    navigate={navigate}
+                  />
+                ) : null
               ) : (
                 <div className="text-muted py-4">{t('home.select_tag_to_view_characters')}</div>
               )}
@@ -336,7 +387,7 @@ function HomePage() {
           </>
         )}
       </section>
-  </PageWrapper>
+    </PageWrapper>
   );
 }
 

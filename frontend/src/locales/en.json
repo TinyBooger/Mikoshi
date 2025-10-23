@@ -13,8 +13,15 @@
     "clear_selection": "Clear selection",
     "more": "More",
     "loading": "Loading...",
+  "no_items": "No items found.",
     "characters_for_tag": "Characters for #{{tag}}",
     "select_tag_to_view_characters": "Select a tag to view characters"
+  },
+
+  "info_card": {
+    "show_more": "Show more",
+    "show_less": "Show less",
+    "no_selection": "[No {{name}} Selected]"
   },
   "browse": {
     "for_you": "For You",
@@ -29,7 +36,15 @@
   "chat": {
     "no_messages": "No messages yet. Start the conversation!",
     "you": "You",
-    "input_placeholder": "Type your message..."
+    "input_placeholder": "Type your message...",
+  "input_notation_hint": "Tip: wrap short character actions in *asterisks*, e.g. *smiles*. Put brief scene or environment notes in parentheses, e.g. (thunder rolls).",
+    "welcome_title": "You're chatting with {{name}}",
+    "welcome_body_intro": "This chat is connected to {{character}}.",
+    "welcome_body_persona": "Persona: \"{{persona}}\".",
+    "welcome_body_scene": "Scene: \"{{scene}}\".",
+    "welcome_body_cta": "Tap the input below to say hello or ask a question.",
+    "welcome_scene_title": "Welcome to the scene {{scene}}",
+    "error_generating_greeting": "Failed to generate greeting. Please try again."
   },
   "profile": {
     "created": "Created",
@@ -66,6 +81,24 @@
     "no_bio": "You have not added a bio yet. Click edit to add something about yourself!",
     "no_bio_other": "This user has not added a bio yet.",
     "tell_about": "Tell us a little about yourself (max 500 chars)"
+    ,
+    "settings": "Settings"
+  },
+  "settings": {
+    "title": "Settings",
+    "security": "Security",
+    "change_password": "Change password",
+    "current_password": "Current password",
+    "new_password": "New password",
+    "confirm_new_password": "Confirm new password",
+    "change_email": "Change email",
+    "current_email": "Current",
+    "danger_zone": "Danger zone",
+    "delete_account": "Delete account",
+    "delete_account_confirm": "Are you sure you want to delete your account? This action is irreversible.",
+    "passwords_no_match": "New passwords do not match",
+    "email_updated": "Email updated",
+    "password_changed": "Password changed"
   },
   "welcome": {
     "title": "Welcome to Mikoshi",
@@ -74,7 +107,8 @@
     "password": "Password",
     "login": "Login",
     "no_account": "Don't have an account?",
-    "sign_up": "Sign Up"
+    "sign_up": "Sign Up",
+    "invalid_credentials": "Invalid email or password"
   },
   "signup": {
     "go_back": "Go back",
@@ -87,6 +121,7 @@
     "short_bio": "Short Bio",
     "optional": "(optional)",
     "bio_placeholder": "Tell us a little about yourself (max 200 chars)",
+    "profile_picture": "Profile Picture",
     "submit": "Submit",
     "passwords_no_match": "Passwords do not match"
   },
@@ -106,20 +141,31 @@
     "edit_title": "Edit Character",
     "create_title": "Create New Character",
     "name": "Name",
+    "required_marker": "*",
     "persona": "Persona",
     "tagline": "Tagline",
     "tags": "Tags",
     "greeting": "Greeting",
+    "improvise_greeting": "Improvise greeting",
+    "greeting_improvising_placeholder": "Greeting will be generated dynamically when starting the chat",
     "sample_dialogue": "Sample Dialogue",
     "picture": "Character Picture",
     "save": "Save",
     "create": "Create",
-    "delete": "Delete"
+    "delete": "Delete",
+    "missing_id": "Missing character ID",
+    "not_logged_in": "You need to be logged in.",
+    "name_required": "Name and persona are required.",
+    "updated": "Character updated!",
+    "created": "Character created!",
+    "deleted": "Character deleted",
+    "error": "An error occurred."
   },
   "persona_form": {
     "edit_title": "Edit Persona",
     "create_title": "Create New Persona",
     "name": "Name",
+    "required_marker": "*",
     "description": "Description",
     "intro": "Intro",
     "tags": "Tags",
@@ -127,6 +173,14 @@
     "save": "Save",
     "create": "Create",
     "delete": "Delete"
+    ,
+    "missing_id": "Missing persona ID",
+    "not_logged_in": "You need to be logged in.",
+    "name_required": "Name is required.",
+    "updated": "Persona updated!",
+    "created": "Persona created!",
+    "deleted": "Persona deleted",
+    "error": "An error occurred."
   },
   "scene_form": {
     "edit_title": "Edit Scene",
@@ -138,7 +192,25 @@
     "picture": "Scene Picture",
     "save": "Save",
     "create": "Create",
-    "delete": "Delete"
+    "delete": "Delete",
+    "required_marker": "*"
+    ,
+    "missing_id": "Missing scene ID",
+    "not_logged_in": "You need to be logged in.",
+    "name_required": "Name and description are required.",
+    "updated": "Scene updated!",
+    "created": "Scene created!",
+    "deleted": "Scene deleted",
+    "error": "An error occurred."
+  },
+  "common": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create",
+    "delete": "Delete",
+    "no_picture": "No picture",
+    "ok": "OK"
   },
   "topbar": {
     "show_sidebar": "Show sidebar",
@@ -193,6 +265,7 @@
   },
   "chat_init_modal": {
     "title": "Initialize Chat",
+    "loading": "Loading...",
     "select_character": "Select Character",
     "select_persona": "Select Persona",
     "select_scene": "Select Scene",
@@ -201,6 +274,25 @@
     "remove_scene": "Remove Scene",
     "cancel": "Cancel",
     "start_chat": "Start Chat"
+  },
+  "confirm": {
+    "delete_chat": {
+      "title": "Delete chat",
+      "message": "Are you sure you want to delete this chat?"
+    }
+    ,
+    "delete_scene": {
+      "title": "Delete scene",
+      "message": "Are you sure you want to delete this scene?"
+    },
+    "delete_persona": {
+      "title": "Delete persona",
+      "message": "Are you sure you want to delete this persona?"
+    },
+    "delete_character": {
+      "title": "Delete character",
+      "message": "Are you sure you want to delete this character?"
+    }
   },
   "entity_card": {
     "unknown": "Unknown",

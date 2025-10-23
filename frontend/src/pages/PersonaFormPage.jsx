@@ -1,9 +1,13 @@
 import React, { useEffect, useState, useContext } from "react";
 import { useNavigate, useParams } from "react-router";
 import TagsInput from '../components/TagsInput';
+import ImageCropModal from '../components/ImageCropModal';
+import { createPortal } from 'react-dom';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from "../components/PageWrapper";
 import { useTranslation } from 'react-i18next';
+import ConfirmModal from '../components/ConfirmModal';
+import { useToast } from '../components/ToastProvider';
 
 export default function PersonaFormPage() {
   const { t } = useTranslation();
@@ -15,9 +19,8 @@ export default function PersonaFormPage() {
   const params = useParams();
   const id = params.id;
   const mode = id ? 'edit' : 'create';
-  console.log("PersonaFormPage mode:", mode, id ? `(id: ${id})` : '');
-
   const { sessionToken } = useContext(AuthContext);
+  const toast = useToast();
   const navigate = useNavigate();
   const [personaData, setPersonaData] = useState({
     name: '',
@@ -26,12 +29,15 @@ export default function PersonaFormPage() {
     tags: [],
   });
   const [picture, setPicture] = useState(null);
+  const [picturePreview, setPicturePreview] = useState(null);
+  const [showCrop, setShowCrop] = useState(false);
+  const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit');
 
   useEffect(() => {
     if (mode === 'edit') {
       if (!id) {
-        alert("Missing persona ID");
+        toast.show(t('persona_form.missing_id'), { type: 'error' });
         navigate("/");
         return;
       }
@@ -69,13 +75,13 @@ export default function PersonaFormPage() {
 
   const handleSubmit = async e => {
     e.preventDefault();
-  if (!sessionToken) {
-      alert("You need to be logged in.");
+    if (!sessionToken) {
+      toast.show(t('persona_form.not_logged_in'), { type: 'error' });
       navigate("/");
       return;
     }
     if (!personaData.name.trim()) {
-      alert("Name is required.");
+      toast.show(t('persona_form.name_required'), { type: 'error' });
       return;
     }
     const formData = new FormData();
@@ -93,13 +99,13 @@ export default function PersonaFormPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(mode === 'edit' ? "Persona updated!" : "Persona created!");
+        toast.show(mode === 'edit' ? t('persona_form.updated') : t('persona_form.created'));
         navigate("/profile");
       } else {
-        alert(data.message || data.detail || `Failed to ${mode === 'edit' ? 'update' : 'create'} persona`);
+        toast.show(data.message || data.detail || t('persona_form.error'), { type: 'error' });
       }
     } catch (error) {
-      alert("An error occurred.");
+      toast.show(t('persona_form.error'), { type: 'error' });
     }
   };
 
@@ -108,14 +114,23 @@ export default function PersonaFormPage() {
       navigate("/");
       return;
     }
-    if (window.confirm("Are you sure you want to delete this persona?")) {
+    setConfirmModal({ show: true });
+  };
+
+  const [confirmModal, setConfirmModal] = useState({ show: false });
+
+  const handleDeleteConfirmed = async () => {
+    setConfirmModal({ show: false });
+    try {
       const res = await fetch(`${window.API_BASE_URL}/api/personas/${id}`, {
         method: "DELETE",
-  headers: { 'Authorization': sessionToken }
+        headers: { 'Authorization': sessionToken }
       });
       const data = await res.json();
-      alert(data.message || data.detail || "Persona deleted");
+      toast.show(data.message || data.detail || t('persona_form.deleted'));
       if (res.ok) navigate("/profile");
+    } catch (err) {
+      toast.show(t('persona_form.error'), { type: 'error' });
     }
   };
 
@@ -133,29 +148,12 @@ export default function PersonaFormPage() {
       }}>
         <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? t('persona_form.edit_title') : t('persona_form.create_title')}</h2>
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
-          {/* Profile Picture */}
-          <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('persona_form.picture')}</label>
-            <input
-              type="file"
-              accept="image/*"
-              className="form-control"
-              onChange={e => setPicture(e.target.files[0])}
-              style={{
-                background: '#f5f6fa',
-                color: '#232323',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-              }}
-            />
-          </div>
           {/* Name */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('persona_form.name')}</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              {t('persona_form.name')}
+              <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('persona_form.required_marker') || t('character_form.required_marker')}</span>
+            </label>
             <input
               className="form-control"
               required
@@ -242,18 +240,68 @@ export default function PersonaFormPage() {
               maxTags={MAX_TAGS}
             />
           </div>
-          <div className="d-flex gap-3 mt-4">
-            <button type="submit" className="btn btn-dark px-4 fw-bold">
-              {mode === 'edit' ? t('persona_form.save') : t('persona_form.create')}
-            </button>
-            {mode === 'edit' && (
-              <button type="button" className="btn btn-outline-danger px-4 fw-bold" onClick={handleDelete}>
-                {t('persona_form.delete')}
+            {/* Profile Picture (moved to end) */}
+            <div className="mb-4">
+              <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('persona_form.picture')}</label>
+              <div className="d-flex align-items-center gap-3">
+                <div style={{ width: 96, height: 96, overflow: 'hidden', borderRadius: 8, background: '#fff', border: '1px solid #e9ecef' }}>
+                  {picturePreview ? (
+                    <img src={picturePreview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>{t('persona_form.no_picture')}</div>
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="form-control"
+                    onChange={e => {
+                      const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                      if (f) { setRawSelectedFile(f); setShowCrop(true); }
+                    }}
+                    style={{
+                      background: '#f5f6fa',
+                      color: '#232323',
+                      border: '1.5px solid #e9ecef',
+                      borderRadius: 16,
+                      fontSize: '1.08rem',
+                      padding: '0.7rem 1.2rem',
+                      boxShadow: 'none',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="d-flex gap-3 mt-4">
+              <button type="submit" className="btn btn-dark px-4 fw-bold">
+                {mode === 'edit' ? t('persona_form.save') : t('persona_form.create')}
               </button>
-            )}
-          </div>
+              {mode === 'edit' && (
+                <button type="button" className="btn btn-outline-danger px-4 fw-bold" onClick={handleDelete}>
+                  {t('persona_form.delete')}
+                </button>
+              )}
+            </div>
         </form>
       </div>
+      {showCrop && rawSelectedFile && createPortal(
+        <ImageCropModal
+          srcFile={rawSelectedFile}
+          onCancel={() => { setShowCrop(false); setRawSelectedFile(null); }}
+          onSave={({ file, dataUrl }) => { setPicture(file); setPicturePreview(dataUrl); setShowCrop(false); setRawSelectedFile(null); }}
+          size={220}
+          mode="square"
+        />, document.body)
+      }
+      <ConfirmModal
+        show={confirmModal.show}
+        title={t('confirm.delete_persona.title')}
+        message={t('confirm.delete_persona.message')}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setConfirmModal({ show: false })}
+      />
     </PageWrapper>
   );
 }

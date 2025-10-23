@@ -9,11 +9,16 @@ import SceneModal from '../components/SceneModal';
 import CharacterModal from '../components/CharacterModal';
 import CharacterSidebar from '../components/CharacterSidebar';
 import ChatInitModal from '../components/ChatInitModal';
+import ConfirmModal from '../components/ConfirmModal';
+import { useToast } from '../components/ToastProvider';
 
 export default function ChatPage() {
   const { t } = useTranslation();
+  // Sentinel used to indicate a character should have an improvising greeting
+  const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
   const { userData, setUserData, sessionToken, refreshUserData, loading } = useContext(AuthContext);
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
@@ -25,6 +30,9 @@ export default function ChatPage() {
   const [editingChatId, setEditingChatId] = useState(null);
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
+
+  // Whether the welcome notice has been dismissed (show only once per new chat)
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
 
   const [selectedPersona, setSelectedPersona] = useState(null);
   const [selectedScene, setSelectedScene] = useState(null);
@@ -89,7 +97,7 @@ export default function ChatPage() {
           initializeChat();
         });
       }
-      initialized.current = true;
+      
       return;
     }
   }, [navigate, sessionToken, loading, initialized, characterId, sceneId, personaId]);
@@ -228,13 +236,13 @@ export default function ChatPage() {
         body: JSON.stringify(body)
       });
     }
-
+    initialized.current = true;
     if(isNewChat.current) {
       startNewChat();
     }
   };
 
-  const startNewChat = () => {
+  const startNewChat = async () => {
     console.log('starting a new chat')
     const sys = {
       role: "system",
@@ -246,27 +254,81 @@ export default function ChatPage() {
         selectedScene?.description || null
       )
     };
+    // Use the character's greeting if available. Do not emit a special scene greeting here
+    // because the scene introduction is now handled by the welcome notice.
+    // If the character uses the improvising sentinel, call the backend LLM to generate
+    // the initial assistant greeting dynamically.
+    const charGreeting = selectedCharacter?.greeting;
+    setSelectedChat(null);
+    setInput('');
+    // Reset welcome dismissed so the welcome notice can show for this new chat
+    setWelcomeDismissed(false);
+
+    if (charGreeting === SPECIAL_IMPROVISING_GREETING) {
+      // Start with only the system message while we request an initial assistant reply
+      setMessages([sys]);
+      // Ask backend to generate a reply (this will also create a chat entry server-side when character_id provided)
+      setSending(true);
+      try {
+        const res = await fetch(`${window.API_BASE_URL}/api/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': sessionToken
+          },
+          body: JSON.stringify({
+            character_id: characterId,
+            scene_id: selectedScene?.id || null,
+            persona_id: selectedPersona?.id || null,
+            messages: [sys]
+          })
+        });
+        const data = await res.json();
+        const reply = data.response || '';
+        setMessages([sys, { role: 'assistant', content: reply }]);
+
+        if (data.chat_id) {
+          const newChat = {
+            chat_id: data.chat_id,
+            title: data.chat_title || (reply ? reply.slice(0, 30) + (reply.length > 30 ? '...' : '') : 'New Chat'),
+            character_id: characterId,
+            messages: [{ role: 'assistant', content: reply }],
+            last_updated: new Date().toISOString()
+          };
+          setSelectedChat(newChat);
+          if (userData && userData.chat_history) {
+            const filtered = userData.chat_history.filter(h => h.chat_id !== data.chat_id);
+            setUserData(prev => ({ ...prev, chat_history: [newChat, ...filtered].slice(0, 30) }));
+          }
+        }
+      } catch (err) {
+        console.error('Error generating improvising greeting:', err);
+        toast.show(t('chat.error_generating_greeting') || 'Failed to generate greeting.', { type: 'error' });
+      }
+      setSending(false);
+      return;
+    }
+
+    // Non-improvising: use greeting if provided
     let greet = null;
-    if (selectedScene) {
+    if (charGreeting) {
       greet = {
-        role: "assistant",
-        content: `Welcome to the scene: "${selectedScene.name}". ${selectedScene.description}`
-      };
-    } else if ((selectedCharacter?.greeting )) {
-      greet = {
-        role: "assistant",
-        content: selectedCharacter?.greeting
+        role: 'assistant',
+        content: charGreeting
       };
     }
     setMessages(greet ? [sys, greet] : [sys]);
-    setSelectedChat(null);
-    setInput('');
   };
 
   const handleSend = async (event) => {
     event.preventDefault(); // Always prevent default
     if (sending || !input.trim() || !selectedCharacter) return;
     setSending(true);
+    // If this is the user's first message in a new chat, dismiss the welcome
+    if (isNewChat.current && !welcomeDismissed) {
+      setWelcomeDismissed(true);
+      isNewChat.current = false;
+    }
     const updatedMessages = [...messages, { role: 'user', content: input.trim() }];
     setMessages(updatedMessages);
     setInput('');
@@ -308,7 +370,7 @@ export default function ChatPage() {
         }
       }
     } catch (err) {
-      alert('Failed to send message. Please try again.');
+      toast.show('Failed to send message. Please try again.', { type: 'error' });
     }
     setSending(false);
   };
@@ -399,8 +461,16 @@ export default function ChatPage() {
   };
 
   const handleDelete = async (chatId) => {
-    if (!window.confirm('Are you sure you want to delete this chat?')) return;
+    // Open confirmation modal instead of using window.confirm
+    setConfirmModal({ show: true, chatId });
+  };
 
+  // Local state for confirm modal
+  const [confirmModal, setConfirmModal] = useState({ show: false, chatId: null });
+
+  const handleDeleteConfirmed = async () => {
+    const chatId = confirmModal.chatId;
+    setConfirmModal({ show: false, chatId: null });
     try {
       const res = await fetch(`${window.API_BASE_URL}/api/chat/delete`, {
         method: 'POST',
@@ -431,6 +501,45 @@ export default function ChatPage() {
     }
   };
 
+  // Helper: parse message content into React elements honoring *actions* and (scene) narration
+  // This is intentionally lightweight: it looks for *wrapped* tokens and (parenthesis) tokens
+  const renderMessageContent = (text) => {
+    if (!text) return null;
+    // Split by tokens but keep delimiters using regex
+    const parts = [];
+    const re = /(\*[^*]+\*)|(\([^)]*\))/g;
+    let lastIndex = 0;
+    let match;
+    while ((match = re.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+      }
+      const token = match[0];
+      if (token.startsWith('*') && token.endsWith('*')) {
+        parts.push({ type: 'action', content: token.slice(1, -1) });
+      } else if (token.startsWith('(') && token.endsWith(')')) {
+        parts.push({ type: 'scene', content: token.slice(1, -1) });
+      } else {
+        parts.push({ type: 'text', content: token });
+      }
+      lastIndex = re.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      parts.push({ type: 'text', content: text.slice(lastIndex) });
+    }
+
+    return parts.map((p, idx) => {
+      // Use inheritable colors so these tokens adapt to the parent bubble's color
+      if (p.type === 'action') {
+        return <span key={idx} style={{ fontStyle: 'italic', fontWeight: 600, margin: '0 4px', color: 'inherit' }}>{p.content}</span>;
+      }
+      if (p.type === 'scene') {
+        return <span key={idx} style={{ fontStyle: 'italic', color: 'inherit', opacity: 0.9, margin: '0 4px' }}>({p.content})</span>;
+      }
+      return <span key={idx}>{p.content}</span>;
+    });
+  };
+
   return (
     <div style={{ 
       display: 'flex', 
@@ -457,66 +566,170 @@ export default function ChatPage() {
         }}>
         {/* Messages Area */}
         <div style={{ flex: 1, padding: '1.2rem', overflowY: 'auto', background: '#fff', minHeight: 0 }}>
-          {messages.filter(m => m.role !== 'system').length === 0 ? (
-            <div className="text-muted text-center" style={{ marginTop: '3.2rem', fontSize: '0.88rem' }}>{t('chat.no_messages')}</div>
-          ) : (
-            messages
-              .filter(m => m.role !== 'system')
-              .map((m, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    marginBottom: '1.2rem',
-                    justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
-                  }}
-                >
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'flex-end',
-                    flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
-                    maxWidth: '80%'
-                  }}>
-                    <img
-                      src={
-                        m.role === 'user'
-                          ? (userData?.profile_pic
-                              ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}`
-                              : defaultPic)
-                          : (selectedCharacter?.picture
-                              ? `${window.API_BASE_URL.replace(/\/$/, '')}/${selectedCharacter.picture.replace(/^\//, '')}`
-                              : defaultPic)
-                      }
-                      alt={m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
-                      style={{ width: 77, height: 77, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef' }}
-                    />
-                    <div style={{
-                      margin: m.role === 'user' ? '0 0.4rem 0 0.88rem' : '0 0.88rem 0 0.4rem',
-                      background: m.role === 'user' ? '#18191a' : '#f5f6fa',
-                      color: m.role === 'user' ? '#fff' : '#232323',
-                      borderRadius: '0.88rem',
-                      padding: '0.68rem 0.96rem',
-                      boxShadow: m.role === 'user' ? '0 2px 8px rgba(24,25,26,0.08)' : '0 2px 8px rgba(0,0,0,0.04)',
-                      fontSize: '0.82rem',
-                      minWidth: 0,
-                      wordBreak: 'break-word',
-                      maxWidth: '100%'
-                    }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.76rem', marginBottom: 2, opacity: 0.7 }}>
-                        {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
+          {(() => {
+            const nonSystem = messages.filter(m => m.role !== 'system');
+            // Show welcome only when starting a new chat (isNewChat.current)
+            // This ensures we still show welcome when nonSystem.length === 0 (no character greeting),
+            // but only once per new chat session.
+            const showWelcome = isNewChat.current && !welcomeDismissed;
+            console.log({ showWelcome});
+
+            return (
+              <>
+                {showWelcome && (
+                  (() => {
+                    // Build a system-style welcome notice independent from the assistant's greeting message
+                    const charName = selectedCharacter?.name;
+                    const personaName = selectedPersona?.name;
+                    const sceneName = selectedScene?.name;
+                    const personaDesc = selectedPersona?.description;
+                    const sceneDesc = selectedScene?.description;
+
+                    // Build the translated welcome title and body using i18n with sensible fallbacks
+                    const title = t('chat.welcome_title', { name: charName || '' });
+
+                    // For the body, prefer a combined sentence with character/persona data.
+                    // Scene information is displayed separately (title + intro) in its own visually distinct block.
+                    const mainParts = [];
+                    mainParts.push(t('chat.welcome_body_intro', { character: charName || '' }));
+                    if (personaName) {
+                      mainParts.push(t('chat.welcome_body_persona', { persona: personaName }));
+                    }
+                    mainParts.push(t('chat.welcome_body_cta'));
+                    const welcomeText = mainParts.join(' ');
+
+                    // Scene-specific text (localized)
+                    const sceneTitleText = sceneName ? t('chat.welcome_scene_title', { scene: sceneName }) : null;
+
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.2rem' }}>
+                        <div style={{ maxWidth: 720, width: '100%', textAlign: 'center', padding: '0 0.6rem' }}>
+                          {/* Picture above, centered */}
+                          {selectedCharacter?.picture ? (
+                            <img
+                              src={`${window.API_BASE_URL.replace(/\/$/, '')}/${selectedCharacter.picture.replace(/^\//, '')}`}
+                              alt={charName || 'Character'}
+                              style={{
+                                width: 96,
+                                height: 96,
+                                objectFit: 'cover',
+                                borderRadius: '50%',
+                                display: 'block',
+                                margin: '0 auto'
+                              }}
+                            />
+                          ) : (
+                            <div style={{
+                              width: 96,
+                              height: 96,
+                              borderRadius: '50%',
+                              background: 'linear-gradient(135deg,#6b8cff,#a28bff)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#fff',
+                              fontWeight: 700,
+                              fontSize: '1.6rem',
+                              margin: '0 auto'
+                            }}>{charName ? charName.charAt(0).toUpperCase() : 'M'}</div>
+                          )}
+
+                          {/* Title centered */}
+                          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#121212', marginTop: 12 }}>
+                            {title}
+                          </div>
+
+                          {/* Scene block (visually distinct). Shows scene title and scene.intro if available */}
+                          {sceneName && (
+                            <div style={{
+                              marginTop: 12,
+                              padding: '0.9rem',
+                              background: '#f1f5f9',
+                              borderRadius: '0.75rem',
+                              border: '1px solid rgba(15, 23, 42, 0.04)',
+                              color: '#0f172a',
+                              textAlign: 'left'
+                            }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.98rem' }}>{sceneTitleText}</div>
+                              {selectedScene?.intro && (
+                                <div style={{ marginTop: 6, fontStyle: 'italic', color: '#374151' }}>{selectedScene.intro}</div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Text centered, transparent background so it appears inline in chat */}
+                          <div style={{ marginTop: 8, color: '#4b5563', fontSize: '0.92rem', lineHeight: 1.35 }}>
+                            {welcomeText}
+                          </div>
+                        </div>
                       </div>
-                      <div>{m.content}</div>
+                    );
+                  })()
+                )}
+
+                {nonSystem.length === 0 ? (
+                  <div className="text-muted text-center" style={{ marginTop: '3.2rem', fontSize: '0.88rem' }}>{t('chat.no_messages')}</div>
+                ) : (
+                  nonSystem.map((m, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        marginBottom: '1.2rem',
+                        justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
+                        maxWidth: '80%'
+                      }}>
+                        <img
+                          src={
+                            m.role === 'user'
+                              ? (userData?.profile_pic
+                                  ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}`
+                                  : defaultPic)
+                              : (selectedCharacter?.picture
+                                  ? `${window.API_BASE_URL.replace(/\/$/, '')}/${selectedCharacter.picture.replace(/^\//, '')}`
+                                  : defaultPic)
+                          }
+                          alt={m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
+                          style={{ width: 77, height: 77, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef' }}
+                        />
+                        <div style={{
+                          margin: m.role === 'user' ? '0 0.4rem 0 0.88rem' : '0 0.88rem 0 0.4rem',
+                          // Use the same light style as the assistant for consistency
+                          background: '#f5f6fa',
+                          color: '#232323',
+                          borderRadius: '0.88rem',
+                          padding: '0.68rem 0.96rem',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                          fontSize: '0.82rem',
+                          minWidth: 0,
+                          wordBreak: 'break-word',
+                          maxWidth: '100%'
+                        }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.76rem', marginBottom: 2, opacity: 0.7 }}>
+                            {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
+                          </div>
+                          <div>{renderMessageContent(m.content)}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))
-          )}
+                  ))
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Input Area (no form) */}
         <form onSubmit={handleSend} style={{ padding: '0.8rem 1.2rem', background: '#f8f9fa', borderTop: '1.2px solid #e9ecef' }}>
-          <div style={{ display: 'flex', gap: '0.64rem', alignItems: 'center' }}>
-            <input
+          <div style={{ display: 'flex', gap: '0.64rem', alignItems: 'center', flexDirection: 'column' }}>
+            <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'center' }}>
+              <input
               style={{
                 flex: 1,
                 borderRadius: '1.6rem',
@@ -565,6 +778,9 @@ export default function ChatPage() {
                 <i className="bi bi-send-fill"></i>
               )}
             </button>
+            </div>
+            {/* Small helper line explaining notation (centered) */}
+            <div style={{ width: '100%', marginTop: 6, fontSize: '0.72rem', color: '#6b7280', textAlign: 'center' }}>{t('chat.input_notation_hint')}</div>
           </div>
         </form>
       </div>
@@ -590,7 +806,14 @@ export default function ChatPage() {
             initializeChat();
           });
         }}
-        onCancel={() => setInitModal(false)}
+        onCancel={() => {
+          console.log(initialized.current)
+          if (!initialized.current) {
+            navigate(-1);
+          } else {
+            setInitModal(false);
+          }
+        }}
         isMobile={isMobile}
       />
       <CharacterSidebar
@@ -656,6 +879,13 @@ export default function ChatPage() {
           setCharacterId(character?.id || null);
           setCharacterModal({ show: false });
         }}
+      />
+      <ConfirmModal
+        show={confirmModal.show}
+        title={t('confirm.delete_chat.title')}
+        message={t('confirm.delete_chat.message')}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setConfirmModal({ show: false, chatId: null })}
       />
     </div>
   );

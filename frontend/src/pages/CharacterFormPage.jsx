@@ -1,9 +1,13 @@
 import React, { useEffect, useState, useContext } from "react";
 import { useNavigate, useParams } from "react-router";
 import TagsInput from '../components/TagsInput';
+import ImageCropModal from '../components/ImageCropModal';
+import { createPortal } from 'react-dom';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
 import { useTranslation } from 'react-i18next';
+import ConfirmModal from '../components/ConfirmModal';
+import { useToast } from '../components/ToastProvider';
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
@@ -19,9 +23,12 @@ export default function CharacterFormPage() {
   const MAX_GREETING_LENGTH = 500;
   const MAX_SAMPLE_LENGTH = 1000;
   const MAX_TAGS = 20;
+  // Special prompt stored when a character uses an improvising greeting
+  const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
 
   const { sessionToken } = useContext(AuthContext);
   const navigate = useNavigate();
+  const toast = useToast();
   const [charData, setCharData] = useState({
     name: '',
     persona: '',
@@ -31,12 +38,16 @@ export default function CharacterFormPage() {
     greeting: '',
   });
   const [picture, setPicture] = useState(null);
+  const [picturePreview, setPicturePreview] = useState(null);
+  const [isImprovisingGreeting, setIsImprovisingGreeting] = useState(false);
+  const [showCrop, setShowCrop] = useState(false);
+  const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit');
 
   useEffect(() => {
     if (mode === 'edit') {
       if (!id) {
-        alert("Missing character ID");
+        toast.show(t('character_form.missing_id'), { type: 'error' });
         navigate("/");
         return;
       }
@@ -56,13 +67,17 @@ export default function CharacterFormPage() {
         })
         .then(data => {
           if (!data) return;
+          // If greeting equals our special improvising marker, set the checkbox and clear greeting input
+          const loadedGreeting = data.greeting || '';
+          const isImprov = loadedGreeting && loadedGreeting.indexOf(SPECIAL_IMPROVISING_GREETING) !== -1;
+          setIsImprovisingGreeting(!!isImprov);
           setCharData({
             name: data.name || '',
             persona: data.persona || '',
             sample: data.example_messages || '',
             tagline: data.tagline || '',
             tags: data.tags || [],
-            greeting: data.greeting || '',
+            greeting: isImprov ? '' : loadedGreeting,
           });
           setLoading(false);
         });
@@ -76,12 +91,12 @@ export default function CharacterFormPage() {
   const handleSubmit = async e => {
     e.preventDefault();
   if (!sessionToken) {
-      alert("You need to be logged in.");
+      toast.show(t('character_form.not_logged_in'), { type: 'error' });
       navigate("/");
       return;
     }
     if (!charData.name.trim() || !charData.persona.trim()) {
-      alert("Name and persona are required.");
+      toast.show(t('character_form.name_required'), { type: 'error' });
       return;
     }
     const formData = new FormData();
@@ -90,7 +105,9 @@ export default function CharacterFormPage() {
     formData.append("persona", charData.persona.trim());
     formData.append("tagline", charData.tagline.trim());
     charData.tags.forEach(tag => formData.append("tags", tag));
-    formData.append("greeting", charData.greeting.trim());
+  // If improvising greeting is enabled, store the special prompt instead of the input value
+  const finalGreeting = isImprovisingGreeting ? SPECIAL_IMPROVISING_GREETING : charData.greeting.trim();
+  formData.append("greeting", finalGreeting);
     formData.append("sample_dialogue", charData.sample.trim());
     if (picture) formData.append("picture", picture);
     try {
@@ -101,13 +118,13 @@ export default function CharacterFormPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(mode === 'edit' ? "Character updated!" : "Character created!");
+        toast.show(mode === 'edit' ? t('character_form.updated') : t('character_form.created'));
         navigate(mode === 'edit' ? "/profile" : "/");
       } else {
-        alert(data.message || data.detail || `Failed to ${mode === 'edit' ? 'update' : 'create'} character`);
+        toast.show(data.message || data.detail || t('character_form.error'), { type: 'error' });
       }
     } catch (error) {
-      alert("An error occurred.");
+      toast.show(t('character_form.error'), { type: 'error' });
     }
   };
 
@@ -116,14 +133,23 @@ export default function CharacterFormPage() {
       navigate("/");
       return;
     }
-    if (window.confirm("Are you sure you want to delete this character?")) {
+    setConfirmModal({ show: true });
+  };
+
+  const [confirmModal, setConfirmModal] = useState({ show: false });
+
+  const handleDeleteConfirmed = async () => {
+    setConfirmModal({ show: false });
+    try {
       const res = await fetch(`${window.API_BASE_URL}/api/character/${id}/delete`, {
         method: "DELETE",
-  headers: { 'Authorization': sessionToken }
+        headers: { 'Authorization': sessionToken }
       });
       const data = await res.json();
-      alert(data.message || data.detail || "Character deleted");
+      toast.show(data.message || data.detail || t('character_form.deleted'));
       if (res.ok) navigate("/profile");
+    } catch (err) {
+      toast.show(t('character_form.error'), { type: 'error' });
     }
   };
 
@@ -143,7 +169,10 @@ export default function CharacterFormPage() {
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           {/* Name */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.name')}</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              {t('character_form.name')}
+              <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('character_form.required_marker')}</span>
+            </label>
             <input
               className="form-control"
               required
@@ -169,7 +198,10 @@ export default function CharacterFormPage() {
 
           {/* Persona */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.persona')}</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              {t('character_form.persona')}
+              <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('character_form.required_marker')}</span>
+            </label>
             <textarea
               className="form-control"
               rows="3"
@@ -223,26 +255,41 @@ export default function CharacterFormPage() {
           {/* Greeting */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.greeting')}</label>
-            <input
-              className="form-control"
-              value={charData.greeting}
-              maxLength={MAX_GREETING_LENGTH}
-              onChange={e => handleChange('greeting', e.target.value)}
-              style={{
-                background: '#f5f6fa',
-                color: '#18191a',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-                paddingRight: '3rem',
-              }}
-            />
-            <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-              {charData.greeting.length}/{MAX_GREETING_LENGTH}
-            </small>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <input
+                  className="form-control"
+                  value={charData.greeting}
+                  maxLength={MAX_GREETING_LENGTH}
+                  onChange={e => handleChange('greeting', e.target.value)}
+                  disabled={isImprovisingGreeting}
+                  placeholder={isImprovisingGreeting ? t('character_form.greeting_improvising_placeholder') : ''}
+                  style={{
+                    background: isImprovisingGreeting ? '#f0f0f0' : '#f5f6fa',
+                    color: '#18191a',
+                    border: '1.5px solid #e9ecef',
+                    borderRadius: 16,
+                    fontSize: '1.08rem',
+                    padding: '0.7rem 1.2rem',
+                    boxShadow: 'none',
+                    outline: 'none',
+                    paddingRight: '3rem',
+                  }}
+                />
+                <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+                  {charData.greeting.length}/{MAX_GREETING_LENGTH}
+                </small>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  id="improviseGreeting"
+                  type="checkbox"
+                  checked={isImprovisingGreeting}
+                  onChange={e => setIsImprovisingGreeting(e.target.checked)}
+                />
+                <label htmlFor="improviseGreeting" style={{ margin: 0, fontSize: '0.95rem' }}>{t('character_form.improvise_greeting')}</label>
+              </div>
+            </div>
           </div>
 
           {/* Tags */}
@@ -284,22 +331,36 @@ export default function CharacterFormPage() {
           {/* Profile Picture */}
           <div className="mb-4">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.picture')}</label>
-            <input
-              type="file"
-              accept="image/*"
-              className="form-control"
-              onChange={e => setPicture(e.target.files[0])}
-              style={{
-                background: '#f5f6fa',
-                color: '#232323',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-              }}
-            />
+            <div className="d-flex align-items-center gap-3">
+              <div style={{ width: 96, height: 96, overflow: 'hidden', borderRadius: 8, background: '#fff', border: '1px solid #e9ecef' }}>
+                {picturePreview ? (
+                  <img src={picturePreview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>{t('character_form.no_picture')}</div>
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="form-control"
+                  onChange={e => {
+                    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                    if (f) { setRawSelectedFile(f); setShowCrop(true); }
+                  }}
+                  style={{
+                    background: '#f5f6fa',
+                    color: '#232323',
+                    border: '1.5px solid #e9ecef',
+                    borderRadius: 16,
+                    fontSize: '1.08rem',
+                    padding: '0.7rem 1.2rem',
+                    boxShadow: 'none',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="d-flex gap-3 mt-4 justify-content-end">
@@ -359,6 +420,22 @@ export default function CharacterFormPage() {
           </div>
         </form>
       </div>
+      {showCrop && rawSelectedFile && createPortal(
+        <ImageCropModal
+          srcFile={rawSelectedFile}
+          onCancel={() => { setShowCrop(false); setRawSelectedFile(null); }}
+          onSave={({ file, dataUrl }) => { setPicture(file); setPicturePreview(dataUrl); setShowCrop(false); setRawSelectedFile(null); }}
+          size={220}
+          mode="square"
+        />, document.body)
+      }
+      <ConfirmModal
+        show={confirmModal.show}
+        title={t('confirm.delete_character.title')}
+        message={t('confirm.delete_character.message')}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setConfirmModal({ show: false })}
+      />
     </PageWrapper>
   );
 }

@@ -12,6 +12,7 @@ import SceneFormPage from './pages/SceneFormPage';
 import CharacterFormPage from './pages/CharacterFormPage';
 import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage.jsx';
 import SearchPage from "./pages/SearchPage";
 import { AuthContext } from './components/AuthProvider';
 import DashboardPage from "./admin/pages/DashboardPage";
@@ -48,6 +49,7 @@ export default function App() {
             { path: 'chat', element: <ChatPage /> },
             { path: 'profile', element: <ProfilePage /> },
             { path: 'profile/:userId', element: <ProfilePage publicView={true} /> },
+            { path: 'settings', element: <SettingsPage /> },
             { path: 'search', element: <SearchPage /> },
           ],
         }

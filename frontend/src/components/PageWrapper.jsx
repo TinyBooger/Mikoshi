@@ -21,24 +21,25 @@ function PageWrapper({ children, style = {}, className = '' }) {
   }, []);
 
   const combinedStyle = isMobile
-    ? {
-        minHeight: '100dvh',
-        height: '100dvh',
-        width: '100vw',
-        maxWidth: '100vw',
-        boxSizing: 'border-box',
-        background: 'rgba(255, 255, 255, 0.66)',
-        backdropFilter: 'blur(16px) saturate(160%)',
-        WebkitBackdropFilter: 'blur(16px) saturate(160%)',
-        borderRadius: 0,
-        boxShadow: 'none',
-        marginTop: 0,
-        marginBottom: 0,
-        padding: 0,
-        ...style,
-      }
+      ? {
+          minHeight: 'auto',
+          height: 'auto',
+          width: '100vw',
+          maxWidth: '100vw',
+          boxSizing: 'border-box',
+          background: 'rgba(255, 255, 255, 0.66)',
+          backdropFilter: 'blur(16px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(16px) saturate(160%)',
+          borderRadius: 0,
+          boxShadow: 'none',
+          marginTop: 0,
+          marginBottom: 0,
+          padding: 0,
+          ...style,
+        }
     : {
-        minHeight: 'calc(100dvh - 7dvh)',
+        minHeight: 'auto',
+        height: 'auto',
         boxSizing: 'border-box',
         width: '80%',
         maxWidth: '100vw',

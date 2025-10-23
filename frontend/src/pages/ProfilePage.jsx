@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useContext } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router'; // useParams instead of useLocation
 import defaultAvatar from '../assets/images/default-avatar.png';
+import ImageCropModal from '../components/ImageCropModal';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../components/ToastProvider';
 
 import EntityCard from '../components/EntityCard';
 import ButtonRounded from '../components/ButtonRounded';
@@ -25,6 +28,7 @@ export default function ProfilePage() {
 
   const { userId: profileUserId } = useParams(); // get userId from route params
   const { userData, sessionToken, refreshUserData } = useContext(AuthContext);
+  const toast = useToast();
 
   // Determine if this is the current user's own profile
   const isOwnProfile = !profileUserId || (userData && String(userData.id) === String(profileUserId));
@@ -42,7 +46,7 @@ export default function ProfilePage() {
 
   // Fetch created and liked entities for profile
   useEffect(() => {
-  if (!sessionToken && !profileUserId) {
+    if (!sessionToken && !profileUserId) {
       navigate('/');
       return;
     }
@@ -55,21 +59,21 @@ export default function ProfilePage() {
 
     // Created Characters
     fetch(`${window.API_BASE_URL}/api/characters-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
-  headers: { 'Authorization': sessionToken }
+      headers: { 'Authorization': sessionToken }
     })
       .then(res => res.ok ? res.json() : [])
       .then(setCreatedCharacters);
 
     // Created Scenes
     fetch(`${window.API_BASE_URL}/api/scenes-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
-  headers: { 'Authorization': sessionToken }
+      headers: { 'Authorization': sessionToken }
     })
       .then(res => res.ok ? res.json() : [])
       .then(setScenes);
 
     // Created Personas (only for own profile)
     fetch(`${window.API_BASE_URL}/api/personas-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
-  headers: { 'Authorization': sessionToken }
+      headers: { 'Authorization': sessionToken }
     })
       .then(res => res.ok ? res.json() : [])
       .then(setPersonas)
@@ -78,7 +82,7 @@ export default function ProfilePage() {
     // Liked Characters (only for own profile)
     if (isOwnProfile) {
       fetch(`${window.API_BASE_URL}/api/characters-liked`, {
-  headers: { 'Authorization': sessionToken }
+        headers: { 'Authorization': sessionToken }
       })
         .then(res => res.ok ? res.json() : [])
         .then(setLikedCharacters);
@@ -89,7 +93,7 @@ export default function ProfilePage() {
     // Liked Scenes (only for own profile)
     if (isOwnProfile) {
       fetch(`${window.API_BASE_URL}/api/scenes-liked`, {
-  headers: { 'Authorization': sessionToken }
+        headers: { 'Authorization': sessionToken }
       })
         .then(res => res.ok ? res.json() : [])
         .then(setLikedScenes);
@@ -100,7 +104,7 @@ export default function ProfilePage() {
     // Liked Personas (only for own profile)
     if (isOwnProfile) {
       fetch(`${window.API_BASE_URL}/api/personas-liked`, {
-  headers: { 'Authorization': sessionToken }
+        headers: { 'Authorization': sessionToken }
       })
         .then(res => res.ok ? res.json() : [])
         .then(setLikedPersonas);
@@ -161,16 +165,10 @@ export default function ProfilePage() {
         title = t('profile.created_scenes');
         emptyMsg = t('profile.no_scenes_created');
       } else if (activeSubtab === SUBTAB_TYPES.PERSONAS) {
-        if (!isOwnProfile) {
-          return (
-            <div className="alert alert-warning" style={{ background: '#fffbe6', color: '#856404', border: 'none' }}>
-              {t('profile.personas_private')}
-            </div>
-          );
-        }
+        // Personas are public (same behavior as characters and scenes)
         entities = personas;
         type = 'persona';
-        showEdit = true;
+        showEdit = isOwnProfile;
         editUrlPrefix = 'persona';
         title = t('profile.created_personas');
         emptyMsg = t('profile.no_personas_created');
@@ -206,55 +204,14 @@ export default function ProfilePage() {
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editPic, setEditPic] = useState(null);
+  const [editPicPreview, setEditPicPreview] = useState(null);
+  const [showCrop, setShowCrop] = useState(false);
+  const [rawSelectedFile, setRawSelectedFile] = useState(null);
   // ...existing code...
 
 
 
-  // API call functions for Persona table endpoints
-  const fetchPersonas = async () => {
-    const res = await fetch(`${window.API_BASE_URL}/api/personas/`, {
-  headers: { 'Authorization': sessionToken }
-    });
-    if (res.ok) return await res.json();
-    throw new Error('Failed to fetch personas');
-  };
-
-  useEffect(() => {
-  if (!sessionToken && !profileUserId) {
-      navigate('/');
-      return;
-    }
-    // If public profile, fetch user data for that user
-    if (profileUserId && (!userData || String(userData.id) !== String(profileUserId))) {
-      fetch(`${window.API_BASE_URL}/api/users/${profileUserId}`)
-        .then(res => res.ok ? res.json() : null)
-        .then(setPublicUserData);
-    }
-
-    fetch(`${window.API_BASE_URL}/api/characters-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
-  headers: { 'Authorization': sessionToken }
-    })
-      .then(res => res.ok ? res.json() : [])
-      .then(setCreatedCharacters);
-
-    // Only fetch liked characters if own profile
-    if (isOwnProfile) {
-      fetch(`${window.API_BASE_URL}/api/characters-liked`, {
-  headers: { 'Authorization': sessionToken }
-      })
-        .then(res => res.ok ? res.json() : [])
-        .then(setLikedCharacters);
-    }
-
-    // Only fetch personas if own profile
-    if (isOwnProfile) {
-      fetchPersonas()
-        .then(setPersonas)
-        .catch(console.error);
-    } else {
-      setPersonas([]); // hide personas for public view
-    }
-  }, [navigate, sessionToken, userData, profileUserId, isOwnProfile]);
+  // (No duplicate persona fetch here — personas are handled in the main useEffect above)
 
   // Open edit modal and prefill fields
   const openEditProfile = () => {
@@ -279,7 +236,7 @@ export default function ProfilePage() {
     });
 
     const data = await res.json();
-    alert(data.message || data.detail);
+    toast.show(data.message || data.detail);
     if (res.ok) {
       setShowModal(false);
       await refreshUserData();
@@ -348,6 +305,32 @@ export default function ProfilePage() {
   return (
     <PageWrapper>
       <div className="container mt-4" style={{ position: 'relative', zIndex: 1 }}>
+        {/* Minimal top-right settings gear for own profile */}
+        {isOwnProfile && (
+          <button
+            onClick={() => navigate('/settings')}
+            aria-label="Settings"
+            title={t('profile.settings') || 'Settings'}
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              border: 'none',
+              background: 'transparent',
+              padding: 10,
+              cursor: 'pointer',
+              color: '#111',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 44,
+              minHeight: 44,
+              borderRadius: 8,
+            }}
+          >
+            <i className="bi bi-gear" style={{ fontSize: 26, lineHeight: 1 }}></i>
+          </button>
+        )}
         <div className="d-flex align-items-center mb-3">
           <img
             src={displayUser.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${displayUser.profile_pic.replace(/^\//, '')}` : defaultAvatar}
@@ -355,7 +338,7 @@ export default function ProfilePage() {
             style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover', border: '2.4px solid #222', marginRight: 24, background: '#fff' }}
           />
           <div>
-            <h2 style={{ color: '#111', fontWeight: 700 }}>{displayUser.name}</h2>
+            <h2 style={{ color: '#111', fontWeight: 700, fontSize: '1.4rem', marginBottom: 6 }}>{displayUser.name}</h2>
             <p className="mb-0" style={{ fontSize: '1.02rem', maxWidth: 400, whiteSpace: 'pre-line', color: '#444' }}>
               {displayUser.bio && displayUser.bio.trim()
                 ? displayUser.bio
@@ -364,9 +347,11 @@ export default function ProfilePage() {
                     : t('profile.bio_not_set'))}
             </p>
             {isOwnProfile && (
-              <ButtonRounded onClick={openEditProfile} style={{ marginTop: 8, width: 160 }}>
-                <i className="bi bi-pencil"></i> {t('profile.edit_profile')}
-              </ButtonRounded>
+              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                <ButtonRounded onClick={openEditProfile} style={{ width: 140 }}>
+                  <i className="bi bi-pencil"></i> {t('profile.edit_profile')}
+                </ButtonRounded>
+              </div>
             )}
           </div>
         </div>
@@ -460,97 +445,137 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Profile Edit Modal */}
+      {/* Profile Edit Modal - rendered into <main> via portal so it overlays the content area only */}
       {showModal && isOwnProfile && (
-        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 3000, position: 'fixed', inset: 0, width: '100vw', height: '100vh', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto' }}>
-          <div className="modal-dialog mx-auto" style={{ margin: '7vh auto', maxWidth: 420, width: '100%' }}>
-            <form className="modal-content" onSubmit={handleSave} style={{ borderRadius: 18, border: '2px solid #111', background: '#fff', boxShadow: '0 8px 32px rgba(0,0,0,0.28)', margin: 0 }}>
-              <div className="modal-header" style={{ borderBottom: '2px solid #111', background: '#fff' }}>
-                <h5 className="modal-title fw-bold" style={{ color: '#111' }}>{t('profile.edit_profile')}</h5>
-                <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-3 position-relative">
-                  <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.name')}</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={editName}
-                    maxLength={MAX_NAME_LENGTH}
-                    onChange={e => setEditName(e.target.value)}
-                    required
-                    style={{ paddingRight: "3rem", background: '#fff', border: '1.5px solid #111', color: '#111' }}
-                  />
-                  <small className="position-absolute" style={{ top: 0, right: 0, color: '#888' }}>
-                    {editName.length}/{MAX_NAME_LENGTH}
-                  </small>
+        <ModalPortal>
+          <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 2000, position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', boxSizing: 'border-box', paddingTop: '2rem' }}>
+            <div className="modal-dialog mx-auto" style={{ margin: 0, maxWidth: 420, width: '100%' }}>
+              <form className="modal-content" onSubmit={handleSave} style={{ borderRadius: 18, border: '2px solid #111', background: '#fff', boxShadow: '0 8px 32px rgba(0,0,0,0.28)', margin: 0 }}>
+                <div className="modal-header" style={{ borderBottom: '2px solid #111', background: '#fff' }}>
+                  <h5 className="modal-title fw-bold" style={{ color: '#111' }}>{t('profile.edit_profile')}</h5>
+                  <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
                 </div>
-                <div className="mb-3">
-                  <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.short_bio')} <span style={{ fontWeight: 400, fontSize: '0.9em', color: '#888' }}>(optional)</span></label>
-                  <textarea
-                    className="form-control"
-                    value={editBio}
-                    onChange={e => setEditBio(e.target.value)}
-                    rows={2}
-                    maxLength={500}
-                    placeholder={t('profile.bio_placeholder')}
-                    style={{ background: '#fff', border: '1.5px solid #111', color: '#111' }}
-                  />
+                <div className="modal-body">
+                  <div className="mb-3 position-relative">
+                    <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.name')}</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editName}
+                      maxLength={MAX_NAME_LENGTH}
+                      onChange={e => setEditName(e.target.value)}
+                      required
+                      style={{ paddingRight: "3rem", background: '#fff', border: '1.5px solid #111', color: '#111' }}
+                    />
+                    <small className="position-absolute" style={{ top: 0, right: 0, color: '#888' }}>
+                      {editName.length}/{MAX_NAME_LENGTH}
+                    </small>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.short_bio')} <span style={{ fontWeight: 400, fontSize: '0.9em', color: '#888' }}>(optional)</span></label>
+                    <textarea
+                      className="form-control"
+                      value={editBio}
+                      onChange={e => setEditBio(e.target.value)}
+                      rows={2}
+                      maxLength={500}
+                      placeholder={t('profile.bio_placeholder')}
+                      style={{ background: '#fff', border: '1.5px solid #111', color: '#111' }}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.profile_picture')}</label>
+                    <div className="d-flex align-items-center gap-3">
+                      <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', border: '2px solid #e9ecef', background: '#fff' }}>
+                        <img src={editPicPreview || (userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar)} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <input
+                          type="file"
+                          className="form-control"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                            if (f) {
+                              setRawSelectedFile(f);
+                              setShowCrop(true);
+                            }
+                          }}
+                          style={{ background: '#fff', border: '1.5px solid #111', color: '#111' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="mb-3">
-                  <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.profile_picture')}</label>
-                  <input
-                    type="file"
-                    className="form-control"
-                    accept="image/*"
-                    onChange={e => setEditPic(e.target.files[0])}
-                    style={{ background: '#fff', border: '1.5px solid #111', color: '#111' }}
-                  />
+                <div className="modal-footer" style={{ borderTop: '2px solid #111', background: '#fff' }}>
+                  <button
+                    type="submit"
+                    className="fw-bold rounded-pill"
+                    style={{
+                      background: '#111',
+                      color: '#fff',
+                      border: 'none',
+                      fontSize: '1rem',
+                      padding: '0.45rem 1.5rem',
+                      letterSpacing: '0.2px',
+                      transition: 'background 0.18s, color 0.18s',
+                      outline: 'none',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#222'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#111'; }}
+                  >
+                    {t('profile.save')}
+                  </button>
+                  <button
+                    type="button"
+                    className="fw-bold rounded-pill"
+                    style={{
+                      background: '#fff',
+                      color: '#111',
+                      border: '1.5px solid #111',
+                      fontSize: '1rem',
+                      padding: '0.45rem 1.5rem',
+                      letterSpacing: '0.2px',
+                      transition: 'background 0.18s, color 0.18s',
+                      outline: 'none',
+                    }}
+                    onClick={() => setShowModal(false)}
+                  >
+                    {t('profile.cancel')}
+                  </button>
                 </div>
-              </div>
-              <div className="modal-footer" style={{ borderTop: '2px solid #111', background: '#fff' }}>
-                <button
-                  type="submit"
-                  className="fw-bold rounded-pill"
-                  style={{
-                    background: '#111',
-                    color: '#fff',
-                    border: 'none',
-                    fontSize: '1rem',
-                    padding: '0.45rem 1.5rem',
-                    letterSpacing: '0.2px',
-                    transition: 'background 0.18s, color 0.18s',
-                    outline: 'none',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#222'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#111'; }}
-                >
-                  {t('profile.save')}
-                </button>
-                <button
-                  type="button"
-                  className="fw-bold rounded-pill"
-                  style={{
-                    background: '#fff',
-                    color: '#111',
-                    border: '1.5px solid #111',
-                    fontSize: '1rem',
-                    padding: '0.45rem 1.5rem',
-                    letterSpacing: '0.2px',
-                    transition: 'background 0.18s, color 0.18s',
-                    outline: 'none',
-                  }}
-                  onClick={() => setShowModal(false)}
-                >
-                  {t('profile.cancel')}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
+      )}
+
+      {showCrop && rawSelectedFile && (
+        <ModalPortal>
+          <ImageCropModal
+            srcFile={rawSelectedFile}
+            onCancel={() => { setShowCrop(false); setRawSelectedFile(null); }}
+            onSave={({ file, dataUrl }) => {
+              setEditPic(file);
+              setEditPicPreview(dataUrl);
+              setShowCrop(false);
+              setRawSelectedFile(null);
+            }}
+            size={96}
+          />
+        </ModalPortal>
       )}
 
 
     </PageWrapper>
   );
 }
+
+// ModalPortal component renders children into the <main> element or document.body
+function ModalPortal({ children }) {
+  if (typeof document === 'undefined') return null;
+  const main = document.querySelector('main');
+  return createPortal(children, main || document.body);
+}
+
+// Exporting ModalPortal isn't necessary; it is used internally by ProfilePage via JSX

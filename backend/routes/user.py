@@ -237,3 +237,45 @@ def increment_views_multi(
     db.commit()
     return {"message": "views updated", "updated": updated}
 
+
+@router.post('/api/change-email')
+def request_change_email(payload: dict = Body(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # payload expected: { newEmail: '...' }
+    new_email = None
+    if payload:
+        new_email = payload.get('newEmail') or payload.get('new_email') or payload.get('newEmail')
+    if not new_email:
+        raise HTTPException(status_code=400, detail='Missing new email')
+    # ensure not already used
+    exists = db.query(User).filter(User.email == new_email).first()
+    if exists:
+        raise HTTPException(status_code=400, detail='Email already in use')
+    # Directly replace user's email (no confirmation)
+    current_user.email = new_email
+    db.commit()
+    return {"message": "Email updated"}
+
+
+@router.post('/api/delete-account')
+def delete_account(payload: dict = Body(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # payload must include { confirm: true }
+    confirm = payload.get('confirm') is True
+    if not confirm:
+        raise HTTPException(status_code=400, detail='Missing confirmation')
+    # Attempt to delete user's profile image from local storage
+    try:
+        from utils.local_storage_utils import delete_image
+        try:
+            delete_image('user', current_user.id)
+        except Exception:
+            # non-fatal - continue
+            pass
+    except Exception:
+        # utils may not be available; continue
+        pass
+
+    # Hard delete the user row (this should cascade deletes for related junction tables)
+    db.delete(current_user)
+    db.commit()
+    return {"message": "Account deleted"}
+

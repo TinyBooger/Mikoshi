@@ -3,6 +3,7 @@ Mikoshi-MonoRepo
 ├─ backend
 │  ├─ database.py
 │  ├─ Dockerfile
+│  ├─ init_db.py
 │  ├─ models.py
 │  ├─ README.md
 │  ├─ requirements.txt
@@ -21,7 +22,6 @@ Mikoshi-MonoRepo
 │  └─ utils
 │     ├─ chat_utils.py
 │     ├─ cloudinary_utils.py
-│     ├─ firebase_admin_setup.py
 │     ├─ llm_client.py
 │     ├─ local_storage_utils.py
 │     ├─ session.py
@@ -33,6 +33,8 @@ Mikoshi-MonoRepo
 │  ├─ index.html
 │  ├─ package-lock.json
 │  ├─ package.json
+│  ├─ public
+│  │  └─ favicon.ico
 │  ├─ README.md
 │  ├─ src
 │  │  ├─ admin
@@ -51,7 +53,9 @@ Mikoshi-MonoRepo
 │  │  │  └─ images
 │  │  │     ├─ default-avatar.png
 │  │  │     ├─ default-picture.png
-│  │  │     └─ logo.png
+│  │  │     ├─ logo.png
+│  │  │     ├─ logo_text.png
+│  │  │     └─ logo_v1_old.png
 │  │  ├─ components
 │  │  │  ├─ AuthLayout.jsx
 │  │  │  ├─ AuthProvider.jsx
@@ -59,21 +63,21 @@ Mikoshi-MonoRepo
 │  │  │  ├─ ButtonRounded.jsx
 │  │  │  ├─ ButtonWhite.jsx
 │  │  │  ├─ CardSection.jsx
-│  │  │  ├─ CharacterCard.jsx
 │  │  │  ├─ CharacterModal.jsx
 │  │  │  ├─ CharacterSidebar.jsx
 │  │  │  ├─ ChatInitModal.jsx
+│  │  │  ├─ ConfirmModal.jsx
 │  │  │  ├─ EntityCard.jsx
 │  │  │  ├─ HorizontalCardSection.jsx
+│  │  │  ├─ ImageCropModal.jsx
 │  │  │  ├─ InfoCard.jsx
 │  │  │  ├─ Layout.jsx
 │  │  │  ├─ PageWrapper.jsx
-│  │  │  ├─ PersonaCard.jsx
 │  │  │  ├─ PersonaModal.jsx
-│  │  │  ├─ SceneCard.jsx
 │  │  │  ├─ SceneModal.jsx
 │  │  │  ├─ Sidebar.jsx
 │  │  │  ├─ TagsInput.jsx
+│  │  │  ├─ ToastProvider.jsx
 │  │  │  └─ Topbar.jsx
 │  │  ├─ firebase.js
 │  │  ├─ hooks
@@ -89,12 +93,15 @@ Mikoshi-MonoRepo
 │  │  │  ├─ HomePage.jsx
 │  │  │  ├─ PersonaFormPage.jsx
 │  │  │  ├─ ProfilePage.jsx
+│  │  │  ├─ ResetPasswordPage.jsx
 │  │  │  ├─ SceneFormPage.jsx
 │  │  │  ├─ SearchPage.jsx
+│  │  │  ├─ SettingsPage.jsx
 │  │  │  ├─ SignUpPage.jsx
 │  │  │  ├─ TestPage.jsx
 │  │  │  └─ WelcomePage.jsx
 │  │  └─ utils
+│  │     ├─ imageUtils.js
 │  │     └─ systemTemplate.js
 │  └─ vite.config.js
 ├─ README.md

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Form, HTTPException, Depends, status, Request
+from fastapi import APIRouter, Form, HTTPException, Depends, status, Request, UploadFile, File
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -36,6 +36,7 @@ def register_user(
     name: str = Form(...),
     password: str = Form(...),
     bio: str = Form(None),
+    profile_pic: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
     if db.query(User).filter(User.email == email).first():
@@ -56,6 +57,17 @@ def register_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+    # If an image was uploaded, save it and update the user record
+    if profile_pic:
+        try:
+            from utils.local_storage_utils import save_image
+            # Need to refresh user to ensure id exists (id is email here)
+            user.profile_pic = save_image(profile_pic.file, 'user', user.id, profile_pic.filename)
+            db.commit()
+            db.refresh(user)
+        except Exception:
+            # Non-fatal: registration succeeded but image saving failed
+            pass
     token = create_session_token(user)
     return {"message": "User registered successfully", "token": token, "user": user}
 
@@ -91,3 +103,31 @@ def reset_password(
     setattr(user, "hashed_password", hashed_password)
     db.commit()
     return {"message": "Password reset successful"}
+
+
+# Change password for current user (requires Authorization header)
+@router.post("/api/change-password")
+def change_password(payload: dict = None, db: Session = Depends(get_db), session_token: str = Header(None, alias="Authorization")):
+    # payload expected: { currentPassword: '...', newPassword: '...' }
+    currentPassword = None
+    newPassword = None
+    if payload:
+        currentPassword = payload.get('currentPassword') or payload.get('current_password')
+        newPassword = payload.get('newPassword') or payload.get('new_password')
+    if not currentPassword or not newPassword:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing fields")
+    user_id = verify_session_token(session_token)
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    hashed = getattr(user, 'hashed_password', None)
+    if not hashed or not pwd_context.verify(currentPassword, hashed):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password incorrect")
+    user.hashed_password = pwd_context.hash(newPassword)
+    db.commit()
+    return {"message": "Password changed"}
+
+
+

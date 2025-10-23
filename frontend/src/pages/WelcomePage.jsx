@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import logo from '../assets/images/logo.png';
 import { AuthContext } from '../components/AuthProvider';
+import { useToast } from '../components/ToastProvider';
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login, loading } = useContext(AuthContext);
+  const toast = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,7 +21,9 @@ export default function LoginPage() {
     if (success) {
       navigate('/');
     } else {
-      setError('Invalid email or password');
+      const msg = t('welcome.invalid_credentials', 'Invalid email or password');
+      setError(msg);
+      if (toast && toast.show) toast.show(msg, { type: 'error' });
     }
   };
 

@@ -42,6 +42,7 @@ class User(Base):
 
     chat_history = Column(ARRAY(JSONB), default=[])
 
+
 class Persona(Base):
     __tablename__ = "personas"
     id = Column(Integer, primary_key=True, index=True)

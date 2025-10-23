@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Outlet } from 'react-router';
 import Sidebar from './Sidebar.jsx';
 import Topbar from './Topbar.jsx';
-// Renamed with Capital
+
 export default function Layout() {
   // Initialize sidebarVisible based on viewport size
   const initialMobile = window.innerWidth < 768;
@@ -53,7 +53,6 @@ export default function Layout() {
       }, 100);
     };
     window.addEventListener('resize', handleResize);
-    // No forced initial call, rely on initial state
     return () => {
       window.removeEventListener('resize', handleResize);
       clearTimeout(timeoutId);
@@ -64,7 +63,7 @@ export default function Layout() {
   useEffect(() => {
     if (isMobile && sidebarVisible) {
       document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'hidden';
+      document.body.style.touchAction = 'none';
     } else {
       document.body.style.overflow = '';
       document.body.style.touchAction = '';
@@ -75,7 +74,7 @@ export default function Layout() {
     };
   }, [isMobile, sidebarVisible]);
 
-  // Sidebar animation state
+  // Sidebar animation state - UPDATED FOR FIXED POSITION
   const sidebarStyle = isMobile
     ? {
         position: 'fixed',
@@ -88,26 +87,17 @@ export default function Layout() {
         background: 'transparent',
         transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'transform 0.35s cubic-bezier(.4,0,.2,1)',
-        overscrollBehavior: 'contain',
-        WebkitOverflowScrolling: 'touch',
-        overflow: 'visible',
-        display: 'flex',
-        flexDirection: 'column',
       }
     : {
-        position: 'relative',
+        position: 'fixed', // CHANGED from 'relative' to 'fixed'
+        top: '7dvh',
+        left: 0,
         width: sidebarVisible ? '15rem' : '0',
-        minWidth: sidebarVisible ? '15rem' : '0',
-        height: '100%',
+        height: 'calc(100dvh - 7dvh)',
         zIndex: 1000,
         background: 'transparent',
-        transform: sidebarVisible ? 'translateX(0)' : 'translateX(-15rem)',
-        transition: 'transform 0.35s cubic-bezier(.4,0,.2,1), width 0.35s cubic-bezier(.4,0,.2,1), min-width 0.35s cubic-bezier(.4,0,.2,1)',
-        overscrollBehavior: 'contain',
-        WebkitOverflowScrolling: 'touch',
-        overflow: 'visible',
-        display: 'flex',
-        flexDirection: 'column',
+        transform: 'translateX(0)', // Remove transform animation for desktop
+        transition: 'width 0.35s cubic-bezier(.4,0,.2,1)',
       };
 
   return (
@@ -115,13 +105,22 @@ export default function Layout() {
       className="d-flex flex-column"
       style={{
         height: '100dvh',
-        overflow: 'visible',
+        overflow: 'hidden', // CHANGED from 'visible' to 'hidden'
         width: '100%',
         position: 'relative',
       }}
     >
-      {/* Topbar always at the top */}
-      <div style={{ height: '7dvh', flexShrink: 0, width: '100%' }}>
+      {/* Topbar always fixed at the top */}
+      <div style={{
+        position: 'fixed', // CHANGED to fixed
+        top: 0,
+        left: 0,
+        height: '7dvh',
+        width: '100%',
+        zIndex: 1100, // Higher z-index to stay above everything
+        flexShrink: 0,
+        background: 'inherit', // Match your theme background
+      }}>
         <Topbar
           onToggleSidebar={handleToggleSidebar}
           sidebarVisible={sidebarVisible}
@@ -130,23 +129,22 @@ export default function Layout() {
           characterSidebarVisible={characterSidebarVisible}
         />
       </div>
-      {/* Main content area: sidebar and main, side by side on desktop, stacked on mobile */}
+
+      {/* Main content area */}
       <div
-        className={isMobile ? '' : 'd-flex'}
         style={{
-          flex: 1,
-          display: isMobile ? 'block' : 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          height: 'calc(100dvh - 7dvh)',
+          display: 'flex',
+          height: '100dvh',
           width: '100%',
           position: 'relative',
-          background: 'transparent',
+          paddingTop: '7dvh', // ADDED padding to account for fixed topbar
         }}
       >
-        {/* Sidebar overlays on mobile, inline on desktop */}
+        {/* Sidebar - fixed position on both mobile and desktop */}
         <div style={sidebarStyle}>
           <Sidebar />
         </div>
+
         {/* Overlay for mobile sidebar */}
         {isMobile && sidebarVisible && (
           <div
@@ -160,22 +158,25 @@ export default function Layout() {
               background: 'rgba(0,0,0,0.3)',
               zIndex: 999,
               cursor: 'pointer',
-              touchAction: 'manipulation',
             }}
           />
         )}
+
+        {/* Main content area - ONLY this area scrolls */}
         <main
           className="flex-grow-1 d-flex flex-column"
           style={{
-            width: '100%',
-            minWidth: 0,
-            transition: 'transform 0.35s cubic-bezier(.4,0,.2,1)',
+            width: isMobile ? '100%' : `calc(100% - ${sidebarVisible ? '15rem' : '0px'})`, // Adjust width based on sidebar
+            marginLeft: !isMobile && sidebarVisible ? '15rem' : '0', // Push content when sidebar is visible on desktop
+            zIndex: 1,
+            transition: 'margin-left 0.35s cubic-bezier(.4,0,.2,1), width 0.35s cubic-bezier(.4,0,.2,1)',
             background: 'transparent',
-            overflowY: 'auto',
+            overflowY: 'auto', // ONLY this area scrolls
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain',
-            height: '100%',
+            height: 'calc(100dvh - 7dvh)', // Full height minus topbar
             position: 'relative',
+            paddingTop: '0', // Remove any extra padding
           }}
         >
           <Outlet
