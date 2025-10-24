@@ -4,7 +4,9 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3000:3000"  # 改为3000端口
+      - "${FRONTEND_PORT}:3000"
+    env_file:
+      - ./secrets/Mikoshi.env
     depends_on:
       - backend
 
