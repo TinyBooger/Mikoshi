@@ -36,6 +36,10 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://mikoshi-frontend.onrender.com",
+        "http://43.138.173.199",           # Add this
+        "http://43.138.173.199:80",        # Add this
+        "https://43.138.173.199",          # Add this (for future SSL)
+        "https://43.138.173.199:443",      # Add this (for future SSL)
     ],  # Your Vite frontend URLs
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
