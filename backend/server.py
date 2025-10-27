@@ -35,6 +35,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://localhost",
+        "http://localhost:80",
+        "https://localhost",
+        "https://localhost:443",
         "https://mikoshi-frontend.onrender.com",
         "http://43.138.173.199",           # Add this
         "http://43.138.173.199:80",        # Add this
