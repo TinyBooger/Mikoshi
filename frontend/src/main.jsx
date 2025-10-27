@@ -9,9 +9,7 @@ import { AuthProvider } from './components/AuthProvider';
 import ToastProvider from './components/ToastProvider';
 
 // Set global API base URL - this runs before any component code
-window.API_BASE_URL = import.meta.env.PROD
-  ? 'http://localhost:8000'  // Production
-  : 'http://localhost:8000';                     // Development
+window.API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

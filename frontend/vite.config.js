@@ -13,9 +13,9 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       strictPort: true,
       host: 'localhost',
-      proxy: isProduction ? undefined : {
+      proxy: {
         '/api': {
-          target: 'http://localhost:8000',
+          target: isProduction ? 'http://43.138.173.199:8000' : 'http://localhost:8000',
           changeOrigin: true,
         },
       },
