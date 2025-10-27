@@ -9,7 +9,7 @@ import { AuthProvider } from './components/AuthProvider';
 import ToastProvider from './components/ToastProvider';
 
 // Set global API base URL - this runs before any component code
-window.API_BASE_URL = ''
+window.API_BASE_URL = 'http://localhost:8000'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
