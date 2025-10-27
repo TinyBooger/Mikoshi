@@ -48,6 +48,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
     allow_headers=["*"],
+    expose_headers=["*"]  # Expose all headers to the frontend
 )
 
 # Wake up PostgreSQL database and wait for it to be available
