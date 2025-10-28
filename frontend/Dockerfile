@@ -2,9 +2,6 @@ FROM node:slim
 
 WORKDIR /app
 
-# 复制环境变量文件
-COPY Mikoshi.env ./
-
 # 复制package文件
 COPY package*.json ./
 
