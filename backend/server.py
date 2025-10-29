@@ -20,9 +20,6 @@ from routes import auth, character, chat, user, search, tags, scene, persona
 # Middleware
 middleware = []
 
-if os.getenv("ENVIRONMENT") == "production":
-    middleware.append(Middleware(HTTPSRedirectMiddleware))  # Only enable in production
-
 # App
 app = FastAPI(middleware=middleware)
 
