@@ -9,7 +9,7 @@ import { AuthProvider } from './components/AuthProvider';
 import ToastProvider from './components/ToastProvider';
 
 // Set global API base URL - this runs before any component code
-window.API_BASE_URL = 'http://localhost:8000'
+window.API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Dev-only: log Vite environment variables once on startup
 if (import.meta && import.meta.env && import.meta.env.DEV) {
