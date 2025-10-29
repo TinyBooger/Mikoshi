@@ -15,6 +15,8 @@ if os.path.exists("../secrets/Mikoshi.env"):
     load_dotenv("../secrets/Mikoshi.env")
 
 from database import engine, Base
+# Import models so that all SQLAlchemy mappers are registered before create_all
+import models  # noqa: F401
 from routes import auth, character, chat, user, search, tags, scene, persona
 
 # Middleware
@@ -68,7 +70,7 @@ def wait_for_neon_db(max_retries=20, delay=3):
 
 wait_for_neon_db()
 
-# Create DB tables after confirming DB is up
+# Create DB tables after confirming DB is up (models must be imported first)
 Base.metadata.create_all(bind=engine)
 
 

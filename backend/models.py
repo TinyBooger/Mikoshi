@@ -1,9 +1,7 @@
 from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey, UniqueConstraint
-from sqlalchemy.ext.declarative import declarative_base
+from database import Base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from datetime import datetime, UTC
-
-Base = declarative_base()
 
 class Character(Base):
     __tablename__ = "characters"
