@@ -8,3 +8,6 @@ backend/venv/
 frontend/node_modules/
 backend/static/images/
 frontend/Mikoshi.env
+
+nginx/conf.d/mikoshi.conf.backup
+nginx/yubandao.com_nginx/
