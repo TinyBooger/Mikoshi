@@ -159,6 +159,7 @@ export default function PersonaFormPage() {
               required
               value={personaData.name}
               maxLength={MAX_NAME_LENGTH}
+              placeholder={t('persona_form.placeholders.name')}
               onChange={e => handleChange('name', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -185,6 +186,7 @@ export default function PersonaFormPage() {
               rows="2"
               value={personaData.description}
               maxLength={MAX_DESC_LENGTH}
+              placeholder={t('persona_form.placeholders.description')}
               onChange={e => handleChange('description', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -212,6 +214,7 @@ export default function PersonaFormPage() {
               rows="3"
               value={personaData.intro}
               maxLength={MAX_INTRO_LENGTH}
+              placeholder={t('persona_form.placeholders.intro')}
               onChange={e => handleChange('intro', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -238,6 +241,7 @@ export default function PersonaFormPage() {
               tags={personaData.tags}
               setTags={tags => handleChange('tags', tags)}
               maxTags={MAX_TAGS}
+              placeholder={t('persona_form.placeholders.tags')}
             />
           </div>
             {/* Profile Picture (moved to end) */}

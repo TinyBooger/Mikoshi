@@ -92,11 +92,11 @@ export default function Layout() {
         position: 'fixed', // CHANGED from 'relative' to 'fixed'
         top: '7dvh',
         left: 0,
-        width: sidebarVisible ? '15rem' : '0',
+        width: '15rem',
         height: 'calc(100dvh - 7dvh)',
         zIndex: 1000,
         background: 'transparent',
-        transform: 'translateX(0)', // Remove transform animation for desktop
+        transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'width 0.35s cubic-bezier(.4,0,.2,1)',
       };
 
@@ -105,7 +105,7 @@ export default function Layout() {
       className="d-flex flex-column"
       style={{
         height: '100dvh',
-        overflow: 'hidden', // CHANGED from 'visible' to 'hidden'
+        overflow: 'visible',
         width: '100%',
         position: 'relative',
       }}

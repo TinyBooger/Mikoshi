@@ -178,6 +178,7 @@ export default function CharacterFormPage() {
               required
               value={charData.name}
               maxLength={MAX_NAME_LENGTH}
+              placeholder={t('character_form.placeholders.name')}
               onChange={e => handleChange('name', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -208,6 +209,7 @@ export default function CharacterFormPage() {
               required
               value={charData.persona}
               maxLength={MAX_PERSONA_LENGTH}
+              placeholder={t('character_form.placeholders.persona')}
               onChange={e => handleChange('persona', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -234,6 +236,7 @@ export default function CharacterFormPage() {
               className="form-control"
               value={charData.tagline}
               maxLength={MAX_TAGLINE_LENGTH}
+              placeholder={t('character_form.placeholders.tagline')}
               onChange={e => handleChange('tagline', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -263,7 +266,7 @@ export default function CharacterFormPage() {
                   maxLength={MAX_GREETING_LENGTH}
                   onChange={e => handleChange('greeting', e.target.value)}
                   disabled={isImprovisingGreeting}
-                  placeholder={isImprovisingGreeting ? t('character_form.greeting_improvising_placeholder') : ''}
+                  placeholder={isImprovisingGreeting ? t('character_form.greeting_improvising_placeholder') : t('character_form.placeholders.greeting')}
                   style={{
                     background: isImprovisingGreeting ? '#f0f0f0' : '#f5f6fa',
                     color: '#18191a',
@@ -295,7 +298,7 @@ export default function CharacterFormPage() {
           {/* Tags */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.tags')}</label>
-            <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} />
+            <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} placeholder={t('character_form.placeholders.tags')} />
             <small className="text-muted" style={{ top: 0, right: 0 }}>
               {charData.tags.length}/{MAX_TAGS} tags
             </small>
@@ -309,6 +312,7 @@ export default function CharacterFormPage() {
               rows="3"
               value={charData.sample}
               maxLength={MAX_SAMPLE_LENGTH}
+              placeholder={t('character_form.placeholders.sample_dialogue')}
               onChange={e => handleChange('sample', e.target.value)}
               style={{
                 background: '#f5f6fa',

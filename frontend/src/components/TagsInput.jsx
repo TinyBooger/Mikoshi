@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../components/AuthProvider';
 
-export default function TagsInput({ tags, setTags, maxTags }) {
+export default function TagsInput({ tags, setTags, maxTags, placeholder }) {
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -77,7 +77,7 @@ export default function TagsInput({ tags, setTags, maxTags }) {
         onKeyDown={handleKeyDown}
         onFocus={() => setShowSuggestions(true)}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
-        placeholder="Add a tag and press Enter"
+        placeholder={placeholder || "Add a tag and press Enter"}
       />
       {showSuggestions && suggestions.length > 0 && (
         <div

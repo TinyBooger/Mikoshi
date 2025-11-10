@@ -59,9 +59,9 @@ Mikoshi-MonoRepo
 │  │  ├─ components
 │  │  │  ├─ AuthLayout.jsx
 │  │  │  ├─ AuthProvider.jsx
-│  │  │  ├─ ButtonBlack.jsx
+│  │  │  ├─ PrimaryButton.jsx
 │  │  │  ├─ ButtonRounded.jsx
-│  │  │  ├─ ButtonWhite.jsx
+│  │  │  ├─ SecondaryButton.jsx
 │  │  │  ├─ CardSection.jsx
 │  │  │  ├─ CharacterModal.jsx
 │  │  │  ├─ CharacterSidebar.jsx

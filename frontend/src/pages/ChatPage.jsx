@@ -30,6 +30,7 @@ export default function ChatPage() {
   const [editingChatId, setEditingChatId] = useState(null);
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Whether the welcome notice has been dismissed (show only once per new chat)
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
@@ -780,7 +781,47 @@ export default function ChatPage() {
             </button>
             </div>
             {/* Small helper line explaining notation (centered) */}
-            <div style={{ width: '100%', marginTop: 6, fontSize: '0.72rem', color: '#6b7280', textAlign: 'center' }}>{t('chat.input_notation_hint')}</div>
+            <div style={{ width: '100%', marginTop: 6, fontSize: '0.72rem', color: '#6b7280', textAlign: 'center' }}>
+              <div>{t('chat.input_notation_hint')}</div>
+              <div style={{ marginTop: 4 }}>{t('chat.input_shortcut_hint')}</div>
+              <button
+                type="button"
+                onClick={() => setShowHelp(prev => !prev)}
+                aria-expanded={showHelp}
+                style={{
+                  marginTop: 6,
+                  background: 'transparent',
+                  color: '#374151',
+                  border: 'none',
+                  textDecoration: 'underline',
+                  fontSize: '0.72rem',
+                  cursor: 'pointer'
+                }}
+              >
+                {t('chat.tips_toggle')}
+              </button>
+            </div>
+            {showHelp && (
+              <div style={{
+                width: '100%',
+                maxWidth: 820,
+                background: '#ffffff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '0.75rem',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+                padding: '0.8rem 1rem',
+                color: '#374151'
+              }}>
+                <div style={{ fontWeight: 700, fontSize: '0.8rem', marginBottom: 6 }}>{t('chat.tips_title')}</div>
+                <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.78rem', lineHeight: 1.4 }}>
+                  <li>{t('chat.tips_1')}</li>
+                  <li>{t('chat.tips_2')}</li>
+                  <li>{t('chat.tips_3')}</li>
+                  <li>{t('chat.tips_4')}</li>
+                  <li>{t('chat.tips_5')}</li>
+                </ul>
+              </div>
+            )}
           </div>
         </form>
       </div>

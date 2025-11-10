@@ -2,8 +2,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 import EntityCard from '../components/EntityCard';
-import ButtonBlack from './ButtonBlack';
-import ButtonWhite from './ButtonWhite';
+import PrimaryButton from './PrimaryButton';
+import SecondaryButton from './SecondaryButton';
 
 
 export default function ChatInitModal({
@@ -223,21 +223,21 @@ export default function ChatInitModal({
             </div>
           </div>
           <div className="modal-footer d-flex justify-content-center" style={{ gap: 16 }}>
-            <ButtonWhite
+            <SecondaryButton
               onClick={onCancel}
               isMobile={isMobile}
               style={{ borderRadius: '1.6rem', fontWeight: 600, fontSize: '1.02rem', paddingTop: 8, paddingBottom: 8 }}
             >
               {t('chat_init_modal.cancel')}
-            </ButtonWhite>
-            <ButtonBlack
+            </SecondaryButton>
+            <PrimaryButton
               onClick={onStartChat}
               isMobile={isMobile}
               style={{ borderRadius: '1.6rem', fontWeight: 700, fontSize: '1.08rem', paddingTop: 8, paddingBottom: 8 }}
               disabled={!selectedCharacter}
             >
               {t('chat_init_modal.start_chat')}
-            </ButtonBlack>
+            </PrimaryButton>
           </div>
         </div>
       </div>

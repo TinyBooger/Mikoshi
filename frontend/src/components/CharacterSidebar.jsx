@@ -1,6 +1,6 @@
 import React from 'react';
-import ButtonBlack from './ButtonBlack';
-import ButtonWhite from './ButtonWhite';
+import PrimaryButton from './PrimaryButton';
+import SecondaryButton from './SecondaryButton';
 import defaultPic from '../assets/images/default-picture.png';
 
 import InfoCard from './InfoCard';
@@ -226,13 +226,13 @@ export default function CharacterSidebar({
 
         {/* New Chat Button */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
-          <ButtonBlack
+          <PrimaryButton
             type="button"
             isMobile={isMobile}
             onClick={() => setInitModal(true)}
           >
             <i className="bi bi-plus-circle me-2"></i> New Chat
-          </ButtonBlack>
+          </PrimaryButton>
         </div>
 
         {/* Chat History Section */}
@@ -240,13 +240,13 @@ export default function CharacterSidebar({
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#18191a' }}>Chat History</h6>
-              <ButtonWhite
+              <SecondaryButton
                 type="button"
                 isMobile={isMobile}
                 onClick={() => setShowChatHistory(!showChatHistory)}
               >
                 {showChatHistory ? 'Hide' : 'Show'}
-              </ButtonWhite>
+              </SecondaryButton>
             </div>
             {showChatHistory && (
               <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 12, background: '#f5f6fa', padding: 8 }}>

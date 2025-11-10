@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * ButtonWhite - reusable white button for actions
+ * PrimaryButton - reusable black button for actions
  * Props:
  *   children: node (button label)
  *   onClick: function
@@ -10,11 +10,11 @@ import React from 'react';
  *   ...rest: other props
  */
 
-function ButtonWhite({ children, isMobile, onClick, style = {}, className = '', ...rest }) {
+function PrimaryButton({ children, isMobile, onClick, style = {}, className = '', ...rest }) {
   const mobileStyle = {
-    background: '#fff',
-    color: '#18191a',
-    border: '1px solid #e0e0e0',
+    background: '#736B92',
+    color: '#fff',
+    border: 'none',
     boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
     fontSize: '0.78rem',
     padding: '0.32rem 1.1rem',
@@ -25,9 +25,9 @@ function ButtonWhite({ children, isMobile, onClick, style = {}, className = '', 
     marginTop: 2,
   };
   const desktopStyle = {
-    background: '#fff',
-    color: '#18191a',
-    border: '1px solid #e0e0e0',
+    background: '#736B92',
+    color: '#fff',
+    border: 'none',
     boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
     fontSize: '0.86rem',
     padding: '0.4rem 1.6rem',
@@ -43,8 +43,8 @@ function ButtonWhite({ children, isMobile, onClick, style = {}, className = '', 
         ...(isMobile ? mobileStyle : desktopStyle),
         ...style,
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = '#f3f3f3'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+      onMouseEnter={e => { e.currentTarget.style.background = '#6A6286'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = '#736B92'; }}
       onClick={onClick}
       {...rest}
     >
@@ -53,4 +53,4 @@ function ButtonWhite({ children, isMobile, onClick, style = {}, className = '', 
   );
 }
 
-export default ButtonWhite;
+export default PrimaryButton;

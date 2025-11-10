@@ -114,7 +114,13 @@ export default function SignUpPage() {
                 <label className="form-label">{t('signup.profile_picture')} <span className="text-muted" style={{ fontWeight: 400, fontSize: '0.9em' }}>{t('signup.optional')}</span></label>
                 <div className="d-flex align-items-center gap-3">
                   <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', border: '2px solid #e9ecef', background: '#fff' }}>
-                    <img src={profilePreview ? profilePreview : null} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {profilePreview && (
+                      <img
+                        src={profilePreview}
+                        alt="Profile preview"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    )}
                   </div>
                   <div style={{ flex: 1 }}>
                     <input

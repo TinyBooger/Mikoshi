@@ -161,6 +161,7 @@ export default function SceneFormPage() {
               required
               value={sceneData.name}
               maxLength={MAX_NAME_LENGTH}
+              placeholder={t('scene_form.placeholders.name')}
               onChange={e => handleChange('name', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -190,6 +191,7 @@ export default function SceneFormPage() {
               rows="2"
               value={sceneData.description}
               maxLength={MAX_DESC_LENGTH}
+              placeholder={t('scene_form.placeholders.description')}
               onChange={e => handleChange('description', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -217,6 +219,7 @@ export default function SceneFormPage() {
               rows="3"
               value={sceneData.intro}
               maxLength={MAX_INTRO_LENGTH}
+              placeholder={t('scene_form.placeholders.intro')}
               onChange={e => handleChange('intro', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -243,6 +246,7 @@ export default function SceneFormPage() {
               tags={sceneData.tags}
               setTags={tags => handleChange('tags', tags)}
               maxTags={MAX_TAGS}
+              placeholder={t('scene_form.placeholders.tags')}
             />
           </div>
             {/* Profile Picture (moved to end) */}

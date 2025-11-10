@@ -1,8 +1,12 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../utils/imageUtils';
+import PrimaryButton from './PrimaryButton';
+import SecondaryButton from './SecondaryButton';
+import { useTranslation } from 'react-i18next';
 
 export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, mode = 'avatar' }) {
+  const { t } = useTranslation();
   const [imageSrc, setImageSrc] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -73,7 +77,7 @@ export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, 
       <div className="modal-dialog" style={{ maxWidth: 820, width: '96%' }}>
         <div className="modal-content" style={{ borderRadius: 12, overflow: 'hidden' }}>
           <div className="modal-header">
-            <h5 className="modal-title">Crop Image</h5>
+            <h5 className="modal-title">{t('image_crop_modal.title')}</h5>
             <button type="button" className="btn-close" onClick={onCancel}></button>
           </div>
           <div className="modal-body d-flex" style={{ gap: 16, padding: 12, alignItems: 'stretch' }}>
@@ -94,25 +98,25 @@ export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, 
               <div style={{ width: size, height: size, borderRadius: isSquare ? 8 : '50%', overflow: 'hidden', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #e9ecef' }}>
                 {previewLoading ? (
                   <div className="spinner-border text-secondary" role="status" style={{ width: 36, height: 36 }}>
-                    <span className="visually-hidden">Loading...</span>
+                    <span className="visually-hidden">{t('common.loading')}</span>
                   </div>
                 ) : previewDataUrl ? (
                   <img src={previewDataUrl} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : imageSrc ? (
                   <img src={imageSrc} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <div style={{ color: '#888' }}>Preview</div>
+                  <div style={{ color: '#888' }}>{t('image_crop_modal.preview')}</div>
                 )}
               </div>
               <div style={{ width: '100%' }}>
-                <label className="form-label">Zoom</label>
+                <label className="form-label">{t('image_crop_modal.zoom')}</label>
                 <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={e => setZoom(Number(e.target.value))} className="form-range" />
               </div>
             </div>
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-outline-secondary" onClick={onCancel}>Cancel</button>
-            <button type="button" className="btn btn-primary" onClick={handleSave}>Save</button>
+          <div className="modal-footer" style={{ display: 'flex', gap: 8 }}>
+            <SecondaryButton onClick={onCancel}>{t('common.cancel')}</SecondaryButton>
+            <PrimaryButton onClick={handleSave}>{t('common.save')}</PrimaryButton>
           </div>
         </div>
       </div>

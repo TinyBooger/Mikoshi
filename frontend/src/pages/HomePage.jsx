@@ -2,6 +2,8 @@ import React, { useState, useEffect, useContext } from 'react';
 import PageWrapper from '../components/PageWrapper';
 import { useNavigate } from 'react-router';
 import EntityCard from '../components/EntityCard';
+import NameCard from '../components/NameCard';
+import SceneCard from '../components/SceneCard';
 import HorizontalCardSection from '../components/HorizontalCardSection';
 import { AuthContext } from '../components/AuthProvider';
 import { useTranslation } from 'react-i18next';
@@ -197,69 +199,72 @@ function HomePage() {
 
   return (
     <PageWrapper>
-      {/* Welcoming message */}
-      <div className="w-100 d-flex flex-column align-items-center justify-content-center mb-4" style={{ minHeight: 64 }}>
-        <h1 className="fw-bold text-dark mb-1" style={{ fontSize: '2.2rem', letterSpacing: '0.5px', textAlign: 'center' }}>
-          {t('home.welcome')}
-        </h1>
-        <div className="text-muted" style={{ fontSize: '1.08rem', textAlign: 'center', maxWidth: 520 }}>
-          {t('home.description')}
-        </div>
-      </div>
+      {/* Welcoming message removed as requested; starting with Popular Characters */}
 
       {/* Popular Characters */}
       <HorizontalCardSection
         title={t('home.popular_characters')}
+        subtitle={t('home.popular_characters_hint')}
         moreLink="/browse/popular"
-        contents={Array.isArray(popular) ? popular.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : popular}
+        contents={Array.isArray(popular) ? popular.map(c => ({ ...c, renderCard: () => <NameCard type="character" entity={c} /> })) : popular}
         scrollState={popularScroll}
         scrollId="popular-scroll"
         navigate={navigate}
+        itemWidth="auto"
+        itemHeight="auto"
+        itemGap={"0.75rem"}
       />
 
 
-      {/* Popular Scenes & Personas side by side */}
-      <div className="row mb-4" style={{ gap: 0 }}>
-        <div className="col-12 col-md-6 mb-4 mb-md-0">
-          <HorizontalCardSection
-            title={t('home.popular_scenes')}
-            moreLink="/browse/scenes"
-            contents={Array.isArray(popularScenes) ? popularScenes.map(scene => ({ ...scene, renderCard: () => <EntityCard type="scene" entity={scene} /> })) : popularScenes}
-            scrollState={sceneScroll}
-            scrollId="scene-scroll"
-            navigate={navigate}
-          />
-        </div>
-        <div className="col-12 col-md-6">
-          <HorizontalCardSection
-            title={t('home.popular_personas')}
-            moreLink="/browse/personas"
-            contents={Array.isArray(popularPersonas) ? popularPersonas.map(persona => ({ ...persona, renderCard: () => <EntityCard type="persona" entity={persona} /> })) : popularPersonas}
-            scrollState={personaScroll}
-            scrollId="persona-scroll"
-            navigate={navigate}
-          />
-        </div>
-      </div>
+      {/* Popular Scenes (full width) */}
+      <HorizontalCardSection
+        title={t('home.popular_scenes')}
+        subtitle={t('home.popular_scenes_hint')}
+        moreLink="/browse/scenes"
+        contents={Array.isArray(popularScenes) ? popularScenes.map(scene => ({ ...scene, renderCard: () => <SceneCard type="scene" entity={scene} /> })) : popularScenes}
+        scrollState={sceneScroll}
+        scrollId="scene-scroll"
+        navigate={navigate}
+        itemWidth="auto"
+        itemHeight="auto"
+        itemGap={"0.75rem"}
+      />
+
+      {/* Popular Personas (full width) */}
+      <HorizontalCardSection
+        title={t('home.popular_personas')}
+        subtitle={t('home.popular_personas_hint')}
+        moreLink="/browse/personas"
+        contents={Array.isArray(popularPersonas) ? popularPersonas.map(persona => ({ ...persona, renderCard: () => <EntityCard type="persona" entity={persona} /> })) : popularPersonas}
+        scrollState={personaScroll}
+        scrollId="persona-scroll"
+        navigate={navigate}
+      />
 
       {/* Recently Uploaded */}
       <HorizontalCardSection
         title={t('home.recently_uploaded')}
         moreLink="/browse/recent"
-        contents={Array.isArray(recent) ? recent.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : recent}
+        contents={Array.isArray(recent) ? recent.map(c => ({ ...c, renderCard: () => <NameCard type="character" entity={c} /> })) : recent}
         scrollState={recentScroll}
         scrollId="recent-scroll"
         navigate={navigate}
+        itemWidth="auto"
+        itemHeight="auto"
+        itemGap={"0.75rem"}
       />
 
       {/* Recommended for You */}
       <HorizontalCardSection
         title={t('home.recommended_for_you')}
         moreLink="/browse/recommended"
-        contents={Array.isArray(recommended) ? recommended.map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> })) : recommended}
+        contents={Array.isArray(recommended) ? recommended.map(c => ({ ...c, renderCard: () => <NameCard type="character" entity={c} /> })) : recommended}
         scrollState={recommendedScroll}
         scrollId="recommended-scroll"
         navigate={navigate}
+        itemWidth="auto"
+        itemHeight="auto"
+        itemGap={"0.75rem"}
       />
 
       {/* Popular Tags */}
@@ -374,10 +379,13 @@ function HomePage() {
                     title={t('home.characters_for_tag', { tag: selectedTag })}
                     /* hide child more button to avoid duplicate - use parent header for 'more' */
                     showMoreButton={false}
-                    contents={tagCharacters[selectedTag].map(c => ({ ...c, renderCard: () => <EntityCard type="character" entity={c} /> }))}
+                    contents={tagCharacters[selectedTag].map(c => ({ ...c, renderCard: () => <NameCard type="character" entity={c} /> }))}
                     scrollState={tagScroll}
                     scrollId="tag-scroll"
                     navigate={navigate}
+                    itemWidth="auto"
+                    itemHeight="auto"
+                    itemGap={"0.75rem"}
                   />
                 ) : null
               ) : (

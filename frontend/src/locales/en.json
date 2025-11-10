@@ -4,8 +4,11 @@
     "description": "Chat with your favorite characters",
     "button_start": "Get Started",
     "popular_characters": "Popular Characters",
+    "popular_characters_hint": "Start chatting with your favorite character immediately.",
     "popular_scenes": "Popular Scenes",
+    "popular_scenes_hint": "Set the stage for your story—pick a scene to shape the mood.",
     "popular_personas": "Popular Personas",
+    "popular_personas_hint": "Play as one of these personas.",
     "recently_uploaded": "Recently Uploaded",
     "recommended_for_you": "Recommended for You",
     "popular_tags": "Popular Tags",
@@ -38,6 +41,14 @@
     "you": "You",
     "input_placeholder": "Type your message...",
   "input_notation_hint": "Tip: wrap short character actions in *asterisks*, e.g. *smiles*. Put brief scene or environment notes in parentheses, e.g. (thunder rolls).",
+    "input_shortcut_hint": "Press Enter to send — Shift+Enter for a new line.",
+    "tips_toggle": "Tips",
+    "tips_title": "Quick tips",
+    "tips_1": "Say hello or ask a direct question to get things going.",
+    "tips_2": "Use *asterisks* for quick actions and (parentheses) for scene notes.",
+    "tips_3": "Switch persona or scene anytime using the selector (or sidebar) to steer tone and setting.",
+    "tips_4": "Be specific about goals (e.g., \"plan a heist\", \"practice small talk\").",
+    "tips_5": "Like characters/scenes you enjoy to improve recommendations.",
     "welcome_title": "You're chatting with {{name}}",
     "welcome_body_intro": "This chat is connected to {{character}}.",
     "welcome_body_persona": "Persona: \"{{persona}}\".",
@@ -98,7 +109,11 @@
     "delete_account_confirm": "Are you sure you want to delete your account? This action is irreversible.",
     "passwords_no_match": "New passwords do not match",
     "email_updated": "Email updated",
-    "password_changed": "Password changed"
+    "password_changed": "Password changed",
+    "failed_change_password": "Failed to change password",
+    "failed_change_email": "Failed to change email",
+    "account_deletion_scheduled": "Account deletion scheduled",
+    "failed_delete_account": "Failed to delete account"
   },
   "welcome": {
     "title": "Welcome to Mikoshi",
@@ -150,6 +165,7 @@
     "greeting_improvising_placeholder": "Greeting will be generated dynamically when starting the chat",
     "sample_dialogue": "Sample Dialogue",
     "picture": "Character Picture",
+    "no_picture": "No picture",
     "save": "Save",
     "create": "Create",
     "delete": "Delete",
@@ -159,7 +175,15 @@
     "updated": "Character updated!",
     "created": "Character created!",
     "deleted": "Character deleted",
-    "error": "An error occurred."
+    "error": "An error occurred.",
+    "placeholders": {
+      "name": "e.g., \"Luna Evergreen\"",
+      "persona": "Describe backstory, traits, and voice. e.g., A compassionate forest guardian who speaks softly and uses nature metaphors.",
+      "tagline": "A short catchphrase. e.g., Keeper of the Emerald Grove",
+      "greeting": "First line they would say. e.g., \"Oh! A traveler—welcome to the Grove.\"",
+      "sample_dialogue": "Add 2–3 example lines to show tone. e.g.\nYou: Hello!\nLuna: The trees have been whispering your name.",
+      "tags": "Add a tag and press Enter (e.g., fantasy, guardian, nature)"
+    }
   },
   "persona_form": {
     "edit_title": "Edit Persona",
@@ -170,6 +194,7 @@
     "intro": "Intro",
     "tags": "Tags",
     "picture": "Profile Picture",
+    "no_picture": "No picture",
     "save": "Save",
     "create": "Create",
     "delete": "Delete"
@@ -180,7 +205,13 @@
     "updated": "Persona updated!",
     "created": "Persona created!",
     "deleted": "Persona deleted",
-    "error": "An error occurred."
+    "error": "An error occurred.",
+    "placeholders": {
+      "name": "e.g., \"Rogue Scholar\"",
+      "description": "One-line pitch. e.g., A curious academic who solves mysteries with wit.",
+      "intro": "Write a short first-person intro. e.g., \"I keep the city’s forgotten stories in my notebooks—care to add a page?\"",
+      "tags": "Add a tag and press Enter (e.g., detective, scholar, witty)"
+    }
   },
   "scene_form": {
     "edit_title": "Edit Scene",
@@ -190,6 +221,7 @@
     "intro": "Intro",
     "tags": "Tags",
     "picture": "Scene Picture",
+    "no_picture": "No picture",
     "save": "Save",
     "create": "Create",
     "delete": "Delete",
@@ -201,7 +233,13 @@
     "updated": "Scene updated!",
     "created": "Scene created!",
     "deleted": "Scene deleted",
-    "error": "An error occurred."
+    "error": "An error occurred.",
+    "placeholders": {
+      "name": "e.g., \"Neon Alley\"",
+      "description": "Set the premise. e.g., A rain-soaked cyberpunk backstreet lit by flickering signs.",
+      "intro": "Opening flavor text. e.g., \"Rain hisses on neon-lit pavement as footsteps echo between shuttered stalls.\"",
+      "tags": "Add a tag and press Enter (e.g., cyberpunk, night, rain)"
+    }
   },
   "common": {
     "confirm": "Confirm",
@@ -210,7 +248,8 @@
     "create": "Create",
     "delete": "Delete",
     "no_picture": "No picture",
-    "ok": "OK"
+    "ok": "OK",
+    "network_error": "Network error"
   },
   "topbar": {
     "show_sidebar": "Show sidebar",
@@ -230,7 +269,9 @@
     "no_recent_chats": "No recent chats",
     "profile": "Profile",
     "logout": "Log out",
-    "login_to_continue": "Log in to continue"
+    "login_to_continue": "Log in to continue",
+    "login_first": "Please log in first",
+    "logout_failed": "Logout failed. Please try again."
   },
   "auth_provider": {
     "loading": "Loading...",
@@ -274,6 +315,11 @@
     "remove_scene": "Remove Scene",
     "cancel": "Cancel",
     "start_chat": "Start Chat"
+  },
+  "image_crop_modal": {
+    "title": "Crop Image",
+    "zoom": "Zoom",
+    "preview": "Preview"
   },
   "confirm": {
     "delete_chat": {

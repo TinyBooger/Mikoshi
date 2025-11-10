@@ -3,8 +3,11 @@
     "welcome": "欢迎来到Mikoshi!",
     "description": "与您喜欢的角色聊天",
     "popular_characters": "热门角色",
+    "popular_characters_hint": "立即与你喜欢的角色开始聊天。",
     "popular_scenes": "热门场景",
+    "popular_scenes_hint": "为故事搭好舞台——选择一个场景来营造氛围。",
     "popular_personas": "热门人格",
+    "popular_personas_hint": "以这些人格之一进行扮演。",
     "recently_uploaded": "最近上传",
     "recommended_for_you": "为您推荐",
     "popular_tags": "热门标签",
@@ -38,6 +41,14 @@
     "you": "你",
     "input_placeholder": "输入您的消息...",
   "input_notation_hint": "提示：将简短的角色动作用 *号包起，如 *微笑*；将场景或环境说明放在括号内，如 (雷声滚过)。",
+    "input_shortcut_hint": "按 Enter 发送，Shift+Enter 换行。",
+    "tips_toggle": "小贴士",
+    "tips_title": "快速上手提示",
+    "tips_1": "先打个招呼，或直接提出一个明确的问题。",
+    "tips_2": "用 *号* 标注简短动作，用（括号）标注场景/环境说明。",
+    "tips_3": "随时更换人格或场景（通过选择器或侧边栏）来调整语气与氛围。",
+    "tips_4": "明确你的目标（如：\"策划一场行动\"、\"练习寒暄\"）。",
+    "tips_5": "给喜欢的角色/场景点赞以获得更精准的推荐。",
     "welcome_title": "正在与 {{name}} 对话",
     "welcome_body_intro": "此对话关联角色：{{character}}。",
     "welcome_body_persona": "人设：\"{{persona}}\"。",
@@ -98,7 +109,11 @@
     "delete_account_confirm": "您确定要删除账号吗？此操作不可恢复。",
     "passwords_no_match": "两次输入的密码不一致",
     "email_updated": "邮箱已更新",
-    "password_changed": "密码已更改"
+    "password_changed": "密码已更改",
+    "failed_change_password": "修改密码失败",
+    "failed_change_email": "修改邮箱失败",
+    "account_deletion_scheduled": "账号删除申请已提交",
+    "failed_delete_account": "删除账号失败"
   },
   "welcome": {
     "title": "欢迎来到Mikoshi",
@@ -150,6 +165,7 @@
     "greeting_improvising_placeholder": "开始对话时会动态生成问候语",
     "sample_dialogue": "示例对话",
     "picture": "角色图片",
+    "no_picture": "暂无图片",
     "save": "保存",
     "create": "创建",
     "delete": "删除",
@@ -159,7 +175,15 @@
     "updated": "角色已更新！",
     "created": "角色已创建！",
     "deleted": "已删除角色",
-    "error": "发生错误。"
+    "error": "发生错误。",
+    "placeholders": {
+      "name": "例如：\"露娜·长青\"",
+      "persona": "写出角色背景、性格与说话风格。例如：温柔的森林守护者，说话轻声细语，常用自然意象。",
+      "tagline": "简短标语。例如：翡翠林的守护者",
+      "greeting": "角色会说的第一句话。例如：\"哦！旅人——欢迎来到树林。\"",
+      "sample_dialogue": "添加 2–3 句示例台词来体现语气。例如：\n你：你好！\n露娜：树林一直在低声呼唤你的名字。",
+      "tags": "输入标签并按 Enter（例如：奇幻、守护者、自然）"
+    }
   },
   "persona_form": {
     "edit_title": "编辑人格",
@@ -169,6 +193,7 @@
     "intro": "介绍",
     "tags": "标签",
     "picture": "头像",
+    "no_picture": "暂无图片",
     "save": "保存",
     "create": "创建",
     "delete": "删除",
@@ -180,7 +205,13 @@
     "updated": "人格已更新！",
     "created": "人格已创建！",
     "deleted": "已删除人格",
-    "error": "发生错误。"
+    "error": "发生错误。",
+    "placeholders": {
+      "name": "例如：\"浪人学者\"",
+      "description": "一句话简介。例如：好奇的学者，用机智破解谜团。",
+      "intro": "以第一人称写一段简短介绍。例如：\"我把城市被遗忘的故事都记在本子里——要不要一起添上一页？\"",
+      "tags": "输入标签并按 Enter（例如：侦探、学者、机智）"
+    }
   },
   "scene_form": {
     "edit_title": "编辑场景",
@@ -190,6 +221,7 @@
     "intro": "介绍",
     "tags": "标签",
     "picture": "场景图片",
+    "no_picture": "暂无图片",
     "save": "保存",
     "create": "创建",
     "delete": "删除",
@@ -201,7 +233,13 @@
     "updated": "场景已更新！",
     "created": "场景已创建！",
     "deleted": "已删除场景",
-    "error": "发生错误。"
+    "error": "发生错误。",
+    "placeholders": {
+      "name": "例如：\"霓虹小巷\"",
+      "description": "交代背景。例如：雨夜的赛博朋克后街，招牌闪烁。",
+      "intro": "开场氛围文案。例如：\"雨水在霓虹灯下嘶嘶作响，脚步声在半掩的摊位间回荡。\"",
+      "tags": "输入标签并按 Enter（例如：赛博朋克、夜晚、雨）"
+    }
   },
   
   "common": {
@@ -211,7 +249,8 @@
     "create": "创建",
     "delete": "删除",
     "no_picture": "暂无图片",
-    "ok": "确定"
+    "ok": "确定",
+    "network_error": "网络错误"
   },
   "topbar": {
     "show_sidebar": "显示侧边栏",
@@ -231,7 +270,9 @@
     "no_recent_chats": "暂无会话",
     "profile": "个人资料",
     "logout": "退出登录",
-    "login_to_continue": "请登录以继续"
+    "login_to_continue": "请登录以继续",
+    "login_first": "请先登录",
+    "logout_failed": "退出失败，请重试。"
   },
   "auth_provider": {
     "loading": "加载中...",
@@ -276,6 +317,12 @@
     "remove_scene": "移除场景",
     "cancel": "取消",
     "start_chat": "开始对话"
+  },
+  
+  "image_crop_modal": {
+    "title": "裁剪图片",
+    "zoom": "缩放",
+    "preview": "预览"
   },
   "confirm": {
     "delete_chat": {

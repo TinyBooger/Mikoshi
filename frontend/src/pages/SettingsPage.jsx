@@ -30,7 +30,7 @@ export default function SettingsPage() {
     e?.preventDefault();
     setPasswordError('');
     if (newPassword !== confirmNewPassword) {
-      setPasswordError('New passwords do not match');
+      setPasswordError(t('settings.passwords_no_match'));
       return;
     }
     setChangingPassword(true);
@@ -42,15 +42,15 @@ export default function SettingsPage() {
       });
       const data = await res.json();
         if (res.ok) {
-          toast.show(data.message || 'Password changed', { type: 'info' });
+          toast.show(data.message || t('settings.password_changed'), { type: 'info' });
           setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); setShowPasswordForm(false);
         } else {
-          const msg = data.detail || data.message || 'Failed to change password';
+          const msg = data.detail || data.message || t('settings.failed_change_password');
           setPasswordError(msg);
           toast.show(msg, { type: 'error' });
         }
     } catch (err) {
-      toast.show('Network error', { type: 'error' });
+      toast.show(t('common.network_error'), { type: 'error' });
     } finally {
       setChangingPassword(false);
     }
@@ -68,15 +68,15 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.show(data.message || 'Email updated', { type: 'info' });
+        toast.show(data.message || t('settings.email_updated'), { type: 'info' });
         setNewEmail(''); setShowEmailForm(false);
       } else {
-        const msg = data.detail || data.message || 'Failed to change email';
+        const msg = data.detail || data.message || t('settings.failed_change_email');
         setEmailError(msg);
         toast.show(msg, { type: 'error' });
       }
     } catch (err) {
-      toast.show('Network error', { type: 'error' });
+      toast.show(t('common.network_error'), { type: 'error' });
     } finally {
       setChangingEmail(false);
     }
@@ -91,16 +91,16 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.show(data.message || 'Account deletion scheduled', { type: 'info' });
+        toast.show(data.message || t('settings.account_deletion_scheduled'), { type: 'info' });
         // log user out locally
         logout();
         // navigate to welcome
         window.location.href = '/';
       } else {
-        toast.show(data.detail || data.message || 'Failed to delete account', { type: 'error' });
+        toast.show(data.detail || data.message || t('settings.failed_delete_account'), { type: 'error' });
       }
     } catch (err) {
-      toast.show('Network error', { type: 'error' });
+      toast.show(t('common.network_error'), { type: 'error' });
     }
   };
 

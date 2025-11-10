@@ -4,14 +4,29 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Mikoshi React</title>
+  <!-- Subtle light-lavender theme color for browser UI on mobile -->
+  <meta name="theme-color" content="#F6F3FB" />
   <!-- Favicon and app icons (placed in frontend/public/) -->
   <link rel="icon" href="/favicon.ico" />
 </head>
 <body>
   <style>
     body {
-      background: linear-gradient(135deg, #ffb86b 0%, #b983ff 50%, #6bc1ff 100%);
-      /* orange to purple to blue, warm and soft */
+      /*
+        Elegant, muted lavender on white:
+        - Keep most of the canvas white
+        - Add a lavender glow at the bottom and softly on both sides (more visible)
+      */
+      background-color: #ffffff;
+      background-image:
+        /* Bottom wash for stronger presence */
+        linear-gradient(to top, hsla(258, 60%, 86%, 0.55) 0%, hsla(258, 60%, 88%, 0.15) 35%, hsla(258, 60%, 92%, 0) 65%),
+        /* Pronounced bottom glow */
+        radial-gradient(125% 65% at 50% 115%, hsla(258, 60%, 86%, 0.95) 0%, hsla(258, 60%, 88%, 0.60) 35%, hsla(258, 60%, 92%, 0) 75%),
+        /* Side hints */
+        radial-gradient(70% 85% at -10% 50%, hsla(258, 60%, 90%, 0.45) 0%, hsla(258, 60%, 92%, 0) 60%),
+        radial-gradient(70% 85% at 110% 50%, hsla(258, 60%, 90%, 0.45) 0%, hsla(258, 60%, 92%, 0) 60%);
+      background-repeat: no-repeat;
       background-attachment: fixed;
       min-height: 100vh;
     }

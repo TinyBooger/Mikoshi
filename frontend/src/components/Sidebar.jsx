@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { AuthContext } from './AuthProvider.jsx'; // Import the AuthContext
+import { useToast } from './ToastProvider.jsx';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import logo from '../assets/images/logo.png';
@@ -11,6 +12,8 @@ export default function Sidebar() {
   const [loadingRecent, setLoadingRecent] = useState(false);
   const navigate = useNavigate();
   const { userData, sessionToken, loading } = useContext(AuthContext); // Get user data from context
+  const { t, i18n } = useTranslation();
+  const toast = useToast();
 
   useEffect(() => {
     const fetchRecentCharacters = async () => {
@@ -51,7 +54,7 @@ export default function Sidebar() {
       window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
-      alert('Logout failed. Please try again.');
+      toast.show(t('sidebar.logout_failed'), { type: 'error' });
     }
   };
 
@@ -67,8 +70,6 @@ export default function Sidebar() {
       </aside>
     );
   }
-
-  const { t, i18n } = useTranslation();
   const [lang, setLang] = useState(i18n.language === 'zh' ? 'zh' : 'en');
   const handleLangToggle = () => {
     const newLang = lang === 'zh' ? 'en' : 'zh';
@@ -97,10 +98,8 @@ export default function Sidebar() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [createOpen]);
 
-  // Responsive sidebar width: match layout.jsx
-  const sidebarWidth = typeof window !== 'undefined' && window.innerWidth < 768
-    ? { width: '70vw', maxWidth: '20rem' }
-    : { width: '15rem', maxWidth: '15rem' };
+  // Width is now controlled entirely by parent Layout; child fills available space.
+  // (Bug fix) Removed internal fixed width that prevented desktop toggle from hiding the sidebar.
 
   return (
     <aside
@@ -112,7 +111,8 @@ export default function Sidebar() {
         borderRight: '1.2px solid #e9ecef',
         fontFamily: 'Inter, sans-serif',
         borderRadius: '1.5rem',
-        ...sidebarWidth
+        width: '100%',
+        maxWidth: '100%',
       }}
     >
       {/* Logo at top */}
@@ -159,7 +159,7 @@ export default function Sidebar() {
                 style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                onClick={() => { setCreateOpen(false); if (!userData) return alert('Please login first'); navigate('/character/create'); }}
+                onClick={() => { setCreateOpen(false); if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); navigate('/character/create'); }}
               >
                 <i className="bi bi-person-plus me-2"></i> {t('sidebar.create_character')}
               </button>
@@ -170,7 +170,7 @@ export default function Sidebar() {
                 style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                onClick={() => { setCreateOpen(false); if (!userData) return alert('Please login first'); navigate('/scene/create'); }}
+                onClick={() => { setCreateOpen(false); if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); navigate('/scene/create'); }}
               >
                 <i className="bi bi-easel2 me-2"></i> {t('sidebar.create_scene')}
               </button>
@@ -181,7 +181,7 @@ export default function Sidebar() {
                 style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                onClick={() => { setCreateOpen(false); if (!userData) return alert('Please login first'); navigate('/persona/create'); }}
+                onClick={() => { setCreateOpen(false); if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); navigate('/persona/create'); }}
               >
                 <i className="bi bi-people me-2"></i> {t('sidebar.create_persona')}
               </button>
