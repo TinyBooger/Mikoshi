@@ -16,7 +16,7 @@
     "more": "更多",
     "loading": "加载中...",
   "no_items": "未找到项目。",
-    "characters_for_tag": "#{{tag}} 的角色",
+    "characters_for_tag": "{{tag}} 的角色",
     "select_tag_to_view_characters": "请选择标签以查看角色",
     "button_start": "开始"
   },

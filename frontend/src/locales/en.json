@@ -17,7 +17,7 @@
     "more": "More",
     "loading": "Loading...",
   "no_items": "No items found.",
-    "characters_for_tag": "Characters for #{{tag}}",
+    "characters_for_tag": "Characters for {{tag}}",
     "select_tag_to_view_characters": "Select a tag to view characters"
   },
 

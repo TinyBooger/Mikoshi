@@ -30,10 +30,12 @@ export default function ChatPage() {
   const [editingChatId, setEditingChatId] = useState(null);
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
-  const [showHelp, setShowHelp] = useState(false);
 
   // Whether the welcome notice has been dismissed (show only once per new chat)
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+
+  // Ref for textarea auto-resize
+  const textareaRef = useRef(null);
 
   const [selectedPersona, setSelectedPersona] = useState(null);
   const [selectedScene, setSelectedScene] = useState(null);
@@ -333,6 +335,10 @@ export default function ChatPage() {
     const updatedMessages = [...messages, { role: 'user', content: input.trim() }];
     setMessages(updatedMessages);
     setInput('');
+    // Reset textarea height after sending
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     try {
       const res = await fetch(`${window.API_BASE_URL}/api/chat`, {
         method: 'POST',
@@ -374,6 +380,26 @@ export default function ChatPage() {
       toast.show('Failed to send message. Please try again.', { type: 'error' });
     }
     setSending(false);
+  };
+
+  // Handle textarea input and auto-resize
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    // Auto-resize textarea
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const maxHeight = 200; // Max height in pixels before scrolling
+      const newHeight = Math.min(textareaRef.current.scrollHeight, maxHeight);
+      textareaRef.current.style.height = `${newHeight}px`;
+    }
+  };
+
+  // Handle keyboard shortcuts (Enter to send, Shift+Enter for new line)
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend(e);
+    }
   };
 
   // Generic like function for character, scene, or persona
@@ -537,7 +563,14 @@ export default function ChatPage() {
       if (p.type === 'scene') {
         return <span key={idx} style={{ fontStyle: 'italic', color: 'inherit', opacity: 0.9, margin: '0 4px' }}>({p.content})</span>;
       }
-      return <span key={idx}>{p.content}</span>;
+      // For text parts, split by newlines and render with <br/> tags
+      const lines = p.content.split('\n');
+      return <span key={idx}>{lines.map((line, i) => (
+        <React.Fragment key={i}>
+          {line}
+          {i < lines.length - 1 && <br />}
+        </React.Fragment>
+      ))}</span>;
     });
   };
 
@@ -545,7 +578,7 @@ export default function ChatPage() {
     <div style={{ 
       display: 'flex', 
       height: '100%', 
-      background: '#f8f9fa', 
+      background: 'transparent', 
       minHeight: 0,
       position: 'relative',
       width: '100%',
@@ -560,7 +593,7 @@ export default function ChatPage() {
         zIndex: 1,
         background: '#fff', 
         borderRadius: '1.5rem', 
-        margin: '1.5rem 0.5rem 1.5rem 1.5rem', 
+        margin: '0 0.5rem 0 0.5rem', 
         boxShadow: '0 2px 16px rgba(0,0,0,0.04)', 
         overflow: 'hidden', 
         height: 'auto',
@@ -728,100 +761,72 @@ export default function ChatPage() {
 
         {/* Input Area (no form) */}
         <form onSubmit={handleSend} style={{ padding: '0.8rem 1.2rem', background: '#f8f9fa', borderTop: '1.2px solid #e9ecef' }}>
-          <div style={{ display: 'flex', gap: '0.64rem', alignItems: 'center', flexDirection: 'column' }}>
-            <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'center' }}>
-              <input
-              style={{
-                flex: 1,
-                borderRadius: '1.6rem',
-                border: '1.2px solid #e9ecef',
-                background: '#fff',
-                padding: '0.52rem 0.96rem',
-                fontSize: '0.82rem',
-                outline: 'none',
-                color: '#232323',
-                boxShadow: 'none',
-                transition: 'border 0.14s',
-              }}
-              placeholder={t('chat.input_placeholder')}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              required
-              onFocus={e => e.target.style.border = '1.2px solid #18191a'}
-              onBlur={e => e.target.style.border = '1.2px solid #e9ecef'}
-              disabled={sending}
-            />
-            <button
-              type="submit"
-              style={{
-                background: sending ? '#888' : '#18191a',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '50%',
-                width: 32,
-                height: 32,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 16,
-                boxShadow: '0 2px 8px rgba(24,25,26,0.08)',
-                transition: 'background 0.14s',
-                cursor: sending ? 'not-allowed' : 'pointer',
-                outline: 'none',
-              }}
-              onMouseEnter={e => { if (!sending) e.currentTarget.style.background = '#232323'; }}
-              onMouseLeave={e => { if (!sending) e.currentTarget.style.background = '#18191a'; }}
-              disabled={sending}
-            >
-              {sending ? (
-                <span className="spinner-border spinner-border-sm" style={{ color: '#fff' }}></span>
-              ) : (
-                <i className="bi bi-send-fill"></i>
-              )}
-            </button>
-            </div>
-            {/* Small helper line explaining notation (centered) */}
-            <div style={{ width: '100%', marginTop: 6, fontSize: '0.72rem', color: '#6b7280', textAlign: 'center' }}>
-              <div>{t('chat.input_notation_hint')}</div>
-              <div style={{ marginTop: 4 }}>{t('chat.input_shortcut_hint')}</div>
-              <button
-                type="button"
-                onClick={() => setShowHelp(prev => !prev)}
-                aria-expanded={showHelp}
+          <div style={{ display: 'flex', gap: '0.64rem', alignItems: 'flex-end', flexDirection: 'column' }}>
+            <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'flex-end' }}>
+              <textarea
+                ref={textareaRef}
                 style={{
-                  marginTop: 6,
-                  background: 'transparent',
-                  color: '#374151',
-                  border: 'none',
-                  textDecoration: 'underline',
-                  fontSize: '0.72rem',
-                  cursor: 'pointer'
+                  flex: 1,
+                  borderRadius: '1.2rem',
+                  border: '1.2px solid #e9ecef',
+                  background: '#fff',
+                  padding: '0.6rem 0.96rem',
+                  fontSize: '0.82rem',
+                  outline: 'none',
+                  color: '#232323',
+                  boxShadow: 'none',
+                  transition: 'border 0.14s',
+                  resize: 'none',
+                  minHeight: '38px',
+                  maxHeight: '200px',
+                  overflow: 'auto',
+                  fontFamily: 'inherit',
+                  lineHeight: '1.5',
                 }}
+                placeholder={t('chat.input_placeholder')}
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                required
+                onFocus={e => e.target.style.border = '1.2px solid #18191a'}
+                onBlur={e => e.target.style.border = '1.2px solid #e9ecef'}
+                disabled={sending}
+                rows={1}
+              />
+              <button
+                type="submit"
+                style={{
+                  background: sending ? '#888' : '#18191a',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 32,
+                  height: 32,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 16,
+                  boxShadow: '0 2px 8px rgba(24,25,26,0.08)',
+                  transition: 'background 0.14s',
+                  cursor: sending ? 'not-allowed' : 'pointer',
+                  outline: 'none',
+                  flexShrink: 0,
+                }}
+                onMouseEnter={e => { if (!sending) e.currentTarget.style.background = '#232323'; }}
+                onMouseLeave={e => { if (!sending) e.currentTarget.style.background = '#18191a'; }}
+                disabled={sending}
               >
-                {t('chat.tips_toggle')}
+                {sending ? (
+                  <span className="spinner-border spinner-border-sm" style={{ color: '#fff' }}></span>
+                ) : (
+                  <i className="bi bi-send-fill"></i>
+                )}
               </button>
             </div>
-            {showHelp && (
-              <div style={{
-                width: '100%',
-                maxWidth: 820,
-                background: '#ffffff',
-                border: '1px solid #e5e7eb',
-                borderRadius: '0.75rem',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
-                padding: '0.8rem 1rem',
-                color: '#374151'
-              }}>
-                <div style={{ fontWeight: 700, fontSize: '0.8rem', marginBottom: 6 }}>{t('chat.tips_title')}</div>
-                <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.78rem', lineHeight: 1.4 }}>
-                  <li>{t('chat.tips_1')}</li>
-                  <li>{t('chat.tips_2')}</li>
-                  <li>{t('chat.tips_3')}</li>
-                  <li>{t('chat.tips_4')}</li>
-                  <li>{t('chat.tips_5')}</li>
-                </ul>
-              </div>
-            )}
+            {/* Small helper line explaining notation (centered, single line) */}
+            <div style={{ width: '100%', marginTop: 6, fontSize: '0.72rem', color: '#6b7280', textAlign: 'center' }}>
+              {t('chat.input_notation_hint')} • {t('chat.input_shortcut_hint')}
+            </div>
           </div>
         </form>
       </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import PrimaryButton from './PrimaryButton';
+import TextButton from './TextButton';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -67,12 +67,12 @@ function HorizontalCardSection({ title, subtitle, moreLink, contents, scrollStat
         </div>
         <div style={{ paddingLeft: isMobile ? '0.5rem' : '1rem' }}>
           {showMoreButton && (onMore || moreLink) ? (
-            <PrimaryButton
+            <TextButton
               isMobile={isMobile}
               onClick={() => onMore ? onMore() : navigate(moreLink)}
             >
               {t('home.more')}
-            </PrimaryButton>
+            </TextButton>
           ) : null}
         </div>
       </div>

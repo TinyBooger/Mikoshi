@@ -12,7 +12,7 @@ export default function Sidebar() {
   const [loadingRecent, setLoadingRecent] = useState(false);
   const navigate = useNavigate();
   const { userData, sessionToken, loading } = useContext(AuthContext); // Get user data from context
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const toast = useToast();
 
   useEffect(() => {
@@ -70,12 +70,6 @@ export default function Sidebar() {
       </aside>
     );
   }
-  const [lang, setLang] = useState(i18n.language === 'zh' ? 'zh' : 'en');
-  const handleLangToggle = () => {
-    const newLang = lang === 'zh' ? 'en' : 'zh';
-    i18n.changeLanguage(newLang);
-    setLang(newLang);
-  };
   const [profileOpen, setProfileOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   // Close profile dropdown on outside click
@@ -122,12 +116,14 @@ export default function Sidebar() {
         </a>
       </div>
       {/* Top navigation */}
-      <div className="d-flex flex-column gap-2 mb-3 position-relative">
+      <div className="d-flex flex-column gap-2 mb-1 position-relative">
         <div className="create-dropdown-area" style={{ position: 'relative' }}>
           <button
             className={`fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center${createOpen ? ' active' : ''}`}
             style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: createOpen ? '#dbeafe' : '#fff', color: '#232323', borderRadius: 19, padding: '9px 0', border: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 700, transition: 'background 0.2s' }}
             onClick={() => setCreateOpen(v => !v)}
+            onMouseEnter={e => { if (!createOpen) e.currentTarget.style.background = '#f5f6fa'; }}
+            onMouseLeave={e => { if (!createOpen) e.currentTarget.style.background = '#fff'; }}
             aria-expanded={createOpen}
             aria-haspopup="true"
             tabIndex={0}
@@ -193,6 +189,8 @@ export default function Sidebar() {
         className="fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center"
         style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: '#fff', color: '#232323', borderRadius: 19, padding: '9px 0', border: 'none', fontWeight: 700, transition: 'background 0.2s', marginBottom: 8 }}
         onClick={() => navigate('/browse/popular')}
+        onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
         tabIndex={0}
       >
         <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-compass me-2"></i> {t('sidebar.browse')}</span>
@@ -232,9 +230,11 @@ export default function Sidebar() {
   {userData ? (
           <div className="profile-dropdown-area position-relative">
             <button
-              className={`btn border-0 w-100 d-flex align-items-center gap-2 shadow-sm rounded-4 py-2${profileOpen ? ' active' : ''}`}
-              style={{ fontSize: '1rem', background: profileOpen ? '#dbeafe' : '#e9ecef', color: '#232323', fontWeight: 700, transition: 'background 0.2s' }}
+              className={`btn border-0 w-100 d-flex align-items-center gap-3 shadow-sm rounded-4 py-2${profileOpen ? ' active' : ''}`}
+              style={{ fontSize: '1rem', background: profileOpen ? '#dbeafe' : '#fff', color: '#232323', fontWeight: 700, transition: 'background 0.2s' }}
               onClick={() => setProfileOpen((v) => !v)}
+              onMouseEnter={e => { if (!profileOpen) e.currentTarget.style.background = '#f5f6fa'; }}
+              onMouseLeave={e => { if (!profileOpen) e.currentTarget.style.background = '#fff'; }}
               aria-expanded={profileOpen}
               aria-haspopup="true"
               tabIndex={0}
@@ -242,8 +242,8 @@ export default function Sidebar() {
               <img
                 src={userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar}
                 className="rounded-circle border"
-                width="29"
-                height="29"
+                width="32"
+                height="32"
                 alt={userData?.name || 'User'}
                 style={{ objectFit: 'cover', border: '1.6px solid #e9ecef' }}
               />
@@ -307,36 +307,7 @@ export default function Sidebar() {
           </div>
         )}
       </div>
-      {/* Language Toggle Button */}
-      <div className="d-flex justify-content-center mt-3 mb-1">
-        <button
-          onClick={handleLangToggle}
-          style={{
-            border: 'none',
-            borderRadius: '999px',
-            background: '#232323',
-            color: '#fff',
-            fontWeight: 700,
-            fontSize: '0.78rem',
-            padding: '2.5px 10px',
-            letterSpacing: '0.08em',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
-            cursor: 'pointer',
-            transition: 'background 0.18s, color 0.18s',
-            outline: 'none',
-            minWidth: 38,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-          }}
-          aria-label={lang === 'zh' ? '切换到英文' : 'Switch to Chinese'}
-        >
-          <span style={{ opacity: lang === 'zh' ? 1 : 0.5, fontWeight: lang === 'zh' ? 700 : 400 }}>中</span>
-          <span style={{ margin: '0 3px', color: '#fff', opacity: 0.4 }}>|</span>
-          <span style={{ opacity: lang === 'en' ? 1 : 0.5, fontWeight: lang === 'en' ? 700 : 400 }}>En</span>
-        </button>
-      </div>
+      {/* Language Toggle moved to Topbar */}
     </aside>
   );
 }

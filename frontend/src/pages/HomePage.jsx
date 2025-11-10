@@ -7,6 +7,7 @@ import SceneCard from '../components/SceneCard';
 import HorizontalCardSection from '../components/HorizontalCardSection';
 import { AuthContext } from '../components/AuthProvider';
 import { useTranslation } from 'react-i18next';
+import TextButton from '../components/TextButton';
 
 
 function HomePage() {
@@ -276,7 +277,7 @@ function HomePage() {
               <div className="d-flex align-items-center">
                 <span className="text-muted me-2">{t('home.showing')}</span>
                 <span className="badge bg-gradient-primary px-2 py-1 rounded-pill shadow-sm" style={{ fontSize: '0.8rem', color: '#232323', background: '#fff' }}>
-                  #{selectedTag}
+                  {selectedTag}
                   <button 
                     className="btn-close btn-close-white btn-close-sm ms-2" 
                     onClick={(e) => {
@@ -289,26 +290,7 @@ function HomePage() {
               </div>
             )}
           </div>
-          <button
-            className="fw-bold rounded-pill"
-            style={{
-              background: '#18191a',
-              color: '#fff',
-              border: 'none',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              fontSize: '0.86rem',
-              padding: '0.4rem 1.6rem',
-              letterSpacing: '0.16px',
-              transition: 'background 0.14s, color 0.14s',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = '#232323';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = '#18191a';
-            }}
+          <TextButton
             onClick={() => {
               // If a tag is selected, search using that tag as keyword; otherwise go to tag browser
               if (selectedTag) {
@@ -317,7 +299,7 @@ function HomePage() {
             }}
           >
             {t('home.more')}
-          </button>
+          </TextButton>
         </div>
 
         {loadingTags ? (
@@ -361,7 +343,7 @@ function HomePage() {
                     }
                   }}
                 >
-                  #{tag.name} <span className="badge bg-secondary ms-2" style={{ background: selectedTag === tag.name ? '#232323' : '#e9ecef', color: selectedTag === tag.name ? '#fff' : '#232323', fontWeight: 600, fontSize: '0.8rem', padding: '0.2em 0.7em' }}>{tag.likes}</span>
+                  {tag.name} <span className="badge bg-secondary ms-2" style={{ background: selectedTag === tag.name ? '#232323' : '#e9ecef', color: selectedTag === tag.name ? '#fff' : '#232323', fontWeight: 600, fontSize: '0.8rem', padding: '0.2em 0.7em' }}></span>
                 </button>
               ))}
             </div>
