@@ -35,10 +35,37 @@ def register_user(
     email: str = Form(...),
     name: str = Form(...),
     password: str = Form(...),
+    invitation_code: str = Form(...),
     bio: str = Form(None),
     profile_pic: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
+    # Validate invitation code first
+    from models import InvitationCode
+    from datetime import datetime, UTC
+    
+    invitation = db.query(InvitationCode).filter(
+        InvitationCode.code == invitation_code.upper()
+    ).first()
+    
+    if not invitation:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invitation code")
+    
+    if not invitation.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation code has been revoked")
+    
+    if invitation.use_count >= invitation.max_uses:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation code has reached its usage limit")
+    
+    print(f"expires_at type: {type(invitation.expires_at)}")
+    print(f"expires_at tzinfo: {invitation.expires_at.tzinfo}")
+    print(f"expires_at value: {invitation.expires_at}")
+    print(f"now(UTC) type: {type(datetime.now(UTC))}")
+    
+    if invitation.expires_at and datetime.now(UTC) > invitation.expires_at:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation code has expired")
+    
+    # Proceed with user registration
     if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     error = validate_account_fields(name=name)
@@ -57,6 +84,14 @@ def register_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+    
+    # Mark invitation code as used
+    invitation.use_count += 1
+    if invitation.use_count == 1:  # First use
+        invitation.used_by = user.id
+        invitation.used_at = datetime.now(UTC)
+    db.commit()
+    
     # If an image was uploaded, save it and update the user record
     if profile_pic:
         try:

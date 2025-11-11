@@ -282,6 +282,19 @@ export default function Sidebar() {
                   <i className="bi bi-person-circle me-2"></i> {t('sidebar.profile')}
                 </button>
               </li>
+              {userData?.is_admin && (
+                <li>
+                  <button
+                    className="dropdown-item rounded-3 fw-bold"
+                    style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
+                    onClick={() => { setProfileOpen(false); navigate("/admin"); }}
+                  >
+                    <i className="bi bi-shield-lock me-2"></i> {t('sidebar.admin_panel')}
+                  </button>
+                </li>
+              )}
               <li>
                 <button
                   className="dropdown-item rounded-3 fw-bold"

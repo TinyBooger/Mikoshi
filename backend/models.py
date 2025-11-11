@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey, UniqueConstraint, Boolean
 from database import Base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from datetime import datetime, UTC
@@ -17,7 +17,7 @@ class Character(Base):
     picture = Column(String, nullable=True)  # path or URL to the picture
     greeting = Column(String, nullable=True)
 
-    created_time = Column(DateTime, default=lambda: datetime.now(UTC))
+    created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     creator_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     creator_name = Column(String, nullable=True)
 
@@ -30,6 +30,7 @@ class User(Base):
     profile_pic = Column(String, nullable=True)
     bio = Column(Text, nullable=True)  # Short bio, optional
     hashed_password = Column(String, nullable=False)  # Store password hash
+    is_admin = Column(Boolean, default=False, nullable=False)  # Admin role flag
 
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
@@ -51,7 +52,7 @@ class Persona(Base):
     picture = Column(String, nullable=True)  # path or URL to the picture
     creator_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     creator_name = Column(String, nullable=True)
-    created_time = Column(DateTime, default=lambda: datetime.now(UTC))
+    created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     likes = Column(Integer, default=0)
     views = Column(Integer, default=0)
 
@@ -61,7 +62,7 @@ class SearchTerm(Base):
     
     keyword = Column(String, primary_key=True, unique=True, nullable=False)
     search_count = Column(Integer, default=1)
-    last_searched = Column(DateTime, default=datetime.now(UTC))
+    last_searched = Column(DateTime(timezone=True), default=datetime.now(UTC))
 
 class Tag(Base):
     __tablename__ = "tags"
@@ -80,7 +81,7 @@ class Scene(Base):
     picture = Column(String, nullable=True)  # path or URL to the picture
     creator_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     creator_name = Column(String, nullable=True)
-    created_time = Column(DateTime, default=lambda: datetime.now(UTC))
+    created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     likes = Column(Integer, default=0)
     views = Column(Integer, default=0)
 
@@ -89,7 +90,7 @@ class UserLikedCharacter(Base):
     __tablename__ = "user_liked_characters"
     user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
     character_id = Column(Integer, ForeignKey('characters.id', ondelete='CASCADE'), primary_key=True)
-    liked_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    liked_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     __table_args__ = (
         UniqueConstraint('user_id', 'character_id', name='uix_user_character'),
     )
@@ -99,7 +100,7 @@ class UserLikedScene(Base):
     __tablename__ = "user_liked_scenes"
     user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
     scene_id = Column(Integer, ForeignKey('scenes.id', ondelete='CASCADE'), primary_key=True)
-    liked_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    liked_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     __table_args__ = (
         UniqueConstraint('user_id', 'scene_id', name='uix_user_scene'),
     )
@@ -109,7 +110,23 @@ class UserLikedPersona(Base):
     __tablename__ = "user_liked_personas"
     user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
     persona_id = Column(Integer, ForeignKey('personas.id', ondelete='CASCADE'), primary_key=True)
-    liked_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    liked_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     __table_args__ = (
         UniqueConstraint('user_id', 'persona_id', name='uix_user_persona'),
     )
+
+# Invitation codes for alpha testing
+class InvitationCode(Base):
+    __tablename__ = "invitation_codes"
+    
+    code = Column(String(20), primary_key=True, unique=True, nullable=False)
+    created_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    
+    used_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    max_uses = Column(Integer, default=1)  # How many times this code can be used
+    use_count = Column(Integer, default=0)  # How many times it has been used
+    notes = Column(Text, nullable=True)  # Admin notes about this code

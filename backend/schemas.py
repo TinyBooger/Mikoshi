@@ -63,6 +63,7 @@ class UserOut(BaseModel):
     chat_history: list[Any] = []
     views: int = 0
     likes: int = 0
+    is_admin: bool = False
 
     class Config:
         from_attributes = True

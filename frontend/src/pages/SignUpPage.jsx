@@ -12,6 +12,7 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [invitationCode, setInvitationCode] = useState('');
   const [bio, setBio] = useState('');
   const [profileFile, setProfileFile] = useState(null);
   const [profilePreview, setProfilePreview] = useState(null);
@@ -31,11 +32,15 @@ export default function SignUpPage() {
       setError('Passwords do not match');
       return;
     }
-    const success = await register(email, name, password, bio, profileFile);
+    if (!invitationCode.trim()) {
+      setError('Invitation code is required');
+      return;
+    }
+    const success = await register(email, name, password, bio, profileFile, invitationCode);
     if (success) {
       navigate('/', { replace: true });
     } else {
-      setError('Registration failed');
+      setError('Registration failed. Please check your invitation code.');
     }
   };
 
@@ -56,6 +61,21 @@ export default function SignUpPage() {
             {error && <div className="alert alert-danger">{error}</div>}
             {loading && <div className="text-center"><div className="spinner-border text-primary" role="status"></div></div>}
             <form onSubmit={handleSubmit}>
+              <div className="mb-3">
+                <label className="form-label">{t('signup.invitation_code')}</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  required
+                  value={invitationCode}
+                  onChange={(e) => setInvitationCode(e.target.value.toUpperCase())}
+                  placeholder="Enter your invitation code"
+                  style={{ textTransform: 'uppercase' }}
+                />
+                <small className="form-text text-muted">
+                  This is an alpha test. An invitation code is required to sign up.
+                </small>
+              </div>
               <div className="mb-3">
                 <label className="form-label">{t('signup.name')}</label>
                 <input

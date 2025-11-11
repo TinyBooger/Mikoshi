@@ -79,7 +79,7 @@ export function AuthProvider({ children }) {
   };
 
   // Registration function
-  const register = async (email, name, password, bio, profileFile = null) => {
+  const register = async (email, name, password, bio, profileFile = null, invitationCode = null) => {
     setLoading(true);
     setError(null);
     try {
@@ -89,6 +89,7 @@ export function AuthProvider({ children }) {
         formData.append('email', email);
         formData.append('name', name);
         formData.append('password', password);
+        formData.append('invitation_code', invitationCode);
         if (bio) formData.append('bio', bio);
         formData.append('profile_pic', profileFile);
         response = await fetch(`${window.API_BASE_URL}/api/users`, {
@@ -99,7 +100,7 @@ export function AuthProvider({ children }) {
         response = await fetch(`${window.API_BASE_URL}/api/users`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({ email, name, password, bio })
+          body: new URLSearchParams({ email, name, password, invitation_code: invitationCode, bio })
         });
       }
       const result = await response.json();

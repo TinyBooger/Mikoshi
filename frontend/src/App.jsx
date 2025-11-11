@@ -2,6 +2,7 @@ import React, { useContext, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import AuthLayout from './components/AuthLayout';
 import AdminApp from './admin/AdminApp.jsx';
+import AdminRoute from './components/AdminRoute.jsx';
 import Layout from './components/Layout.jsx';
 import HomePage from './pages/HomePage';
 import BrowsePage from './pages/BrowsePage.jsx';
@@ -20,6 +21,7 @@ import UsersPage from "./admin/pages/UsersPage";
 import CharactersPage from './admin/pages/CharactersPage.jsx';
 import TagsPage from './admin/pages/TagsPage.jsx';
 import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
+import InvitationCodesPage from './admin/pages/InvitationCodesPage.jsx';
 import TestPage from './pages/TestPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 
@@ -64,13 +66,14 @@ export default function App() {
         },
     {
       path: '/admin',
-      element: <AdminApp />,
+      element: <AdminRoute><AdminApp /></AdminRoute>,
       children: [
         { index: true, element: <DashboardPage /> },
         { path: 'users', element: <UsersPage /> },
         { path: 'characters', element: <CharactersPage /> },
         { path: 'tags', element: <TagsPage /> },
         { path: 'search-terms', element: <SearchTermsPage /> },
+        { path: 'invitations', element: <InvitationCodesPage /> },
       ],
     },
   ]);
