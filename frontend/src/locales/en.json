@@ -3,6 +3,11 @@
     "welcome": "Welcome to Mikoshi!",
     "description": "Chat with your favorite characters",
     "button_start": "Get Started",
+    "hero_title": "Chat with 10K+ Amazing Characters",
+    "hero_subtitle": "Join 3K+ active users now!",
+    "stat_active_users": "Active Users",
+    "stat_conversations": "Conversations",
+    "stat_characters": "Characters",
     "popular_characters": "Popular Characters",
     "popular_characters_hint": "Start chatting with your favorite character immediately.",
     "popular_scenes": "Popular Scenes",
@@ -27,13 +32,24 @@
     "no_selection": "[No {{name}} Selected]"
   },
   "browse": {
+    "characters": "Characters",
+    "scenes": "Scenes",
+    "personas": "Personas",
     "for_you": "For You",
     "popular": "Popular",
     "recent": "Recent",
     "popular_characters": "Popular Characters",
     "recently_uploaded": "Recently Uploaded",
     "recommended_for_you": "Recommended for You",
+    "popular_scenes": "Popular Scenes",
+    "recent_scenes": "Recent Scenes",
+    "recommended_scenes": "Recommended Scenes",
+    "popular_personas": "Popular Personas",
+    "recent_personas": "Recent Personas",
+    "recommended_personas": "Recommended Personas",
     "loading": "Loading...",
+    "no_results": "No results found.",
+    "no_recommendations_title": "No Recommendations Yet",
     "no_recommendations": "No recommendations yet. Please like more characters to unlock personalized suggestions."
   },
   "chat": {
@@ -164,6 +180,12 @@
     "greeting": "Greeting",
     "improvise_greeting": "Improvise greeting",
     "greeting_improvising_placeholder": "Greeting will be generated dynamically when starting the chat",
+    "notes": {
+      "persona": "This decides the character's persona—how they act.",
+      "tagline": "Shown on the character cover.",
+      "greeting": "The first line they would say.",
+      "tags": "The first tag appears on the cover."
+    },
     "sample_dialogue": "Sample Dialogue",
     "picture": "Character Picture",
     "no_picture": "No picture",
@@ -177,13 +199,14 @@
     "created": "Character created!",
     "deleted": "Character deleted",
     "error": "An error occurred.",
+    "tags_required": "Please add at least one tag.",
     "placeholders": {
       "name": "e.g., \"Luna Evergreen\"",
-      "persona": "Describe backstory, traits, and voice. e.g., A compassionate forest guardian who speaks softly and uses nature metaphors.",
-      "tagline": "A short catchphrase. e.g., Keeper of the Emerald Grove",
-      "greeting": "First line they would say. e.g., \"Oh! A traveler—welcome to the Grove.\"",
+      "persona": "e.g., A compassionate forest guardian who speaks softly and uses nature metaphors.",
+      "tagline": "e.g., Keeper of the Emerald Grove",
+      "greeting": "e.g., \"Oh! A traveler—welcome to the Grove.\"",
       "sample_dialogue": "Add 2–3 example lines to show tone. e.g.\nYou: Hello!\nLuna: The trees have been whispering your name.",
-      "tags": "Add a tag and press Enter (e.g., fantasy, guardian, nature)"
+      "tags": "e.g., fantasy, guardian, nature"
     }
   },
   "persona_form": {
@@ -207,11 +230,17 @@
     "created": "Persona created!",
     "deleted": "Persona deleted",
     "error": "An error occurred.",
+    "tags_required": "Please add at least one tag.",
+    "notes": {
+      "description": "Describe traits, role, and voice (long).",
+      "intro": "First-person intro (one sentence).",
+      "tags": "The first tag appears on the cover."
+    },
     "placeholders": {
       "name": "e.g., \"Rogue Scholar\"",
-      "description": "One-line pitch. e.g., A curious academic who solves mysteries with wit.",
-      "intro": "Write a short first-person intro. e.g., \"I keep the city’s forgotten stories in my notebooks—care to add a page?\"",
-      "tags": "Add a tag and press Enter (e.g., detective, scholar, witty)"
+      "description": "e.g., A curious academic who solves mysteries with wit.",
+      "intro": "e.g., \"I keep the city’s forgotten stories in my notebooks—care to add a page?\"",
+      "tags": "e.g., detective, scholar, witty"
     }
   },
   "scene_form": {
@@ -235,11 +264,17 @@
     "created": "Scene created!",
     "deleted": "Scene deleted",
     "error": "An error occurred.",
+    "tags_required": "Please add at least one tag.",
+    "notes": {
+      "description": "Sets the premise and atmosphere.",
+      "intro": "Opening flavor text (one sentence).",
+      "tags": "The first tag appears on the cover."
+    },
     "placeholders": {
       "name": "e.g., \"Neon Alley\"",
-      "description": "Set the premise. e.g., A rain-soaked cyberpunk backstreet lit by flickering signs.",
-      "intro": "Opening flavor text. e.g., \"Rain hisses on neon-lit pavement as footsteps echo between shuttered stalls.\"",
-      "tags": "Add a tag and press Enter (e.g., cyberpunk, night, rain)"
+      "description": "e.g., A rain-soaked cyberpunk backstreet lit by flickering signs.",
+      "intro": "e.g., \"Rain hisses on neon-lit pavement as footsteps echo between shuttered stalls.\"",
+      "tags": "e.g., cyberpunk, night, rain"
     }
   },
   "common": {

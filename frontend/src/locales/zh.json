@@ -2,6 +2,11 @@
   "home": {
     "welcome": "欢迎来到Mikoshi!",
     "description": "与您喜欢的角色聊天",
+    "hero_title": "与 10K+ 精彩角色聊天",
+    "hero_subtitle": "立即加入 3K+ 活跃用户！",
+    "stat_active_users": "活跃用户",
+    "stat_conversations": "对话数",
+    "stat_characters": "角色数",
     "popular_characters": "热门角色",
     "popular_characters_hint": "立即与你喜欢的角色开始聊天。",
     "popular_scenes": "热门场景",
@@ -27,13 +32,24 @@
     "no_selection": "[未选择 {{name}}]"
   },
   "browse": {
+    "characters": "角色",
+    "scenes": "场景",
+    "personas": "人格",
     "for_you": "为您推荐",
     "popular": "热门",
     "recent": "最近",
     "popular_characters": "热门角色",
     "recently_uploaded": "最近上传",
     "recommended_for_you": "为您推荐",
+    "popular_scenes": "热门场景",
+    "recent_scenes": "最近场景",
+    "recommended_scenes": "推荐场景",
+    "popular_personas": "热门人格",
+    "recent_personas": "最近人格",
+    "recommended_personas": "推荐人格",
     "loading": "加载中...",
+    "no_results": "未找到结果。",
+    "no_recommendations_title": "暂无推荐",
     "no_recommendations": "暂无推荐，请多点赞角色以解锁个性化推荐。"
   },
   "chat": {
@@ -163,6 +179,12 @@
     "greeting": "问候语",
     "improvise_greeting": "即兴问候",
     "greeting_improvising_placeholder": "开始对话时会动态生成问候语",
+    "notes": {
+      "persona": "此字段决定角色的人设与行为方式。",
+      "tagline": "将展示在角色封面上。",
+      "greeting": "角色会说的第一句话。",
+      "tags": "第一个标签会显示在封面上。"
+    },
     "sample_dialogue": "示例对话",
     "picture": "角色图片",
     "no_picture": "暂无图片",
@@ -176,13 +198,14 @@
     "created": "角色已创建！",
     "deleted": "已删除角色",
     "error": "发生错误。",
+    "tags_required": "请至少添加一个标签。",
     "placeholders": {
       "name": "例如：\"露娜·长青\"",
-      "persona": "写出角色背景、性格与说话风格。例如：温柔的森林守护者，说话轻声细语，常用自然意象。",
-      "tagline": "简短标语。例如：翡翠林的守护者",
-      "greeting": "角色会说的第一句话。例如：\"哦！旅人——欢迎来到树林。\"",
+      "persona": "例如：温柔的森林守护者，说话轻声细语，常用自然意象。",
+      "tagline": "例如：翡翠林的守护者",
+      "greeting": "例如：\"哦！旅人——欢迎来到树林。\"",
       "sample_dialogue": "添加 2–3 句示例台词来体现语气。例如：\n你：你好！\n露娜：树林一直在低声呼唤你的名字。",
-      "tags": "输入标签并按 Enter（例如：奇幻、守护者、自然）"
+      "tags": "例如：奇幻、守护者、自然"
     }
   },
   "persona_form": {
@@ -206,11 +229,17 @@
     "created": "人格已创建！",
     "deleted": "已删除人格",
     "error": "发生错误。",
+    "tags_required": "请至少添加一个标签。",
+    "notes": {
+      "description": "详细描述人格、特质与说话风格。",
+      "intro": "封面介绍",
+      "tags": "第一个标签会显示在封面上。"
+    },
     "placeholders": {
       "name": "例如：\"浪人学者\"",
-      "description": "一句话简介。例如：好奇的学者，用机智破解谜团。",
-      "intro": "以第一人称写一段简短介绍。例如：\"我把城市被遗忘的故事都记在本子里——要不要一起添上一页？\"",
-      "tags": "输入标签并按 Enter（例如：侦探、学者、机智）"
+      "description": "例如：好奇的学者，用机智破解谜团。",
+      "intro": "例如：\"我把城市被遗忘的故事都记在本子里——要不要一起添上一页？\"",
+      "tags": "例如：侦探、学者、机智"
     }
   },
   "scene_form": {
@@ -234,11 +263,17 @@
     "created": "场景已创建！",
     "deleted": "已删除场景",
     "error": "发生错误。",
+    "tags_required": "请至少添加一个标签。",
+    "notes": {
+      "description": "交代背景、故事、氛围或者设定。",
+      "intro": "开场氛围文案（一句话）。",
+      "tags": "第一个标签会显示在封面上。"
+    },
     "placeholders": {
       "name": "例如：\"霓虹小巷\"",
-      "description": "交代背景。例如：雨夜的赛博朋克后街，招牌闪烁。",
-      "intro": "开场氛围文案。例如：\"雨水在霓虹灯下嘶嘶作响，脚步声在半掩的摊位间回荡。\"",
-      "tags": "输入标签并按 Enter（例如：赛博朋克、夜晚、雨）"
+      "description": "例如：雨夜的赛博朋克后街，招牌闪烁。",
+      "intro": "例如：\"雨水在霓虹灯下嘶嘶作响，脚步声在半掩的摊位间回荡。\"",
+      "tags": "例如：赛博朋克、夜晚、雨"
     }
   },
   

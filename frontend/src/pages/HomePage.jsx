@@ -200,13 +200,129 @@ function HomePage() {
 
   return (
     <PageWrapper>
-      {/* Welcoming message removed as requested; starting with Popular Characters */}
+      {/* Hero Stats Section */}
+      <section className="mb-4">
+        <div className="text-center mb-3">
+          <h1 className="fw-bold mb-2" style={{ 
+            fontSize: '1.5rem', 
+            background: 'linear-gradient(135deg, #736B92 0%, #9B8FB8 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            letterSpacing: '-0.3px'
+          }}>
+            {t('home.hero_title')}
+          </h1>
+          <p className="text-muted mb-0" style={{ fontSize: '0.9rem', fontWeight: 400 }}>
+            {t('home.hero_subtitle')}
+          </p>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="d-flex justify-content-center gap-3 mb-3 flex-wrap">
+          <div className="d-flex align-items-center gap-2 px-3 py-2" style={{ 
+            background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)',
+            borderRadius: '20px',
+            border: '1px solid rgba(115, 107, 146, 0.15)',
+            transition: 'all 0.25s ease',
+            boxShadow: '0 2px 8px rgba(115, 107, 146, 0.08)',
+            minWidth: '140px'
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(115, 107, 146, 0.12) 0%, rgba(155, 143, 184, 0.15) 100%)';
+            e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.25)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(115, 107, 146, 0.15)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)';
+            e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.15)';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(115, 107, 146, 0.08)';
+          }}>
+            <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>👥</span>
+            <div>
+              <div className="fw-bold" style={{ color: '#736B92', fontSize: '1.25rem', lineHeight: 1.2 }}>3K+</div>
+              <div className="text-muted" style={{ fontSize: '0.8rem', fontWeight: 500 }}>{t('home.stat_active_users')}</div>
+            </div>
+          </div>
+
+          <div className="d-flex align-items-center gap-2 px-3 py-2" style={{ 
+            background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)',
+            borderRadius: '20px',
+            border: '1px solid rgba(115, 107, 146, 0.15)',
+            transition: 'all 0.25s ease',
+            boxShadow: '0 2px 8px rgba(115, 107, 146, 0.08)',
+            minWidth: '140px'
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(115, 107, 146, 0.12) 0%, rgba(155, 143, 184, 0.15) 100%)';
+            e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.25)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(115, 107, 146, 0.15)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)';
+            e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.15)';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(115, 107, 146, 0.08)';
+          }}>
+            <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>💬</span>
+            <div>
+              <div className="fw-bold" style={{ color: '#736B92', fontSize: '1.25rem', lineHeight: 1.2 }}>1M+</div>
+              <div className="text-muted" style={{ fontSize: '0.8rem', fontWeight: 500 }}>{t('home.stat_conversations')}</div>
+            </div>
+          </div>
+
+          <div className="d-flex align-items-center gap-2 px-3 py-2" style={{ 
+            background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)',
+            borderRadius: '20px',
+            border: '1px solid rgba(115, 107, 146, 0.15)',
+            transition: 'all 0.25s ease',
+            boxShadow: '0 2px 8px rgba(115, 107, 146, 0.08)',
+            minWidth: '140px'
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(115, 107, 146, 0.12) 0%, rgba(155, 143, 184, 0.15) 100%)';
+            e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.25)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(115, 107, 146, 0.15)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)';
+            e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.15)';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(115, 107, 146, 0.08)';
+          }}>
+            <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>✨</span>
+            <div>
+              <div className="fw-bold" style={{ color: '#736B92', fontSize: '1.25rem', lineHeight: 1.2 }}>10K+</div>
+              <div className="text-muted" style={{ fontSize: '0.8rem', fontWeight: 500 }}>{t('home.stat_characters')}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Recommended for You */}
+      {Array.isArray(recommended) && recommended.length > 0 && (
+        <HorizontalCardSection
+          title={t('home.recommended_for_you')}
+          moreLink="/browse/characters/recommended"
+          contents={recommended.map(c => ({ ...c, renderCard: () => <NameCard type="character" entity={c} /> }))}
+          scrollState={recommendedScroll}
+          scrollId="recommended-scroll"
+          navigate={navigate}
+          itemWidth="auto"
+          itemHeight="auto"
+          itemGap={"0.75rem"}
+        />
+      )}
 
       {/* Popular Characters */}
       <HorizontalCardSection
         title={t('home.popular_characters')}
         subtitle={t('home.popular_characters_hint')}
-        moreLink="/browse/popular"
+        moreLink="/browse/characters/popular"
         contents={Array.isArray(popular) ? popular.map(c => ({ ...c, renderCard: () => <NameCard type="character" entity={c} /> })) : popular}
         scrollState={popularScroll}
         scrollId="popular-scroll"
@@ -221,7 +337,7 @@ function HomePage() {
       <HorizontalCardSection
         title={t('home.popular_scenes')}
         subtitle={t('home.popular_scenes_hint')}
-        moreLink="/browse/scenes"
+        moreLink="/browse/scenes/popular"
         contents={Array.isArray(popularScenes) ? popularScenes.map(scene => ({ ...scene, renderCard: () => <SceneCard type="scene" entity={scene} /> })) : popularScenes}
         scrollState={sceneScroll}
         scrollId="scene-scroll"
@@ -235,7 +351,7 @@ function HomePage() {
       <HorizontalCardSection
         title={t('home.popular_personas')}
         subtitle={t('home.popular_personas_hint')}
-        moreLink="/browse/personas"
+        moreLink="/browse/personas/popular"
         contents={Array.isArray(popularPersonas) ? popularPersonas.map(persona => ({ ...persona, renderCard: () => <EntityCard type="persona" entity={persona} /> })) : popularPersonas}
         scrollState={personaScroll}
         scrollId="persona-scroll"
@@ -245,23 +361,10 @@ function HomePage() {
       {/* Recently Uploaded */}
       <HorizontalCardSection
         title={t('home.recently_uploaded')}
-        moreLink="/browse/recent"
+        moreLink="/browse/characters/recent"
         contents={Array.isArray(recent) ? recent.map(c => ({ ...c, renderCard: () => <NameCard type="character" entity={c} /> })) : recent}
         scrollState={recentScroll}
         scrollId="recent-scroll"
-        navigate={navigate}
-        itemWidth="auto"
-        itemHeight="auto"
-        itemGap={"0.75rem"}
-      />
-
-      {/* Recommended for You */}
-      <HorizontalCardSection
-        title={t('home.recommended_for_you')}
-        moreLink="/browse/recommended"
-        contents={Array.isArray(recommended) ? recommended.map(c => ({ ...c, renderCard: () => <NameCard type="character" entity={c} /> })) : recommended}
-        scrollState={recommendedScroll}
-        scrollId="recommended-scroll"
         navigate={navigate}
         itemWidth="auto"
         itemHeight="auto"

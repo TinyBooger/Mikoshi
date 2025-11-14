@@ -164,8 +164,7 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
         <span className="d-flex align-items-center text-secondary" style={{ fontSize: isMobile ? '0.5625rem' : '0.625rem' }}> {/* 9px/10px */}
           <i className="bi bi-eye me-1"></i> {typeof views === 'number' ? views.toLocaleString() : 0} {t('entity_card.views')}
         </span>
-        {/* Only show likes for character/scene */}
-        {(type === 'character' || type === 'scene') && (
+        {(type === 'character' || type === 'scene' || type === 'persona') && (
           <span className="d-flex align-items-center text-secondary" style={{ fontSize: isMobile ? '0.5625rem' : '0.625rem' }}>
             <i className="bi bi-hand-thumbs-up me-1"></i> {typeof likes === 'number' ? likes.toLocaleString() : 0} {t('entity_card.likes')}
           </span>

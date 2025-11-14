@@ -13,14 +13,14 @@ export default function CharacterFormPage() {
   const { t } = useTranslation();
   const MAX_NAME_LENGTH = 50;
   const MAX_PERSONA_LENGTH = 1000;
-  const MAX_TAGLINE_LENGTH = 200;
+  const MAX_TAGLINE_LENGTH = 100;
   // Get id param from route
   const params = useParams();
   const id = params.id;
   const mode = id ? 'edit' : 'create';
   // Log the current mode for debugging
   console.log("CharacterFormPage mode:", mode, id ? `(id: ${id})` : '');
-  const MAX_GREETING_LENGTH = 500;
+  const MAX_GREETING_LENGTH = 200;
   const MAX_SAMPLE_LENGTH = 1000;
   const MAX_TAGS = 20;
   // Special prompt stored when a character uses an improvising greeting
@@ -97,6 +97,10 @@ export default function CharacterFormPage() {
     }
     if (!charData.name.trim() || !charData.persona.trim()) {
       toast.show(t('character_form.name_required'), { type: 'error' });
+      return;
+    }
+    if (!charData.tags || charData.tags.length === 0) {
+      toast.show(t('character_form.tags_required'), { type: 'error' });
       return;
     }
     const formData = new FormData();
@@ -202,10 +206,11 @@ export default function CharacterFormPage() {
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
               {t('character_form.persona')}
               <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('character_form.required_marker')}</span>
+              <small className="text-muted" style={{ marginLeft: 8 }}>{t('character_form.notes.persona')}</small>
             </label>
             <textarea
               className="form-control"
-              rows="3"
+              rows={Math.max(5, Math.min(20, Math.ceil(charData.persona.length / 80)))}
               required
               value={charData.persona}
               maxLength={MAX_PERSONA_LENGTH}
@@ -231,7 +236,10 @@ export default function CharacterFormPage() {
 
           {/* Tagline */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.tagline')}</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              {t('character_form.tagline')}
+              <small className="text-muted" style={{ marginLeft: 8 }}>{t('character_form.notes.tagline')}</small>
+            </label>
             <input
               className="form-control"
               value={charData.tagline}
@@ -257,7 +265,10 @@ export default function CharacterFormPage() {
 
           {/* Greeting */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.greeting')}</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              {t('character_form.greeting')}
+              <small className="text-muted" style={{ marginLeft: 8 }}>{t('character_form.notes.greeting')}</small>
+            </label>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <div style={{ flex: 1 }}>
                 <input
@@ -297,7 +308,11 @@ export default function CharacterFormPage() {
 
           {/* Tags */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.tags')}</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              {t('character_form.tags')}
+              <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('character_form.required_marker')}</span>
+              <small className="text-muted" style={{ marginLeft: 8 }}>{t('character_form.notes.tags')}</small>
+            </label>
             <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} placeholder={t('character_form.placeholders.tags')} />
             <small className="text-muted" style={{ top: 0, right: 0 }}>
               {charData.tags.length}/{MAX_TAGS} tags
@@ -309,7 +324,7 @@ export default function CharacterFormPage() {
             <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.sample_dialogue')}</label>
             <textarea
               className="form-control"
-              rows="3"
+              rows={Math.max(5, Math.min(20, Math.ceil(charData.sample.length / 80)))}
               value={charData.sample}
               maxLength={MAX_SAMPLE_LENGTH}
               placeholder={t('character_form.placeholders.sample_dialogue')}

@@ -151,9 +151,26 @@ def get_recommended_characters(
     ):
     if not current_user.liked_tags:
         return []  # no recommendations
+    
+    # Collect character IDs to exclude (already viewed or chatted with)
+    excluded_ids = set()
+    
+    # Add character IDs from chat_history
+    if current_user.chat_history:
+        for chat in current_user.chat_history:
+            if "character_id" in chat:
+                excluded_ids.add(chat["character_id"])
+    
     user_tags = current_user.liked_tags or []
     tags_array = array(user_tags, type_=TEXT)
-    chars = db.query(Character).filter(Character.tags.overlap(tags_array)).order_by(Character.likes.desc()).limit(12).all()
+    
+    # Query characters matching user tags, excluding already viewed ones
+    query = db.query(Character).filter(Character.tags.overlap(tags_array))
+    
+    if excluded_ids:
+        query = query.filter(~Character.id.in_(excluded_ids))
+    
+    chars = query.order_by(Character.likes.desc()).limit(12).all()
     return chars
 
 @router.get("/api/characters/by-tag/{tag_name}", response_model=List[CharacterOut])

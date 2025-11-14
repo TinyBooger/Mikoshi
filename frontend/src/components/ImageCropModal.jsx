@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Cropper from 'react-easy-crop';
-import { getCroppedImg } from '../utils/imageUtils';
+import { getCroppedImg, fileNameWithExt } from '../utils/imageUtils';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +38,11 @@ export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, 
     timer = setTimeout(async () => {
       try {
         setPreviewLoading(true);
-        const { dataUrl } = await getCroppedImg(imageSrc, croppedAreaPixels, 0);
+        const { dataUrl } = await getCroppedImg(imageSrc, croppedAreaPixels, 0, {
+          maxDimension: size, // preview at target display size
+          format: 'auto',
+          quality: 0.8,
+        });
         if (!mounted) return;
         setPreviewDataUrl(dataUrl);
       } catch (err) {
@@ -58,10 +62,15 @@ export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, 
   const handleSave = useCallback(async () => {
     if (!imageSrc || !croppedAreaPixels) return;
     try {
-      const { blob, dataUrl } = await getCroppedImg(imageSrc, croppedAreaPixels, 0);
-      // Convert blob to File
-      const fileName = srcFile && srcFile.name ? srcFile.name : 'avatar.png';
-      const file = new File([blob], fileName, { type: blob.type });
+      const { blob, dataUrl, mime } = await getCroppedImg(imageSrc, croppedAreaPixels, 0, {
+        maxDimension: mode === 'square' ? 768 : 1024,
+        format: 'auto',
+        quality: 0.85,
+        maxBytes: 800 * 1024, // aim under ~800KB
+      });
+      // Convert blob to File with correct extension
+      const desiredName = fileNameWithExt(srcFile?.name, mime);
+      const file = new File([blob], desiredName, { type: mime });
       onSave && onSave({ file, dataUrl });
     } catch (err) {
       console.error('Crop error', err);

@@ -12,8 +12,8 @@ import { useToast } from '../components/ToastProvider';
 export default function SceneFormPage() {
   const { t } = useTranslation();
   const MAX_NAME_LENGTH = 50;
-  const MAX_DESC_LENGTH = 500;
-  const MAX_INTRO_LENGTH = 1000;
+  const MAX_DESC_LENGTH = 1000;
+  const MAX_INTRO_LENGTH = 100;
   const MAX_TAGS = 20;
 
   const params = useParams();
@@ -84,6 +84,10 @@ export default function SceneFormPage() {
     }
     if (!sceneData.name.trim() || !sceneData.description.trim()) {
       toast.show(t('scene_form.name_required'), { type: 'error' });
+      return;
+    }
+    if (!sceneData.tags || sceneData.tags.length === 0) {
+      toast.show(t('scene_form.tags_required'), { type: 'error' });
       return;
     }
     const formData = new FormData();
@@ -185,10 +189,11 @@ export default function SceneFormPage() {
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
               {t('scene_form.description')}
               <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('scene_form.required_marker') || t('character_form.required_marker')}</span>
+              <small className="text-muted" style={{ marginLeft: 8 }}>{t('scene_form.notes.description')}</small>
             </label>
             <textarea
               className="form-control"
-              rows="2"
+              rows={Math.max(5, Math.min(20, Math.ceil(sceneData.description.length / 80)))}
               value={sceneData.description}
               maxLength={MAX_DESC_LENGTH}
               placeholder={t('scene_form.placeholders.description')}
@@ -213,10 +218,13 @@ export default function SceneFormPage() {
 
           {/* Intro */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('scene_form.intro')}</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              {t('scene_form.intro')}
+              <small className="text-muted" style={{ marginLeft: 8 }}>{t('scene_form.notes.intro')}</small>
+            </label>
             <textarea
               className="form-control"
-              rows="3"
+              rows={Math.max(1, Math.min(3, Math.ceil(sceneData.intro.length / 80)))}
               value={sceneData.intro}
               maxLength={MAX_INTRO_LENGTH}
               placeholder={t('scene_form.placeholders.intro')}
@@ -241,7 +249,11 @@ export default function SceneFormPage() {
 
           {/* Tags */}
           <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('scene_form.tags')}</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              {t('scene_form.tags')}
+              <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('scene_form.required_marker') || t('character_form.required_marker')}</span>
+              <small className="text-muted" style={{ marginLeft: 8 }}>{t('scene_form.notes.tags')}</small>
+            </label>
             <TagsInput
               tags={sceneData.tags}
               setTags={tags => handleChange('tags', tags)}
@@ -283,13 +295,58 @@ export default function SceneFormPage() {
                 </div>
               </div>
             </div>
-            <div className="d-flex gap-3 mt-4">
-              <button type="submit" className="btn btn-dark px-4 fw-bold">
-                {mode === 'edit' ? t('scene_form.save') : t('scene_form.create')}
+            <div className="d-flex gap-3 mt-4 justify-content-end">
+              <button
+                type="submit"
+                className="fw-bold rounded-pill"
+                style={{
+                  background: '#18191a',
+                  color: '#fff',
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  fontSize: '1.08rem',
+                  padding: '0.5rem 2.2rem',
+                  letterSpacing: '0.2px',
+                  transition: 'background 0.18s, color 0.18s',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = '#232323';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = '#18191a';
+                }}
+              >
+                <i className="bi bi-save me-2"></i>{mode === 'edit' ? t('scene_form.save') : t('scene_form.create')}
               </button>
               {mode === 'edit' && (
-                <button type="button" className="btn btn-outline-danger px-4 fw-bold" onClick={handleDelete}>
-                  {t('scene_form.delete')}
+                <button
+                  type="button"
+                  className="fw-bold rounded-pill"
+                  style={{
+                    background: '#fff',
+                    color: '#d32f2f',
+                    border: '1.5px solid #d32f2f',
+                    boxShadow: 'none',
+                    fontSize: '1.08rem',
+                    padding: '0.5rem 2.2rem',
+                    letterSpacing: '0.2px',
+                    transition: 'background 0.18s, color 0.18s, border 0.18s',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = '#d32f2f';
+                    e.currentTarget.style.color = '#fff';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = '#fff';
+                    e.currentTarget.style.color = '#d32f2f';
+                  }}
+                  onClick={handleDelete}
+                >
+                  <i className="bi bi-trash me-2"></i>{t('scene_form.delete')}
                 </button>
               )}
             </div>
