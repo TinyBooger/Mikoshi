@@ -6,6 +6,7 @@ import EntityCard from '../components/EntityCard';
 import CardSection from '../components/CardSection';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
+import PaginationBar from '../components/PaginationBar';
 
 
 function BrowsePage() {
@@ -32,6 +33,20 @@ function BrowsePage() {
   const [activeSubTab, setActiveSubTab] = useState('recommended');
   const [entities, setEntities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+
+  // Helper: update `page` in the URL query string
+  const updatePageInUrl = (nextPage, replace = false) => {
+    const searchParams = new URLSearchParams(location.search);
+    if (!nextPage || nextPage <= 1) {
+      searchParams.delete('page');
+    } else {
+      searchParams.set('page', String(nextPage));
+    }
+    navigate({ pathname: location.pathname, search: searchParams.toString() }, { replace });
+  };
 
   // Parse tab from URL
   useEffect(() => {
@@ -45,6 +60,20 @@ function BrowsePage() {
     setActiveMainTab(main);
     setActiveSubTab(sub);
   }, [location.pathname]);
+
+  // Reset page when tabs change
+  useEffect(() => {
+    setPage(1);
+    updatePageInUrl(1, true);
+  }, [activeMainTab, activeSubTab]);
+
+  // Initialize page from URL on load/search change
+  useEffect(() => {
+    const sp = new URLSearchParams(location.search);
+    const p = parseInt(sp.get('page') || '1', 10);
+    const normalized = Number.isNaN(p) || p < 1 ? 1 : p;
+    setPage(normalized);
+  }, [location.search]);
 
   // Navigation
   const handleMainTab = (tab) => {
@@ -69,17 +98,32 @@ function BrowsePage() {
     } else if (activeMainTab === 'personas') {
       url = `${window.API_BASE_URL}/api/personas/${activeSubTab}`;
     }
-  fetch(url, { headers: { 'Authorization': sessionToken } })
+    const params = new URLSearchParams({ short: 'false', page: String(page) });
+    const fetchUrl = `${url}?${params.toString()}`;
+    fetch(fetchUrl, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
       .then(data => {
-        setEntities(Array.isArray(data) ? data : []);
+        // Expect wrapper: { items, total, page, page_size, short }
+        if (data && Array.isArray(data.items)) {
+          setEntities(data.items);
+          setTotal(data.total || 0);
+          setPageSize(data.page_size || 20);
+        } else if (Array.isArray(data)) { // fallback legacy list
+          setEntities(data);
+          setTotal(data.length);
+          setPageSize(20);
+        } else {
+          setEntities([]);
+          setTotal(0);
+        }
         setIsLoading(false);
       })
       .catch(() => {
         setEntities([]);
+        setTotal(0);
         setIsLoading(false);
       });
-  }, [activeMainTab, activeSubTab, sessionToken, navigate]);
+  }, [activeMainTab, activeSubTab, sessionToken, navigate, page]);
 
   // Title logic
   const getSectionTitle = () => {
@@ -210,13 +254,26 @@ function BrowsePage() {
             )}
           </div>
         ) : (
-          entities.map(entity => (
-            <div key={entity.id} style={{ display: 'flex', justifyContent: 'center', padding: '0 0' }}>
-              <EntityCard type={activeMainTab.slice(0, -1)} entity={entity} />
-            </div>
-          ))
+          <>
+            {entities.map(entity => (
+              <div key={entity.id} style={{ display: 'flex', justifyContent: 'center', padding: '0 0' }}>
+                <EntityCard type={activeMainTab.slice(0, -1)} entity={entity} />
+              </div>
+            ))}
+          </>
         )}
       </CardSection>
+      {/* Bottom Pagination */}
+      <PaginationBar
+        page={page}
+        total={total}
+        pageSize={pageSize}
+        loading={isLoading}
+        onPageChange={(next) => {
+          setPage(next);
+          updatePageInUrl(next);
+        }}
+      />
     </PageWrapper>
   );
 }

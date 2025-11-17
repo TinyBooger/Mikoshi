@@ -10,7 +10,7 @@ from models import Character, User, Tag, UserLikedCharacter
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
 from utils.validators import validate_character_fields
-from schemas import CharacterOut
+from schemas import CharacterOut, CharacterListOut
 
 router = APIRouter()
 
@@ -139,18 +139,31 @@ async def delete_character(
     db.commit()
     return {"message": "Character deleted successfully"}
 
-@router.get("/api/characters/popular", response_model=List[CharacterOut])
-def get_popular_characters(db: Session = Depends(get_db)):
-    chars = db.query(Character).order_by(Character.views.desc()).limit(10).all()
-    return chars
+@router.get("/api/characters/popular", response_model=CharacterListOut)
+def get_popular_characters(
+    short: bool = Query(True),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    base_query = db.query(Character).order_by(Character.views.desc())
+    total = base_query.count()
+    if short:
+        items = base_query.limit(10).all()
+        return CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
-@router.get("/api/characters/recommended", response_model=List[CharacterOut])
+@router.get("/api/characters/recommended", response_model=CharacterListOut)
 def get_recommended_characters(
+    short: bool = Query(True),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
     ):
     if not current_user.liked_tags:
-        return []  # no recommendations
+        return CharacterListOut(items=[], total=0, page=1, page_size=0, short=short)
     
     # Collect character IDs to exclude (already viewed or chatted with)
     excluded_ids = set()
@@ -170,8 +183,13 @@ def get_recommended_characters(
     if excluded_ids:
         query = query.filter(~Character.id.in_(excluded_ids))
     
-    chars = query.order_by(Character.likes.desc()).limit(12).all()
-    return chars
+    query = query.order_by(Character.likes.desc())
+    total = query.count()
+    if short:
+        items = query.limit(10).all()
+        return CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
+    return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 @router.get("/api/characters/by-tag/{tag_name}", response_model=List[CharacterOut])
 def get_characters_by_tag(
@@ -186,18 +204,30 @@ def get_characters_by_tag(
     ).limit(limit).all()
     return chars
 
-@router.get("/api/characters/recent", response_model=List[CharacterOut])
-def get_recent_characters(db: Session = Depends(get_db)):
-    chars = db.query(Character).order_by(Character.created_time.desc()).limit(10).all()
-    return chars
+@router.get("/api/characters/recent", response_model=CharacterListOut)
+def get_recent_characters(
+    short: bool = Query(True),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    base_query = db.query(Character).order_by(Character.created_time.desc())
+    total = base_query.count()
+    if short:
+        items = base_query.limit(10).all()
+        return CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 # ----------------------------------------------------------------
 
 from typing import List
 
-@router.get("/api/characters-created", response_model=List[CharacterOut])
+@router.get("/api/characters-created", response_model=CharacterListOut)
 def get_user_created_characters(
     userId: str = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -206,24 +236,33 @@ def get_user_created_characters(
     Otherwise, fetch current user's created characters.
     """
     if userId:
-        characters = db.query(Character).filter(Character.creator_id == userId).all()
+        query = db.query(Character).filter(Character.creator_id == userId)
     else:
         if not current_user:
-            return []
-        characters = db.query(Character).filter(Character.creator_id == current_user.id).all()
-    return characters
+            return CharacterListOut(items=[], total=0, page=1, page_size=0, short=False)
+        query = db.query(Character).filter(Character.creator_id == current_user.id)
+    
+    total = query.count()
+    characters = query.offset((page - 1) * page_size).limit(page_size).all()
+    return CharacterListOut(items=characters, total=total, page=page, page_size=page_size, short=False)
 
-@router.get("/api/characters-liked", response_model=List[CharacterOut])
-def get_user_liked_characters(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.get("/api/characters-liked", response_model=CharacterListOut)
+def get_user_liked_characters(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     if not current_user:
-        return []
+        return CharacterListOut(items=[], total=0, page=1, page_size=0, short=False)
 
-    liked = db.query(UserLikedCharacter.character_id).filter_by(user_id=current_user.id).all()
-    liked_ids = [row.character_id for row in liked]
+    liked = db.query(UserLikedCharacter.character_id).filter_by(user_id=current_user.id)
+    total = liked.count()
+    liked_ids = [row.character_id for row in liked.offset((page - 1) * page_size).limit(page_size).all()]
     if not liked_ids:
-        return []
+        return CharacterListOut(items=[], total=total, page=page, page_size=page_size, short=False)
     characters = db.query(Character).filter(Character.id.in_(liked_ids)).all()
-    return characters
+    return CharacterListOut(items=characters, total=total, page=page, page_size=page_size, short=False)
 
 @router.get("/api/user/{user_id}/characters", response_model=List[CharacterOut])
 def get_user_characters(user_id: str, db: Session = Depends(get_db)):

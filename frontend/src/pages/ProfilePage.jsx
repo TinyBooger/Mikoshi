@@ -11,6 +11,7 @@ import { useToast } from '../components/ToastProvider';
 import EntityCard from '../components/EntityCard';
 import ButtonRounded from '../components/ButtonRounded';
 import CardSection from '../components/CardSection';
+import PaginationBar from '../components/PaginationBar';
 
 export default function ProfilePage() {
   const { t } = useTranslation();
@@ -43,6 +44,22 @@ export default function ProfilePage() {
   const [scenes, setScenes] = useState([]);
   const [likedScenes, setLikedScenes] = useState([]);
 
+  // Pagination state for each entity type
+  const [createdCharactersPage, setCreatedCharactersPage] = useState(1);
+  const [createdCharactersTotal, setCreatedCharactersTotal] = useState(0);
+  const [likedCharactersPage, setLikedCharactersPage] = useState(1);
+  const [likedCharactersTotal, setLikedCharactersTotal] = useState(0);
+  const [scenesPage, setScenesPage] = useState(1);
+  const [scenesTotal, setScenesTotal] = useState(0);
+  const [likedScenesPage, setLikedScenesPage] = useState(1);
+  const [likedScenesTotal, setLikedScenesTotal] = useState(0);
+  const [personasPage, setPersonasPage] = useState(1);
+  const [personasTotal, setPersonasTotal] = useState(0);
+  const [likedPersonasPage, setLikedPersonasPage] = useState(1);
+  const [likedPersonasTotal, setLikedPersonasTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const pageSize = 20;
+
 
   // Fetch created and liked entities for profile
   useEffect(() => {
@@ -50,6 +67,7 @@ export default function ProfilePage() {
       navigate('/');
       return;
     }
+    setLoading(true);
     // If public profile, fetch user data for that user
     if (profileUserId && (!userData || String(userData.id) !== String(profileUserId))) {
       fetch(`${window.API_BASE_URL}/api/users/${profileUserId}`)
@@ -57,88 +75,148 @@ export default function ProfilePage() {
         .then(setPublicUserData);
     }
 
+    const userIdParam = profileUserId ? `?userId=${profileUserId}` : '';
+
     // Created Characters
-    fetch(`${window.API_BASE_URL}/api/characters-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
+    fetch(`${window.API_BASE_URL}/api/characters-created${userIdParam}${userIdParam ? '&' : '?'}page=${createdCharactersPage}&page_size=${pageSize}`, {
       headers: { 'Authorization': sessionToken }
     })
-      .then(res => res.ok ? res.json() : [])
-      .then(setCreatedCharacters);
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.items) {
+          setCreatedCharacters(data.items);
+          setCreatedCharactersTotal(data.total || 0);
+        } else if (Array.isArray(data)) {
+          setCreatedCharacters(data);
+          setCreatedCharactersTotal(data.length);
+        }
+      });
 
     // Created Scenes
-    fetch(`${window.API_BASE_URL}/api/scenes-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
+    fetch(`${window.API_BASE_URL}/api/scenes-created${userIdParam}${userIdParam ? '&' : '?'}page=${scenesPage}&page_size=${pageSize}`, {
       headers: { 'Authorization': sessionToken }
     })
-      .then(res => res.ok ? res.json() : [])
-      .then(setScenes);
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.items) {
+          setScenes(data.items);
+          setScenesTotal(data.total || 0);
+        } else if (Array.isArray(data)) {
+          setScenes(data);
+          setScenesTotal(data.length);
+        }
+      });
 
-    // Created Personas (only for own profile)
-    fetch(`${window.API_BASE_URL}/api/personas-created${profileUserId ? `?userId=${profileUserId}` : ''}`, {
+    // Created Personas
+    fetch(`${window.API_BASE_URL}/api/personas-created${userIdParam}${userIdParam ? '&' : '?'}page=${personasPage}&page_size=${pageSize}`, {
       headers: { 'Authorization': sessionToken }
     })
-      .then(res => res.ok ? res.json() : [])
-      .then(setPersonas)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.items) {
+          setPersonas(data.items);
+          setPersonasTotal(data.total || 0);
+        } else if (Array.isArray(data)) {
+          setPersonas(data);
+          setPersonasTotal(data.length);
+        }
+      })
       .catch(() => setPersonas([]));
 
     // Liked Characters (only for own profile)
     if (isOwnProfile) {
-      fetch(`${window.API_BASE_URL}/api/characters-liked`, {
+      fetch(`${window.API_BASE_URL}/api/characters-liked?page=${likedCharactersPage}&page_size=${pageSize}`, {
         headers: { 'Authorization': sessionToken }
       })
-        .then(res => res.ok ? res.json() : [])
-        .then(setLikedCharacters);
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.items) {
+            setLikedCharacters(data.items);
+            setLikedCharactersTotal(data.total || 0);
+          } else if (Array.isArray(data)) {
+            setLikedCharacters(data);
+            setLikedCharactersTotal(data.length);
+          }
+        });
     } else {
       setLikedCharacters([]);
     }
 
     // Liked Scenes (only for own profile)
     if (isOwnProfile) {
-      fetch(`${window.API_BASE_URL}/api/scenes-liked`, {
+      fetch(`${window.API_BASE_URL}/api/scenes-liked?page=${likedScenesPage}&page_size=${pageSize}`, {
         headers: { 'Authorization': sessionToken }
       })
-        .then(res => res.ok ? res.json() : [])
-        .then(setLikedScenes);
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.items) {
+            setLikedScenes(data.items);
+            setLikedScenesTotal(data.total || 0);
+          } else if (Array.isArray(data)) {
+            setLikedScenes(data);
+            setLikedScenesTotal(data.length);
+          }
+        });
     } else {
       setLikedScenes([]);
     }
 
     // Liked Personas (only for own profile)
     if (isOwnProfile) {
-      fetch(`${window.API_BASE_URL}/api/personas-liked`, {
+      fetch(`${window.API_BASE_URL}/api/personas-liked?page=${likedPersonasPage}&page_size=${pageSize}`, {
         headers: { 'Authorization': sessionToken }
       })
-        .then(res => res.ok ? res.json() : [])
-        .then(setLikedPersonas);
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.items) {
+            setLikedPersonas(data.items);
+            setLikedPersonasTotal(data.total || 0);
+          } else if (Array.isArray(data)) {
+            setLikedPersonas(data);
+            setLikedPersonasTotal(data.length);
+          }
+        });
     } else {
       setLikedPersonas([]);
     }
-  }, [navigate, sessionToken, userData, profileUserId, isOwnProfile]);
+    setLoading(false);
+  }, [navigate, sessionToken, userData, profileUserId, isOwnProfile, createdCharactersPage, likedCharactersPage, scenesPage, likedScenesPage, personasPage, likedPersonasPage]);
 
   // Unified content renderer for all tabs and subtabs
   const renderTabContent = () => {
     // Helper for CardSection grid
-    const renderEntityCardSection = (entities, type, showEdit, editUrlPrefix, title, emptyMsg) => (
-      <CardSection title={title}>
-        {entities && entities.length === 0 ? (
-          <div className="alert alert-info" style={{ background: '#f5f6fa', color: '#232323', border: 'none', gridColumn: '1/-1' }}>
-            {emptyMsg}
-          </div>
-        ) : (
-          entities && entities.map(entity => (
-            <div key={entity.id} style={{ margin: 0, padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-              <EntityCard type={type} entity={entity} />
-              {showEdit && (
-                <ButtonRounded
-                  title={`Edit ${type.charAt(0).toUpperCase() + type.slice(1)}`}
-                  onClick={() => navigate(`/${editUrlPrefix}/edit/${entity.id}`)}
-                  style={{ marginTop: 8, width: 140 }}
-                >
-                  <i className="bi bi-pencil-square"></i> {t('profile.edit')}
-                </ButtonRounded>
-              )}
+    const renderEntityCardSection = (entities, type, showEdit, editUrlPrefix, title, emptyMsg, page, total, onPageChange) => (
+      <>
+        <CardSection title={title}>
+          {entities && entities.length === 0 ? (
+            <div className="alert alert-info" style={{ background: '#f5f6fa', color: '#232323', border: 'none', gridColumn: '1/-1' }}>
+              {emptyMsg}
             </div>
-          ))
-        )}
-      </CardSection>
+          ) : (
+            entities && entities.map(entity => (
+              <div key={entity.id} style={{ margin: 0, padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+                <EntityCard type={type} entity={entity} />
+                {showEdit && (
+                  <ButtonRounded
+                    title={`Edit ${type.charAt(0).toUpperCase() + type.slice(1)}`}
+                    onClick={() => navigate(`/${editUrlPrefix}/edit/${entity.id}`)}
+                    style={{ marginTop: 8, width: 140 }}
+                  >
+                    <i className="bi bi-pencil-square"></i> {t('profile.edit')}
+                  </ButtonRounded>
+                )}
+              </div>
+            ))
+          )}
+        </CardSection>
+        <PaginationBar
+          page={page}
+          total={total}
+          pageSize={pageSize}
+          loading={loading}
+          onPageChange={onPageChange}
+        />
+      </>
     );
 
     // Subtab logic
@@ -148,6 +226,9 @@ export default function ProfilePage() {
     let editUrlPrefix = '';
     let title = '';
     let emptyMsg = '';
+    let page = 1;
+    let total = 0;
+    let onPageChange = () => {};
 
     if (activeTab === TAB_TYPES.CREATED) {
       if (activeSubtab === SUBTAB_TYPES.CHARACTERS) {
@@ -157,6 +238,9 @@ export default function ProfilePage() {
         editUrlPrefix = 'character';
         title = t('profile.created_characters');
         emptyMsg = t('profile.no_characters_created');
+        page = createdCharactersPage;
+        total = createdCharactersTotal;
+        onPageChange = setCreatedCharactersPage;
       } else if (activeSubtab === SUBTAB_TYPES.SCENES) {
         entities = scenes;
         type = 'scene';
@@ -164,6 +248,9 @@ export default function ProfilePage() {
         editUrlPrefix = 'scene';
         title = t('profile.created_scenes');
         emptyMsg = t('profile.no_scenes_created');
+        page = scenesPage;
+        total = scenesTotal;
+        onPageChange = setScenesPage;
       } else if (activeSubtab === SUBTAB_TYPES.PERSONAS) {
         // Personas are public (same behavior as characters and scenes)
         entities = personas;
@@ -172,6 +259,9 @@ export default function ProfilePage() {
         editUrlPrefix = 'persona';
         title = t('profile.created_personas');
         emptyMsg = t('profile.no_personas_created');
+        page = personasPage;
+        total = personasTotal;
+        onPageChange = setPersonasPage;
       }
     } else if (activeTab === TAB_TYPES.LIKED) {
       if (activeSubtab === SUBTAB_TYPES.CHARACTERS) {
@@ -181,6 +271,9 @@ export default function ProfilePage() {
         editUrlPrefix = 'character';
         title = t('profile.liked_characters');
         emptyMsg = t('profile.no_liked_characters');
+        page = likedCharactersPage;
+        total = likedCharactersTotal;
+        onPageChange = setLikedCharactersPage;
       } else if (activeSubtab === SUBTAB_TYPES.SCENES) {
         entities = likedScenes;
         type = 'scene';
@@ -188,6 +281,9 @@ export default function ProfilePage() {
         editUrlPrefix = 'scene';
         title = t('profile.liked_scenes');
         emptyMsg = t('profile.no_liked_scenes');
+        page = likedScenesPage;
+        total = likedScenesTotal;
+        onPageChange = setLikedScenesPage;
       } else if (activeSubtab === SUBTAB_TYPES.PERSONAS) {
         entities = likedPersonas;
         type = 'persona';
@@ -195,9 +291,12 @@ export default function ProfilePage() {
         editUrlPrefix = 'persona';
         title = t('profile.liked_personas');
         emptyMsg = t('profile.no_liked_personas');
+        page = likedPersonasPage;
+        total = likedPersonasTotal;
+        onPageChange = setLikedPersonasPage;
       }
     }
-    return renderEntityCardSection(entities, type, showEdit, editUrlPrefix, title, emptyMsg);
+    return renderEntityCardSection(entities, type, showEdit, editUrlPrefix, title, emptyMsg, page, total, onPageChange);
   };
   // Edit profile modal state
   const [showModal, setShowModal] = useState(false);

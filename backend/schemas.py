@@ -52,6 +52,16 @@ class CharacterOut(BaseModel):
     class Config:
         from_attributes = True
 
+class CharacterListOut(BaseModel):
+    items: List[CharacterOut]
+    total: int
+    page: int
+    page_size: int
+    short: bool
+
+    class Config:
+        from_attributes = True
+
 # CharacterOut model
 class UserOut(BaseModel):
     id: str
@@ -64,6 +74,25 @@ class UserOut(BaseModel):
     views: int = 0
     likes: int = 0
     is_admin: bool = False
+class SceneListOut(BaseModel):
+    items: List[SceneOut]
+    total: int
+    page: int
+    page_size: int
+    short: bool
+
+    class Config:
+        from_attributes = True
+
+class PersonaListOut(BaseModel):
+    items: List[PersonaOut]
+    total: int
+    page: int
+    page_size: int
+    short: bool
+
+    class Config:
+        from_attributes = True
 
     class Config:
         from_attributes = True

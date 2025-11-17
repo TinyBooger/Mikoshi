@@ -8,28 +8,58 @@ from models import Persona, User, Tag, UserLikedPersona
 from utils.local_storage_utils import save_image
 from utils.session import get_current_user
 from datetime import datetime, UTC
-from schemas import PersonaOut
+from schemas import PersonaOut, PersonaListOut
 
 router = APIRouter()
 
 
 # Popular Personas
-@router.get("/api/personas/popular", response_model=List[PersonaOut])
-def get_popular_personas(db: Session = Depends(get_db)):
-    personas = db.query(Persona).order_by(Persona.likes.desc()).limit(12).all()
-    return personas
+@router.get("/api/personas/popular", response_model=PersonaListOut)
+def get_popular_personas(
+    short: bool = Query(True),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    base_query = db.query(Persona).order_by(Persona.likes.desc())
+    total = base_query.count()
+    if short:
+        items = base_query.limit(10).all()
+        return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 # Recent Personas
-@router.get("/api/personas/recent", response_model=List[PersonaOut])
-def get_recent_personas(db: Session = Depends(get_db)):
-    personas = db.query(Persona).order_by(Persona.created_time.desc()).limit(12).all()
-    return personas
+@router.get("/api/personas/recent", response_model=PersonaListOut)
+def get_recent_personas(
+    short: bool = Query(True),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    base_query = db.query(Persona).order_by(Persona.created_time.desc())
+    total = base_query.count()
+    if short:
+        items = base_query.limit(10).all()
+        return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 # Recommended Personas (simple: most liked, fallback to recent)
-@router.get("/api/personas/recommended", response_model=List[PersonaOut])
-def get_recommended_personas(db: Session = Depends(get_db)):
-    personas = db.query(Persona).order_by(Persona.likes.desc(), Persona.created_time.desc()).limit(12).all()
-    return personas
+@router.get("/api/personas/recommended", response_model=PersonaListOut)
+def get_recommended_personas(
+    short: bool = Query(True),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    base_query = db.query(Persona).order_by(Persona.likes.desc(), Persona.created_time.desc())
+    total = base_query.count()
+    if short:
+        items = base_query.limit(10).all()
+        return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 # ------------------- PERSONA CRUD ROUTES -------------------
 
@@ -129,35 +159,52 @@ def delete_persona(persona_id: int, db: Session = Depends(get_db), current_user:
 
 # ------------------- ADDITIONAL ROUTES -------------------
 # Get personas created by a specific user (for profile page)
-@router.get("/api/personas-created", response_model=List[PersonaOut])
-def get_personas_created(userId: str = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.get("/api/personas-created", response_model=PersonaListOut)
+def get_personas_created(
+    userId: str = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     If userId is provided, fetch that user's created personas (public).
     Otherwise, fetch current user's created personas.
     """
     if userId:
-        personas = db.query(Persona).filter(Persona.creator_id == userId).order_by(Persona.created_time.desc()).all()
+        query = db.query(Persona).filter(Persona.creator_id == userId).order_by(Persona.created_time.desc())
     else:
         if not current_user:
-            return []
-        personas = db.query(Persona).filter(Persona.creator_id == current_user.id).order_by(Persona.created_time.desc()).all()
-    return personas
+            return PersonaListOut(items=[], total=0, page=1, page_size=0, short=False)
+        query = db.query(Persona).filter(Persona.creator_id == current_user.id).order_by(Persona.created_time.desc())
+    
+    total = query.count()
+    personas = query.offset((page - 1) * page_size).limit(page_size).all()
+    return PersonaListOut(items=personas, total=total, page=page, page_size=page_size, short=False)
 
 # Get personas liked by a user
-@router.get("/api/personas-liked", response_model=List[PersonaOut])
-def get_personas_liked(userId: str = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.get("/api/personas-liked", response_model=PersonaListOut)
+def get_personas_liked(
+    userId: str = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     If userId is provided, fetch that user's liked personas.
     Otherwise, fetch current user's liked personas.
     """
     if userId:
-        liked_persona_ids = db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == userId).all()
+        liked_query = db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == userId)
     else:
         if not current_user:
-            return []
-        liked_persona_ids = db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id).all()
-    persona_ids = [pid for (pid,) in liked_persona_ids]
+            return PersonaListOut(items=[], total=0, page=1, page_size=0, short=False)
+        liked_query = db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id)
+    
+    total = liked_query.count()
+    persona_ids = [pid for (pid,) in liked_query.offset((page - 1) * page_size).limit(page_size).all()]
     if not persona_ids:
-        return []
+        return PersonaListOut(items=[], total=total, page=page, page_size=page_size, short=False)
     personas = db.query(Persona).filter(Persona.id.in_(persona_ids)).all()
-    return personas
+    return PersonaListOut(items=personas, total=total, page=page, page_size=page_size, short=False)

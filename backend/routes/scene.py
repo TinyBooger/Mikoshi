@@ -8,7 +8,7 @@ from models import Scene, User, UserLikedScene
 from utils.local_storage_utils import save_image
 from utils.session import get_current_user
 from datetime import datetime, UTC
-from schemas import SceneOut
+from schemas import SceneOut, SceneListOut
 from sqlalchemy.dialects.postgresql import array, TEXT
 
 
@@ -62,46 +62,83 @@ def get_scenes(search: str = None, db: Session = Depends(get_db)):
     return scenes
 
 # Get scenes created by a specific user (for profile page)
-@router.get("/api/scenes-created", response_model=List[SceneOut])
-def get_scenes_created(userId: str = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.get("/api/scenes-created", response_model=SceneListOut)
+def get_scenes_created(
+    userId: str = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     If userId is provided, fetch that user's created scenes (public).
     Otherwise, fetch current user's created scenes.
     """
     if userId:
-        scenes = db.query(Scene).filter(Scene.creator_id == userId).order_by(Scene.created_time.desc()).all()
+        query = db.query(Scene).filter(Scene.creator_id == userId).order_by(Scene.created_time.desc())
     else:
         if not current_user:
-            return []
-        scenes = db.query(Scene).filter(Scene.creator_id == current_user.id).order_by(Scene.created_time.desc()).all()
-    return [SceneOut.from_orm(s) for s in scenes]
+            return SceneListOut(items=[], total=0, page=1, page_size=0, short=False)
+        query = db.query(Scene).filter(Scene.creator_id == current_user.id).order_by(Scene.created_time.desc())
+    
+    total = query.count()
+    scenes = query.offset((page - 1) * page_size).limit(page_size).all()
+    return SceneListOut(items=[SceneOut.from_orm(s) for s in scenes], total=total, page=page, page_size=page_size, short=False)
 
 
 # Popular Scenes
-@router.get("/api/scenes/popular", response_model=List[SceneOut])
-def get_popular_scenes(db: Session = Depends(get_db)):
-    scenes = db.query(Scene).order_by(Scene.likes.desc()).limit(12).all()
-    return [SceneOut.from_orm(s) for s in scenes]
+@router.get("/api/scenes/popular", response_model=SceneListOut)
+def get_popular_scenes(
+    short: bool = Query(True),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    base_query = db.query(Scene).order_by(Scene.likes.desc())
+    total = base_query.count()
+    if short:
+        items = base_query.limit(10).all()
+        return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=1, page_size=len(items), short=True)
+    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=page, page_size=page_size, short=False)
 
 # Recent Scenes
-@router.get("/api/scenes/recent", response_model=List[SceneOut])
-def get_recent_scenes(db: Session = Depends(get_db)):
-    scenes = db.query(Scene).order_by(Scene.created_time.desc()).limit(12).all()
-    return [SceneOut.from_orm(s) for s in scenes]
+@router.get("/api/scenes/recent", response_model=SceneListOut)
+def get_recent_scenes(
+    short: bool = Query(True),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    base_query = db.query(Scene).order_by(Scene.created_time.desc())
+    total = base_query.count()
+    if short:
+        items = base_query.limit(10).all()
+        return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=1, page_size=len(items), short=True)
+    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=page, page_size=page_size, short=False)
 
 
 # Recommended Scenes (personalized by liked_tags)
-@router.get("/api/scenes/recommended", response_model=List[SceneOut])
+@router.get("/api/scenes/recommended", response_model=SceneListOut)
 def get_recommended_scenes(
+    short: bool = Query(True),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     if not current_user.liked_tags:
-        return []  # no recommendations
+        return SceneListOut(items=[], total=0, page=1, page_size=0, short=short)
     user_tags = current_user.liked_tags or []
     tags_array = array(user_tags, type_=TEXT)
-    scenes = db.query(Scene).filter(Scene.tags.overlap(tags_array)).order_by(Scene.likes.desc()).limit(12).all()
-    return [SceneOut.from_orm(s) for s in scenes]
+    base_query = db.query(Scene).filter(Scene.tags.overlap(tags_array)).order_by(Scene.likes.desc())
+    total = base_query.count()
+    if short:
+        items = base_query.limit(10).all()
+        return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=1, page_size=len(items), short=True)
+    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=page, page_size=page_size, short=False)
 
 # Read single Scene
 @router.get("/api/scenes/{scene_id}", response_model=SceneOut)
@@ -157,20 +194,28 @@ def delete_scene(scene_id: int, db: Session = Depends(get_db), current_user: Use
 # ----------------------- END SCENE CRUD ROUTES -------------------
 
 # Get scenes liked by a user
-@router.get("/api/scenes-liked", response_model=List[SceneOut])
-def get_scenes_liked(userId: str = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.get("/api/scenes-liked", response_model=SceneListOut)
+def get_scenes_liked(
+    userId: str = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     If userId is provided, fetch that user's liked scenes.
     Otherwise, fetch current user's liked scenes.
     """
     if userId:
-        liked_scene_ids = db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == userId).all()
+        liked_query = db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == userId)
     else:
         if not current_user:
-            return []
-        liked_scene_ids = db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == current_user.id).all()
-    scene_ids = [sid for (sid,) in liked_scene_ids]
+            return SceneListOut(items=[], total=0, page=1, page_size=0, short=False)
+        liked_query = db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == current_user.id)
+    
+    total = liked_query.count()
+    scene_ids = [sid for (sid,) in liked_query.offset((page - 1) * page_size).limit(page_size).all()]
     if not scene_ids:
-        return []
+        return SceneListOut(items=[], total=total, page=page, page_size=page_size, short=False)
     scenes = db.query(Scene).filter(Scene.id.in_(scene_ids)).all()
-    return scenes
+    return SceneListOut(items=scenes, total=total, page=page, page_size=page_size, short=False)

@@ -4,29 +4,54 @@ import defaultPicture from '../assets/images/default-picture.png';
 import { AuthContext } from '../components/AuthProvider';
 import EntityCard from '../components/EntityCard';
 import PageWrapper from '../components/PageWrapper';
+import PaginationBar from '../components/PaginationBar';
 import { useTranslation } from 'react-i18next';
 
 
 export default function SearchPage() {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState([]); // full fetched results (one page if backend paginates)
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [sortBy, setSortBy] = useState("relevance");
   const [activeTab, setActiveTab] = useState("characters");
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [total, setTotal] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const { sessionToken } = useContext(AuthContext);
+
+  // Initialize page from URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const p = parseInt(params.get('page') || '1', 10);
+    const normalized = Number.isNaN(p) || p < 1 ? 1 : p;
+    setPage(normalized);
+  }, [location.search]);
+
+  // Helper to update page in URL
+  const updatePageInUrl = (nextPage) => {
+    const params = new URLSearchParams(location.search);
+    if (!nextPage || nextPage <= 1) {
+      params.delete('page');
+    } else {
+      params.set('page', String(nextPage));
+    }
+    navigate({ pathname: location.pathname, search: params.toString() });
+  };
 
   // Fetch search results when URL or tab changes
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const q = params.get("q") || "";
     const sort = params.get("sort") || "relevance";
+    const p = parseInt(params.get('page') || '1', 10);
     setQuery(q);
     setSortBy(sort);
+    setPage(p);
     setLoading(true);
 
     async function fetchResults() {
@@ -34,12 +59,28 @@ export default function SearchPage() {
       if (activeTab === "scenes") endpoint = "/api/scenes/search";
       if (activeTab === "personas") endpoint = "/api/personas/search";
       try {
-        const res = await fetch(`${window.API_BASE_URL}${endpoint}?q=${encodeURIComponent(q)}&sort=${sort}`, {
+        const fetchParams = new URLSearchParams({
+          q: q,
+          sort: sort,
+          page: String(p),
+          page_size: String(pageSize)
+        });
+        const res = await fetch(`${window.API_BASE_URL}${endpoint}?${fetchParams.toString()}`, {
           headers: { 'Authorization': sessionToken }
         });
         if (!res.ok) throw new Error('Search failed');
         const data = await res.json();
-        setResults(data);
+        // Expect wrapper { items, total, page, page_size }
+        if (data && Array.isArray(data.items)) {
+          setResults(data.items);
+          setTotal(data.total || 0);
+        } else if (Array.isArray(data)) { // fallback
+          setResults(data);
+          setTotal(data.length);
+        } else {
+          setResults([]);
+          setTotal(0);
+        }
 
         // Update search term count (optional, only for characters tab)
         if (q.trim() && activeTab === "characters") {
@@ -55,6 +96,7 @@ export default function SearchPage() {
       } catch (error) {
         console.error("Search error:", error);
         setResults([]);
+        setTotal(0);
       } finally {
         setLoading(false);
       }
@@ -62,7 +104,7 @@ export default function SearchPage() {
     if (sessionToken) {
       fetchResults();
     }
-  }, [location.search, sessionToken, activeTab]);
+  }, [location.search, sessionToken, activeTab, pageSize]);
 
   // Fetch suggestions (debounced)
   useEffect(() => {
@@ -94,11 +136,18 @@ export default function SearchPage() {
 
 
   const handleSortChange = (newSort) => {
-    navigate(`/search?q=${encodeURIComponent(query)}&sort=${newSort}`);
+    const params = new URLSearchParams(location.search);
+    params.set('sort', newSort);
+    params.delete('page'); // reset to page 1
+    navigate({ pathname: location.pathname, search: params.toString() });
   };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
+    setPage(1);
+    const params = new URLSearchParams(location.search);
+    params.delete('page'); // reset to page 1
+    navigate({ pathname: location.pathname, search: params.toString() });
   };
 
   return (
@@ -322,7 +371,7 @@ export default function SearchPage() {
                 <span className="visually-hidden">{t('search.loading')}</span>
               </div>
             </div>
-          ) : results.length === 0 ? (
+          ) : total === 0 ? (
             <p className="text-center text-muted" style={{ fontSize: '0.92rem', padding: '2rem 0' }}>
               {t('search.no_results', { query })}
             </p>
@@ -355,6 +404,17 @@ export default function SearchPage() {
             </div>
           )}
         </div>
+        {/* Bottom Pagination */}
+        <PaginationBar
+          page={page}
+          total={total}
+          pageSize={pageSize}
+          loading={loading}
+          onPageChange={(next) => {
+            setPage(next);
+            updatePageInUrl(next);
+          }}
+        />
       </div>
     </PageWrapper>
   );
