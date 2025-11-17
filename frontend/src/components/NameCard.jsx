@@ -113,9 +113,9 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
   // Previously used an accent bar per type; removed per request.
 
   // Sizing
-  const CARD_WIDTH = isMobile ? '94vw' : '19rem';
-  // Avatar size fixed to 80 as requested
-  const AVATAR_SIZE = 80;
+  const CARD_WIDTH = isMobile ? '92vw' : '19rem';
+  // Avatar size responsive
+  const AVATAR_SIZE = isMobile ? 72 : 80;
 
   const handleClick = () => {
     if (disableClick) return;
@@ -134,13 +134,13 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
         display: 'flex',
         flexDirection: 'column',
         background: '#fff',
-        borderRadius: isMobile ? '0.9rem' : '1rem',
+        borderRadius: isMobile ? '0.75rem' : '1rem',
         border: '1px solid #e9ecef',
         boxShadow: hovered ? '0 4px 16px rgba(0,0,0,0.10)' : '0 2px 10px rgba(0,0,0,0.06)',
         cursor: disableClick ? 'default' : 'pointer',
         pointerEvents: disableClick ? 'none' : 'auto',
         transition: 'transform 160ms ease-out, box-shadow 160ms ease-out',
-        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+        transform: hovered && !isMobile ? 'translateY(-2px)' : 'translateY(0)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -149,7 +149,7 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
       onMouseLeave={disableClick ? undefined : () => setHovered(false)}
     >
       {/* Upper content (avatar + texts) */}
-  <div style={{ flex: '1 1 auto', display: 'flex', alignItems: 'flex-start', gap: isMobile ? '0.6rem' : '0.8rem', padding: isMobile ? '0.55rem 0.65rem 0.3rem' : '0.6rem 0.8rem 0.4rem' }}>
+      <div style={{ flex: '1 1 auto', display: 'flex', alignItems: 'flex-start', gap: isMobile ? '0.5rem' : '0.8rem', padding: isMobile ? '0.65rem 0.75rem 0.4rem' : '0.6rem 0.8rem 0.4rem' }}>
         {/* Avatar */}
         <div
           style={{
@@ -172,8 +172,8 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
 
         {/* Texts */}
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, justifyContent: 'flex-start' }}>
-          <div className="d-flex align-items-center" style={{ gap: '0.4rem', minWidth: 0, padding: isMobile ? '0.1rem 0 0.15rem' : '0.3rem 0 0.2rem' }}>
-            <h5 className="mb-0 text-truncate" style={{ fontSize: isMobile ? '0.88rem' : '0.96rem', lineHeight: 1.18, fontWeight: 400, padding: isMobile ? '0.05rem 0' : '0.08rem 0' }} title={name}>
+          <div className="d-flex align-items-center" style={{ gap: isMobile ? '0.35rem' : '0.4rem', minWidth: 0, padding: isMobile ? '0 0 0.2rem' : '0.3rem 0 0.2rem' }}>
+            <h5 className="mb-0 text-truncate" style={{ fontSize: isMobile ? '0.9rem' : '0.96rem', lineHeight: 1.2, fontWeight: 500, padding: 0 }} title={name}>
               {name}
             </h5>
             {primaryTag && (
@@ -184,9 +184,10 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
                   background: tagBg,
                   color: tagColor,
                   border: `1px solid ${tagBorder}`,
-                  fontSize: isMobile ? '0.48rem' : '0.54rem',
-                  padding: isMobile ? '0.12rem 0.24rem' : '0.16rem 0.28rem',
-                  letterSpacing: 0.15,
+                  fontSize: isMobile ? '0.5rem' : '0.54rem',
+                  padding: isMobile ? '0.15rem 0.3rem' : '0.16rem 0.28rem',
+                  letterSpacing: 0.2,
+                  fontWeight: 500,
                   maxWidth: '45%',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -201,13 +202,14 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
           <div
             className=""
             style={{
-              fontSize: isMobile ? '0.7rem' : '0.78rem',
-              opacity: 0.7,
+              fontSize: isMobile ? '0.72rem' : '0.78rem',
+              opacity: 0.75,
+              lineHeight: 1.4,
               display: '-webkit-box',
               WebkitLineClamp: 3,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
-              marginTop: 4,
+              marginTop: isMobile ? '0.25rem' : '0.3rem',
             }}
           >
             {description || <span style={{ opacity: 0.6 }}>{t('entity_card.no_description')}</span>}
@@ -216,20 +218,20 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
       </div>
 
       {/* Footer stats (moved to bottom) */}
-      <div style={{ padding: isMobile ? '0.35rem 0.65rem 0.5rem' : '0.45rem 0.8rem 0.65rem', borderTop: '1px solid #f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.9rem' }}>
-        <div className="d-flex align-items-center" style={{ gap: '0.9rem' }}>
-          <span style={{ fontSize: isMobile ? '0.64rem' : '0.72rem', color: '#555' }}>
-            <i className="bi bi-eye me-1" />
-            {typeof views === 'number' ? views.toLocaleString() : 0} {t('entity_card.views')}
+      <div style={{ padding: isMobile ? '0.5rem 0.75rem 0.55rem' : '0.45rem 0.8rem 0.65rem', borderTop: '1px solid #f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: isMobile ? '0.5rem' : '0.9rem' }}>
+        <div className="d-flex align-items-center" style={{ gap: isMobile ? '0.65rem' : '0.9rem' }}>
+          <span style={{ fontSize: isMobile ? '0.68rem' : '0.72rem', color: '#555', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <i className="bi bi-eye" />
+            {typeof views === 'number' ? views.toLocaleString() : 0}
           </span>
           {(type === 'character' || type === 'scene') && (
-            <span style={{ fontSize: isMobile ? '0.64rem' : '0.72rem', color: '#555' }}>
-              <i className="bi bi-hand-thumbs-up me-1" />
-              {typeof likes === 'number' ? likes.toLocaleString() : 0} {t('entity_card.likes')}
+            <span style={{ fontSize: isMobile ? '0.68rem' : '0.72rem', color: '#555', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <i className="bi bi-hand-thumbs-up" />
+              {typeof likes === 'number' ? likes.toLocaleString() : 0}
             </span>
           )}
         </div>
-        <div className="d-flex align-items-center text-truncate" style={{ gap: '0.3rem', maxWidth: '52%', color: '#555', fontSize: isMobile ? '0.64rem' : '0.72rem' }} title={creatorDisplay}>
+        <div className="d-flex align-items-center text-truncate" style={{ gap: '0.3rem', maxWidth: isMobile ? '48%' : '52%', color: '#555', fontSize: isMobile ? '0.68rem' : '0.72rem' }} title={creatorDisplay}>
           <i className="bi bi-person-circle" />
           <span className="text-truncate">{creatorDisplay}</span>
         </div>

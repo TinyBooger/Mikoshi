@@ -94,7 +94,7 @@ def get_popular_scenes(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Scene).order_by(Scene.likes.desc())
+    base_query = db.query(Scene).order_by(Scene.views.desc())
     total = base_query.count()
     if short:
         items = base_query.limit(10).all()
@@ -132,7 +132,7 @@ def get_recommended_scenes(
         return SceneListOut(items=[], total=0, page=1, page_size=0, short=short)
     user_tags = current_user.liked_tags or []
     tags_array = array(user_tags, type_=TEXT)
-    base_query = db.query(Scene).filter(Scene.tags.overlap(tags_array)).order_by(Scene.likes.desc())
+    base_query = db.query(Scene).filter(Scene.tags.overlap(tags_array)).order_by(Scene.views.desc())
     total = base_query.count()
     if short:
         items = base_query.limit(10).all()

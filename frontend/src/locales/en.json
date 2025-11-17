@@ -1,6 +1,6 @@
 {
   "home": {
-    "welcome": "Welcome to Mikoshi!",
+    "welcome": "Welcome to Yubandao!",
     "description": "Chat with your favorite characters",
     "button_start": "Get Started",
     "hero_title": "Chat with 10K+ Amazing Characters",
@@ -132,7 +132,7 @@
     "failed_delete_account": "Failed to delete account"
   },
   "welcome": {
-    "title": "Welcome to Mikoshi",
+    "title": "Welcome to Yubandao",
     "subtitle": "Your gateway to collaborative storytelling and creative worlds.",
     "email": "Email",
     "password": "Password",
@@ -154,6 +154,11 @@
     "optional": "(optional)",
     "bio_placeholder": "Tell us a little about yourself (max 200 chars)",
     "profile_picture": "Profile Picture",
+    "agree_to_terms_prefix": "I have read and agree to the",
+    "terms_link": "Terms of Service",
+    "and": "and",
+    "privacy_link": "Privacy Policy",
+    "terms_required": "Please agree to the Terms of Service and Privacy Policy",
     "submit": "Submit",
     "passwords_no_match": "Passwords do not match"
   },
@@ -285,7 +290,8 @@
     "delete": "Delete",
     "no_picture": "No picture",
     "ok": "OK",
-    "network_error": "Network error"
+    "network_error": "Network error",
+    "back": "Back"
   },
   "topbar": {
     "show_sidebar": "Show sidebar",
@@ -381,5 +387,128 @@
     "no_description": "No description",
     "views": "views",
     "likes": "likes"
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "last_updated": "Last Updated",
+    "acceptance": {
+      "title": "1. Acceptance of Terms",
+      "content": "Welcome to Yubandao. By accessing or using our service, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the service."
+    },
+    "service_description": {
+      "title": "2. Service Description",
+      "content": "Yubandao is a collaborative storytelling and character interaction platform where users can create characters, scenes, and personas, and share and interact with others. The service includes but is not limited to character chat, content creation, and community features."
+    },
+    "user_accounts": {
+      "title": "3. User Accounts",
+      "content": "You must create an account to use the service. You agree to:",
+      "responsibility1": "Provide accurate and complete registration information",
+      "responsibility2": "Maintain account security and be responsible for all activities under your account",
+      "responsibility3": "Not use another person's account without authorization"
+    },
+    "user_content": {
+      "title": "4. User Content",
+      "content": "You are responsible for the content you post to the platform (including characters, scenes, conversations, etc.). You warrant that you will not post:",
+      "prohibited1": "Content that is illegal, harmful, threatening, abusive, harassing, defamatory, or otherwise objectionable",
+      "prohibited2": "Content that infringes on others' intellectual property or privacy rights",
+      "prohibited3": "Content containing viruses or other harmful code",
+      "prohibited4": "Content that violates any applicable laws or regulations"
+    },
+    "intellectual_property": {
+      "title": "5. Intellectual Property",
+      "content": "You retain ownership of the content you create. By posting content on the platform, you grant Yubandao a non-exclusive, worldwide, royalty-free license to use, reproduce, modify, and display your content for the purpose of providing and improving the service. All other content and features on the platform are owned by Yubandao or its licensors."
+    },
+    "prohibited_conduct": {
+      "title": "6. Prohibited Conduct",
+      "item1": "Abusing, harassing, or threatening other users",
+      "item2": "Attempting unauthorized access to systems or other user accounts",
+      "item3": "Interfering with or disrupting the normal operation of the service",
+      "item4": "Using automated tools to scrape or collect user data",
+      "item5": "Impersonating others or misrepresenting your relationship with others"
+    },
+    "termination": {
+      "title": "7. Termination",
+      "content": "We reserve the right to suspend or terminate your account at any time, including but not limited to violations of this agreement. You may delete your account at any time through the settings page."
+    },
+    "disclaimer": {
+      "title": "8. Disclaimer",
+      "content": "The service is provided on an 'as is' and 'as available' basis without any warranties, express or implied. Yubandao does not guarantee that the service will be uninterrupted, secure, or error-free. User-generated content does not represent Yubandao's views."
+    },
+    "limitation": {
+      "title": "9. Limitation of Liability",
+      "content": "To the maximum extent permitted by law, Yubandao and its affiliates shall not be liable for any indirect, incidental, special, or consequential damages, including but not limited to loss of profits, data loss, or service interruption."
+    },
+    "changes": {
+      "title": "10. Changes to Terms",
+      "content": "We reserve the right to modify these terms at any time. Significant changes will be communicated to users through the platform. Continued use of the service constitutes acceptance of the revised terms."
+    },
+    "contact": {
+      "title": "11. Contact Us",
+      "content": "If you have any questions about these terms, please contact us through the settings page or email our support team."
+    }
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "last_updated": "Last Updated",
+    "intro": {
+      "title": "Introduction",
+      "content": "This Privacy Policy explains how Yubandao collects, uses, and protects your personal information. By using our service, you consent to the data practices described in this policy."
+    },
+    "collection": {
+      "title": "1. Information We Collect",
+      "content": "We collect the following types of information:",
+      "account_title": "Account Information",
+      "account_content": "Name, email address, password (encrypted)",
+      "profile_title": "Profile Information",
+      "profile_content": "Avatar, bio, and other information you choose to share",
+      "content_title": "Content Data",
+      "content_content": "Characters, scenes, personas, conversations, and other user-generated content you create",
+      "usage_title": "Usage Data",
+      "usage_content": "Information about how you interact with the platform, including page visits, clicks, and feature usage"
+    },
+    "usage": {
+      "title": "2. How We Use Your Information",
+      "content": "We use the collected information to:",
+      "item1": "Provide, maintain, and improve our service",
+      "item2": "Personalize your experience and provide content recommendations",
+      "item3": "Communicate with you about your account and service updates",
+      "item4": "Monitor and analyze usage trends to improve user experience",
+      "item5": "Protect, investigate, and prevent fraud or illegal activities"
+    },
+    "sharing": {
+      "title": "3. Information Sharing",
+      "content": "We do not sell your personal information. We may share information in the following circumstances:",
+      "item1": "With other users - Your public content (characters, scenes, etc.) is visible to other users",
+      "item2": "Service providers - With third-party vendors who help us operate the service (e.g., cloud storage, analytics)",
+      "item3": "Legal requirements - When required by law or to protect our rights"
+    },
+    "security": {
+      "title": "4. Data Security",
+      "content": "We employ industry-standard security measures to protect your information, including encryption, secure servers, and access controls. However, no method of internet transmission is 100% secure, and we cannot guarantee absolute security."
+    },
+    "cookies": {
+      "title": "5. Cookies and Tracking Technologies",
+      "content": "We use cookies and similar technologies to maintain sessions, remember preferences, and analyze usage. You can control cookies through your browser settings, but this may affect certain features."
+    },
+    "your_rights": {
+      "title": "6. Your Rights",
+      "content": "You have the right to:",
+      "item1": "Access and update your personal information",
+      "item2": "Delete your account and associated data",
+      "item3": "Opt out of certain data collection",
+      "item4": "Request a copy of the information we hold about you"
+    },
+    "children": {
+      "title": "7. Children's Privacy",
+      "content": "Our service is not directed to children under 13. We do not knowingly collect personal information from children under 13. If we discover we have collected such information, we will delete it immediately."
+    },
+    "changes": {
+      "title": "8. Policy Changes",
+      "content": "We may update this Privacy Policy periodically. Significant changes will be communicated through the platform. Continued use of the service constitutes acceptance of the updated policy."
+    },
+    "contact": {
+      "title": "9. Contact Us",
+      "content": "If you have any questions or concerns about this Privacy Policy, please contact us through the settings page or email our privacy team."
+    }
   }
 }

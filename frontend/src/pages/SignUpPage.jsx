@@ -19,6 +19,7 @@ export default function SignUpPage() {
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [error, setError] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const { register, loading } = useContext(AuthContext);
 
   const handleGoBack = () => {
@@ -34,6 +35,10 @@ export default function SignUpPage() {
     }
     if (!invitationCode.trim()) {
       setError('Invitation code is required');
+      return;
+    }
+    if (!agreedToTerms) {
+      setError(t('signup.terms_required'));
       return;
     }
     const success = await register(email, name, password, bio, profileFile, invitationCode);
@@ -160,6 +165,28 @@ export default function SignUpPage() {
                       }}
                     />
                   </div>
+                </div>
+              </div>
+              <div className="mb-3">
+                <div className="form-check">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    id="termsCheckbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    required
+                  />
+                  <label className="form-check-label" htmlFor="termsCheckbox" style={{ fontSize: '0.9rem' }}>
+                    {t('signup.agree_to_terms_prefix')}{' '}
+                    <a href="/terms-of-service" target="_blank" rel="noopener noreferrer" style={{ color: '#0066cc', textDecoration: 'none' }}>
+                      {t('signup.terms_link')}
+                    </a>
+                    {' '}{t('signup.and')}{' '}
+                    <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color: '#0066cc', textDecoration: 'none' }}>
+                      {t('signup.privacy_link')}
+                    </a>
+                  </label>
                 </div>
               </div>
               <button type="submit" className="btn btn-dark w-100">{t('signup.submit')}</button>

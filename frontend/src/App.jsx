@@ -24,6 +24,8 @@ import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
 import InvitationCodesPage from './admin/pages/InvitationCodesPage.jsx';
 import TestPage from './pages/TestPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
+import TermsOfServicePage from './pages/TermsOfServicePage.jsx';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx';
 
 export default function App() {
   const { userData, loading } = useContext(AuthContext);
@@ -53,6 +55,8 @@ export default function App() {
             { path: 'profile/:userId', element: <ProfilePage publicView={true} /> },
             { path: 'settings', element: <SettingsPage /> },
             { path: 'search', element: <SearchPage /> },
+            { path: 'terms-of-service', element: <TermsOfServicePage /> },
+            { path: 'privacy-policy', element: <PrivacyPolicyPage /> },
           ],
         }
       : {
@@ -62,6 +66,8 @@ export default function App() {
             { index: true, element: <WelcomePage /> },
             { path: 'sign-up', element: <SignUpPage /> },
             { path: 'reset-password', element: <ResetPasswordPage /> },
+            { path: 'terms-of-service', element: <TermsOfServicePage /> },
+            { path: 'privacy-policy', element: <PrivacyPolicyPage /> },
           ],
         },
     {

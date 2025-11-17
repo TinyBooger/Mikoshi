@@ -183,7 +183,7 @@ def get_recommended_characters(
     if excluded_ids:
         query = query.filter(~Character.id.in_(excluded_ids))
     
-    query = query.order_by(Character.likes.desc())
+    query = query.order_by(Character.views.desc())
     total = query.count()
     if short:
         items = query.limit(10).all()
@@ -200,7 +200,7 @@ def get_characters_by_tag(
     chars = db.query(Character).filter(
         Character.tags.any(tag_name)
     ).order_by(
-        Character.likes.desc()
+        Character.views.desc()
     ).limit(limit).all()
     return chars
 

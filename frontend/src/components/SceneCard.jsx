@@ -50,7 +50,7 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
   const accent = accentByType[type] || '#3b82f6';
 
   // Width (slightly larger desktop)
-  const CARD_WIDTH = isMobile ? '90vw' : '27rem';
+  const CARD_WIDTH = isMobile ? '92vw' : '27rem';
 
   const handleClick = () => {
     if (disableClick) return;
@@ -65,15 +65,15 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
       className="entity-card-horizontal"
       style={{
         width: CARD_WIDTH,
-        aspectRatio: '10 / 7',
+        aspectRatio: isMobile ? '4 / 3' : '10 / 7',
         display: 'flex',
         flexDirection: 'column',
         background: '#fff',
-        borderRadius: isMobile ? '0.9rem' : '1.15rem',
+        borderRadius: isMobile ? '0.75rem' : '1.15rem',
         boxShadow: hovered ? '0 4px 18px rgba(0,0,0,0.18)' : '0 2px 12px rgba(0,0,0,0.12)',
         overflow: 'hidden',
         transition: 'transform 160ms ease-out, box-shadow 160ms ease-out',
-        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+        transform: hovered && !isMobile ? 'translateY(-2px)' : 'translateY(0)',
         cursor: disableClick ? 'default' : 'pointer',
         pointerEvents: disableClick ? 'none' : 'auto',
       }}
@@ -85,7 +85,7 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
       <div
         style={{
           position: 'relative',
-          flex: '0 0 75%',
+          flex: isMobile ? '0 0 68%' : '0 0 75%',
           width: '100%',
           background: '#000',
           display: 'flex',
@@ -115,20 +115,20 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
       {/* Text area (25%) */}
       <div
         style={{
-          flex: '1 1 25%',
-          padding: isMobile ? '0.5rem 0.65rem 0.5rem' : '0.6rem 0.75rem 0.6rem',
-          minHeight: isMobile ? '3.6rem' : '4.4rem',
+          flex: isMobile ? '1 1 32%' : '1 1 25%',
+          padding: isMobile ? '0.65rem 0.75rem 0.6rem' : '0.6rem 0.75rem 0.6rem',
+          minHeight: isMobile ? '4rem' : '4.4rem',
           background: '#ffffff',
           color: '#111',
           display: 'flex',
           flexDirection: 'column',
-          gap: isMobile ? '0.15rem' : '0.2rem',
+          gap: isMobile ? '0.25rem' : '0.2rem',
         }}
       >
-        <div className="d-flex align-items-center justify-content-between" style={{ gap: '0.45rem' }}>
+        <div className="d-flex align-items-center justify-content-between" style={{ gap: isMobile ? '0.4rem' : '0.45rem' }}>
           <h5
             className="fw-bold mb-0 text-truncate"
-            style={{ fontSize: isMobile ? '0.86rem' : '0.92rem', lineHeight: 1.1, maxWidth: '72%' }}
+            style={{ fontSize: isMobile ? '0.9rem' : '0.92rem', lineHeight: 1.15, fontWeight: 600, maxWidth: '70%' }}
             title={name}
           >
             {name}
@@ -139,8 +139,9 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
               background: accent + '18',
               color: accent,
               border: `1px solid ${accent}44`,
-              fontSize: isMobile ? '0.52rem' : '0.58rem',
-              padding: isMobile ? '0.18rem 0.32rem' : '0.22rem 0.38rem',
+              fontSize: isMobile ? '0.54rem' : '0.58rem',
+              padding: isMobile ? '0.2rem 0.35rem' : '0.22rem 0.38rem',
+              fontWeight: 500,
             }}
           >
             {type}
@@ -150,9 +151,9 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
         <div
           className="text-truncate"
           style={{
-            fontSize: isMobile ? '0.6rem' : '0.66rem',
-            opacity: 0.78,
-            lineHeight: 1.05,
+            fontSize: isMobile ? '0.7rem' : '0.66rem',
+            opacity: 0.8,
+            lineHeight: 1.35,
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
@@ -164,23 +165,23 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
 
         <div
           className="d-flex align-items-center mt-auto"
-          style={{ fontSize: isMobile ? '0.54rem' : '0.6rem', opacity: 0.7, lineHeight: 1 }}
+          style={{ fontSize: isMobile ? '0.66rem' : '0.6rem', opacity: 0.75, lineHeight: 1, paddingTop: isMobile ? '0.15rem' : 0 }}
         >
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <span>
-              <i className="bi bi-eye me-1" />
-              {typeof views === 'number' ? views.toLocaleString() : 0} {t('entity_card.views')}
+          <div className="d-flex align-items-center flex-wrap" style={{ gap: isMobile ? '0.6rem' : '0.5rem' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <i className="bi bi-eye" />
+              {typeof views === 'number' ? views.toLocaleString() : 0}
             </span>
             {(type === 'character' || type === 'scene') && (
-              <span>
-                <i className="bi bi-hand-thumbs-up me-1" />
-                {typeof likes === 'number' ? likes.toLocaleString() : 0} {t('entity_card.likes')}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <i className="bi bi-hand-thumbs-up" />
+                {typeof likes === 'number' ? likes.toLocaleString() : 0}
               </span>
             )}
           </div>
           <div
             className="ms-auto d-flex align-items-center text-truncate"
-            style={{ gap: '0.2rem', maxWidth: '48%', opacity: 0.8 }}
+            style={{ gap: '0.3rem', maxWidth: isMobile ? '45%' : '48%', opacity: 0.85 }}
             title={creatorDisplay}
           >
             <i className="bi bi-person-circle" />

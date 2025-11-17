@@ -21,7 +21,7 @@ def get_popular_personas(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Persona).order_by(Persona.likes.desc())
+    base_query = db.query(Persona).order_by(Persona.views.desc())
     total = base_query.count()
     if short:
         items = base_query.limit(10).all()
@@ -53,7 +53,7 @@ def get_recommended_personas(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Persona).order_by(Persona.likes.desc(), Persona.created_time.desc())
+    base_query = db.query(Persona).order_by(Persona.views.desc(), Persona.created_time.desc())
     total = base_query.count()
     if short:
         items = base_query.limit(10).all()
