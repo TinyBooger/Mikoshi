@@ -43,7 +43,7 @@ function HomePage() {
         return res.json();
       })
       .then(data => {
-        setPopularPersonas(data);
+        setPopularPersonas(data.items || []);
         setLoadingPersonas(false);
       })
       .catch(() => {
@@ -129,23 +129,23 @@ function HomePage() {
     // Fetch existing sections
   fetch(`${window.API_BASE_URL}/api/characters/popular`, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
-      .then(setPopular)
+      .then(data => setPopular(data.items || []))
       .catch(() => setPopular([]));
 
     // Fetch popular scenes
   fetch(`${window.API_BASE_URL}/api/scenes/popular`, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
-      .then(setPopularScenes)
+      .then(data => setPopularScenes(data.items || []))
       .catch(() => setPopularScenes([]));
 
   fetch(`${window.API_BASE_URL}/api/characters/recent`, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
-      .then(setRecent)
+      .then(data => setRecent(data.items || []))
       .catch(() => setRecent([]));
 
   fetch(`${window.API_BASE_URL}/api/characters/recommended`, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
-      .then(setRecommended)
+      .then(data => setRecommended(data.items || []))
       .catch(() => setRecommended([]));
 
     // Fetch popular tags
