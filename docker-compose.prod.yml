@@ -10,6 +10,8 @@ services:
       - ./secrets/Mikoshi-production.env
     environment:
       - DATABASE_URL=postgresql://user:password@postgres:5432/mydb
+    volumes:
+      - backend_static:/app/static/images
     depends_on:
       - db-init
 
@@ -49,3 +51,4 @@ services:
 
 volumes:
   postgres_data:
+  backend_static:

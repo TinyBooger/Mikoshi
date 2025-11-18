@@ -73,14 +73,6 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
     }
   };
 
-  // Accent color per entity type
-  const accentByType = {
-    character: '#3b82f6', // blue-500
-    scene: '#8b5cf6',     // violet-500
-    persona: '#f59e0b',   // amber-500
-  };
-  const accent = accentByType[type] || '#3b82f6';
-
   return (
     <div
       className="d-flex flex-column position-relative"
@@ -103,11 +95,6 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
       onMouseEnter={disableClick ? undefined : e => { setHovered(true); e.currentTarget.style.boxShadow = isMobile ? '0 3px 10px rgba(0,0,0,0.13)' : '0 6px 18px rgba(0,0,0,0.13)'; e.currentTarget.style.transform = isMobile ? 'scale(1.03)' : 'translateY(-2px) scale(1.018)'; }}
       onMouseLeave={disableClick ? undefined : e => { setHovered(false); e.currentTarget.style.boxShadow = isMobile ? '0 1px 6px rgba(0,0,0,0.10)' : '0 2px 12px rgba(0,0,0,0.10)'; e.currentTarget.style.transform = 'none'; }}
     >
-      {/* Accent top bar */}
-      <div
-        aria-hidden="true"
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: accent, opacity: 0.9 }}
-      />
       {/* Top: Image */}
       <div style={{
         width: '100%',
@@ -125,10 +112,6 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
           alt={name}
           style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0, border: 'none', transform: hovered ? 'scale(1.05)' : 'scale(1)', transition: 'transform 220ms ease-out', willChange: 'transform' }}
         />
-        {/* Hover glow */}
-        {!isMobile && (
-          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, boxShadow: hovered ? `inset 0 0 0 2px ${accent}22` : 'none', borderRadius: 0, pointerEvents: 'none', transition: 'box-shadow 180ms ease-out' }} />
-        )}
       </div>
       {/* Name & Creator */}
       <div className="px-2 pt-2 pb-1" style={{ minWidth: 0 }}>
