@@ -17,7 +17,7 @@ if os.path.exists("../secrets/Mikoshi.env"):
 from database import engine, Base
 # Import models so that all SQLAlchemy mappers are registered before create_all
 import models  # noqa: F401
-from routes import auth, character, chat, user, search, tags, scene, persona, admin, invitation
+from routes import auth, character, chat, user, search, tags, scene, persona, admin, invitation, problem_report
 
 # Middleware
 middleware = []
@@ -93,6 +93,7 @@ app.include_router(scene.router)
 app.include_router(persona.router)
 app.include_router(admin.router)
 app.include_router(invitation.router)
+app.include_router(problem_report.router)
 
 
 # (Optional) You can still keep the async wake-up for later pings if needed

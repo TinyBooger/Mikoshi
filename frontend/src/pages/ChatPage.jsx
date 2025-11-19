@@ -36,6 +36,8 @@ export default function ChatPage() {
 
   // Ref for textarea auto-resize
   const textareaRef = useRef(null);
+  // Ref for messages container to enable auto-scrolling
+  const messagesEndRef = useRef(null);
 
   const [selectedPersona, setSelectedPersona] = useState(null);
   const [selectedScene, setSelectedScene] = useState(null);
@@ -69,6 +71,11 @@ export default function ChatPage() {
     setPersonaId(searchParams.get('persona'));
     initialized.current = false;
   }, [searchParams]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const navigate = useNavigate();
   const initialized = useRef(false);
@@ -754,6 +761,8 @@ export default function ChatPage() {
                     </div>
                   ))
                 )}
+                {/* Invisible element to scroll to */}
+                <div ref={messagesEndRef} />
               </>
             );
           })()}

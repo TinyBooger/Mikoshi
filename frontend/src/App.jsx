@@ -22,6 +22,7 @@ import CharactersPage from './admin/pages/CharactersPage.jsx';
 import TagsPage from './admin/pages/TagsPage.jsx';
 import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
 import InvitationCodesPage from './admin/pages/InvitationCodesPage.jsx';
+import ProblemReportsPage from './admin/pages/ProblemReportsPage.jsx';
 import TestPage from './pages/TestPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import TermsOfServicePage from './pages/TermsOfServicePage.jsx';
@@ -80,6 +81,7 @@ export default function App() {
         { path: 'tags', element: <TagsPage /> },
         { path: 'search-terms', element: <SearchTermsPage /> },
         { path: 'invitations', element: <InvitationCodesPage /> },
+        { path: 'problem-reports', element: <ProblemReportsPage /> },
       ],
     },
   ]);

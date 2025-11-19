@@ -299,7 +299,8 @@
     "show_character_sidebar": "Show character sidebar",
     "hide_character_sidebar": "Hide character sidebar",
     "search_placeholder": "Search characters...",
-    "suggestion_count": "({{count}})"
+    "suggestion_count": "({{count}})",
+    "report_problem": "Report a problem"
   },
   "sidebar": {
     "create": "Create",
@@ -510,5 +511,23 @@
       "title": "9. Contact Us",
       "content": "If you have any questions or concerns about this Privacy Policy, please contact us through the settings page or email our privacy team."
     }
+  },
+  "problem_report": {
+    "title": "Report a Problem",
+    "description_label": "Problem Description",
+    "description_placeholder": "Please describe the issue you're experiencing in detail...",
+    "description_required": "Please describe the problem",
+    "screenshot_label": "Screenshot",
+    "optional": "Optional",
+    "max_file_size": "Maximum file size: 5MB (PNG, JPG, GIF)",
+    "file_too_large": "File is too large. Maximum size is 5MB.",
+    "invalid_file_type": "Invalid file type. Please upload an image file.",
+    "remove_image": "Remove image",
+    "characters": "characters",
+    "cancel": "Cancel",
+    "submit": "Submit Report",
+    "submitting": "Submitting...",
+    "success_message": "Thank you! Your report has been submitted successfully.",
+    "submission_error": "Failed to submit report. Please try again."
   }
 }

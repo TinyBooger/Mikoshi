@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router';
 import { AuthContext } from './AuthProvider';
 import logoText from '../assets/images/logo_text.png';
+import ProblemReportModal from './ProblemReportModal';
 
 
 function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, characterSidebarVisible }) {
@@ -53,6 +54,8 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
     i18n.changeLanguage(newLang);
     setLang(newLang);
   };
+
+  const [showProblemReport, setShowProblemReport] = useState(false);
 
   return (
     <div
@@ -190,6 +193,30 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
           <span style={{ margin: '0 2px', opacity: 0.35 }}>|</span>
           <span style={{ opacity: lang === 'en' ? 1 : 0.5, fontWeight: lang === 'en' ? 800 : 500 }}>En</span>
         </button>
+
+        {/* Problem Report Button */}
+        <button
+          onClick={() => setShowProblemReport(true)}
+          aria-label={t('topbar.report_problem')}
+          title={t('topbar.report_problem')}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            color: '#736B92',
+            fontSize: '1.3rem',
+            padding: '0.42rem 0.7rem',
+            borderRadius: 8,
+            cursor: 'pointer',
+            transition: 'background 0.16s, color 0.16s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          <i className="bi bi-flag" style={{ fontSize: '1.3rem' }}></i>
+        </button>
         
         {/* Character Sidebar Toggle Button for ChatPage only - positioned on far right */}
         {isChatPage && (
@@ -222,6 +249,9 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
           </button>
         )}
       </div>
+      
+      {/* Problem Report Modal */}
+      <ProblemReportModal show={showProblemReport} onClose={() => setShowProblemReport(false)} />
     </div>
   );
 }

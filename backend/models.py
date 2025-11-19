@@ -130,3 +130,17 @@ class InvitationCode(Base):
     max_uses = Column(Integer, default=1)  # How many times this code can be used
     use_count = Column(Integer, default=0)  # How many times it has been used
     notes = Column(Text, nullable=True)  # Admin notes about this code
+
+# Problem Reports
+class ProblemReport(Base):
+    __tablename__ = "problem_reports"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    user_email = Column(String, nullable=True)  # Store email in case user is deleted
+    description = Column(Text, nullable=False)
+    screenshot = Column(String, nullable=True)  # URL or path to screenshot
+    status = Column(String, default="pending", nullable=False)  # pending, in-progress, resolved, closed
+    created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    resolved_time = Column(DateTime(timezone=True), nullable=True)
+    admin_notes = Column(Text, nullable=True)

@@ -94,5 +94,23 @@ class PersonaListOut(BaseModel):
     class Config:
         from_attributes = True
 
+class ProblemReportCreate(BaseModel):
+    description: str
+    screenshot: Optional[str] = None
+
+class ProblemReportOut(BaseModel):
+    id: int
+    user_id: Optional[str] = None
+    user_email: Optional[str] = None
+    description: str
+    screenshot: Optional[str] = None
+    status: str
+    created_time: Any
+    resolved_time: Optional[Any] = None
+    admin_notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
     class Config:
         from_attributes = True

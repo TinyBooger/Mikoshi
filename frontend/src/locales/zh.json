@@ -300,7 +300,8 @@
     "show_character_sidebar": "显示角色侧边栏",
     "hide_character_sidebar": "隐藏角色侧边栏",
     "search_placeholder": "搜索角色...",
-    "suggestion_count": "（{{count}}）"
+    "suggestion_count": "（{{count}}）",
+    "report_problem": "报告问题"
   },
   "sidebar": {
     "create": "创作",
@@ -519,5 +520,23 @@
       "title": "九、联系我们",
       "content": "如果您对本政策或您的个人信息有任何疑问、意见或建议，请通过设置页面与我们联系。"
     }
+  },
+  "problem_report": {
+    "title": "报告问题",
+    "description_label": "问题描述",
+    "description_placeholder": "请详细描述您遇到的问题...",
+    "description_required": "请描述问题",
+    "screenshot_label": "截图",
+    "optional": "可选",
+    "max_file_size": "最大文件大小：5MB（PNG、JPG、GIF）",
+    "file_too_large": "文件过大，最大为5MB。",
+    "invalid_file_type": "无效的文件类型，请上传图片文件。",
+    "remove_image": "移除图片",
+    "characters": "字符",
+    "cancel": "取消",
+    "submit": "提交报告",
+    "submitting": "提交中...",
+    "success_message": "感谢！您的报告已成功提交。",
+    "submission_error": "提交报告失败，请重试。"
   }
 }

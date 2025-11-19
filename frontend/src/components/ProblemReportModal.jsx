@@ -1,0 +1,228 @@
+import React, { useState, useContext } from 'react';
+import ReactDOM from 'react-dom';
+import { useTranslation } from 'react-i18next';
+import { AuthContext } from './AuthProvider';
+
+export default function ProblemReportModal({ show, onClose }) {
+  const { t } = useTranslation();
+  const { sessionToken } = useContext(AuthContext);
+  const [description, setDescription] = useState('');
+  const [screenshot, setScreenshot] = useState(null);
+  const [screenshotPreview, setScreenshotPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError(t('problem_report.file_too_large'));
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError(t('problem_report.invalid_file_type'));
+        return;
+      }
+      
+      setScreenshot(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setScreenshotPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+      setError('');
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!description.trim()) {
+      setError(t('problem_report.description_required'));
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const formData = new FormData();
+      formData.append('description', description.trim());
+      
+      if (screenshot) {
+        // Convert to base64 for simpler storage
+        const reader = new FileReader();
+        reader.readAsDataURL(screenshot);
+        reader.onloadend = async () => {
+          formData.append('screenshot', reader.result);
+          await submitReport(formData);
+        };
+      } else {
+        await submitReport(formData);
+      }
+    } catch (err) {
+      setError(t('problem_report.submission_error'));
+      setLoading(false);
+    }
+  };
+
+  const submitReport = async (formData) => {
+    const response = await fetch(`${window.API_BASE_URL}/api/problem-reports`, {
+      method: 'POST',
+      headers: {
+        'Authorization': sessionToken,
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      throw new Error('Submission failed');
+    }
+    
+    setSuccess(true);
+    setLoading(false);
+    
+    // Reset form and close after 2 seconds
+    setTimeout(() => {
+      setDescription('');
+      setScreenshot(null);
+      setScreenshotPreview(null);
+      setSuccess(false);
+      onClose();
+    }, 2000);
+  };
+
+  const handleClose = () => {
+    if (!loading) {
+      setDescription('');
+      setScreenshot(null);
+      setScreenshotPreview(null);
+      setError('');
+      setSuccess(false);
+      onClose();
+    }
+  };
+
+  if (!show) return null;
+
+  const modalContent = (
+    <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1200, position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}>
+      <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">{t('problem_report.title')}</h5>
+            <button 
+              type="button" 
+              className="btn-close" 
+              onClick={handleClose}
+              disabled={loading}
+            ></button>
+          </div>
+          <div className="modal-body">
+            {success ? (
+              <div className="alert alert-success text-center">
+                <i className="bi bi-check-circle-fill me-2"></i>
+                {t('problem_report.success_message')}
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">
+                    {t('problem_report.description_label')} <span className="text-danger">*</span>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows="5"
+                    placeholder={t('problem_report.description_placeholder')}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    disabled={loading}
+                    maxLength={2000}
+                  />
+                  <small className="text-muted">
+                    {description.length}/2000 {t('problem_report.characters')}
+                  </small>
+                </div>
+                
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">
+                    {t('problem_report.screenshot_label')} <small className="text-muted">({t('problem_report.optional')})</small>
+                  </label>
+                  <input
+                    type="file"
+                    className="form-control"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    disabled={loading}
+                  />
+                  <small className="text-muted">{t('problem_report.max_file_size')}</small>
+                  
+                  {screenshotPreview && (
+                    <div className="mt-2">
+                      <img 
+                        src={screenshotPreview} 
+                        alt="Screenshot preview" 
+                        style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-link text-danger"
+                        onClick={() => {
+                          setScreenshot(null);
+                          setScreenshotPreview(null);
+                        }}
+                        disabled={loading}
+                      >
+                        <i className="bi bi-x-circle me-1"></i>
+                        {t('problem_report.remove_image')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                {error && (
+                  <div className="alert alert-danger">
+                    {error}
+                  </div>
+                )}
+                
+                <div className="d-flex justify-content-end gap-2">
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={handleClose}
+                    disabled={loading}
+                  >
+                    {t('problem_report.cancel')}
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary"
+                    disabled={loading || !description.trim()}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2"></span>
+                        {t('problem_report.submitting')}
+                      </>
+                    ) : (
+                      t('problem_report.submit')
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return ReactDOM.createPortal(modalContent, document.body);
+}
