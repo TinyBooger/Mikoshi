@@ -33,6 +33,75 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
   if (type === 'scene') description = entity.intro || '';
   if (type === 'persona') description = entity.intro || '';
 
+  // Primary tag (first tag)
+  let primaryTag = '';
+  if (Array.isArray(entity?.tags) && entity.tags.length > 0) {
+    const first = entity.tags[0];
+    if (first && typeof first === 'object') {
+      primaryTag = first.name ?? first.label ?? String(first.id ?? '');
+    } else if (first != null) {
+      primaryTag = String(first);
+    }
+  }
+
+  // Tag color mapping and fallback color generator
+  const normalizeTag = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, '_');
+  const tagPalette = {
+    romance: '#ec4899',
+    love: '#ef4444',
+    fantasy: '#10b981',
+    sci_fi: '#06b6d4',
+    scifi: '#06b6d4',
+    science_fiction: '#06b6d4',
+    action: '#f59e0b',
+    adventure: '#16a34a',
+    drama: '#8b5cf6',
+    comedy: '#22c55e',
+    horror: '#dc2626',
+    mystery: '#3b82f6',
+    thriller: '#fb923c',
+    slice_of_life: '#6366f1',
+    historical: '#a78bfa',
+    cyberpunk: '#14b8a6',
+    detective: '#0ea5e9',
+    school: '#60a5fa',
+    isekai: '#f97316',
+  };
+  const hslToHex = (h, s, l) => {
+    s /= 100; l /= 100;
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (0 <= h && h < 60) { r = c; g = x; b = 0; }
+    else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
+    else if (120 <= h && h < 180) { r = 0; g = c; b = x; }
+    else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
+    else if (240 <= h && h < 300) { r = x; g = 0; b = c; }
+    else { r = c; g = 0; b = x; }
+    const toHex = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  };
+  const stringToColor = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      hash |= 0; // keep 32bit
+    }
+    const h = Math.abs(hash) % 360;
+    const s = 65; // vibrant
+    const l = 46; // readable on white
+    return hslToHex(h, s, l);
+  };
+  let tagColor, tagBg, tagBorder;
+  if (primaryTag) {
+    const key = normalizeTag(primaryTag);
+    const base = tagPalette[key] || stringToColor(key);
+    tagColor = base;
+    tagBg = `${base}18`;
+    tagBorder = `${base}40`;
+  }
+
   // Creator name logic
   let creatorDisplay = t('entity_card.unknown');
   if (creator_name) {
@@ -40,14 +109,6 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
   } else if (entity.creator_name) {
     creatorDisplay = entity.creator_name || t('entity_card.unknown');
   }
-
-  // Accent per type
-  const accentByType = {
-    character: '#3b82f6',
-    scene: '#8b5cf6',
-    persona: '#f59e0b',
-  };
-  const accent = accentByType[type] || '#3b82f6';
 
   // Width (slightly larger desktop)
   const CARD_WIDTH = isMobile ? '92vw' : '27rem';
@@ -107,9 +168,6 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
             willChange: 'transform',
           }}
         />
-        {!isMobile && (
-          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, boxShadow: hovered ? `inset 0 0 0 2px ${accent}33` : 'none', transition: 'box-shadow 180ms ease-out' }} />
-        )}
       </div>
 
       {/* Text area (25%) */}
@@ -133,19 +191,27 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
           >
             {name}
           </h5>
-          <span
-            className="badge"
-            style={{
-              background: accent + '18',
-              color: accent,
-              border: `1px solid ${accent}44`,
-              fontSize: isMobile ? '0.54rem' : '0.58rem',
-              padding: isMobile ? '0.2rem 0.35rem' : '0.22rem 0.38rem',
-              fontWeight: 500,
-            }}
-          >
-            {type}
-          </span>
+          {primaryTag && (
+            <span
+              className="badge text-uppercase"
+              title={primaryTag}
+              style={{
+                background: tagBg,
+                color: tagColor,
+                border: `1px solid ${tagBorder}`,
+                fontSize: isMobile ? '0.54rem' : '0.58rem',
+                padding: isMobile ? '0.2rem 0.35rem' : '0.22rem 0.38rem',
+                letterSpacing: 0.2,
+                fontWeight: 500,
+                maxWidth: '45%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {primaryTag}
+            </span>
+          )}
         </div>
 
         <div

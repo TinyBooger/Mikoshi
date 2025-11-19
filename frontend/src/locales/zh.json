@@ -81,13 +81,13 @@
     "personas": "人格",
     "created_characters": "已创建角色",
     "created_scenes": "已创建场景",
-    "created_personas": "已创建人格",
+    "created_personas": "已创建自我形象",
     "liked_characters": "已喜欢角色",
     "liked_scenes": "已喜欢场景",
     "liked_personas": "已喜欢人格",
     "no_characters_created": "尚未创建角色。",
     "no_scenes_created": "尚未创建场景。",
-    "no_personas_created": "尚未创建人格。",
+    "no_personas_created": "尚未创建自我形象。",
     "no_liked_characters": "尚未喜欢任何角色。",
     "no_liked_scenes": "尚未喜欢任何场景。",
     "no_liked_personas": "尚未喜欢任何人格。",
@@ -215,8 +215,8 @@
     }
   },
   "persona_form": {
-    "edit_title": "编辑人格",
-    "create_title": "新建人格",
+    "edit_title": "编辑自我形象",
+    "create_title": "新建自我形象",
     "name": "名称",
     "description": "描述",
     "intro": "介绍",
@@ -228,16 +228,16 @@
     "delete": "删除",
     "required_marker": "*"
     ,
-    "missing_id": "缺少人格 ID",
+    "missing_id": "缺少自我形象 ID",
     "not_logged_in": "您需要登录才能操作。",
     "name_required": "名称为必填项。",
-    "updated": "人格已更新！",
-    "created": "人格已创建！",
-    "deleted": "已删除人格",
+    "updated": "自我形象已更新！",
+    "created": "自我形象已创建！",
+    "deleted": "已删除自我形象",
     "error": "发生错误。",
     "tags_required": "请至少添加一个标签。",
     "notes": {
-      "description": "详细描述人格、特质与说话风格。",
+      "description": "详细描述自我形象、特质与说话风格。",
       "intro": "封面介绍",
       "tags": "第一个标签会显示在封面上。"
     },
@@ -307,7 +307,7 @@
     "create": "创作",
     "create_character": "角色",
     "create_scene": "场景",
-    "create_persona": "人格",
+    "create_persona": "自我形象",
     "browse": "浏览",
     "recent_chats": "最近会话",
     "no_recent_chats": "暂无会话",
@@ -378,8 +378,8 @@
       "message": "您确定要删除此场景吗？"
     },
     "delete_persona": {
-      "title": "删除人格",
-      "message": "您确定要删除此人格吗？"
+      "title": "删除自我形象",
+      "message": "您确定要删除此自我形象吗？"
     },
     "delete_character": {
       "title": "删除角色",

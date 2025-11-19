@@ -109,9 +109,6 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
     creatorDisplay = entity.creator_name || t('entity_card.unknown');
   }
 
-  // Accent per type
-  // Previously used an accent bar per type; removed per request.
-
   // Sizing
   const CARD_WIDTH = isMobile ? '92vw' : '19rem';
   // Avatar size responsive

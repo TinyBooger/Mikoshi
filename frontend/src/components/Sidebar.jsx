@@ -179,7 +179,7 @@ export default function Sidebar() {
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { setCreateOpen(false); if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); navigate('/persona/create'); }}
               >
-                <i className="bi bi-people me-2"></i> {t('sidebar.create_persona')}
+                <i className="bi bi-person-badge me-2"></i> {t('sidebar.create_persona')}
               </button>
             </li>
           </ul>

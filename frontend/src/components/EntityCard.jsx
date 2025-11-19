@@ -42,6 +42,75 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
     description = entity.intro || '';
   }
 
+  // Primary tag (first tag)
+  let primaryTag = '';
+  if (Array.isArray(entity?.tags) && entity.tags.length > 0) {
+    const first = entity.tags[0];
+    if (first && typeof first === 'object') {
+      primaryTag = first.name ?? first.label ?? String(first.id ?? '');
+    } else if (first != null) {
+      primaryTag = String(first);
+    }
+  }
+
+  // Tag color mapping and fallback color generator
+  const normalizeTag = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, '_');
+  const tagPalette = {
+    romance: '#ec4899',
+    love: '#ef4444',
+    fantasy: '#10b981',
+    sci_fi: '#06b6d4',
+    scifi: '#06b6d4',
+    science_fiction: '#06b6d4',
+    action: '#f59e0b',
+    adventure: '#16a34a',
+    drama: '#8b5cf6',
+    comedy: '#22c55e',
+    horror: '#dc2626',
+    mystery: '#3b82f6',
+    thriller: '#fb923c',
+    slice_of_life: '#6366f1',
+    historical: '#a78bfa',
+    cyberpunk: '#14b8a6',
+    detective: '#0ea5e9',
+    school: '#60a5fa',
+    isekai: '#f97316',
+  };
+  const hslToHex = (h, s, l) => {
+    s /= 100; l /= 100;
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (0 <= h && h < 60) { r = c; g = x; b = 0; }
+    else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
+    else if (120 <= h && h < 180) { r = 0; g = c; b = x; }
+    else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
+    else if (240 <= h && h < 300) { r = x; g = 0; b = c; }
+    else { r = c; g = 0; b = x; }
+    const toHex = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  };
+  const stringToColor = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      hash |= 0; // keep 32bit
+    }
+    const h = Math.abs(hash) % 360;
+    const s = 65; // vibrant
+    const l = 46; // readable on white
+    return hslToHex(h, s, l);
+  };
+  let tagColor, tagBg, tagBorder;
+  if (primaryTag) {
+    const key = normalizeTag(primaryTag);
+    const base = tagPalette[key] || stringToColor(key);
+    tagColor = base;
+    tagBg = `${base}18`;
+    tagBorder = `${base}40`;
+  }
+
   // Card sizes
   // For mobile, use a bit less than 50dvw for two-column layout with gap
   const CARD_WIDTH = isMobile ? '46dvw' : '11.25rem'; // 180px = 11.25rem
@@ -115,7 +184,30 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
       </div>
       {/* Name & Creator */}
       <div className="px-2 pt-2 pb-1" style={{ minWidth: 0 }}>
-        <h5 className="fw-bold text-dark text-truncate mb-0" style={{ fontSize: isMobile ? '0.82rem' : '0.92rem', maxWidth: isMobile ? '6.875rem' : '9.375rem', fontFamily: 'Inter, sans-serif' }}>{name}</h5> {/* 110px/150px */}
+        <div className="d-flex align-items-center justify-content-between" style={{ gap: '0.25rem', marginBottom: '0.15rem' }}>
+          <h5 className="fw-bold text-dark text-truncate mb-0" style={{ fontSize: isMobile ? '0.82rem' : '0.92rem', maxWidth: primaryTag ? '70%' : (isMobile ? '6.875rem' : '9.375rem'), fontFamily: 'Inter, sans-serif' }}>{name}</h5>
+          {primaryTag && (
+            <span
+              className="badge text-uppercase"
+              title={primaryTag}
+              style={{
+                background: tagBg,
+                color: tagColor,
+                border: `1px solid ${tagBorder}`,
+                fontSize: isMobile ? '0.48rem' : '0.52rem',
+                padding: isMobile ? '0.15rem 0.28rem' : '0.18rem 0.32rem',
+                letterSpacing: 0.2,
+                fontWeight: 500,
+                maxWidth: '30%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {primaryTag}
+            </span>
+          )}
+        </div>
         <span className="text-muted small" style={{ fontSize: isMobile ? '0.62rem' : '0.68rem', fontFamily: 'Inter, sans-serif', fontWeight: 400, display: 'block', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: isMobile ? '6.875rem' : '9.375rem' }}>
           <i className="bi bi-person-circle me-1"></i>
           {creatorDisplay ? creatorDisplay : <span style={{ opacity: 0.4 }}>Unknown</span>}
