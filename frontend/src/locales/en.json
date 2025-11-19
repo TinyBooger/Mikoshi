@@ -300,7 +300,8 @@
     "hide_character_sidebar": "Hide character sidebar",
     "search_placeholder": "Search characters...",
     "suggestion_count": "({{count}})",
-    "report_problem": "Report a problem"
+    "report_problem": "Report a problem",
+    "updates": "Updates"
   },
   "sidebar": {
     "create": "Create",
@@ -529,5 +530,16 @@
     "submitting": "Submitting...",
     "success_message": "Thank you! Your report has been submitted successfully.",
     "submission_error": "Failed to submit report. Please try again."
+  },
+  "update_notification": {
+    "title": "Alpha Test Updates",
+    "welcome_title": "Welcome to Alpha Testing! 🎉",
+    "alpha_message": "Thank you for participating in our alpha test phase! We're excited to have you here and your feedback is invaluable.",
+    "features_title": "What's New:",
+    "feature_1": "Enhanced chat experience with improved AI responses",
+    "feature_2": "New character creation tools and customization options",
+    "feature_3": "Bug fixes and performance improvements",
+    "feedback_message": "Found a bug or have suggestions? Click the flag icon to report issues!",
+    "got_it": "Got it!"
   }
 }

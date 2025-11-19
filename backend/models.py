@@ -144,3 +144,16 @@ class ProblemReport(Base):
     created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     resolved_time = Column(DateTime(timezone=True), nullable=True)
     admin_notes = Column(Text, nullable=True)
+
+# System Notification (for alpha updates and announcements)
+class SystemNotification(Base):
+    __tablename__ = "system_notifications"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+    features = Column(ARRAY(Text), default=[])  # List of feature bullet points
+    is_active = Column(Boolean, default=False, nullable=False)
+    created_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))

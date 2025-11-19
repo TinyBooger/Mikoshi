@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router';
 import { AuthContext } from './AuthProvider';
 import logoText from '../assets/images/logo_text.png';
 import ProblemReportModal from './ProblemReportModal';
+import UpdateNotificationModal from './UpdateNotificationModal';
 
 
 function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, characterSidebarVisible }) {
@@ -56,6 +57,16 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
   };
 
   const [showProblemReport, setShowProblemReport] = useState(false);
+  
+  // Update notification state - show every time on load
+  const [showUpdateNotification, setShowUpdateNotification] = useState(false);
+  
+  useEffect(() => {
+    // Show notification every time user opens the website (if logged in)
+    if (sessionToken) {
+      setShowUpdateNotification(true);
+    }
+  }, [sessionToken]);
 
   return (
     <div
@@ -194,6 +205,30 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
           <span style={{ opacity: lang === 'en' ? 1 : 0.5, fontWeight: lang === 'en' ? 800 : 500 }}>En</span>
         </button>
 
+        {/* Update Notification Button */}
+        <button
+          onClick={() => setShowUpdateNotification(true)}
+          aria-label={t('topbar.updates')}
+          title={t('topbar.updates')}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            color: '#736B92',
+            fontSize: '1.3rem',
+            padding: '0.42rem 0.7rem',
+            borderRadius: 8,
+            cursor: 'pointer',
+            transition: 'background 0.16s, color 0.16s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          <i className="bi bi-megaphone" style={{ fontSize: '1.3rem' }}></i>
+        </button>
+
         {/* Problem Report Button */}
         <button
           onClick={() => setShowProblemReport(true)}
@@ -249,6 +284,9 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
           </button>
         )}
       </div>
+      
+      {/* Update Notification Modal */}
+      <UpdateNotificationModal show={showUpdateNotification} onClose={() => setShowUpdateNotification(false)} />
       
       {/* Problem Report Modal */}
       <ProblemReportModal show={showProblemReport} onClose={() => setShowProblemReport(false)} />
