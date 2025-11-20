@@ -17,6 +17,9 @@ router = APIRouter(prefix="/api/problem-reports", tags=["problem_reports"])
 def create_problem_report(
     description: str = Form(...),
     screenshot: Optional[str] = Form(None),
+    target_type: Optional[str] = Form(None),
+    target_id: Optional[int] = Form(None),
+    target_name: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -27,6 +30,9 @@ def create_problem_report(
         user_email=current_user.email,
         description=description,
         screenshot=screenshot,
+        target_type=target_type,
+        target_id=target_id,
+        target_name=target_name,
         status="pending",
         created_time=datetime.now(UTC)
     )

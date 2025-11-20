@@ -1,9 +1,9 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from './AuthProvider';
 
-export default function ProblemReportModal({ show, onClose }) {
+export default function ProblemReportModal({ show, onClose, targetType = null, targetId = null, targetName = null }) {
   const { t } = useTranslation();
   const { sessionToken } = useContext(AuthContext);
   const [description, setDescription] = useState('');
@@ -12,6 +12,15 @@ export default function ProblemReportModal({ show, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  const targetSummary = useMemo(() => {
+    if (!targetType || !targetId) return null;
+    return {
+      label: t(`problem_report.target_${targetType}`) || targetType,
+      id: targetId,
+      name: targetName || ''
+    };
+  }, [targetType, targetId, targetName, t]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -73,6 +82,9 @@ export default function ProblemReportModal({ show, onClose }) {
   };
 
   const submitReport = async (formData) => {
+    if (targetType) formData.append('target_type', targetType);
+    if (targetId) formData.append('target_id', String(targetId));
+    if (targetName) formData.append('target_name', targetName);
     const response = await fetch(`${window.API_BASE_URL}/api/problem-reports`, {
       method: 'POST',
       headers: {
@@ -125,6 +137,17 @@ export default function ProblemReportModal({ show, onClose }) {
             ></button>
           </div>
           <div className="modal-body">
+            {targetSummary && (
+              <div className="alert alert-light border d-flex align-items-center" role="note">
+                <i className="bi bi-flag me-2" aria-hidden="true"></i>
+                <div>
+                  <div className="fw-semibold">{t('problem_report.reporting_target')}</div>
+                  <div className="small text-muted">
+                    {targetSummary.label}{targetSummary.name ? `: ${targetSummary.name}` : ''} (ID: {targetSummary.id})
+                  </div>
+                </div>
+              </div>
+            )}
             {success ? (
               <div className="alert alert-success text-center">
                 <i className="bi bi-check-circle-fill me-2"></i>

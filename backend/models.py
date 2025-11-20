@@ -140,6 +140,10 @@ class ProblemReport(Base):
     user_email = Column(String, nullable=True)  # Store email in case user is deleted
     description = Column(Text, nullable=False)
     screenshot = Column(String, nullable=True)  # URL or path to screenshot
+    # Target context of the report (optional)
+    target_type = Column(String, nullable=True)  # 'character' | 'scene' | 'persona'
+    target_id = Column(Integer, nullable=True)
+    target_name = Column(String, nullable=True)
     status = Column(String, default="pending", nullable=False)  # pending, in-progress, resolved, closed
     created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     resolved_time = Column(DateTime(timezone=True), nullable=True)

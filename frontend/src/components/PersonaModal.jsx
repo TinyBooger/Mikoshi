@@ -15,7 +15,7 @@ export default function PersonaModal({ show, onClose, onSelect }) {
     // Fetch popular personas on open
     fetch(`${window.API_BASE_URL}/api/personas/popular`)
       .then(res => res.json())
-      .then(setPopularPersonas);
+      .then(data => setPopularPersonas(data.items || []));
   }, [show]);
 
   useEffect(() => {
@@ -27,10 +27,10 @@ export default function PersonaModal({ show, onClose, onSelect }) {
     setLoading(true);
     // Search personas by name (search on type)
     const controller = new AbortController();
-    fetch(`${window.API_BASE_URL}/api/personas/?search=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
+    fetch(`${window.API_BASE_URL}/api/personas/search?q=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
-        setSearchResults(data);
+        setSearchResults(data.items || []);
         setLoading(false);
       })
       .catch(() => setLoading(false));

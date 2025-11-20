@@ -515,6 +515,10 @@
   },
   "problem_report": {
     "title": "Report a Problem",
+    "reporting_target": "Reporting Context",
+    "target_character": "Character",
+    "target_scene": "Scene",
+    "target_persona": "Persona",
     "description_label": "Problem Description",
     "description_placeholder": "Please describe the issue you're experiencing in detail...",
     "description_required": "Please describe the problem",

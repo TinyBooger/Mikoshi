@@ -4,6 +4,8 @@ import SecondaryButton from './SecondaryButton';
 import defaultPic from '../assets/images/default-picture.png';
 
 import InfoCard from './InfoCard';
+import ProblemReportModal from './ProblemReportModal';
+import { useTranslation } from 'react-i18next';
 
 
 // Accept all required props for the sidebar
@@ -49,6 +51,8 @@ export default function CharacterSidebar({
 }) {
   const [creatorHover, setCreatorHover] = React.useState(false);
   const [showFullTagline, setShowFullTagline] = React.useState(false);
+  const [showProblemReport, setShowProblemReport] = React.useState(false);
+  const { t } = useTranslation();
   // Track which entity type is currently shown: 'character', 'scene', 'persona'
   const entityTypes = [];
   if (selectedCharacter) entityTypes.push('character');
@@ -222,6 +226,21 @@ export default function CharacterSidebar({
               setShowFullTagline={setShowFullTagline}
               isPlaceholder={!selectedCharacter && !selectedScene && !selectedPersona}
             />
+            {/* Report button */}
+            {(selectedCharacter || selectedScene || selectedPersona) && (
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0 12px 0' }}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-danger"
+                  onClick={() => setShowProblemReport(true)}
+                  title={t('topbar.report_problem')}
+                  aria-label={t('topbar.report_problem')}
+                  style={{ borderRadius: '50%', width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <i className="bi bi-flag" style={{ fontSize: '14px' }}></i>
+                </button>
+              </div>
+            )}
           </div>
 
         {/* New Chat Button */}
@@ -368,6 +387,22 @@ export default function CharacterSidebar({
         )}
         </aside>
       </div>
+      {/* Problem Report Modal via portal */}
+      <ProblemReportModal
+        show={showProblemReport}
+        onClose={() => setShowProblemReport(false)}
+        targetType={currentEntityType}
+        targetId={
+          currentEntityType === 'character' ? selectedCharacter?.id :
+          currentEntityType === 'scene' ? selectedScene?.id :
+          currentEntityType === 'persona' ? selectedPersona?.id : null
+        }
+        targetName={
+          currentEntityType === 'character' ? selectedCharacter?.name :
+          currentEntityType === 'scene' ? selectedScene?.name :
+          currentEntityType === 'persona' ? selectedPersona?.name : null
+        }
+      />
     </>
   );
 }

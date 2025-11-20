@@ -97,6 +97,9 @@ class PersonaListOut(BaseModel):
 class ProblemReportCreate(BaseModel):
     description: str
     screenshot: Optional[str] = None
+    target_type: Optional[str] = None
+    target_id: Optional[int] = None
+    target_name: Optional[str] = None
 
 class ProblemReportOut(BaseModel):
     id: int
@@ -104,6 +107,9 @@ class ProblemReportOut(BaseModel):
     user_email: Optional[str] = None
     description: str
     screenshot: Optional[str] = None
+    target_type: Optional[str] = None
+    target_id: Optional[int] = None
+    target_name: Optional[str] = None
     status: str
     created_time: Any
     resolved_time: Optional[Any] = None
@@ -111,6 +117,6 @@ class ProblemReportOut(BaseModel):
 
     class Config:
         from_attributes = True
-
+    
     class Config:
         from_attributes = True

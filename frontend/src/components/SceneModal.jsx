@@ -16,7 +16,7 @@ export default function SceneModal({ show, onClose, onSelect }) {
     // Fetch popular scenes on open
     fetch(`${window.API_BASE_URL}/api/scenes/popular`)
       .then(res => res.json())
-      .then(setPopularScenes);
+      .then(data => setPopularScenes(data.items || []));
   }, [show]);
 
   useEffect(() => {
@@ -28,10 +28,10 @@ export default function SceneModal({ show, onClose, onSelect }) {
     setLoading(true);
     // Search scenes by name (search on type)
     const controller = new AbortController();
-    fetch(`${window.API_BASE_URL}/api/scenes/?search=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
+    fetch(`${window.API_BASE_URL}/api/scenes/search?q=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
-        setSearchResults(data);
+        setSearchResults(data.items || []);
         setLoading(false);
       })
       .catch(() => setLoading(false));

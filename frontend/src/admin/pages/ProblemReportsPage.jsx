@@ -149,6 +149,7 @@ export default function ProblemReportsPage() {
                 <th style={{ width: '5%' }}>ID</th>
                 <th style={{ width: '15%' }}>User</th>
                 <th style={{ width: '35%' }}>Description</th>
+                <th style={{ width: '15%' }}>Target</th>
                 <th style={{ width: '10%' }}>Screenshot</th>
                 <th style={{ width: '10%' }}>Status</th>
                 <th style={{ width: '12%' }}>Created</th>
@@ -177,6 +178,32 @@ export default function ProblemReportsPage() {
                       <small className="text-muted d-block mt-1">
                         <strong>Notes:</strong> {report.admin_notes}
                       </small>
+                    )}
+                  </td>
+                  <td>
+                    {report.target_type ? (
+                      <div className="small">
+                        <div className="text-capitalize fw-semibold">{report.target_type}</div>
+                        <div className="text-truncate" style={{ maxWidth: '160px' }}>
+                          {report.target_name || 'Unnamed'} (ID: {report.target_id})
+                        </div>
+                        {report.target_id && (
+                          <a
+                            className="small"
+                            href={
+                              report.target_type === 'character' ? `/chat?character=${report.target_id}` :
+                              report.target_type === 'scene' ? `/chat?scene=${report.target_id}` :
+                              report.target_type === 'persona' ? `/chat?persona=${report.target_id}` : '#'
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Open in Chat
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted">General</span>
                     )}
                   </td>
                   <td>
