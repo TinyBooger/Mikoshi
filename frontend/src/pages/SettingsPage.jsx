@@ -4,6 +4,8 @@ import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
 import ConfirmModal from '../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
+import PrimaryButton from '../components/PrimaryButton';
+import SecondaryButton from '../components/SecondaryButton';
 
 export default function SettingsPage() {
   const { userData, sessionToken, refreshUserData, logout } = useContext(AuthContext);
@@ -113,7 +115,7 @@ export default function SettingsPage() {
             <h4>{t('settings.security')}</h4>
               {!showPasswordForm ? (
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-outline-dark" onClick={() => setShowPasswordForm(true)}>{t('settings.change_password')}</button>
+                <PrimaryButton onClick={() => setShowPasswordForm(true)}>{t('settings.change_password')}</PrimaryButton>
               </div>
             ) : (
               <form onSubmit={doChangePassword}>
@@ -133,8 +135,8 @@ export default function SettingsPage() {
                   <div className="text-danger mb-2" style={{ fontSize: '0.95rem' }}>{passwordError}</div>
                 )}
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-dark" type="submit" disabled={changingPassword}>{t('settings.change_password')}</button>
-                  <button type="button" className="btn btn-outline-secondary" onClick={() => { setShowPasswordForm(false); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); }}>{t('common.cancel')}</button>
+                  <PrimaryButton type="submit" disabled={changingPassword}>{t('settings.change_password')}</PrimaryButton>
+                  <SecondaryButton type="button" onClick={() => { setShowPasswordForm(false); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); }}>{t('common.cancel')}</SecondaryButton>
                 </div>
               </form>
             )}
@@ -145,7 +147,7 @@ export default function SettingsPage() {
             <p>{t('settings.current_email')} <strong>{userData.email}</strong></p>
               {!showEmailForm ? (
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-outline-dark" onClick={() => setShowEmailForm(true)}>{t('settings.change_email')}</button>
+                <PrimaryButton onClick={() => setShowEmailForm(true)}>{t('settings.change_email')}</PrimaryButton>
               </div>
             ) : (
               <form onSubmit={doChangeEmail}>
@@ -154,8 +156,8 @@ export default function SettingsPage() {
                   <input type="email" className="form-control" value={newEmail} onChange={e => setNewEmail(e.target.value)} required />
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-dark" type="submit" disabled={changingEmail}>{t('settings.change_email')}</button>
-                  <button type="button" className="btn btn-outline-secondary" onClick={() => { setShowEmailForm(false); setNewEmail(''); setEmailError(''); }}>{t('common.cancel')}</button>
+                  <PrimaryButton type="submit" disabled={changingEmail}>{t('settings.change_email')}</PrimaryButton>
+                  <SecondaryButton type="button" onClick={() => { setShowEmailForm(false); setNewEmail(''); setEmailError(''); }}>{t('common.cancel')}</SecondaryButton>
                 </div>
                 {emailError && (
                   <div className="text-danger mt-2" style={{ fontSize: '0.95rem' }}>{emailError}</div>
@@ -168,7 +170,14 @@ export default function SettingsPage() {
             <h4 className="text-danger">{t('settings.danger_zone')}</h4>
             <p className="text-muted">{t('settings.delete_account_confirm')}</p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-outline-danger" onClick={() => setConfirmDelete({ show: true })}>{t('settings.delete_account')}</button>
+              <PrimaryButton 
+                onClick={() => setConfirmDelete({ show: true })}
+                style={{ background: '#d32f2f', color: '#fff' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#b71c1c'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#d32f2f'; }}
+              >
+                {t('settings.delete_account')}
+              </PrimaryButton>
             </div>
           </section>
         </div>

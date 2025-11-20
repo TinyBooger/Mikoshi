@@ -237,11 +237,11 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
       {/* Stats */}
       <div className="d-flex align-items-center justify-content-between px-2 pb-1" style={{ minHeight: isMobile ? '0.875rem' : '1.125rem' }}> {/* 14px/18px */}
         <span className="d-flex align-items-center text-secondary" style={{ fontSize: isMobile ? '0.5625rem' : '0.625rem' }}> {/* 9px/10px */}
-          <i className="bi bi-eye me-1"></i> {typeof views === 'number' ? views.toLocaleString() : 0} {t('entity_card.views')}
+          <i className="bi bi-chat me-1"></i> {typeof views === 'number' ? views.toLocaleString() : 0}
         </span>
         {(type === 'character' || type === 'scene' || type === 'persona') && (
           <span className="d-flex align-items-center text-secondary" style={{ fontSize: isMobile ? '0.5625rem' : '0.625rem' }}>
-            <i className="bi bi-hand-thumbs-up me-1"></i> {typeof likes === 'number' ? likes.toLocaleString() : 0} {t('entity_card.likes')}
+            <i className="bi bi-hand-thumbs-up me-1"></i> {typeof likes === 'number' ? likes.toLocaleString() : 0}
           </span>
         )}
       </div>

@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import PrimaryButton from './PrimaryButton';
 
 export default function UpdateNotificationModal({ show, onClose }) {
   const { t } = useTranslation();
@@ -91,12 +93,10 @@ export default function UpdateNotificationModal({ show, onClose }) {
               style={{ fontSize: '0.8rem' }}
             ></button>
           </div>
-          
           <div style={{ color: '#555', fontSize: '0.95rem', lineHeight: '1.6' }}>
             <p className="mb-3">
               {notification.message}
             </p>
-            
             {notification.features && notification.features.length > 0 && (
               <div className="mb-3">
                 <strong style={{ fontSize: '0.9rem' }}>
@@ -109,7 +109,6 @@ export default function UpdateNotificationModal({ show, onClose }) {
                 </ul>
               </div>
             )}
-            
             <div 
               className="p-3 rounded-3"
               style={{ 
@@ -125,30 +124,17 @@ export default function UpdateNotificationModal({ show, onClose }) {
               </div>
             </div>
           </div>
-          
           <div className="mt-4">
-            <button
-              className="btn w-100"
+            <PrimaryButton
+              className="w-100"
               onClick={handleClose}
-              style={{
-                background: '#736B92',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '0.6rem',
-                fontWeight: 600,
-                fontSize: '0.95rem',
-                transition: 'background 0.2s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#5D5575'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#736B92'; }}
+              style={{ borderRadius: 8, padding: '0.6rem', fontWeight: 600, fontSize: '0.95rem' }}
             >
               {t('update_notification.got_it')}
-            </button>
+            </PrimaryButton>
           </div>
         </div>
       </div>
-      
       <style>
         {`
           @keyframes slideInRight {

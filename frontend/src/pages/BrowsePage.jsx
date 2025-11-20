@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -152,11 +151,11 @@ function BrowsePage() {
             key={tab.key}
             className="fw-bold border-0 bg-transparent"
             style={{
-              color: activeMainTab === tab.key ? '#18191a' : '#888',
+              color: activeMainTab === tab.key ? '#736B92' : '#888',
               fontWeight: 700,
               fontSize: '1.02rem',
               background: 'transparent',
-              borderBottom: activeMainTab === tab.key ? '2.5px solid #18191a' : '2.5px solid transparent',
+              borderBottom: activeMainTab === tab.key ? '2.5px solid #736B92' : '2.5px solid transparent',
               borderRadius: 0,
               outline: 'none',
               transition: 'color 0.14s, border-bottom 0.14s',
@@ -168,8 +167,8 @@ function BrowsePage() {
             onClick={() => handleMainTab(tab.key)}
             onMouseEnter={e => {
               if (activeMainTab !== tab.key) {
-                e.currentTarget.style.color = '#232323';
-                e.currentTarget.style.borderBottom = '2.5px solid #232323';
+                e.currentTarget.style.color = '#736B92';
+                e.currentTarget.style.borderBottom = '2.5px solid #736B92';
               }
             }}
             onMouseLeave={e => {
@@ -190,11 +189,11 @@ function BrowsePage() {
             key={sub.key}
             className="fw-bold border-0 bg-transparent"
             style={{
-              color: activeSubTab === sub.key ? '#18191a' : '#888',
+              color: activeSubTab === sub.key ? '#736B92' : '#888',
               fontWeight: 700,
               fontSize: '0.86rem',
               background: 'transparent',
-              borderBottom: activeSubTab === sub.key ? '2px solid #18191a' : '2px solid transparent',
+              borderBottom: activeSubTab === sub.key ? '2px solid #736B92' : '2px solid transparent',
               borderRadius: 0,
               outline: 'none',
               transition: 'color 0.14s, border-bottom 0.14s',
@@ -206,8 +205,8 @@ function BrowsePage() {
             onClick={() => handleSubTab(sub.key)}
             onMouseEnter={e => {
               if (activeSubTab !== sub.key) {
-                e.currentTarget.style.color = '#232323';
-                e.currentTarget.style.borderBottom = '2px solid #232323';
+                e.currentTarget.style.color = '#736B92';
+                e.currentTarget.style.borderBottom = '2px solid #736B92';
               }
             }}
             onMouseLeave={e => {

@@ -8,6 +8,7 @@ import HorizontalCardSection from '../components/HorizontalCardSection';
 import { AuthContext } from '../components/AuthProvider';
 import { useTranslation } from 'react-i18next';
 import TextButton from '../components/TextButton';
+import PrimaryButton from '../components/PrimaryButton';
 
 
 function HomePage() {
@@ -532,31 +533,15 @@ function HomePage() {
             }}>
               {t('home.create_cta_subtitle')}
             </p>
-            <button
-              className="btn btn-lg fw-bold px-5 py-3"
-              style={{
-                background: 'linear-gradient(135deg, #736B92 0%, #9B8FB8 100%)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '50px',
-                fontSize: '1rem',
-                letterSpacing: '0.3px',
-                boxShadow: '0 4px 12px rgba(115, 107, 146, 0.3)',
-                transition: 'all 0.3s ease',
-                cursor: 'pointer'
-              }}
+            <PrimaryButton
               onClick={() => navigate('/character/create')}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(115, 107, 146, 0.4)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(115, 107, 146, 0.3)';
+              style={{
+                fontSize: '1rem',
+                padding: '0.7rem 2.5rem'
               }}
             >
               {t('home.create_cta_button')}
-            </button>
+            </PrimaryButton>
           </div>
         </div>
       </section>

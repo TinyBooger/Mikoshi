@@ -235,7 +235,7 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
         >
           <div className="d-flex align-items-center flex-wrap" style={{ gap: isMobile ? '0.6rem' : '0.5rem' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <i className="bi bi-eye" />
+              <i className="bi bi-chat" />
               {typeof views === 'number' ? views.toLocaleString() : 0}
             </span>
             {(type === 'character' || type === 'scene') && (

@@ -85,7 +85,7 @@ export default function InfoCard({
             </div>
             {typeof resolvedChatCount === 'number' && (
               <div style={{ color: '#888', fontSize: 13, display: 'flex', alignItems: 'center', marginBottom: 2 }}>
-                <i className="bi bi-chat-square-text me-1"></i> {resolvedChatCount} chats
+                <i className="bi bi-chat me-1"></i> {resolvedChatCount} chats
               </div>
             )}
             {onLike && (

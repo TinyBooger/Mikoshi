@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import logo from '../assets/images/logo.png';
 import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
+import PrimaryButton from '../components/PrimaryButton';
+import TextButton from '../components/TextButton';
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -43,14 +45,11 @@ export default function LoginPage() {
         </div>
         {error && <div className="alert alert-danger">{error}</div>}
         <div className="text-center mt-3">
-          <button
-            type="button"
-            className="btn btn-link"
-            style={{ fontSize: '1rem', textDecoration: 'underline', color: '#007bff' }}
+          <TextButton
             onClick={() => navigate('/reset-password')}
           >
             Forgot password?
-          </button>
+          </TextButton>
         </div>
   {loading && <div className="text-center"><div className="spinner-border text-primary" role="status"></div></div>}
         <form onSubmit={handleSubmit}>
@@ -74,18 +73,15 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <button type="submit" className="btn btn-dark w-100">{t('welcome.login')}</button>
+          <PrimaryButton type="submit" className="w-100">{t('welcome.login')}</PrimaryButton>
         </form>
         <div className="text-center mt-3">
           <span className="me-2">{t('welcome.no_account')}</span>
-          <button
-            type="button"
-            className="btn btn-outline-dark"
-            style={{ borderWidth: 2 }}
+          <PrimaryButton
             onClick={() => navigate('/sign-up')}
           >
             {t('welcome.sign_up')}
-          </button>
+          </PrimaryButton>
         </div>
       </div>
     </div>

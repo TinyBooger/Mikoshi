@@ -6,6 +6,9 @@ import { useToast } from './ToastProvider.jsx';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import logo from '../assets/images/logo.png';
+import PrimaryButton from './PrimaryButton';
+import SecondaryButton from './SecondaryButton';
+import TextButton from './TextButton';
 
 export default function Sidebar() {
   const [recent, setRecent] = useState([]);

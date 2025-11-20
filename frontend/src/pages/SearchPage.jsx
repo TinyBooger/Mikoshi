@@ -6,6 +6,7 @@ import EntityCard from '../components/EntityCard';
 import PageWrapper from '../components/PageWrapper';
 import PaginationBar from '../components/PaginationBar';
 import { useTranslation } from 'react-i18next';
+import PrimaryButton from '../components/PrimaryButton';
 
 
 export default function SearchPage() {
@@ -188,29 +189,19 @@ export default function SearchPage() {
                 border: 'none',
               }}
             />
-            <button
-              className="fw-bold"
-              style={{
-                background: '#18191a',
-                color: '#fff',
-                border: 'none',
-                fontSize: '0.96rem',
-                padding: '0 1.2rem',
-                transition: 'background 0.14s, color 0.14s',
-                outline: 'none',
-                cursor: 'pointer',
+            <PrimaryButton
+              onClick={() => handleSearch()}
+              style={{ 
                 borderRadius: 0,
                 boxShadow: 'none',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                padding: '0 1.2rem'
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#232323'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#18191a'; }}
-              onClick={() => handleSearch()}
             >
               <i className="bi bi-search" style={{ fontSize: '0.96rem' }}></i>
-            </button>
+            </PrimaryButton>
           </div>
           {/* Suggestions dropdown */}
           {showSuggestions && suggestions.length > 0 && (
@@ -254,60 +245,75 @@ export default function SearchPage() {
         <div className="d-flex flex-row align-items-center justify-content-between mb-3" style={{ width: '96%', maxWidth: 1400 }}>
           {/* Tabs */}
           <div className="d-flex flex-row" style={{ gap: 12 }}>
-            <button
-              className={`fw-bold ${activeTab === 'characters' ? 'active-tab' : ''}`}
+            <PrimaryButton
+              onClick={() => handleTabChange('characters')}
               style={{
-                background: activeTab === 'characters' ? '#18191a' : '#f5f6fa',
+                background: activeTab === 'characters' ? '#736B92' : '#f5f6fa',
                 color: activeTab === 'characters' ? '#fff' : '#232323',
-                border: 'none',
                 borderRadius: 13,
                 fontSize: '1.04rem',
                 padding: '0.48rem 1.6rem',
                 boxShadow: activeTab === 'characters' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                transition: 'background 0.14s, color 0.14s',
-                outline: 'none',
-                cursor: 'pointer',
               }}
-              onClick={() => handleTabChange('characters')}
+              onMouseEnter={e => {
+                if (activeTab !== 'characters') {
+                  e.currentTarget.style.background = '#e9ecef';
+                } else {
+                  e.currentTarget.style.background = '#6A6286';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = activeTab === 'characters' ? '#736B92' : '#f5f6fa';
+              }}
             >
               {t('search.characters_tab') || 'Characters'}
-            </button>
-            <button
-              className={`fw-bold ${activeTab === 'scenes' ? 'active-tab' : ''}`}
+            </PrimaryButton>
+            <PrimaryButton
+              onClick={() => handleTabChange('scenes')}
               style={{
-                background: activeTab === 'scenes' ? '#18191a' : '#f5f6fa',
+                background: activeTab === 'scenes' ? '#736B92' : '#f5f6fa',
                 color: activeTab === 'scenes' ? '#fff' : '#232323',
-                border: 'none',
                 borderRadius: 13,
                 fontSize: '1.04rem',
                 padding: '0.48rem 1.6rem',
                 boxShadow: activeTab === 'scenes' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                transition: 'background 0.14s, color 0.14s',
-                outline: 'none',
-                cursor: 'pointer',
               }}
-              onClick={() => handleTabChange('scenes')}
+              onMouseEnter={e => {
+                if (activeTab !== 'scenes') {
+                  e.currentTarget.style.background = '#e9ecef';
+                } else {
+                  e.currentTarget.style.background = '#6A6286';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = activeTab === 'scenes' ? '#736B92' : '#f5f6fa';
+              }}
             >
               {t('search.scenes_tab') || 'Scenes'}
-            </button>
-            <button
-              className={`fw-bold ${activeTab === 'personas' ? 'active-tab' : ''}`}
+            </PrimaryButton>
+            <PrimaryButton
+              onClick={() => handleTabChange('personas')}
               style={{
-                background: activeTab === 'personas' ? '#18191a' : '#f5f6fa',
+                background: activeTab === 'personas' ? '#736B92' : '#f5f6fa',
                 color: activeTab === 'personas' ? '#fff' : '#232323',
-                border: 'none',
                 borderRadius: 13,
                 fontSize: '1.04rem',
                 padding: '0.48rem 1.6rem',
                 boxShadow: activeTab === 'personas' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                transition: 'background 0.14s, color 0.14s',
-                outline: 'none',
-                cursor: 'pointer',
               }}
-              onClick={() => handleTabChange('personas')}
+              onMouseEnter={e => {
+                if (activeTab !== 'personas') {
+                  e.currentTarget.style.background = '#e9ecef';
+                } else {
+                  e.currentTarget.style.background = '#6A6286';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = activeTab === 'personas' ? '#736B92' : '#f5f6fa';
+              }}
             >
               {t('search.personas_tab') || 'Personas'}
-            </button>
+            </PrimaryButton>
           </div>
           {/* Sorting Toggle Dropdown */}
           <div className="dropdown" style={{ minWidth: 140 }}>

@@ -1,7 +1,11 @@
+
 import React, { useState, useContext, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from './AuthProvider';
+import PrimaryButton from './PrimaryButton';
+import SecondaryButton from './SecondaryButton';
+import TextButton from './TextButton';
 
 export default function ProblemReportModal({ show, onClose, targetType = null, targetId = null, targetName = null }) {
   const { t } = useTranslation();
@@ -134,6 +138,8 @@ export default function ProblemReportModal({ show, onClose, targetType = null, t
               className="btn-close" 
               onClick={handleClose}
               disabled={loading}
+              aria-label="Close"
+              style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, color: '#736B92', opacity: 0.7, cursor: 'pointer' }}
             ></button>
           </div>
           <div className="modal-body">
@@ -193,18 +199,19 @@ export default function ProblemReportModal({ show, onClose, targetType = null, t
                         alt="Screenshot preview" 
                         style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }}
                       />
-                      <button
+                      <TextButton
                         type="button"
-                        className="btn btn-sm btn-link text-danger"
                         onClick={() => {
                           setScreenshot(null);
                           setScreenshotPreview(null);
                         }}
                         disabled={loading}
+                        style={{ color: '#d9534f', paddingLeft: 0 }}
+                        className="align-middle"
                       >
                         <i className="bi bi-x-circle me-1"></i>
                         {t('problem_report.remove_image')}
-                      </button>
+                      </TextButton>
                     </div>
                   )}
                 </div>
@@ -216,28 +223,27 @@ export default function ProblemReportModal({ show, onClose, targetType = null, t
                 )}
                 
                 <div className="d-flex justify-content-end gap-2">
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
+                  <SecondaryButton
+                    type="button"
                     onClick={handleClose}
                     disabled={loading}
                   >
                     {t('problem_report.cancel')}
-                  </button>
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary"
+                  </SecondaryButton>
+                  <PrimaryButton
+                    type="submit"
                     disabled={loading || !description.trim()}
+                    style={{ minWidth: 110 }}
                   >
                     {loading ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2"></span>
+                        <span className="spinner-border spinner-border-sm me-2" style={{ width: '1em', height: '1em' }}></span>
                         {t('problem_report.submitting')}
                       </>
                     ) : (
                       t('problem_report.submit')
                     )}
-                  </button>
+                  </PrimaryButton>
                 </div>
               </form>
             )}

@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import PageWrapper from '../components/PageWrapper';
 import ImageCropModal from '../components/ImageCropModal';
 import { AuthContext } from '../components/AuthProvider';
+import PrimaryButton from '../components/PrimaryButton';
+import TextButton from '../components/TextButton';
 
 export default function SignUpPage() {
   const { t } = useTranslation();
@@ -51,14 +53,12 @@ export default function SignUpPage() {
 
   return (
     <>
-      <button
-        type="button"
+      <TextButton
         onClick={handleGoBack}
-        style={{ position: 'absolute', top: 24, left: 24, zIndex: 1000, background: 'none', border: 'none', color: '#222', fontWeight: 600, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-        aria-label={t('signup.go_back')}
+        style={{ position: 'absolute', top: 24, left: 24, zIndex: 1000 }}
       >
         <span style={{ fontSize: '1.5rem', marginRight: 6 }}>&larr;</span> {t('signup.back')}
-      </button>
+      </TextButton>
       <PageWrapper>
         <div className="container">
           <div className="mx-auto" style={{ maxWidth: 400 }}>
@@ -189,7 +189,7 @@ export default function SignUpPage() {
                   </label>
                 </div>
               </div>
-              <button type="submit" className="btn btn-dark w-100">{t('signup.submit')}</button>
+              <PrimaryButton type="submit" className="w-100">{t('signup.submit')}</PrimaryButton>
             </form>
           </div>
         </div>

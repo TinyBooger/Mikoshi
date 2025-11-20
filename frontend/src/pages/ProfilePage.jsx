@@ -12,6 +12,8 @@ import EntityCard from '../components/EntityCard';
 import ButtonRounded from '../components/ButtonRounded';
 import CardSection from '../components/CardSection';
 import PaginationBar from '../components/PaginationBar';
+import PrimaryButton from '../components/PrimaryButton';
+import SecondaryButton from '../components/SecondaryButton';
 
 export default function ProfilePage() {
   const { t } = useTranslation();
@@ -607,41 +609,15 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <div className="modal-footer" style={{ borderTop: '2px solid #111', background: '#fff' }}>
-                  <button
-                    type="submit"
-                    className="fw-bold rounded-pill"
-                    style={{
-                      background: '#111',
-                      color: '#fff',
-                      border: 'none',
-                      fontSize: '1rem',
-                      padding: '0.45rem 1.5rem',
-                      letterSpacing: '0.2px',
-                      transition: 'background 0.18s, color 0.18s',
-                      outline: 'none',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#222'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = '#111'; }}
-                  >
+                  <PrimaryButton type="submit">
                     {t('profile.save')}
-                  </button>
-                  <button
+                  </PrimaryButton>
+                  <SecondaryButton
                     type="button"
-                    className="fw-bold rounded-pill"
-                    style={{
-                      background: '#fff',
-                      color: '#111',
-                      border: '1.5px solid #111',
-                      fontSize: '1rem',
-                      padding: '0.45rem 1.5rem',
-                      letterSpacing: '0.2px',
-                      transition: 'background 0.18s, color 0.18s',
-                      outline: 'none',
-                    }}
                     onClick={() => setShowModal(false)}
                   >
                     {t('profile.cancel')}
-                  </button>
+                  </SecondaryButton>
                 </div>
               </form>
             </div>

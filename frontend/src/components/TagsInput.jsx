@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../components/AuthProvider';
+import TextButton from './TextButton';
 
 export default function TagsInput({ tags, setTags, maxTags, placeholder }) {
   const [input, setInput] = useState("");
@@ -61,12 +63,14 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder }) {
       {tags.map((tag, i) => (
         <div key={i} className="badge bg-secondary d-flex align-items-center">
           {tag}
-          <button
+          <TextButton
             type="button"
-            className="btn-close btn-close-white ms-1"
             onClick={() => removeTag(i)}
-            style={{ fontSize: "0.7rem" }}
-          ></button>
+            style={{ fontSize: '0.7rem', color: '#fff', marginLeft: 4, padding: 0, background: 'none' }}
+            aria-label="Remove tag"
+          >
+            <i className="bi bi-x-circle"></i>
+          </TextButton>
         </div>
       ))}
       <input

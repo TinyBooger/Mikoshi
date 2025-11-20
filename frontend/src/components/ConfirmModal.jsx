@@ -1,5 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import PrimaryButton from './PrimaryButton';
+import SecondaryButton from './SecondaryButton';
 
 export default function ConfirmModal({ show, title = 'Confirm', message = '', onConfirm, onCancel, confirmText, cancelText }) {
   const { t } = useTranslation();
@@ -13,8 +15,8 @@ export default function ConfirmModal({ show, title = 'Confirm', message = '', on
         </div>
         <div style={styles.body}>{message}</div>
         <div style={styles.footer}>
-          <button style={{ ...styles.button, ...styles.cancel }} onClick={onCancel}>{cancelText || t('common.cancel')}</button>
-          <button style={{ ...styles.button, ...styles.confirm }} onClick={onConfirm}>{confirmText || t('common.confirm')}</button>
+          <SecondaryButton onClick={onCancel}>{cancelText || t('common.cancel')}</SecondaryButton>
+          <PrimaryButton onClick={onConfirm}>{confirmText || t('common.confirm')}</PrimaryButton>
         </div>
       </div>
     </div>
@@ -56,21 +58,5 @@ const styles = {
     padding: '0.75rem',
     borderTop: '1px solid #eee',
     background: '#f8f9fa'
-  },
-  button: {
-    padding: '0.56rem 0.9rem',
-    borderRadius: 8,
-    border: 'none',
-    cursor: 'pointer',
-    fontWeight: 600
-  },
-  cancel: {
-    background: '#fff',
-    border: '1px solid #e9ecef',
-    color: '#333'
-  },
-  confirm: {
-    background: '#18191a',
-    color: '#fff'
   }
 };

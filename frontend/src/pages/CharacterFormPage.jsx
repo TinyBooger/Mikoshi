@@ -8,6 +8,7 @@ import PageWrapper from '../components/PageWrapper';
 import { useTranslation } from 'react-i18next';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/ToastProvider';
+import PrimaryButton from '../components/PrimaryButton';
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
@@ -383,58 +384,26 @@ export default function CharacterFormPage() {
           </div>
 
           <div className="d-flex gap-3 mt-4 justify-content-end">
-            <button
-              type="submit"
-              className="fw-bold rounded-pill"
-              style={{
-                background: '#18191a',
-                color: '#fff',
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                fontSize: '1.08rem',
-                padding: '0.5rem 2.2rem',
-                letterSpacing: '0.2px',
-                transition: 'background 0.18s, color 0.18s',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#232323';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = '#18191a';
-              }}
-            >
+            <PrimaryButton type="submit">
               <i className="bi bi-save me-2"></i>{mode === 'edit' ? t('character_form.save') : t('character_form.create')}
-            </button>
+            </PrimaryButton>
             {mode === 'edit' && (
-              <button
+              <PrimaryButton
                 type="button"
-                className="fw-bold rounded-pill"
                 style={{
-                  background: '#fff',
-                  color: '#d32f2f',
-                  border: '1.5px solid #d32f2f',
-                  boxShadow: 'none',
-                  fontSize: '1.08rem',
-                  padding: '0.5rem 2.2rem',
-                  letterSpacing: '0.2px',
-                  transition: 'background 0.18s, color 0.18s, border 0.18s',
-                  outline: 'none',
-                  cursor: 'pointer'
+                  background: '#d32f2f',
+                  color: '#fff'
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.background = '#d32f2f';
-                  e.currentTarget.style.color = '#fff';
+                  e.currentTarget.style.background = '#b71c1c';
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.background = '#fff';
-                  e.currentTarget.style.color = '#d32f2f';
+                  e.currentTarget.style.background = '#d32f2f';
                 }}
                 onClick={handleDelete}
               >
                 <i className="bi bi-trash me-2"></i>{t('character_form.delete')}
-              </button>
+              </PrimaryButton>
             )}
           </div>
         </form>

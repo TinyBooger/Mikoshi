@@ -218,7 +218,7 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
       <div style={{ padding: isMobile ? '0.5rem 0.75rem 0.55rem' : '0.45rem 0.8rem 0.65rem', borderTop: '1px solid #f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: isMobile ? '0.5rem' : '0.9rem' }}>
         <div className="d-flex align-items-center" style={{ gap: isMobile ? '0.65rem' : '0.9rem' }}>
           <span style={{ fontSize: isMobile ? '0.68rem' : '0.72rem', color: '#555', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <i className="bi bi-eye" />
+            <i className="bi bi-chat" />
             {typeof views === 'number' ? views.toLocaleString() : 0}
           </span>
           {(type === 'character' || type === 'scene') && (
