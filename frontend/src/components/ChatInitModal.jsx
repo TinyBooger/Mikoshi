@@ -15,6 +15,8 @@ export default function ChatInitModal({
   setSelectedCharacter,
   setSelectedPersona,
   setSelectedScene,
+  setPersonaId,
+  setSceneId,
   selectedCharacter,
   selectedPersona,
   selectedScene,
@@ -182,7 +184,11 @@ export default function ChatInitModal({
                     type="button"
                     style={removeBtnStyle}
                     title={t('chat_init_modal.remove_persona')}
-                    onClick={e => { e.stopPropagation(); if (setSelectedPersona) setSelectedPersona(null); }}
+                    onClick={e => {
+                      e.stopPropagation();
+                      setSelectedPersona(null);
+                      if (setPersonaId) setPersonaId(null);
+                    }}
                   >
                     ×
                   </button>
@@ -206,7 +212,11 @@ export default function ChatInitModal({
                     type="button"
                     style={removeBtnStyle}
                     title={t('chat_init_modal.remove_scene')}
-                    onClick={e => { e.stopPropagation(); if (setSelectedScene) setSelectedScene(null); }}
+                    onClick={e => {
+                      e.stopPropagation();
+                      setSelectedScene(null);
+                      if (setSceneId) setSceneId(null);
+                    }}
                   >
                     ×
                   </button>

@@ -852,9 +852,14 @@ export default function ChatPage() {
         setSelectedCharacter={setSelectedCharacter}
         setSelectedPersona={setSelectedPersona}
         setSelectedScene={setSelectedScene}
+        setPersonaId={setPersonaId}
+        setSceneId={setSceneId}
         onStartChat={async () => {
           setInitModal(false);
           isNewChat.current = true;
+          // Clear IDs for any unselected entities
+          if (!selectedPersona) setPersonaId(null);
+          if (!selectedScene) setSceneId(null);
           setInitLoading(true);
           fetchInitialData().then(() => {
             setInitLoading(false);
