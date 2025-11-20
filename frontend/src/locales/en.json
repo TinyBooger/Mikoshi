@@ -71,7 +71,19 @@
     "welcome_body_scene": "Scene: \"{{scene}}\".",
     "welcome_body_cta": "Tap the input below to say hello or ask a question.",
     "welcome_scene_title": "Welcome to the scene {{scene}}",
-    "error_generating_greeting": "Failed to generate greeting. Please try again."
+    "error_generating_greeting": "Failed to generate greeting. Please try again.",
+    "error_loading_chat": "Failed to load chat. Please try again.",
+    "error_loading_character": "Failed to load character. It may have been deleted.",
+    "new_chat": "New Chat",
+    "chat_history": "Chat History",
+    "show": "Show",
+    "hide": "Hide",
+    "rename": "Rename",
+    "delete": "Delete",
+    "new_chat_title": "New Chat",
+    "tab_character": "Character",
+    "tab_scene": "Scene",
+    "tab_persona": "Persona"
   },
   "profile": {
     "created": "Created",

@@ -71,7 +71,19 @@
     "welcome_body_scene": "场景：\"{{scene}}\"。",
     "welcome_body_cta": "点击下方输入框，向对方打个招呼或提出问题。",
     "welcome_scene_title": "欢迎来到场景 {{scene}}",
-    "error_generating_greeting": "生成问候失败，请重试。"
+    "error_generating_greeting": "生成问候失败，请重试。",
+    "error_loading_chat": "加载对话失败，请重试。",
+    "error_loading_character": "加载角色失败，角色可能已被删除。",
+    "new_chat": "新对话",
+    "chat_history": "对话历史",
+    "show": "显示",
+    "hide": "隐藏",
+    "rename": "重命名",
+    "delete": "删除",
+    "new_chat_title": "新对话",
+    "tab_character": "角色",
+    "tab_scene": "场景",
+    "tab_persona": "自我形象"
   },
   "profile": {
     "created": "已创建",

@@ -95,61 +95,95 @@ export default function ChatPage() {
   useEffect(() => {
     if (loading) return;
 
-  // Only navigate if loading is false and sessionToken is still null (i.e., auth check finished and user is not logged in)
-  if (!loading && !sessionToken) {
+    // Only navigate if loading is false and sessionToken is still null (i.e., auth check finished and user is not logged in)
+    if (!loading && !sessionToken) {
       navigate('/');
       return;
     }
 
-  if (!initialized.current && sessionToken) {
-      if(checkChatHistory()) {
-        fetchInitialData().then(() => {
-          initializeChat();
-        });
-      }
+    if (!initialized.current && sessionToken && characterId) {
+      // Check if user has existing chat history with this character
+      const existingChats = userData?.chat_history?.filter(
+        h => h.character_id === characterId
+      ) || [];
       
+      if (existingChats.length > 0) {
+        // Sort by last_updated and load the most recent chat
+        const mostRecentChat = existingChats.sort(
+          (a, b) => new Date(b.last_updated) - new Date(a.last_updated)
+        )[0];
+        
+        // Load the most recent chat automatically
+        loadChat(mostRecentChat);
+        initialized.current = true;
+      } else {
+        // No chat history - show modal for new chat
+        isNewChat.current = true;
+        setInitModal(true);
+      }
       return;
     }
-  }, [navigate, sessionToken, loading, initialized, characterId, sceneId, personaId]);
+  }, [navigate, sessionToken, loading, characterId, sceneId, personaId, userData]);
 
   // Fetch character, scene, and persona data if IDs are present
   const fetchInitialData = () => {
     setInitLoading(true);
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const promises = [];
+      
       if (characterId) {
         promises.push(
           fetch(`${window.API_BASE_URL}/api/character/${characterId}`, {
             headers: { 'Authorization': sessionToken }
           })
-            .then(res => res.json())
+            .then(res => {
+              if (!res.ok) throw new Error('Character not found');
+              return res.json();
+            })
             .then(character => {
               setSelectedCharacter(character);
               setLikes(character.likes || 0);
             })
+            .catch(err => {
+              console.error('Error fetching character:', err);
+              toast.show(t('chat.error_loading_character') || 'Failed to load character.', { type: 'error' });
+              setSelectedCharacter(null);
+            })
         );
+      } else {
+        setSelectedCharacter(null);
       }
+      
       if (sceneId) {
         promises.push(
           fetch(`${window.API_BASE_URL}/api/scenes/${sceneId}`, {
             headers: { 'Authorization': sessionToken }
           })
-            .then(res => res.json())
-            .then(scene => {
-              setSelectedScene(scene);
+            .then(res => res.ok ? res.json() : null)
+            .then(scene => setSelectedScene(scene))
+            .catch(err => {
+              console.error('Error fetching scene:', err);
+              setSelectedScene(null);
             })
         );
+      } else {
+        setSelectedScene(null);
       }
+      
       if (personaId) {
         promises.push(
           fetch(`${window.API_BASE_URL}/api/personas/${personaId}`, {
             headers: { 'Authorization': sessionToken }
           })
-            .then(res => res.json())
-            .then(persona => {
-              setSelectedPersona(persona);
+            .then(res => res.ok ? res.json() : null)
+            .then(persona => setSelectedPersona(persona))
+            .catch(err => {
+              console.error('Error fetching persona:', err);
+              setSelectedPersona(null);
             })
         );
+      } else {
+        setSelectedPersona(null);
       }
 
       // Fetch liked status for all at once
@@ -176,45 +210,20 @@ export default function ChatPage() {
       } else {
         setHasLiked({ character: false, scene: false, persona: false });
       }
+      
       Promise.all(promises).then(() => {
         setInitLoading(false);
         resolve();
+      }).catch(err => {
+        setInitLoading(false);
+        reject(err);
       });
     });
   };
 
-  const checkChatHistory = () => {
-    // Check if chat history exists for the current characterId
-    const entry = userData?.chat_history?.find(
-      h => h.character_id === characterId
-    );
-    if (entry) {
-      loadChatHistory(entry);
-      isNewChat.current = false;
-      return true;
-    }
-    else {
-      isNewChat.current = true;
-      setInitModal(true);
-      return false;
-    }
-  };
 
-  // Loads chat history for the current characterId
-  const loadChatHistory = (entry) => {
-    // Set messages based on user's chat history
-    setMessages([...entry.messages]);
-    // Set characterId, sceneId, personaId from entry if present
-    if (entry.character_id) {
-      setCharacterId(entry.character_id);
-    }
-    if (entry.scene_id) {
-      setSceneId(entry.scene_id);
-    }
-    if (entry.persona_id) {
-      setPersonaId(entry.persona_id);
-    }
-  };
+
+
 
   const initializeChat = () => {
     console.log('Initializing chat with:', { characterId, sceneId, personaId });
@@ -435,17 +444,88 @@ export default function ChatPage() {
     }
   };
 
-  const loadChat = (chat) => {
-    const sys = { 
-      role: "system", 
-      content: buildSystemMessage(selectedCharacter.persona || "", selectedCharacter.example_messages || "") 
-    };
-    setMessages([sys, ...chat.messages]);
-    setSelectedChat({
-      ...chat,
-      last_updated: chat.last_updated || new Date().toISOString()
-    });
-    setShowChatHistory(false);
+  const loadChat = async (chat) => {
+    try {
+      // Update IDs from the chat entry
+      setCharacterId(chat.character_id);
+      setSceneId(chat.scene_id || null);
+      setPersonaId(chat.persona_id || null);
+      
+      // Fetch all required entities in parallel
+      const promises = [];
+      let character = selectedCharacter;
+      let scene = null;
+      let persona = null;
+      
+      // Only fetch if we don't have it or if it's different
+      if (!character || character.id !== chat.character_id) {
+        promises.push(
+          fetch(`${window.API_BASE_URL}/api/character/${chat.character_id}`, {
+            headers: { 'Authorization': sessionToken }
+          })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => { character = data; setSelectedCharacter(data); })
+            .catch(err => console.error('Error loading character:', err))
+        );
+      }
+      
+      if (chat.scene_id) {
+        promises.push(
+          fetch(`${window.API_BASE_URL}/api/scenes/${chat.scene_id}`, {
+            headers: { 'Authorization': sessionToken }
+          })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => { scene = data; setSelectedScene(data); })
+            .catch(err => console.error('Error loading scene:', err))
+        );
+      } else {
+        setSelectedScene(null);
+      }
+      
+      if (chat.persona_id) {
+        promises.push(
+          fetch(`${window.API_BASE_URL}/api/personas/${chat.persona_id}`, {
+            headers: { 'Authorization': sessionToken }
+          })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => { persona = data; setSelectedPersona(data); })
+            .catch(err => console.error('Error loading persona:', err))
+        );
+      } else {
+        setSelectedPersona(null);
+      }
+      
+      await Promise.all(promises);
+      
+      // Build proper system message with all context
+      const sys = {
+        role: "system",
+        content: buildSystemMessage(
+          character?.name || "",
+          character?.persona || "",
+          character?.example_messages || "",
+          persona?.description || null,
+          scene?.description || null
+        )
+      };
+      
+      // Set messages with proper system message
+      setMessages([sys, ...chat.messages]);
+      
+      // Set selected chat and mark as existing chat (not new)
+      setSelectedChat({
+        ...chat,
+        last_updated: chat.last_updated || new Date().toISOString()
+      });
+      
+      // Mark as existing chat, dismiss welcome
+      isNewChat.current = false;
+      setWelcomeDismissed(true);
+      setShowChatHistory(false);
+    } catch (error) {
+      console.error('Error loading chat:', error);
+      toast.show(t('chat.error_loading_chat') || 'Failed to load chat.', { type: 'error' });
+    }
   };
 
   const handleRename = async (chatId, currentTitle) => {
@@ -523,9 +603,14 @@ export default function ChatPage() {
             chat_history: prev.chat_history.filter(c => c.chat_id !== chatId)
           }));
         }
-        // If deleted chat was the selected one, start new chat
+        // If deleted chat was the selected one, reset to new chat state
         if (selectedChat?.chat_id === chatId) {
-          startNewChat();
+          setSelectedChat(null);
+          setMessages([]);
+          isNewChat.current = true;
+          setWelcomeDismissed(false);
+          // Show init modal to start fresh
+          setInitModal(true);
         }
         // Optionally refresh from backend for consistency
         refreshUserData();
@@ -861,10 +946,14 @@ export default function ChatPage() {
           if (!selectedPersona) setPersonaId(null);
           if (!selectedScene) setSceneId(null);
           setInitLoading(true);
-          fetchInitialData().then(() => {
-            setInitLoading(false);
+          try {
+            await fetchInitialData();
             initializeChat();
-          });
+          } catch (err) {
+            console.error('Error initializing chat:', err);
+          } finally {
+            setInitLoading(false);
+          }
         }}
         onCancel={() => {
           console.log(initialized.current)

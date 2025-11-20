@@ -169,7 +169,7 @@ export default function CharacterSidebar({
                   letterSpacing: '0.01em',
                 }}
               >
-                {type.charAt(0).toUpperCase() + type.slice(1)}
+                {t(`chat.tab_${type}`)}
               </button>
             ))}
           </div>
@@ -250,7 +250,7 @@ export default function CharacterSidebar({
             isMobile={isMobile}
             onClick={() => setInitModal(true)}
           >
-            <i className="bi bi-plus-circle me-2"></i> New Chat
+            <i className="bi bi-plus-circle me-2"></i> {t('chat.new_chat')}
           </PrimaryButton>
         </div>
 
@@ -258,13 +258,13 @@ export default function CharacterSidebar({
         {userData?.chat_history?.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#18191a' }}>Chat History</h6>
+              <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#18191a' }}>{t('chat.chat_history')}</h6>
               <SecondaryButton
                 type="button"
                 isMobile={isMobile}
                 onClick={() => setShowChatHistory(!showChatHistory)}
               >
-                {showChatHistory ? 'Hide' : 'Show'}
+                {showChatHistory ? t('chat.hide') : t('chat.show')}
               </SecondaryButton>
             </div>
             {showChatHistory && (
@@ -327,7 +327,7 @@ export default function CharacterSidebar({
                       ) : (
                         <>
                           <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {chat.title || chat.messages.find(m => m.role === 'user')?.content || 'New Chat'}
+                            {chat.title || chat.messages.find(m => m.role === 'user')?.content || t('chat.new_chat_title')}
                           </span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <small style={{ color: selectedChat?.chat_id === chat.chat_id ? '#fff' : '#888', fontWeight: 400 }}>
@@ -361,7 +361,7 @@ export default function CharacterSidebar({
                                       setMenuOpenId(null);
                                     }}
                                   >
-                                    <i className="bi bi-pencil me-2"></i> Rename
+                                    <i className="bi bi-pencil me-2"></i> {t('chat.rename')}
                                   </button>
                                   <button
                                     className="dropdown-item text-danger"
@@ -371,7 +371,7 @@ export default function CharacterSidebar({
                                       setMenuOpenId(null);
                                     }}
                                   >
-                                    <i className="bi bi-trash me-2"></i> Delete
+                                    <i className="bi bi-trash me-2"></i> {t('chat.delete')}
                                   </button>
                                 </div>
                               )}
