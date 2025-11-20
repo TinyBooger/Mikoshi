@@ -23,7 +23,10 @@
   "no_items": "未找到项目。",
     "characters_for_tag": "{{tag}} 的角色",
     "select_tag_to_view_characters": "请选择标签以查看角色",
-    "button_start": "开始"
+    "button_start": "开始",
+    "create_cta_title": "没有感兴趣的？立即创建你自己的角色！",
+    "create_cta_subtitle": "让想象力成为现实。设计独特的角色，赋予他们个性、背景和专属故事。",
+    "create_cta_button": "创建角色"
   },
 
   "info_card": {

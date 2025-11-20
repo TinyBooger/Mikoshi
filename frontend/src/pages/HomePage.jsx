@@ -480,6 +480,86 @@ function HomePage() {
           </>
         )}
       </section>
+
+      {/* Create Your Own CTA Section */}
+      <section className="mb-4">
+        <div 
+          className="text-center py-5 px-4"
+          style={{
+            background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.08) 0%, rgba(155, 143, 184, 0.12) 100%)',
+            borderRadius: '24px',
+            border: '1px solid rgba(115, 107, 146, 0.2)',
+            boxShadow: '0 4px 16px rgba(115, 107, 146, 0.1)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Decorative elements */}
+          <div style={{
+            position: 'absolute',
+            top: '-20px',
+            right: '-20px',
+            width: '100px',
+            height: '100px',
+            background: 'radial-gradient(circle, rgba(115, 107, 146, 0.15) 0%, transparent 70%)',
+            borderRadius: '50%',
+            pointerEvents: 'none'
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '-30px',
+            left: '-30px',
+            width: '120px',
+            height: '120px',
+            background: 'radial-gradient(circle, rgba(155, 143, 184, 0.12) 0%, transparent 70%)',
+            borderRadius: '50%',
+            pointerEvents: 'none'
+          }} />
+          
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem', lineHeight: 1 }}>✨</div>
+            <h3 className="fw-bold mb-3" style={{ 
+              fontSize: '1.75rem',
+              color: '#736B92',
+              letterSpacing: '-0.3px'
+            }}>
+              {t('home.create_cta_title')}
+            </h3>
+            <p className="text-muted mb-4" style={{ 
+              fontSize: '1rem',
+              maxWidth: '600px',
+              margin: '0 auto 1.5rem'
+            }}>
+              {t('home.create_cta_subtitle')}
+            </p>
+            <button
+              className="btn btn-lg fw-bold px-5 py-3"
+              style={{
+                background: 'linear-gradient(135deg, #736B92 0%, #9B8FB8 100%)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '50px',
+                fontSize: '1rem',
+                letterSpacing: '0.3px',
+                boxShadow: '0 4px 12px rgba(115, 107, 146, 0.3)',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer'
+              }}
+              onClick={() => navigate('/character/create')}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(115, 107, 146, 0.4)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(115, 107, 146, 0.3)';
+              }}
+            >
+              {t('home.create_cta_button')}
+            </button>
+          </div>
+        </div>
+      </section>
     </PageWrapper>
   );
 }

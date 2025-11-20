@@ -23,7 +23,10 @@
     "loading": "Loading...",
   "no_items": "No items found.",
     "characters_for_tag": "Characters for {{tag}}",
-    "select_tag_to_view_characters": "Select a tag to view characters"
+    "select_tag_to_view_characters": "Select a tag to view characters",
+    "create_cta_title": "Nothing interested? Create your own character now!",
+    "create_cta_subtitle": "Bring your imagination to life. Design unique characters with personalities, backgrounds, and stories that are all your own.",
+    "create_cta_button": "Create Character"
   },
 
   "info_card": {
