@@ -230,6 +230,18 @@
       "tags": "e.g., fantasy, guardian, nature"
     }
   },
+  "character_assistant": {
+    "title": "AI Assistant",
+    "subtitle": "Chat to create your character",
+    "button": "AI Assistant",
+    "welcome_message": "👋 Hi! I'm your AI character assistant. Describe the character you want to create, and I'll help you build it. You can also ask me to modify specific aspects after generation!",
+    "input_placeholder": "Describe your character or request changes...",
+    "thinking": "Thinking...",
+    "tip": "Press Enter to send, Shift+Enter for new line",
+    "generated_prefix": "✨ Here's your character! I've automatically applied it to the form.",
+    "applied_success": "Character applied to form!",
+    "error": "Failed to generate character. Please try again."
+  },
   "persona_form": {
     "edit_title": "Edit Persona",
     "create_title": "Create New Persona",

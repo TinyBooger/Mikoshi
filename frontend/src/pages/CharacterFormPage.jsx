@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
+import CharacterAssistantModal from '../components/CharacterAssistantModal';
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
@@ -19,8 +20,6 @@ export default function CharacterFormPage() {
   const params = useParams();
   const id = params.id;
   const mode = id ? 'edit' : 'create';
-  // Log the current mode for debugging
-  console.log("CharacterFormPage mode:", mode, id ? `(id: ${id})` : '');
   const MAX_GREETING_LENGTH = 200;
   const MAX_SAMPLE_LENGTH = 1000;
   const MAX_TAGS = 20;
@@ -44,6 +43,7 @@ export default function CharacterFormPage() {
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit');
+  const [showAssistant, setShowAssistant] = useState(false);
 
   useEffect(() => {
     if (mode === 'edit') {
@@ -158,6 +158,18 @@ export default function CharacterFormPage() {
     }
   };
 
+  const handleApplyAssistant = (generatedData) => {
+    setCharData(prev => ({
+      ...prev,
+      name: generatedData.name || prev.name,
+      persona: generatedData.persona || prev.persona,
+      tagline: generatedData.tagline || prev.tagline,
+      greeting: generatedData.greeting || prev.greeting,
+      sample: generatedData.sample_dialogue || prev.sample,
+    }));
+    // Don't close the assistant window, keep the conversation going
+  };
+
   if (loading) return null;
   return (
     <PageWrapper>
@@ -171,6 +183,41 @@ export default function CharacterFormPage() {
         margin: '0 auto',
       }}>
         <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? t('character_form.edit_title') : t('character_form.create_title')}</h2>
+        
+        {/* AI Assistant Button */}
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setShowAssistant(true)}
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 16,
+              padding: '0.75rem 1.5rem',
+              fontSize: '1rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+            }}
+          >
+            <i className="bi bi-magic"></i>
+            {t('character_assistant.button')}
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           {/* Name */}
           <div className="mb-4 position-relative">
@@ -424,6 +471,12 @@ export default function CharacterFormPage() {
         onConfirm={handleDeleteConfirmed}
         onCancel={() => setConfirmModal({ show: false })}
       />
+      {showAssistant && (
+        <CharacterAssistantModal
+          onApply={handleApplyAssistant}
+          onCancel={() => setShowAssistant(false)}
+        />
+      )}
     </PageWrapper>
   );
 }
