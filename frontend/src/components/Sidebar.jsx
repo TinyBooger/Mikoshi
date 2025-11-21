@@ -200,9 +200,9 @@ export default function Sidebar() {
       </button>
 
       {/* Recent chats */}
-      <div className="mb-3">
-  <h6 className="fw-bold mb-1" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px' }}>{t('sidebar.recent_chats')}</h6>
-        <div className="list-group rounded-4" style={{ background: 'transparent', boxShadow: 'none' }}>
+      <div className="mb-3 d-flex flex-column" style={{ minHeight: 0, flex: '1 1 auto', overflow: 'hidden' }}>
+  <h6 className="fw-bold mb-1" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px', flexShrink: 0 }}>{t('sidebar.recent_chats')}</h6>
+        <div className="list-group rounded-4" style={{ background: 'transparent', boxShadow: 'none', overflowY: 'auto', minHeight: 0 }}>
           {recent.length === 0 ? (
             <div className="list-group-item text-center py-2 rounded-4" style={{ background: '#e9ecef', color: '#888', border: 'none', fontSize: '0.8rem' }}>{t('sidebar.no_recent_chats')}</div>
           ) : (
@@ -229,7 +229,7 @@ export default function Sidebar() {
       </div>
 
       {/* Profile / Login */}
-      <div className="mt-auto px-1" style={{ fontSize: '0.8rem' }}>
+      <div className="mt-auto px-1" style={{ fontSize: '0.8rem', flexShrink: 0 }}>
   {userData ? (
           <div className="profile-dropdown-area position-relative">
             <button
