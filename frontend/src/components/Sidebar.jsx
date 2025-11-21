@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { AuthContext } from './AuthProvider.jsx'; // Import the AuthContext
@@ -11,45 +11,31 @@ import SecondaryButton from './SecondaryButton';
 import TextButton from './TextButton';
 
 export default function Sidebar() {
-  const [recent, setRecent] = useState([]);
-  const [loadingRecent, setLoadingRecent] = useState(false);
   const navigate = useNavigate();
   const { userData, sessionToken, loading } = useContext(AuthContext); // Get user data from context
   const { t } = useTranslation();
   const toast = useToast();
 
-  useEffect(() => {
-    const fetchRecentCharacters = async () => {
-      if (!sessionToken) {
-        setRecent([]);
-        return;
-      }
-
-      setLoadingRecent(true);
-      try {
-        const response = await fetch(`${window.API_BASE_URL}/api/recent-characters`, {
-          headers: {
-            'Authorization': sessionToken
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setRecent(data);
-        } else {
-          console.error('Failed to fetch recent characters');
-          setRecent([]);
+  // Derive recent characters from chat_history (no duplicates, sorted by last_updated)
+  const recent = useMemo(() => {
+    if (!userData?.chat_history) return [];
+    
+    // Group by character_id, keep only the most recent chat per character
+    const characterMap = new Map();
+    userData.chat_history
+      .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated))
+      .forEach(chat => {
+        if (chat.character_id && !characterMap.has(chat.character_id)) {
+          characterMap.set(chat.character_id, {
+            id: chat.character_id,
+            name: chat.character_name || 'Unknown Character',
+            picture: chat.character_picture
+          });
         }
-      } catch (error) {
-        console.error('Error fetching recent characters:', error);
-        setRecent([]);
-      } finally {
-        setLoadingRecent(false);
-      }
-    };
-
-    fetchRecentCharacters();
-  }, [sessionToken]);
+      });
+    
+    return Array.from(characterMap.values()).slice(0, 10);
+  }, [userData?.chat_history]);
 
   const handleLogout = async () => {
     try {

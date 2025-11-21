@@ -240,17 +240,6 @@ export default function ChatPage() {
     console.log('Initializing chat with:', { characterId, sceneId, personaId });
     // Set likes and creator from selectedCharacter
     if (characterId) {
-      // Update recent characters
-      fetch(`${window.API_BASE_URL}/api/recent-characters/update`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': sessionToken 
-        },
-        body: JSON.stringify({ character_id: characterId })
-      }).then(() => {
-        console.log('Recent characters updated:', characterId);
-      });
       // Increment views for character, scene, and persona in one call
       const body = {
         ...(selectedCharacter && { character_id: selectedCharacter.id }),
@@ -360,8 +349,13 @@ export default function ChatPage() {
                   chat_id: data.chat_id,
                   title: data.chat_title || (accumulatedReply ? accumulatedReply.slice(0, 30) + (accumulatedReply.length > 30 ? '...' : '') : 'New Chat'),
                   character_id: characterId,
+                  character_name: selectedCharacter?.name || null,
+                  character_picture: selectedCharacter?.picture || null,
                   messages: [{ role: 'assistant', content: accumulatedReply }],
-                  last_updated: new Date().toISOString()
+                  last_updated: new Date().toISOString(),
+                  created_at: new Date().toISOString(),
+                  ...(sceneId && { scene_id: sceneId }),
+                  ...(personaId && { persona_id: personaId })
                 };
                 setSelectedChat(newChat);
                 if (userData && userData.chat_history) {
@@ -486,12 +480,19 @@ export default function ChatPage() {
             if (data.done) {
               // Stream completed, update chat history
               if (data.chat_id) {
+                // Preserve existing chat data or create new
+                const existingChat = userData?.chat_history?.find(h => h.chat_id === data.chat_id);
                 const newChat = {
                   chat_id: data.chat_id,
                   title: data.chat_title || updatedMessages.find(m => m.role === 'user')?.content || 'New Chat',
                   character_id: characterId,
+                  character_name: existingChat?.character_name || selectedCharacter?.name || null,
+                  character_picture: existingChat?.character_picture || selectedCharacter?.picture || null,
                   messages: [...updatedMessages, { role: 'assistant', content: accumulatedReply }],
-                  last_updated: new Date().toISOString()
+                  last_updated: new Date().toISOString(),
+                  created_at: existingChat?.created_at || new Date().toISOString(),
+                  ...(sceneId && { scene_id: sceneId }),
+                  ...(personaId && { persona_id: personaId })
                 };
                 setSelectedChat(newChat);
                 

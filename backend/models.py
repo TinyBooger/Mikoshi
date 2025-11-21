@@ -34,7 +34,6 @@ class User(Base):
 
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
-    recent_characters = Column(ARRAY(JSONB), default=[])
 
     # liked_characters, liked_scenes, liked_personas removed; now handled by junction tables
     liked_tags = Column(ARRAY(Text), default=[])

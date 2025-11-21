@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, attributes
 from database import get_db
 from utils.session import get_current_user
 from utils.llm_client import client, stream_chat_completion
 import uuid
 import json
 from datetime import datetime, UTC
-from models import User
+from models import User, Character
 
 router = APIRouter()
 
@@ -34,12 +34,14 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     if not messages or not isinstance(messages, list):
         return JSONResponse(content={"error": "Invalid or missing messages"}, status_code=400)
 
-    # Get existing title if this is an existing chat
+    # Get existing chat info if this is an existing chat
     existing_title = None
+    existing_created_at = None
     if chat_id and current_user.chat_history:
         for chat in current_user.chat_history:
             if chat.get("chat_id") == chat_id:
                 existing_title = chat.get("title")
+                existing_created_at = chat.get("created_at")
                 break
 
     # Generate chat_id upfront for new chats
@@ -61,13 +63,18 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     updated_messages = messages + [{"role": "assistant", "content": accumulated_reply}]
                     updated_messages = updated_messages[-50:]
 
+                    # Fetch character details for sidebar display
+                    character = db.query(Character).filter(Character.id == character_id).first()
+                    
                     new_entry = {
                         "chat_id": chat_id,
                         "character_id": character_id,
+                        "character_name": character.name if character else None,
+                        "character_picture": character.picture if character else None,
                         "title": generate_chat_title(messages, existing_title),
                         "messages": updated_messages,
                         "last_updated": datetime.now(UTC).isoformat(),
-                        "created_at": datetime.now(UTC).isoformat() if not existing_title else None
+                        "created_at": existing_created_at if existing_created_at else datetime.now(UTC).isoformat()
                     }
                     if scene_id:
                         new_entry["scene_id"] = scene_id
@@ -77,6 +84,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     filtered = [h for h in (current_user.chat_history or []) if h.get("chat_id") != chat_id]
                     filtered.insert(0, new_entry)
                     current_user.chat_history = filtered[:30]
+                    attributes.flag_modified(current_user, "chat_history")
                     db.commit()
 
                 # Send final metadata
@@ -106,13 +114,18 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             updated_messages = messages + [{"role": "assistant", "content": reply}]
             updated_messages = updated_messages[-50:]
 
+            # Fetch character details for sidebar display
+            character = db.query(Character).filter(Character.id == character_id).first()
+
             new_entry = {
                 "chat_id": chat_id,
                 "character_id": character_id,
+                "character_name": character.name if character else None,
+                "character_picture": character.picture if character else None,
                 "title": generate_chat_title(messages, existing_title),
                 "messages": updated_messages,
                 "last_updated": datetime.now(UTC).isoformat(),
-                "created_at": datetime.now(UTC).isoformat() if not existing_title else None
+                "created_at": existing_created_at if existing_created_at else datetime.now(UTC).isoformat()
             }
             if scene_id:
                 new_entry["scene_id"] = scene_id
@@ -123,6 +136,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             
             filtered.insert(0, new_entry)
             current_user.chat_history = filtered[:30]
+            attributes.flag_modified(current_user, "chat_history")
             db.commit()
 
             return {
@@ -161,7 +175,7 @@ async def rename_chat(request: Request, current_user: User = Depends(get_current
         if modified:
             # Assign the new list to trigger change detection
             current_user.chat_history = updated_history
-            db.add(current_user)  # Explicitly mark as modified
+            attributes.flag_modified(current_user, "chat_history")
             db.commit()
             return {"status": "success"}
     
@@ -177,6 +191,7 @@ async def delete_chat(request: Request, current_user: User = Depends(get_current
 
     if current_user.chat_history:
         current_user.chat_history = [chat for chat in current_user.chat_history if chat.get("chat_id") != chat_id]
+        attributes.flag_modified(current_user, "chat_history")
         db.commit()
         return {"status": "success"}
     
