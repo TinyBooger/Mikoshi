@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Request, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from utils.session import get_current_user
-from utils.llm_client import client
+from utils.llm_client import client, stream_chat_completion
 import uuid
+import json
 from datetime import datetime, UTC
 from models import User
 
@@ -28,6 +29,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     chat_id = data.get("chat_id")
     scene_id = data.get("scene_id")
     persona_id = data.get("persona_id")
+    stream = data.get("stream", True)  # Default to streaming
 
     if not messages or not isinstance(messages, list):
         return JSONResponse(content={"error": "Invalid or missing messages"}, status_code=400)
@@ -40,51 +42,96 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 existing_title = chat.get("title")
                 break
 
-    try:
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=messages,
-            max_tokens=250,
-            temperature=1.3,
-            top_p=0.9
-        )
-        reply = response.choices[0].message.content.strip()
-    except Exception:
-        return JSONResponse(content={"error": "Server busy, please try again later."}, status_code=503)
+    # Generate chat_id upfront for new chats
+    if not chat_id and character_id:
+        chat_id = str(uuid.uuid4())
 
-    # Update chat history
-    if character_id:
-        updated_messages = messages + [{"role": "assistant", "content": reply}]
-        updated_messages = updated_messages[-50:]  # Keep last 50 messages
+    if stream:
+        # Return streaming response
+        async def generate():
+            accumulated_reply = ""
+            try:
+                for chunk in stream_chat_completion(messages):
+                    accumulated_reply += chunk
+                    # Send each chunk as SSE
+                    yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+                
+                # After streaming completes, save to database
+                if character_id:
+                    updated_messages = messages + [{"role": "assistant", "content": accumulated_reply}]
+                    updated_messages = updated_messages[-50:]
 
-        new_entry = {
-            "chat_id": chat_id if chat_id else str(uuid.uuid4()),
-            "character_id": character_id,
-            "title": generate_chat_title(messages, existing_title),  # Preserve existing title
-            "messages": updated_messages,
-            "last_updated": datetime.now(UTC).isoformat(),
-            "created_at": datetime.now(UTC).isoformat() if not chat_id else None
-        }
-        # Include scene_id and persona_id if provided
-        if scene_id:
-            new_entry["scene_id"] = scene_id
-        if persona_id:
-            new_entry["persona_id"] = persona_id
+                    new_entry = {
+                        "chat_id": chat_id,
+                        "character_id": character_id,
+                        "title": generate_chat_title(messages, existing_title),
+                        "messages": updated_messages,
+                        "last_updated": datetime.now(UTC).isoformat(),
+                        "created_at": datetime.now(UTC).isoformat() if not existing_title else None
+                    }
+                    if scene_id:
+                        new_entry["scene_id"] = scene_id
+                    if persona_id:
+                        new_entry["persona_id"] = persona_id
 
-        # Remove existing entry for this chat_id only
-        filtered = [h for h in (current_user.chat_history or []) if h.get("chat_id") != chat_id]
-        
-        filtered.insert(0, new_entry)
-        current_user.chat_history = filtered[:30]
-        db.commit()
+                    filtered = [h for h in (current_user.chat_history or []) if h.get("chat_id") != chat_id]
+                    filtered.insert(0, new_entry)
+                    current_user.chat_history = filtered[:30]
+                    db.commit()
 
-        return {
-            "response": reply,
-            "chat_id": new_entry["chat_id"],
-            "chat_title": new_entry["title"]  # Return existing title if preserved
-        }
+                # Send final metadata
+                yield f"data: {json.dumps({'done': True, 'chat_id': chat_id, 'chat_title': generate_chat_title(messages, existing_title)})}\n\n"
+            
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
-    return {"response": reply}
+        return StreamingResponse(generate(), media_type="text/event-stream")
+    
+    else:
+        # Non-streaming fallback (original logic)
+        try:
+            response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=messages,
+                max_tokens=250,
+                temperature=1.3,
+                top_p=0.9
+            )
+            reply = response.choices[0].message.content.strip()
+        except Exception:
+            return JSONResponse(content={"error": "Server busy, please try again later."}, status_code=503)
+
+        # Update chat history
+        if character_id:
+            updated_messages = messages + [{"role": "assistant", "content": reply}]
+            updated_messages = updated_messages[-50:]
+
+            new_entry = {
+                "chat_id": chat_id,
+                "character_id": character_id,
+                "title": generate_chat_title(messages, existing_title),
+                "messages": updated_messages,
+                "last_updated": datetime.now(UTC).isoformat(),
+                "created_at": datetime.now(UTC).isoformat() if not existing_title else None
+            }
+            if scene_id:
+                new_entry["scene_id"] = scene_id
+            if persona_id:
+                new_entry["persona_id"] = persona_id
+
+            filtered = [h for h in (current_user.chat_history or []) if h.get("chat_id") != chat_id]
+            
+            filtered.insert(0, new_entry)
+            current_user.chat_history = filtered[:30]
+            db.commit()
+
+            return {
+                "response": reply,
+                "chat_id": new_entry["chat_id"],
+                "chat_title": new_entry["title"]
+            }
+
+        return {"response": reply}
 
 @router.post("/api/chat/rename")
 async def rename_chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

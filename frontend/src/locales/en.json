@@ -77,6 +77,7 @@
     "error_generating_greeting": "Failed to generate greeting. Please try again.",
     "error_loading_chat": "Failed to load chat. Please try again.",
     "error_loading_character": "Failed to load character. It may have been deleted.",
+    "stop_generation": "Stop generation",
     "new_chat": "New Chat",
     "chat_history": "Chat History",
     "show": "Show",

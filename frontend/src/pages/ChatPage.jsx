@@ -24,6 +24,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [abortController, setAbortController] = useState(null);
   const [hasLiked, setHasLiked] = useState({ character: false, scene: false, persona: false });
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -59,6 +61,15 @@ export default function ChatPage() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Cleanup: abort any ongoing streaming request on unmount
+  useEffect(() => {
+    return () => {
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+  }, [abortController]);
 
   const [characterId, setCharacterId] = useState(searchParams.get('character'));
   const [sceneId, setSceneId] = useState(searchParams.get('scene'));
@@ -288,6 +299,11 @@ export default function ChatPage() {
       setMessages([sys]);
       // Ask backend to generate a reply (this will also create a chat entry server-side when character_id provided)
       setSending(true);
+      setIsStreaming(true);
+      
+      const controller = new AbortController();
+      setAbortController(controller);
+      
       try {
         const res = await fetch(`${window.API_BASE_URL}/api/chat`, {
           method: 'POST',
@@ -299,32 +315,75 @@ export default function ChatPage() {
             character_id: characterId,
             scene_id: selectedScene?.id || null,
             persona_id: selectedPersona?.id || null,
-            messages: [sys]
-          })
+            messages: [sys],
+            stream: true
+          }),
+          signal: controller.signal
         });
-        const data = await res.json();
-        const reply = data.response || '';
-        setMessages([sys, { role: 'assistant', content: reply }]);
+        
+        if (!res.ok) {
+          throw new Error('Failed to generate greeting');
+        }
 
-        if (data.chat_id) {
-          const newChat = {
-            chat_id: data.chat_id,
-            title: data.chat_title || (reply ? reply.slice(0, 30) + (reply.length > 30 ? '...' : '') : 'New Chat'),
-            character_id: characterId,
-            messages: [{ role: 'assistant', content: reply }],
-            last_updated: new Date().toISOString()
-          };
-          setSelectedChat(newChat);
-          if (userData && userData.chat_history) {
-            const filtered = userData.chat_history.filter(h => h.chat_id !== data.chat_id);
-            setUserData(prev => ({ ...prev, chat_history: [newChat, ...filtered].slice(0, 30) }));
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedReply = "";
+        
+        // Add placeholder message
+        setMessages([sys, { role: 'assistant', content: '' }]);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.error) {
+                toast.show(t('chat.error_generating_greeting') || 'Failed to generate greeting.', { type: 'error' });
+                setMessages([sys]); // Reset to just system message
+                break;
+              }
+              
+              if (data.chunk) {
+                accumulatedReply += data.chunk;
+                setMessages([sys, { role: 'assistant', content: accumulatedReply }]);
+              }
+              
+              if (data.done && data.chat_id) {
+                const newChat = {
+                  chat_id: data.chat_id,
+                  title: data.chat_title || (accumulatedReply ? accumulatedReply.slice(0, 30) + (accumulatedReply.length > 30 ? '...' : '') : 'New Chat'),
+                  character_id: characterId,
+                  messages: [{ role: 'assistant', content: accumulatedReply }],
+                  last_updated: new Date().toISOString()
+                };
+                setSelectedChat(newChat);
+                if (userData && userData.chat_history) {
+                  const filtered = userData.chat_history.filter(h => h.chat_id !== data.chat_id);
+                  setUserData(prev => ({ ...prev, chat_history: [newChat, ...filtered].slice(0, 30) }));
+                }
+              }
+            }
           }
         }
       } catch (err) {
-        console.error('Error generating improvising greeting:', err);
-        toast.show(t('chat.error_generating_greeting') || 'Failed to generate greeting.', { type: 'error' });
+        if (err.name === 'AbortError') {
+          console.log('Greeting generation cancelled');
+        } else {
+          console.error('Error generating improvising greeting:', err);
+          toast.show(t('chat.error_generating_greeting') || 'Failed to generate greeting.', { type: 'error' });
+        }
+      } finally {
+        setSending(false);
+        setIsStreaming(false);
+        setAbortController(null);
       }
-      setSending(false);
       return;
     }
 
@@ -343,20 +402,29 @@ export default function ChatPage() {
     event.preventDefault(); // Always prevent default
     if (sending || !input.trim() || !selectedCharacter) return;
     setSending(true);
+    setIsStreaming(true);
+    
     // If this is the user's first message in a new chat, dismiss the welcome
     if (isNewChat.current && !welcomeDismissed) {
       setWelcomeDismissed(true);
       isNewChat.current = false;
     }
+    
     const updatedMessages = [...messages, { role: 'user', content: input.trim() }];
     setMessages(updatedMessages);
     setInput('');
+    
     // Reset textarea height after sending
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
+
+    // Create abort controller for cancellation
+    const controller = new AbortController();
+    setAbortController(controller);
+
     try {
-      const res = await fetch(`${window.API_BASE_URL}/api/chat`, {
+      const response = await fetch(`${window.API_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -367,35 +435,99 @@ export default function ChatPage() {
           chat_id: selectedChat?.chat_id,
           scene_id: selectedScene?.id || null,
           persona_id: selectedPersona?.id || null,
-          messages: updatedMessages
-        })
+          messages: updatedMessages,
+          stream: true
+        }),
+        signal: controller.signal
       });
-      const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
-      if (data.chat_id) {
-        const newChat = {
-          chat_id: data.chat_id,
-          title: data.chat_title || updatedMessages.find(m => m.role === 'user')?.content || 'New Chat',
-          character_id: characterId,
-          messages: [...updatedMessages, { role: 'assistant', content: data.response }],
-          last_updated: new Date().toISOString()
-        };
-        setSelectedChat(newChat);
-        // Update chat history in userData for instant UI
-        if (userData && userData.chat_history) {
-          // Remove any existing entry for this chat_id
-          const filtered = userData.chat_history.filter(h => h.chat_id !== data.chat_id);
-          // Insert new entry at the top, keep max 30
-          setUserData(prev => ({
-            ...prev,
-            chat_history: [newChat, ...filtered].slice(0, 30)
-          }));
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedReply = "";
+      
+      // Add a placeholder message for the assistant that we'll update incrementally
+      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.error) {
+              toast.show('Failed to send message. Please try again.', { type: 'error' });
+              setMessages(prev => prev.slice(0, -1)); // Remove placeholder
+              break;
+            }
+            
+            if (data.chunk) {
+              accumulatedReply += data.chunk;
+              // Update the last message (assistant's response) incrementally
+              setMessages(prev => {
+                const newMessages = [...prev];
+                newMessages[newMessages.length - 1] = { 
+                  role: 'assistant', 
+                  content: accumulatedReply 
+                };
+                return newMessages;
+              });
+            }
+            
+            if (data.done) {
+              // Stream completed, update chat history
+              if (data.chat_id) {
+                const newChat = {
+                  chat_id: data.chat_id,
+                  title: data.chat_title || updatedMessages.find(m => m.role === 'user')?.content || 'New Chat',
+                  character_id: characterId,
+                  messages: [...updatedMessages, { role: 'assistant', content: accumulatedReply }],
+                  last_updated: new Date().toISOString()
+                };
+                setSelectedChat(newChat);
+                
+                // Update chat history in userData for instant UI
+                if (userData && userData.chat_history) {
+                  const filtered = userData.chat_history.filter(h => h.chat_id !== data.chat_id);
+                  setUserData(prev => ({
+                    ...prev,
+                    chat_history: [newChat, ...filtered].slice(0, 30)
+                  }));
+                }
+              }
+            }
+          }
         }
       }
     } catch (err) {
-      toast.show('Failed to send message. Please try again.', { type: 'error' });
+      if (err.name === 'AbortError') {
+        // Request was cancelled by user
+        console.log('Request cancelled by user');
+      } else {
+        toast.show('Failed to send message. Please try again.', { type: 'error' });
+      }
+      // Remove the incomplete assistant message if there's an error
+      setMessages(prev => {
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg && lastMsg.role === 'assistant' && !lastMsg.content) {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
+    } finally {
+      setSending(false);
+      setIsStreaming(false);
+      setAbortController(null);
     }
-    setSending(false);
   };
 
   // Handle textarea input and auto-resize
@@ -887,35 +1019,68 @@ export default function ChatPage() {
                 disabled={sending}
                 rows={1}
               />
-              <button
-                type="submit"
-                style={{
-                  background: sending ? '#888' : '#18191a',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: 32,
-                  height: 32,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 16,
-                  boxShadow: '0 2px 8px rgba(24,25,26,0.08)',
-                  transition: 'background 0.14s',
-                  cursor: sending ? 'not-allowed' : 'pointer',
-                  outline: 'none',
-                  flexShrink: 0,
-                }}
-                onMouseEnter={e => { if (!sending) e.currentTarget.style.background = '#232323'; }}
-                onMouseLeave={e => { if (!sending) e.currentTarget.style.background = '#18191a'; }}
-                disabled={sending}
-              >
-                {sending ? (
-                  <span className="spinner-border spinner-border-sm" style={{ color: '#fff' }}></span>
-                ) : (
-                  <i className="bi bi-send-fill"></i>
-                )}
-              </button>
+              {isStreaming ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (abortController) {
+                      abortController.abort();
+                    }
+                  }}
+                  style={{
+                    background: '#dc3545',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: 32,
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 16,
+                    boxShadow: '0 2px 8px rgba(220, 53, 69, 0.2)',
+                    transition: 'background 0.14s',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#c82333'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#dc3545'}
+                  title={t('chat.stop_generation') || 'Stop'}
+                >
+                  <i className="bi bi-stop-fill"></i>
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  style={{
+                    background: sending ? '#888' : '#18191a',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: 32,
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 16,
+                    boxShadow: '0 2px 8px rgba(24,25,26,0.08)',
+                    transition: 'background 0.14s',
+                    cursor: sending ? 'not-allowed' : 'pointer',
+                    outline: 'none',
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={e => { if (!sending) e.currentTarget.style.background = '#232323'; }}
+                  onMouseLeave={e => { if (!sending) e.currentTarget.style.background = '#18191a'; }}
+                  disabled={sending}
+                >
+                  {sending ? (
+                    <span className="spinner-border spinner-border-sm" style={{ color: '#fff' }}></span>
+                  ) : (
+                    <i className="bi bi-send-fill"></i>
+                  )}
+                </button>
+              )}
             </div>
             {/* Small helper line explaining notation (centered, single line) */}
             <div style={{ width: '100%', marginTop: 6, fontSize: '0.72rem', color: '#6b7280', textAlign: 'center' }}>
