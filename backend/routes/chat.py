@@ -60,32 +60,44 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 
                 # After streaming completes, save to database
                 if character_id:
-                    updated_messages = messages + [{"role": "assistant", "content": accumulated_reply}]
-                    updated_messages = updated_messages[-50:]
+                    # Create new DB session for generator context
+                    from database import SessionLocal
+                    db_session = SessionLocal()
+                    try:
+                        # Refresh user object in new session
+                        db_user = db_session.query(User).filter(User.id == current_user.id).first()
+                        if not db_user:
+                            yield f"data: {json.dumps({'error': 'User not found'})}\n\n"
+                            return
+                        
+                        updated_messages = messages + [{"role": "assistant", "content": accumulated_reply}]
+                        updated_messages = updated_messages[-50:]
 
-                    # Fetch character details for sidebar display
-                    character = db.query(Character).filter(Character.id == character_id).first()
-                    
-                    new_entry = {
-                        "chat_id": chat_id,
-                        "character_id": character_id,
-                        "character_name": character.name if character else None,
-                        "character_picture": character.picture if character else None,
-                        "title": generate_chat_title(messages, existing_title),
-                        "messages": updated_messages,
-                        "last_updated": datetime.now(UTC).isoformat(),
-                        "created_at": existing_created_at if existing_created_at else datetime.now(UTC).isoformat()
-                    }
-                    if scene_id:
-                        new_entry["scene_id"] = scene_id
-                    if persona_id:
-                        new_entry["persona_id"] = persona_id
+                        # Fetch character details for sidebar display
+                        character = db_session.query(Character).filter(Character.id == character_id).first()
+                        
+                        new_entry = {
+                            "chat_id": chat_id,
+                            "character_id": character_id,
+                            "character_name": character.name if character else None,
+                            "character_picture": character.picture if character else None,
+                            "title": generate_chat_title(messages, existing_title),
+                            "messages": updated_messages,
+                            "last_updated": datetime.now(UTC).isoformat(),
+                            "created_at": existing_created_at if existing_created_at else datetime.now(UTC).isoformat()
+                        }
+                        if scene_id:
+                            new_entry["scene_id"] = scene_id
+                        if persona_id:
+                            new_entry["persona_id"] = persona_id
 
-                    filtered = [h for h in (current_user.chat_history or []) if h.get("chat_id") != chat_id]
-                    filtered.insert(0, new_entry)
-                    current_user.chat_history = filtered[:30]
-                    attributes.flag_modified(current_user, "chat_history")
-                    db.commit()
+                        filtered = [h for h in (db_user.chat_history or []) if h.get("chat_id") != chat_id]
+                        filtered.insert(0, new_entry)
+                        db_user.chat_history = filtered[:30]
+                        attributes.flag_modified(db_user, "chat_history")
+                        db_session.commit()
+                    finally:
+                        db_session.close()
 
                 # Send final metadata
                 yield f"data: {json.dumps({'done': True, 'chat_id': chat_id, 'chat_title': generate_chat_title(messages, existing_title)})}\n\n"
