@@ -6,21 +6,42 @@ import { useToast } from './ToastProvider';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 
-export default function CharacterAssistantModal({ onApply, onCancel, currentCharData }) {
+export default function CharacterAssistantModal({ 
+  onApply, 
+  onHide, 
+  currentCharData,
+  initialMessages,
+  initialGeneratedData,
+  onMessagesChange,
+  onGeneratedDataChange
+}) {
   const { t } = useTranslation();
   const { sessionToken } = useContext(AuthContext);
   const toast = useToast();
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState(initialMessages || [
     {
       role: 'assistant',
       content: t('character_assistant.welcome_message')
     }
   ]);
-  const [generatedData, setGeneratedData] = useState(null);
+  const [generatedData, setGeneratedData] = useState(initialGeneratedData || null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Sync state with parent
+  useEffect(() => {
+    if (onMessagesChange) {
+      onMessagesChange(messages);
+    }
+  }, [messages, onMessagesChange]);
+
+  useEffect(() => {
+    if (onGeneratedDataChange) {
+      onGeneratedDataChange(generatedData);
+    }
+  }, [generatedData, onGeneratedDataChange]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -106,34 +127,94 @@ export default function CharacterAssistantModal({ onApply, onCancel, currentChar
   };
 
   const modalContent = (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        width: '450px',
-        height: '100vh',
-        background: '#fff',
-        boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
-        display: 'flex',
-        flexDirection: 'column',
-        zIndex: 9999,
-        animation: 'slideInRight 0.3s ease-out',
-      }}
-    >
+    <>
+      {/* Backdrop overlay */}
+      <div
+        onClick={onHide}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 9998,
+          animation: 'fadeIn 0.3s ease-out',
+        }}
+      />
+      
       <style>{`
-        @keyframes slideInRight {
+        @keyframes fadeIn {
           from {
-            transform: translateX(100%);
+            opacity: 0;
           }
           to {
-            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes slideInBottom {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
+        @media (max-width: 768px) {
+          .character-assistant-modal {
+            width: 100% !important;
+            height: 70vh !important;
+            top: auto !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            border-radius: 24px 24px 0 0 !important;
+            animation: slideInBottom 0.3s ease-out !important;
+          }
+          .assistant-header {
+            padding: 1rem !important;
+            border-radius: 24px 24px 0 0 !important;
+          }
+          .assistant-header h3 {
+            font-size: 1.1rem !important;
+          }
+          .assistant-header small {
+            font-size: 0.8rem !important;
+          }
+          .assistant-messages {
+            padding: 1rem !important;
+          }
+          .assistant-input-container {
+            padding: 1rem !important;
+          }
+        }
+        @media (min-width: 769px) {
+          .character-assistant-modal {
+            animation: slideInBottom 0.3s ease-out !important;
           }
         }
       `}</style>
+      
+      {/* Modal */}
+      <div
+        className="character-assistant-modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          width: '450px',
+          height: '100vh',
+          background: '#fff',
+          boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 9999,
+        }}
+      >
 
       {/* Header */}
       <div
+        className="assistant-header"
         style={{
           padding: '1.5rem',
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -155,7 +236,7 @@ export default function CharacterAssistantModal({ onApply, onCancel, currentChar
           </div>
         </div>
         <button
-          onClick={onCancel}
+          onClick={onHide}
           style={{
             background: 'rgba(255,255,255,0.2)',
             border: 'none',
@@ -172,13 +253,15 @@ export default function CharacterAssistantModal({ onApply, onCancel, currentChar
           }}
           onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
           onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+          title={t('character_assistant.hide')}
         >
-          <i className="bi bi-x"></i>
+          <i className="bi bi-x-lg"></i>
         </button>
       </div>
 
       {/* Messages */}
       <div
+        className="assistant-messages"
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -266,6 +349,7 @@ export default function CharacterAssistantModal({ onApply, onCancel, currentChar
 
       {/* Input */}
       <div
+        className="assistant-input-container"
         style={{
           padding: '1rem 1.5rem',
           borderTop: '1px solid #e9ecef',
@@ -318,6 +402,7 @@ export default function CharacterAssistantModal({ onApply, onCancel, currentChar
         </small>
       </div>
     </div>
+    </>
   );
 
   return createPortal(modalContent, document.body);

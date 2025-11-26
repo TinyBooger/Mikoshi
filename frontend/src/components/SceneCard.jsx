@@ -240,7 +240,7 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
             </span>
             {(type === 'character' || type === 'scene') && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <i className="bi bi-hand-thumbs-up" />
+                <i className="bi bi-heart" />
                 {typeof likes === 'number' ? likes.toLocaleString() : 0}
               </span>
             )}

@@ -241,7 +241,7 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
         </span>
         {(type === 'character' || type === 'scene' || type === 'persona') && (
           <span className="d-flex align-items-center text-secondary" style={{ fontSize: isMobile ? '0.5625rem' : '0.625rem' }}>
-            <i className="bi bi-hand-thumbs-up me-1"></i> {typeof likes === 'number' ? likes.toLocaleString() : 0}
+            <i className="bi bi-heart me-1"></i> {typeof likes === 'number' ? likes.toLocaleString() : 0}
           </span>
         )}
       </div>

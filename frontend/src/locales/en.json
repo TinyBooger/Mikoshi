@@ -26,7 +26,18 @@
     "select_tag_to_view_characters": "Select a tag to view characters",
     "create_cta_title": "Nothing interested? Create your own character now!",
     "create_cta_subtitle": "Bring your imagination to life. Design unique characters with personalities, backgrounds, and stories that are all your own.",
-    "create_cta_button": "Create Character"
+    "create_cta_button": "Create Character",
+    "first_time_banner_title": "🎉 Welcome to Yubandao!",
+    "first_time_banner_subtitle": "New here? Here's how to get started:",
+    "first_time_step1": "1. Browse and discover characters you like",
+    "first_time_step2": "2. Click any character to start chatting",
+    "first_time_step3": "3. Like characters to get personalized recommendations",
+    "first_time_step4": "4. Create your own unique characters",
+    "stat_active_users_tooltip": "Active users on the platform",
+    "stat_conversations_tooltip": "Total conversations started",
+    "stat_characters_tooltip": "Characters available to chat with",
+    "tag_hint": "Click a tag to explore characters",
+    "show_guidance": "Show Me Around"
   },
 
   "info_card": {
@@ -125,7 +136,9 @@
     "no_bio_other": "This user has not added a bio yet.",
     "tell_about": "Tell us a little about yourself (max 500 chars)"
     ,
-    "settings": "Settings"
+    "settings": "Settings",
+    "total_chats": "total chats",
+    "total_likes": "total likes"
   },
   "settings": {
     "title": "Settings",
@@ -234,13 +247,15 @@
     "title": "AI Assistant",
     "subtitle": "Chat to create your character",
     "button": "AI Assistant",
+    "hide": "Hide assistant (conversation will be preserved)",
     "welcome_message": "👋 Hi! I'm your AI character assistant. Describe the character you want to create, and I'll help you build it. You can also ask me to modify specific aspects after generation!",
     "input_placeholder": "Describe your character or request changes...",
     "thinking": "Thinking...",
     "tip": "Press Enter to send, Shift+Enter for new line",
     "generated_prefix": "✨ Here's your character! I've automatically applied it to the form.",
     "applied_success": "Character applied to form!",
-    "error": "Failed to generate character. Please try again."
+    "error": "Failed to generate character. Please try again.",
+    "tooltip": "✨ AI Assistant - Click to create your character!"
   },
   "persona_form": {
     "edit_title": "Edit Persona",
@@ -343,7 +358,16 @@
     "logout": "Log out",
     "login_to_continue": "Log in to continue",
     "login_first": "Please log in first",
-    "logout_failed": "Logout failed. Please try again."
+    "logout_failed": "Logout failed. Please try again.",
+    "admin_panel": "Admin Panel",
+    "getting_started": "Getting Started",
+    "empty_state_title": "👋 Welcome! Let's get started",
+    "empty_state_step1": "Browse popular characters",
+    "empty_state_step2": "Start chatting with a character",
+    "empty_state_step3": "Create your own character",
+    "browse_characters": "Browse Characters",
+    "create_tooltip": "Create characters, scenes, or personas",
+    "browse_tooltip": "Discover popular content"
   },
   "auth_provider": {
     "loading": "Loading...",
@@ -573,5 +597,19 @@
     "feature_3": "Bug fixes and performance improvements",
     "feedback_message": "Found a bug or have suggestions? Click the flag icon to report issues!",
     "got_it": "Got it!"
+  },
+  "onboarding": {
+    "step_count": "Step {{current}} of {{total}}",
+    "skip": "Skip Tour",
+    "previous": "Previous",
+    "next": "Next",
+    "finish": "Finish",
+    "step1_title": "Discover Popular Characters",
+    "step1_description": "Here you'll find the most popular characters on the platform. Browse through and see what interests you!",
+    "step2_title": "Click to Start Chatting",
+    "step2_description": "Click on any character card to view their details or start a conversation immediately. It's that simple!",
+    "step3_title": "Create Your Own",
+    "step3_description": "Ready to bring your imagination to life? Click here to create your own characters, scenes, or personas.",
+    "replay_tour": "Replay Tour"
   }
 }

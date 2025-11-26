@@ -9,10 +9,11 @@ import { AuthContext } from '../components/AuthProvider';
 import { useTranslation } from 'react-i18next';
 import TextButton from '../components/TextButton';
 import PrimaryButton from '../components/PrimaryButton';
+import OnboardingTour from '../components/OnboardingTour';
 
 
 function HomePage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [popular, setPopular] = useState([]);
   const [popularScenes, setPopularScenes] = useState([]);
   const [recent, setRecent] = useState([]);
@@ -32,8 +33,25 @@ function HomePage() {
   const [popularPersonas, setPopularPersonas] = useState([]);
   const [loadingPersonas, setLoadingPersonas] = useState(true);
   const [errorPersonas, setErrorPersonas] = useState(null);
+  const [showFirstTimeBanner, setShowFirstTimeBanner] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const navigate = useNavigate();
   const { userData, sessionToken, loading } = useContext(AuthContext);
+
+  // Check if user is first-time (no recent chats)
+  useEffect(() => {
+    if (userData && (!userData.chat_history || userData.chat_history.length === 0)) {
+      setShowFirstTimeBanner(true);
+      // Auto-start onboarding for first-time users if not completed
+      const onboardingCompleted = localStorage.getItem('onboarding_completed');
+      if (!onboardingCompleted) {
+        // Delay to let page render first
+        setTimeout(() => setShowOnboarding(true), 500);
+      }
+    } else {
+      setShowFirstTimeBanner(false);
+    }
+  }, [userData]);
   // Fetch popular personas
   useEffect(() => {
     setLoadingPersonas(true);
@@ -201,8 +219,152 @@ function HomePage() {
 
   return (
     <PageWrapper>
+      {/* Onboarding Tour */}
+      <OnboardingTour 
+        isOpen={showOnboarding} 
+        onClose={() => setShowOnboarding(false)}
+      />
+
+      {/* First-Time User Banner */}
+      {showFirstTimeBanner && (
+        <section className="mb-4">
+          <div 
+            className="position-relative py-4 px-4"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '24px',
+              color: '#fff',
+              boxShadow: '0 8px 24px rgba(102, 126, 234, 0.25)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Decorative elements */}
+            <div style={{
+              position: 'absolute',
+              top: '-30px',
+              right: '-30px',
+              width: '150px',
+              height: '150px',
+              background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)',
+              borderRadius: '50%',
+              pointerEvents: 'none'
+            }} />
+            <div style={{
+              position: 'absolute',
+              bottom: '-40px',
+              left: '-40px',
+              width: '180px',
+              height: '180px',
+              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
+              borderRadius: '50%',
+              pointerEvents: 'none'
+            }} />
+            
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <h3 className="fw-bold mb-0" style={{ fontSize: '1.5rem' }}>
+                  {t('home.first_time_banner_title')}
+                </h3>
+                <button
+                  onClick={() => setShowFirstTimeBanner(false)}
+                  style={{
+                    background: 'rgba(255,255,255,0.2)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                >
+                  <i className="bi bi-x-lg"></i>
+                </button>
+              </div>
+              <p className="mb-3" style={{ fontSize: '1rem', opacity: 0.95 }}>
+                {t('home.first_time_banner_subtitle')}
+              </p>
+              <div className="row g-2">
+                <div className="col-12 col-md-6">
+                  <div className="d-flex align-items-start gap-2 p-2" style={{ 
+                    background: 'rgba(255,255,255,0.1)', 
+                    borderRadius: '12px',
+                    backdropFilter: 'blur(10px)'
+                  }}>
+                    <span style={{ fontSize: '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
+                    <span style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>{t('home.first_time_step1')}</span>
+                  </div>
+                </div>
+                <div className="col-12 col-md-6">
+                  <div className="d-flex align-items-start gap-2 p-2" style={{ 
+                    background: 'rgba(255,255,255,0.1)', 
+                    borderRadius: '12px',
+                    backdropFilter: 'blur(10px)'
+                  }}>
+                    <span style={{ fontSize: '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
+                    <span style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>{t('home.first_time_step2')}</span>
+                  </div>
+                </div>
+                <div className="col-12 col-md-6">
+                  <div className="d-flex align-items-start gap-2 p-2" style={{ 
+                    background: 'rgba(255,255,255,0.1)', 
+                    borderRadius: '12px',
+                    backdropFilter: 'blur(10px)'
+                  }}>
+                    <span style={{ fontSize: '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
+                    <span style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>{t('home.first_time_step3')}</span>
+                  </div>
+                </div>
+                <div className="col-12 col-md-6">
+                  <div className="d-flex align-items-start gap-2 p-2" style={{ 
+                    background: 'rgba(255,255,255,0.1)', 
+                    borderRadius: '12px',
+                    backdropFilter: 'blur(10px)'
+                  }}>
+                    <span style={{ fontSize: '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
+                    <span style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>{t('home.first_time_step4')}</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowOnboarding(true)}
+                style={{
+                  background: 'rgba(255,255,255,0.25)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: '12px',
+                  color: '#fff',
+                  padding: '10px 20px',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  marginTop: '16px',
+                  transition: 'all 0.2s',
+                  backdropFilter: 'blur(10px)'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.35)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
+                }}
+              >
+                <i className="bi bi-play-circle me-2"></i>
+                {t('onboarding.replay_tour')}
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Hero Stats Section */}
-      <section className="mb-4">
+      <section className="mb-4 stats-section">
         <div className="text-center mb-3">
           <h1 className="fw-bold mb-2" style={{ 
             fontSize: '1.5rem', 
@@ -219,6 +381,46 @@ function HomePage() {
           </p>
         </div>
 
+        {/* Show Guidance Button for returning users */}
+        {!showFirstTimeBanner && (
+          <div className="text-center mb-3">
+            <button
+              onClick={() => setShowFirstTimeBanner(true)}
+              style={{
+                background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.08) 0%, rgba(155, 143, 184, 0.12) 100%)',
+                border: '1px solid rgba(115, 107, 146, 0.2)',
+                borderRadius: '16px',
+                color: '#736B92',
+                padding: '10px 20px',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 2px 8px rgba(115, 107, 146, 0.08)'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(115, 107, 146, 0.15) 0%, rgba(155, 143, 184, 0.2) 100%)';
+                e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.35)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(115, 107, 146, 0.15)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(115, 107, 146, 0.08) 0%, rgba(155, 143, 184, 0.12) 100%)';
+                e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.2)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(115, 107, 146, 0.08)';
+              }}
+            >
+              <i className="bi bi-lightbulb" style={{ fontSize: '1rem' }}></i>
+              <span>{t('home.show_guidance')}</span>
+            </button>
+          </div>
+        )}
+
+
         {/* Statistics Cards */}
         <div className="d-flex justify-content-center gap-3 mb-3 flex-wrap">
           <div className="d-flex align-items-center gap-2 px-3 py-2" style={{ 
@@ -227,8 +429,10 @@ function HomePage() {
             border: '1px solid rgba(115, 107, 146, 0.15)',
             transition: 'all 0.25s ease',
             boxShadow: '0 2px 8px rgba(115, 107, 146, 0.08)',
-            minWidth: '140px'
+            minWidth: '140px',
+            cursor: 'pointer'
           }}
+          title={t('home.stat_active_users_tooltip')}
           onMouseEnter={e => {
             e.currentTarget.style.background = 'linear-gradient(135deg, rgba(115, 107, 146, 0.12) 0%, rgba(155, 143, 184, 0.15) 100%)';
             e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.25)';
@@ -243,7 +447,7 @@ function HomePage() {
           }}>
             <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>👥</span>
             <div>
-              <div className="fw-bold" style={{ color: '#736B92', fontSize: '1.25rem', lineHeight: 1.2 }}>3K+</div>
+              <div className="fw-bold" style={{ color: '#736B92', fontSize: '1.25rem', lineHeight: 1.2 }}>{i18n.language === 'zh' ? '3000+' : '3K+'}</div>
               <div className="text-muted" style={{ fontSize: '0.8rem', fontWeight: 500 }}>{t('home.stat_active_users')}</div>
             </div>
           </div>
@@ -254,8 +458,10 @@ function HomePage() {
             border: '1px solid rgba(115, 107, 146, 0.15)',
             transition: 'all 0.25s ease',
             boxShadow: '0 2px 8px rgba(115, 107, 146, 0.08)',
-            minWidth: '140px'
+            minWidth: '140px',
+            cursor: 'pointer'
           }}
+          title={t('home.stat_conversations_tooltip')}
           onMouseEnter={e => {
             e.currentTarget.style.background = 'linear-gradient(135deg, rgba(115, 107, 146, 0.12) 0%, rgba(155, 143, 184, 0.15) 100%)';
             e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.25)';
@@ -270,7 +476,7 @@ function HomePage() {
           }}>
             <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>💬</span>
             <div>
-              <div className="fw-bold" style={{ color: '#736B92', fontSize: '1.25rem', lineHeight: 1.2 }}>1M+</div>
+              <div className="fw-bold" style={{ color: '#736B92', fontSize: '1.25rem', lineHeight: 1.2 }}>{i18n.language === 'zh' ? '100万+' : '1M+'}</div>
               <div className="text-muted" style={{ fontSize: '0.8rem', fontWeight: 500 }}>{t('home.stat_conversations')}</div>
             </div>
           </div>
@@ -281,8 +487,10 @@ function HomePage() {
             border: '1px solid rgba(115, 107, 146, 0.15)',
             transition: 'all 0.25s ease',
             boxShadow: '0 2px 8px rgba(115, 107, 146, 0.08)',
-            minWidth: '140px'
+            minWidth: '140px',
+            cursor: 'pointer'
           }}
+          title={t('home.stat_characters_tooltip')}
           onMouseEnter={e => {
             e.currentTarget.style.background = 'linear-gradient(135deg, rgba(115, 107, 146, 0.12) 0%, rgba(155, 143, 184, 0.15) 100%)';
             e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.25)';
@@ -297,7 +505,7 @@ function HomePage() {
           }}>
             <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>✨</span>
             <div>
-              <div className="fw-bold" style={{ color: '#736B92', fontSize: '1.25rem', lineHeight: 1.2 }}>10K+</div>
+              <div className="fw-bold" style={{ color: '#736B92', fontSize: '1.25rem', lineHeight: 1.2 }}>{i18n.language === 'zh' ? '1万+' : '10K+'}</div>
               <div className="text-muted" style={{ fontSize: '0.8rem', fontWeight: 500 }}>{t('home.stat_characters')}</div>
             </div>
           </div>
@@ -320,18 +528,20 @@ function HomePage() {
       )}
 
       {/* Popular Characters */}
-      <HorizontalCardSection
-        title={t('home.popular_characters')}
-        subtitle={t('home.popular_characters_hint')}
-        moreLink="/browse/characters/popular"
-        contents={Array.isArray(popular) ? popular.map(c => ({ ...c, renderCard: () => <NameCard type="character" entity={c} /> })) : popular}
-        scrollState={popularScroll}
-        scrollId="popular-scroll"
-        navigate={navigate}
-        itemWidth="auto"
-        itemHeight="auto"
-        itemGap={"0.75rem"}
-      />
+      <div className="popular-characters-section">
+        <HorizontalCardSection
+          title={t('home.popular_characters')}
+          subtitle={t('home.popular_characters_hint')}
+          moreLink="/browse/characters/popular"
+          contents={Array.isArray(popular) ? popular.map(c => ({ ...c, renderCard: () => <NameCard type="character" entity={c} /> })) : popular}
+          scrollState={popularScroll}
+          scrollId="popular-scroll"
+          navigate={navigate}
+          itemWidth="auto"
+          itemHeight="auto"
+          itemGap={"0.75rem"}
+        />
+      </div>
 
 
       {/* Popular Scenes (full width) */}
@@ -373,7 +583,7 @@ function HomePage() {
       />
 
       {/* Popular Tags */}
-      <section className="mb-4">
+      <section className="mb-4 popular-tags-section">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div className="d-flex align-items-center gap-3">
             <h2 className="fw-bold text-dark mb-0" style={{ fontSize: '1.68rem', letterSpacing: '0.4px' }}>{t('home.popular_tags')}</h2>
@@ -405,6 +615,20 @@ function HomePage() {
             {t('home.more')}
           </TextButton>
         </div>
+
+        {!selectedTag && !loadingTags && popularTags.length > 0 && (
+          <div className="mb-3 p-2" style={{
+            background: 'rgba(115, 107, 146, 0.05)',
+            borderRadius: '12px',
+            border: '1px dashed rgba(115, 107, 146, 0.2)',
+            fontSize: '0.85rem',
+            color: '#736B92',
+            textAlign: 'center'
+          }}>
+            <i className="bi bi-arrow-down-circle me-2"></i>
+            {t('home.tag_hint')}
+          </div>
+        )}
 
         {loadingTags ? (
           <div className="text-center my-4">
@@ -475,7 +699,14 @@ function HomePage() {
                   />
                 ) : null
               ) : (
-                <div className="text-muted py-4">{t('home.select_tag_to_view_characters')}</div>
+                <div className="text-center py-5" style={{
+                  background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.03) 0%, rgba(155, 143, 184, 0.05) 100%)',
+                  borderRadius: '20px',
+                  border: '1px dashed rgba(115, 107, 146, 0.2)'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🏷️</div>
+                  <p className="text-muted mb-0" style={{ fontSize: '0.95rem' }}>{t('home.select_tag_to_view_characters')}</p>
+                </div>
               )}
             </div>
           </>

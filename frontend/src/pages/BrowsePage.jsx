@@ -29,7 +29,7 @@ function BrowsePage() {
 
   // State
   const [activeMainTab, setActiveMainTab] = useState('characters');
-  const [activeSubTab, setActiveSubTab] = useState('recommended');
+  const [activeSubTab, setActiveSubTab] = useState('popular');
   const [entities, setEntities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -51,7 +51,7 @@ function BrowsePage() {
   useEffect(() => {
     // URL: /browse/:mainTab/:subTab
     const pathParts = location.pathname.split('/').filter(Boolean);
-    let main = 'characters', sub = 'recommended';
+    let main = 'characters', sub = 'popular';
     if (pathParts[0] === 'browse') {
       if (pathParts[1] && MAIN_TABS.some(t => t.key === pathParts[1])) main = pathParts[1];
       if (pathParts[2] && SUBTABS.some(t => t.key === pathParts[2])) sub = pathParts[2];

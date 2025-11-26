@@ -44,6 +44,8 @@ export default function CharacterFormPage() {
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit');
   const [showAssistant, setShowAssistant] = useState(false);
+  const [assistantMessages, setAssistantMessages] = useState(null);
+  const [assistantGeneratedData, setAssistantGeneratedData] = useState(null);
 
   useEffect(() => {
     if (mode === 'edit') {
@@ -170,53 +172,29 @@ export default function CharacterFormPage() {
     // Don't close the assistant window, keep the conversation going
   };
 
+  // Cleanup conversation when leaving page
+  useEffect(() => {
+    return () => {
+      // Clear conversation state on unmount
+      setAssistantMessages(null);
+      setAssistantGeneratedData(null);
+    };
+  }, []);
+
   if (loading) return null;
   return (
     <PageWrapper>
-      <div style={{
-        width: '100%',
-        maxWidth: 700,
-        background: '#fff',
-        borderRadius: 24,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-        padding: '2.5rem 2rem',
-        margin: '0 auto',
-      }}>
-        <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? t('character_form.edit_title') : t('character_form.create_title')}</h2>
-        
-        {/* AI Assistant Button */}
-        <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => setShowAssistant(true)}
-            style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 16,
-              padding: '0.75rem 1.5rem',
-              fontSize: '1rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.4)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
-            }}
-          >
-            <i className="bi bi-magic"></i>
-            {t('character_assistant.button')}
-          </button>
-        </div>
+      <div style={{ position: 'relative', width: '100%' }}>
+        <div style={{
+          width: '100%',
+          maxWidth: 700,
+          background: '#fff',
+          borderRadius: 24,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+          padding: '2.5rem 2rem',
+          margin: '0 auto',
+        }}>
+          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? t('character_form.edit_title') : t('character_form.create_title')}</h2>
 
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           {/* Name */}
@@ -455,6 +433,157 @@ export default function CharacterFormPage() {
           </div>
         </form>
       </div>
+      
+      </div>
+
+      {/* AI Assistant Floating Button - Fixed position using portal */}
+      {createPortal(
+        <>
+          <style>{`
+            @keyframes pulse {
+              0%, 100% {
+                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+              }
+              50% {
+                box-shadow: 0 0 0 12px rgba(102, 126, 234, 0);
+              }
+            }
+            @keyframes fadeInTooltip {
+              from {
+                opacity: 0;
+                transform: translateX(-10px);
+              }
+              to {
+                opacity: 1;
+                transform: translateX(0);
+              }
+            }
+            .ai-assistant-button {
+              animation: pulse 2s infinite;
+            }
+            .ai-assistant-button:hover {
+              animation: none;
+            }
+            .ai-tooltip {
+              position: absolute;
+              right: 100%;
+              top: 50%;
+              transform: translateY(-50%);
+              margin-right: 12px;
+              background: rgba(0, 0, 0, 0.85);
+              color: white;
+              padding: 8px 16px;
+              border-radius: 8px;
+              white-space: nowrap;
+              font-size: 0.9rem;
+              font-weight: 500;
+              pointer-events: none;
+              animation: fadeInTooltip 0.3s ease-out;
+              z-index: 10000;
+            }
+            .ai-tooltip::after {
+              content: '';
+              position: absolute;
+              left: 100%;
+              top: 50%;
+              transform: translateY(-50%);
+              border: 6px solid transparent;
+              border-left-color: rgba(0, 0, 0, 0.85);
+            }
+            @media (max-width: 768px) {
+              .ai-assistant-button {
+                bottom: 20px !important;
+                top: auto !important;
+                right: 50% !important;
+                transform: translateX(50%) !important;
+                width: 56px !important;
+                height: 56px !important;
+                border-radius: 50% !important;
+                flex-direction: row !important;
+              }
+              .ai-assistant-button .ai-text {
+                display: none !important;
+              }
+              .ai-assistant-button i {
+                font-size: 1.75rem !important;
+              }
+              .ai-tooltip {
+                right: auto;
+                left: 50%;
+                top: auto;
+                bottom: 100%;
+                transform: translateX(-50%);
+                margin-right: 0;
+                margin-bottom: 12px;
+              }
+              .ai-tooltip::after {
+                left: 50%;
+                top: 100%;
+                transform: translateX(-50%);
+                border-left-color: transparent;
+                border-top-color: rgba(0, 0, 0, 0.85);
+              }
+            }
+          `}</style>
+          <div
+            className="ai-assistant-button"
+            onClick={() => setShowAssistant(true)}
+            style={{
+              position: 'fixed',
+              right: '20px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: '48px',
+              height: '120px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '-4px 4px 16px rgba(102, 126, 234, 0.4)',
+              zIndex: 1000,
+              transition: 'all 0.3s ease',
+              gap: '0.5rem',
+            }}
+            onMouseEnter={(e) => {
+              if (window.innerWidth > 768) {
+                e.currentTarget.style.width = '56px';
+                e.currentTarget.style.boxShadow = '-6px 6px 20px rgba(102, 126, 234, 0.5)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (window.innerWidth > 768) {
+                e.currentTarget.style.width = '48px';
+                e.currentTarget.style.boxShadow = '-4px 4px 16px rgba(102, 126, 234, 0.4)';
+              }
+            }}
+          >
+            <i className="bi bi-magic" style={{ color: '#fff', fontSize: '1.5rem' }}></i>
+            <div
+              className="ai-text"
+              style={{
+                color: '#fff',
+                fontSize: '0.7rem',
+                fontWeight: '600',
+                writingMode: 'vertical-rl',
+                textOrientation: 'mixed',
+                letterSpacing: '1px',
+              }}
+            >
+              AI
+            </div>
+            {!showAssistant && (
+              <div className="ai-tooltip">
+                {t('character_assistant.tooltip') || '✨ AI Assistant - Click to create your character!'}
+              </div>
+            )}
+          </div>
+        </>,
+        document.body
+      )}
+
       {showCrop && rawSelectedFile && createPortal(
         <ImageCropModal
           srcFile={rawSelectedFile}
@@ -471,10 +600,15 @@ export default function CharacterFormPage() {
         onConfirm={handleDeleteConfirmed}
         onCancel={() => setConfirmModal({ show: false })}
       />
+
       {showAssistant && (
         <CharacterAssistantModal
           onApply={handleApplyAssistant}
-          onCancel={() => setShowAssistant(false)}
+          onHide={() => setShowAssistant(false)}
+          initialMessages={assistantMessages}
+          initialGeneratedData={assistantGeneratedData}
+          onMessagesChange={setAssistantMessages}
+          onGeneratedDataChange={setAssistantGeneratedData}
         />
       )}
     </PageWrapper>

@@ -62,6 +62,10 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const pageSize = 20;
 
+  // Total stats for all created characters
+  const [totalChats, setTotalChats] = useState(0);
+  const [totalLikes, setTotalLikes] = useState(0);
+
 
   // Fetch created and liked entities for profile
   useEffect(() => {
@@ -183,6 +187,19 @@ export default function ProfilePage() {
     }
     setLoading(false);
   }, [navigate, sessionToken, userData, profileUserId, isOwnProfile, createdCharactersPage, likedCharactersPage, scenesPage, likedScenesPage, personasPage, likedPersonasPage]);
+
+  // Calculate total chats and likes from all created characters
+  useEffect(() => {
+    if (createdCharacters.length > 0) {
+      const chatsSum = createdCharacters.reduce((sum, char) => sum + (char.views || 0), 0);
+      const likesSum = createdCharacters.reduce((sum, char) => sum + (char.likes || 0), 0);
+      setTotalChats(chatsSum);
+      setTotalLikes(likesSum);
+    } else {
+      setTotalChats(0);
+      setTotalLikes(0);
+    }
+  }, [createdCharacters]);
 
   // Unified content renderer for all tabs and subtabs
   const renderTabContent = () => {
@@ -438,7 +455,7 @@ export default function ProfilePage() {
             alt="Profile"
             style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover', border: '2.4px solid #222', marginRight: 24, background: '#fff' }}
           />
-          <div>
+          <div style={{ flex: 1 }}>
             <h2 style={{ color: '#111', fontWeight: 700, fontSize: '1.4rem', marginBottom: 6 }}>{displayUser.name}</h2>
             <p className="mb-0" style={{ fontSize: '1.02rem', maxWidth: 400, whiteSpace: 'pre-line', color: '#444' }}>
               {displayUser.bio && displayUser.bio.trim()
@@ -447,6 +464,17 @@ export default function ProfilePage() {
                     ? t('profile.bio_prompt')
                     : t('profile.bio_not_set'))}
             </p>
+            {/* Total Stats */}
+            <div className="d-flex align-items-center gap-3 mt-2" style={{ fontSize: '0.95rem', color: '#555' }}>
+              <span className="d-flex align-items-center gap-1">
+                <i className="bi bi-chat" style={{ fontSize: '1.1rem' }}></i>
+                <strong>{totalChats.toLocaleString()}</strong> {t('profile.total_chats') || 'total chats'}
+              </span>
+              <span className="d-flex align-items-center gap-1">
+                <i className="bi bi-heart" style={{ fontSize: '1.1rem' }}></i>
+                <strong>{totalLikes.toLocaleString()}</strong> {t('profile.total_likes') || 'total likes'}
+              </span>
+            </div>
             {isOwnProfile && (
               <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                 <ButtonRounded onClick={openEditProfile} style={{ width: 140 }}>

@@ -107,18 +107,34 @@ export default function Sidebar() {
       {/* Top navigation */}
       <div className="d-flex flex-column gap-2 mb-1 position-relative">
         <div className="create-dropdown-area" style={{ position: 'relative' }}>
-          <button
-            className={`fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center${createOpen ? ' active' : ''}`}
-            style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: createOpen ? '#dbeafe' : '#fff', color: '#232323', borderRadius: 19, padding: '9px 0', border: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 700, transition: 'background 0.2s' }}
-            onClick={() => setCreateOpen(v => !v)}
-            onMouseEnter={e => { if (!createOpen) e.currentTarget.style.background = '#f5f6fa'; }}
-            onMouseLeave={e => { if (!createOpen) e.currentTarget.style.background = '#fff'; }}
-            aria-expanded={createOpen}
-            aria-haspopup="true"
-            tabIndex={0}
-          >
-            <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-plus-circle me-2"></i> {t('sidebar.create')}</span>
-          </button>
+          <div style={{ 
+            position: 'relative',
+            padding: '2px',
+            borderRadius: 21,
+            background: 'linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3, #54a0ff, #ff6b6b)',
+            backgroundSize: '300% 100%',
+            animation: 'rainbow-slide 4s linear infinite'
+          }} 
+          title={t('sidebar.create_tooltip')}>
+            <button
+              className={`fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center${createOpen ? ' active' : ''}`}
+              style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: createOpen ? '#dbeafe' : '#fff', color: '#232323', borderRadius: 19, padding: '9px 0', border: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 700, transition: 'background 0.2s' }}
+              onClick={() => setCreateOpen(v => !v)}
+              onMouseEnter={e => { if (!createOpen) e.currentTarget.style.background = '#f5f6fa'; }}
+              onMouseLeave={e => { if (!createOpen) e.currentTarget.style.background = '#fff'; }}
+              aria-expanded={createOpen}
+              aria-haspopup="true"
+              tabIndex={0}
+            >
+              <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-plus-circle me-2"></i> {t('sidebar.create')}</span>
+            </button>
+          </div>
+          <style>{`
+            @keyframes rainbow-slide {
+              0% { background-position: 0% 50%; }
+              100% { background-position: 100% 50%; }
+            }
+          `}</style>
           <ul
             className="dropdown-menu shadow rounded-4 show"
             style={{
@@ -181,6 +197,7 @@ export default function Sidebar() {
         onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; }}
         onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
         tabIndex={0}
+        title={t('sidebar.browse_tooltip')}
       >
         <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-compass me-2"></i> {t('sidebar.browse')}</span>
       </button>
@@ -190,7 +207,46 @@ export default function Sidebar() {
   <h6 className="fw-bold mb-1" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px', flexShrink: 0 }}>{t('sidebar.recent_chats')}</h6>
         <div className="list-group rounded-4" style={{ background: 'transparent', boxShadow: 'none', overflowY: 'auto', minHeight: 0 }}>
           {recent.length === 0 ? (
-            <div className="list-group-item text-center py-2 rounded-4" style={{ background: '#e9ecef', color: '#888', border: 'none', fontSize: '0.8rem' }}>{t('sidebar.no_recent_chats')}</div>
+            <div className="rounded-4 p-3" style={{ 
+              background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)',
+              border: '1px solid rgba(115, 107, 146, 0.15)'
+            }}>
+              <div className="text-center mb-2" style={{ fontSize: '1.5rem' }}>👋</div>
+              <h6 className="fw-bold text-center mb-2" style={{ fontSize: '0.85rem', color: '#736B92' }}>
+                {t('sidebar.empty_state_title')}
+              </h6>
+              <div className="d-flex flex-column gap-2 mb-3" style={{ fontSize: '0.75rem', color: '#6c757d' }}>
+                <div className="d-flex align-items-start gap-2">
+                  <span style={{ color: '#736B92' }}>→</span>
+                  <span>{t('sidebar.empty_state_step1')}</span>
+                </div>
+                <div className="d-flex align-items-start gap-2">
+                  <span style={{ color: '#736B92' }}>→</span>
+                  <span>{t('sidebar.empty_state_step2')}</span>
+                </div>
+                <div className="d-flex align-items-start gap-2">
+                  <span style={{ color: '#736B92' }}>→</span>
+                  <span>{t('sidebar.empty_state_step3')}</span>
+                </div>
+              </div>
+              <button
+                className="btn btn-sm w-100 fw-bold"
+                style={{ 
+                  background: '#736B92', 
+                  color: '#fff', 
+                  fontSize: '0.75rem',
+                  borderRadius: '12px',
+                  padding: '0.4rem 0.8rem',
+                  border: 'none',
+                  transition: 'all 0.2s'
+                }}
+                onClick={() => navigate('/browse/popular')}
+                onMouseEnter={e => e.currentTarget.style.background = '#5d5675'}
+                onMouseLeave={e => e.currentTarget.style.background = '#736B92'}
+              >
+                {t('sidebar.browse_characters')}
+              </button>
+            </div>
           ) : (
             recent.map(c => (
               <button
