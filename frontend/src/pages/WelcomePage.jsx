@@ -35,7 +35,7 @@ export default function LoginPage() {
         <div className="text-center mb-4">
           <img
             src={logo}
-            alt="Mikoshi Logo"
+            alt={t('common.logo_alt')}
             style={{ width: 80, height: 80, objectFit: 'contain', marginBottom: 16 }}
           />
           <h1 className="mb-2" style={{ fontWeight: 800, fontSize: '2.4rem', letterSpacing: '-1px' }}>{t('welcome.title')}</h1>
@@ -48,7 +48,7 @@ export default function LoginPage() {
           <TextButton
             onClick={() => navigate('/reset-password')}
           >
-            Forgot password?
+            {t('common.forgot_password')}
           </TextButton>
         </div>
   {loading && <div className="text-center"><div className="spinner-border text-primary" role="status"></div></div>}

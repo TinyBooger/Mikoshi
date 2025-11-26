@@ -389,7 +389,7 @@ export default function ProfilePage() {
           setUserError(null);
         } else {
           setUserLoading(false);
-          setUserError('User not found.');
+          setUserError(t('common.user_not_found'));
         }
       }
     }
@@ -452,7 +452,7 @@ export default function ProfilePage() {
         <div className="d-flex align-items-center mb-3">
           <img
             src={displayUser.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${displayUser.profile_pic.replace(/^\//, '')}` : defaultAvatar}
-            alt="Profile"
+            alt={t('profile.alt_profile')}
             style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover', border: '2.4px solid #222', marginRight: 24, background: '#fff' }}
           />
           <div style={{ flex: 1 }}>
@@ -601,7 +601,7 @@ export default function ProfilePage() {
                     </small>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.short_bio')} <span style={{ fontWeight: 400, fontSize: '0.9em', color: '#888' }}>(optional)</span></label>
+                    <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.short_bio')} <span style={{ fontWeight: 400, fontSize: '0.9em', color: '#888' }}>{t('profile.optional')}</span></label>
                     <textarea
                       className="form-control"
                       value={editBio}

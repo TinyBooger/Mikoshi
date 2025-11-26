@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import PageWrapper from '../components/PageWrapper';
-import { useNavigate } from 'react-router';
+import { useNavigate, useOutletContext } from 'react-router';
 import EntityCard from '../components/EntityCard';
 import NameCard from '../components/NameCard';
 import SceneCard from '../components/SceneCard';
@@ -37,6 +37,7 @@ function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const navigate = useNavigate();
   const { userData, sessionToken, loading } = useContext(AuthContext);
+  const { sidebarVisible, setSidebarVisible } = useOutletContext() || {};
 
   // Check if user is first-time (no recent chats)
   useEffect(() => {
@@ -79,7 +80,7 @@ function HomePage() {
       <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '80vh' }}>
         <div className="text-center">
           <div className="spinner-border text-primary" role="status" style={{ width: 32, height: 32 }}>
-            <span className="visually-hidden">Loading...</span>
+            <span className="visually-hidden">{t('common.loading')}</span>
           </div>
         </div>
       </div>
@@ -223,19 +224,22 @@ function HomePage() {
       <OnboardingTour 
         isOpen={showOnboarding} 
         onClose={() => setShowOnboarding(false)}
+        sidebarVisible={sidebarVisible}
+        setSidebarVisible={setSidebarVisible}
       />
 
       {/* First-Time User Banner */}
       {showFirstTimeBanner && (
         <section className="mb-4">
           <div 
-            className="position-relative py-4 px-4"
+            className="position-relative"
             style={{
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              borderRadius: '24px',
+              borderRadius: window.innerWidth < 768 ? '16px' : '24px',
               color: '#fff',
               boxShadow: '0 8px 24px rgba(102, 126, 234, 0.25)',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              padding: window.innerWidth < 768 ? '1.5rem 1rem' : '1.5rem 1.5rem'
             }}
           >
             {/* Decorative elements */}
@@ -243,8 +247,8 @@ function HomePage() {
               position: 'absolute',
               top: '-30px',
               right: '-30px',
-              width: '150px',
-              height: '150px',
+              width: window.innerWidth < 768 ? '100px' : '150px',
+              height: window.innerWidth < 768 ? '100px' : '150px',
               background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)',
               borderRadius: '50%',
               pointerEvents: 'none'
@@ -253,8 +257,8 @@ function HomePage() {
               position: 'absolute',
               bottom: '-40px',
               left: '-40px',
-              width: '180px',
-              height: '180px',
+              width: window.innerWidth < 768 ? '120px' : '180px',
+              height: window.innerWidth < 768 ? '120px' : '180px',
               background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
               borderRadius: '50%',
               pointerEvents: 'none'
@@ -262,7 +266,7 @@ function HomePage() {
             
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <h3 className="fw-bold mb-0" style={{ fontSize: '1.5rem' }}>
+                <h3 className="fw-bold mb-0" style={{ fontSize: window.innerWidth < 768 ? '1.25rem' : '1.5rem' }}>
                   {t('home.first_time_banner_title')}
                 </h3>
                 <button
@@ -271,63 +275,64 @@ function HomePage() {
                     background: 'rgba(255,255,255,0.2)',
                     border: 'none',
                     borderRadius: '50%',
-                    width: '32px',
-                    height: '32px',
+                    width: window.innerWidth < 768 ? '28px' : '32px',
+                    height: window.innerWidth < 768 ? '28px' : '32px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: '#fff',
                     cursor: 'pointer',
-                    transition: 'background 0.2s'
+                    transition: 'background 0.2s',
+                    flexShrink: 0
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
                 >
-                  <i className="bi bi-x-lg"></i>
+                  <i className="bi bi-x-lg" style={{ fontSize: window.innerWidth < 768 ? '0.85rem' : '1rem' }}></i>
                 </button>
               </div>
-              <p className="mb-3" style={{ fontSize: '1rem', opacity: 0.95 }}>
+              <p className="mb-3" style={{ fontSize: window.innerWidth < 768 ? '0.9rem' : '1rem', opacity: 0.95 }}>
                 {t('home.first_time_banner_subtitle')}
               </p>
               <div className="row g-2">
                 <div className="col-12 col-md-6">
                   <div className="d-flex align-items-start gap-2 p-2" style={{ 
                     background: 'rgba(255,255,255,0.1)', 
-                    borderRadius: '12px',
+                    borderRadius: window.innerWidth < 768 ? '8px' : '12px',
                     backdropFilter: 'blur(10px)'
                   }}>
-                    <span style={{ fontSize: '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
-                    <span style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>{t('home.first_time_step1')}</span>
+                    <span style={{ fontSize: window.innerWidth < 768 ? '1rem' : '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
+                    <span style={{ fontSize: window.innerWidth < 768 ? '0.85rem' : '0.9rem', lineHeight: 1.4 }}>{t('home.first_time_step1')}</span>
                   </div>
                 </div>
                 <div className="col-12 col-md-6">
                   <div className="d-flex align-items-start gap-2 p-2" style={{ 
                     background: 'rgba(255,255,255,0.1)', 
-                    borderRadius: '12px',
+                    borderRadius: window.innerWidth < 768 ? '8px' : '12px',
                     backdropFilter: 'blur(10px)'
                   }}>
-                    <span style={{ fontSize: '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
-                    <span style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>{t('home.first_time_step2')}</span>
+                    <span style={{ fontSize: window.innerWidth < 768 ? '1rem' : '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
+                    <span style={{ fontSize: window.innerWidth < 768 ? '0.85rem' : '0.9rem', lineHeight: 1.4 }}>{t('home.first_time_step2')}</span>
                   </div>
                 </div>
                 <div className="col-12 col-md-6">
                   <div className="d-flex align-items-start gap-2 p-2" style={{ 
                     background: 'rgba(255,255,255,0.1)', 
-                    borderRadius: '12px',
+                    borderRadius: window.innerWidth < 768 ? '8px' : '12px',
                     backdropFilter: 'blur(10px)'
                   }}>
-                    <span style={{ fontSize: '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
-                    <span style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>{t('home.first_time_step3')}</span>
+                    <span style={{ fontSize: window.innerWidth < 768 ? '1rem' : '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
+                    <span style={{ fontSize: window.innerWidth < 768 ? '0.85rem' : '0.9rem', lineHeight: 1.4 }}>{t('home.first_time_step3')}</span>
                   </div>
                 </div>
                 <div className="col-12 col-md-6">
                   <div className="d-flex align-items-start gap-2 p-2" style={{ 
                     background: 'rgba(255,255,255,0.1)', 
-                    borderRadius: '12px',
+                    borderRadius: window.innerWidth < 768 ? '8px' : '12px',
                     backdropFilter: 'blur(10px)'
                   }}>
-                    <span style={{ fontSize: '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
-                    <span style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>{t('home.first_time_step4')}</span>
+                    <span style={{ fontSize: window.innerWidth < 768 ? '1rem' : '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
+                    <span style={{ fontSize: window.innerWidth < 768 ? '0.85rem' : '0.9rem', lineHeight: 1.4 }}>{t('home.first_time_step4')}</span>
                   </div>
                 </div>
               </div>
@@ -336,15 +341,16 @@ function HomePage() {
                 style={{
                   background: 'rgba(255,255,255,0.25)',
                   border: '1px solid rgba(255,255,255,0.3)',
-                  borderRadius: '12px',
+                  borderRadius: window.innerWidth < 768 ? '10px' : '12px',
                   color: '#fff',
-                  padding: '10px 20px',
-                  fontSize: '0.9rem',
+                  padding: window.innerWidth < 768 ? '8px 16px' : '10px 20px',
+                  fontSize: window.innerWidth < 768 ? '0.85rem' : '0.9rem',
                   fontWeight: 600,
                   cursor: 'pointer',
                   marginTop: '16px',
                   transition: 'all 0.2s',
-                  backdropFilter: 'blur(10px)'
+                  backdropFilter: 'blur(10px)',
+                  width: window.innerWidth < 768 ? '100%' : 'auto'
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.35)';

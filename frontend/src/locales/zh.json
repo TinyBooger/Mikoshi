@@ -138,7 +138,10 @@
     ,
     "settings": "设置",
     "total_chats": "总聊天数",
-    "total_likes": "总获赞数"
+    "total_likes": "总获赞数",
+    "tags_suffix": "个标签",
+    "alt_profile": "个人头像",
+    "bio_placeholder": "简单介绍一下自己（最多500字）"
   },
   "settings": {
     "title": "设置",
@@ -180,16 +183,31 @@
     "password": "密码",
     "confirm_password": "确认密码",
     "short_bio": "简介",
-  "optional": "（可选）",
-  "bio_placeholder": "简单介绍一下自己（最多200字）",
-  "profile_picture": "头像",
+    "optional": "（可选）",
+    "bio_placeholder": "简单介绍一下自己（最多200字）",
+    "profile_picture": "头像",
     "agree_to_terms_prefix": "我已阅读并同意",
     "terms_link": "《用户协议》",
     "and": "和",
     "privacy_link": "《隐私政策》",
     "terms_required": "请勾选同意用户协议和隐私政策",
     "submit": "提交",
-    "passwords_no_match": "两次输入的密码不一致"
+    "passwords_no_match": "两次输入的密码不一致",
+    "invitation_code_required": "邀请码为必填项",
+    "registration_failed": "注册失败。请检查您的邀请码。",
+    "invitation_code_placeholder": "请输入邀请码",
+    "invitation_code_hint": "当前为内测阶段，注册需要邀请码。",
+    "profile_preview": "头像预览",
+    "tags_input_hint": "按 Enter 键添加标签"
+  },
+  "reset_password": {
+    "title": "重置密码",
+    "email": "邮箱",
+    "new_password": "新密码",
+    "submit": "重置密码",
+    "resetting": "正在重置...",
+    "success": "密码重置成功！即将跳转...",
+    "failed": "重置失败"
   },
   "search": {
     "input_placeholder": "搜索角色、场景或自我形象...",
@@ -241,7 +259,10 @@
       "greeting": "例如：\"哦！旅人——欢迎来到树林。\"",
       "sample_dialogue": "添加 2–3 句示例台词来体现语气。例如：\n你：你好！\n露娜：树林一直在低声呼唤你的名字。",
       "tags": "例如：奇幻、守护者、自然"
-    }
+    },
+    "tags_suffix": "个标签",
+    "alt_preview": "预览",
+    "tags_input_hint": "按 Enter 键添加标签"
   },
   "character_assistant": {
     "title": "AI 助手",
@@ -335,7 +356,11 @@
     "no_picture": "暂无图片",
     "ok": "确定",
     "network_error": "网络错误",
-    "back": "返回"
+    "back": "返回",
+    "loading": "加载中...",
+    "forgot_password": "忘记密码？",
+    "logo_alt": "语伴岛 Logo",
+    "user_not_found": "未找到该用户。"
   },
   "topbar": {
     "show_sidebar": "显示侧边栏",

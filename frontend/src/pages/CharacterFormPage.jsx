@@ -339,9 +339,9 @@ export default function CharacterFormPage() {
               <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('character_form.required_marker')}</span>
               <small className="text-muted" style={{ marginLeft: 8 }}>{t('character_form.notes.tags')}</small>
             </label>
-            <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} placeholder={t('character_form.placeholders.tags')} />
+            <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} placeholder={t('character_form.placeholders.tags')} hint={t('character_form.tags_input_hint')} />
             <small className="text-muted" style={{ top: 0, right: 0 }}>
-              {charData.tags.length}/{MAX_TAGS} tags
+              {charData.tags.length}/{MAX_TAGS} {t('character_form.tags_suffix')}
             </small>
           </div>
 
@@ -379,7 +379,7 @@ export default function CharacterFormPage() {
             <div className="d-flex align-items-center gap-3">
               <div style={{ width: 96, height: 96, overflow: 'hidden', borderRadius: 8, background: '#fff', border: '1px solid #e9ecef' }}>
                 {picturePreview ? (
-                  <img src={picturePreview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={picturePreview} alt={t('character_form.alt_preview')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>{t('character_form.no_picture')}</div>
                 )}

@@ -257,6 +257,7 @@ export default function PersonaFormPage() {
               setTags={tags => handleChange('tags', tags)}
               maxTags={MAX_TAGS}
               placeholder={t('persona_form.placeholders.tags')}
+              hint={t('persona_form.tags_input_hint')}
             />
           </div>
             {/* Profile Picture (moved to end) */}

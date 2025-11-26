@@ -32,11 +32,11 @@ export default function SignUpPage() {
     e.preventDefault();
     setError('');
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('signup.passwords_no_match'));
       return;
     }
     if (!invitationCode.trim()) {
-      setError('Invitation code is required');
+      setError(t('signup.invitation_code_required'));
       return;
     }
     if (!agreedToTerms) {
@@ -47,7 +47,7 @@ export default function SignUpPage() {
     if (success) {
       navigate('/', { replace: true });
     } else {
-      setError('Registration failed. Please check your invitation code.');
+      setError(t('signup.registration_failed'));
     }
   };
 
@@ -74,11 +74,11 @@ export default function SignUpPage() {
                   required
                   value={invitationCode}
                   onChange={(e) => setInvitationCode(e.target.value.toUpperCase())}
-                  placeholder="Enter your invitation code"
+                  placeholder={t('signup.invitation_code_placeholder')}
                   style={{ textTransform: 'uppercase' }}
                 />
                 <small className="form-text text-muted">
-                  This is an alpha test. An invitation code is required to sign up.
+                  {t('signup.invitation_code_hint')}
                 </small>
               </div>
               <div className="mb-3">
@@ -142,7 +142,7 @@ export default function SignUpPage() {
                     {profilePreview && (
                       <img
                         src={profilePreview}
-                        alt="Profile preview"
+                        alt={t('signup.profile_preview')}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
                     )}

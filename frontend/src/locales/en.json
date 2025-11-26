@@ -138,7 +138,10 @@
     ,
     "settings": "Settings",
     "total_chats": "total chats",
-    "total_likes": "total likes"
+    "total_likes": "total likes",
+    "tags_suffix": "tags",
+    "alt_profile": "Profile",
+    "bio_placeholder": "Tell us a little about yourself (max 500 chars)"
   },
   "settings": {
     "title": "Settings",
@@ -189,7 +192,22 @@
     "privacy_link": "Privacy Policy",
     "terms_required": "Please agree to the Terms of Service and Privacy Policy",
     "submit": "Submit",
-    "passwords_no_match": "Passwords do not match"
+    "passwords_no_match": "Passwords do not match",
+    "invitation_code_required": "Invitation code is required",
+    "registration_failed": "Registration failed. Please check your invitation code.",
+    "invitation_code_placeholder": "Enter your invitation code",
+    "invitation_code_hint": "This is an alpha test. An invitation code is required to sign up.",
+    "profile_preview": "Profile preview",
+    "tags_input_hint": "Press Enter to add a tag"
+  },
+  "reset_password": {
+    "title": "Reset Password",
+    "email": "Email",
+    "new_password": "New Password",
+    "submit": "Reset Password",
+    "resetting": "Resetting...",
+    "success": "Password reset successful! Redirecting...",
+    "failed": "Reset failed"
   },
   "search": {
     "input_placeholder": "Search characters, scenes, personas...",
@@ -241,7 +259,10 @@
       "greeting": "e.g., \"Oh! A traveler—welcome to the Grove.\"",
       "sample_dialogue": "Add 2–3 example lines to show tone. e.g.\nYou: Hello!\nLuna: The trees have been whispering your name.",
       "tags": "e.g., fantasy, guardian, nature"
-    }
+    },
+    "tags_suffix": "tags",
+    "alt_preview": "preview",
+    "tags_input_hint": "Press Enter to add a tag"
   },
   "character_assistant": {
     "title": "AI Assistant",
@@ -289,7 +310,8 @@
       "description": "e.g., A curious academic who solves mysteries with wit.",
       "intro": "e.g., \"I keep the city’s forgotten stories in my notebooks—care to add a page?\"",
       "tags": "e.g., detective, scholar, witty"
-    }
+    },
+    "tags_input_hint": "Press Enter to add a tag"
   },
   "scene_form": {
     "edit_title": "Edit Scene",
@@ -323,7 +345,8 @@
       "description": "e.g., A rain-soaked cyberpunk backstreet lit by flickering signs.",
       "intro": "e.g., \"Rain hisses on neon-lit pavement as footsteps echo between shuttered stalls.\"",
       "tags": "e.g., cyberpunk, night, rain"
-    }
+    },
+    "tags_input_hint": "Press Enter to add a tag"
   },
   "common": {
     "confirm": "Confirm",
@@ -334,7 +357,11 @@
     "no_picture": "No picture",
     "ok": "OK",
     "network_error": "Network error",
-    "back": "Back"
+    "back": "Back",
+    "loading": "Loading...",
+    "forgot_password": "Forgot password?",
+    "logo_alt": "Mikoshi Logo",
+    "user_not_found": "User not found."
   },
   "topbar": {
     "show_sidebar": "Show sidebar",

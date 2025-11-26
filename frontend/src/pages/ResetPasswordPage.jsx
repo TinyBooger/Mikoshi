@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 
 export default function ResetPasswordPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,10 +26,10 @@ export default function ResetPasswordPage() {
         setSuccess(true);
         setTimeout(() => navigate('/'), 2000);
       } else {
-        setError(result.detail || result.message || 'Reset failed');
+        setError(result.detail || result.message || t('reset_password.failed'));
       }
     } catch (err) {
-      setError('Network error');
+      setError(t('common.network_error'));
     } finally {
       setLoading(false);
     }
@@ -35,10 +37,10 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="container" style={{ maxWidth: 400, margin: '60px auto' }}>
-      <h2 className="mb-4">Reset Password</h2>
+      <h2 className="mb-4">{t('reset_password.title')}</h2>
       <form onSubmit={handleSubmit} className="card p-4 shadow-sm">
         <div className="mb-3">
-          <label className="form-label">Email</label>
+          <label className="form-label">{t('reset_password.email')}</label>
           <input
             type="email"
             className="form-control"
@@ -48,7 +50,7 @@ export default function ResetPasswordPage() {
           />
         </div>
         <div className="mb-3">
-          <label className="form-label">New Password</label>
+          <label className="form-label">{t('reset_password.new_password')}</label>
           <input
             type="password"
             className="form-control"
@@ -58,9 +60,9 @@ export default function ResetPasswordPage() {
           />
         </div>
         {error && <div className="alert alert-danger">{error}</div>}
-        {success && <div className="alert alert-success">Password reset successful! Redirecting...</div>}
+        {success && <div className="alert alert-success">{t('reset_password.success')}</div>}
         <button type="submit" className="btn btn-primary w-100" disabled={loading}>
-          {loading ? 'Resetting...' : 'Reset Password'}
+          {loading ? t('reset_password.resetting') : t('reset_password.submit')}
         </button>
       </form>
     </div>

@@ -260,6 +260,7 @@ export default function SceneFormPage() {
               setTags={tags => handleChange('tags', tags)}
               maxTags={MAX_TAGS}
               placeholder={t('scene_form.placeholders.tags')}
+              hint={t('scene_form.tags_input_hint')}
             />
           </div>
             {/* Profile Picture (moved to end) */}

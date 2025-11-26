@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
-const OnboardingTour = ({ isOpen, onClose, startStep = 0 }) => {
+const OnboardingTour = ({ isOpen, onClose, startStep = 0, sidebarVisible, setSidebarVisible }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(startStep);
@@ -17,6 +17,11 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0 }) => {
 
   useEffect(() => {
     if (isOpen && mounted) {
+      // Show sidebar when tour reaches the create button step (step 2)
+      if (currentStep === 2 && setSidebarVisible) {
+        setSidebarVisible(true);
+      }
+      
       updateHighlightPosition();
       window.addEventListener('resize', updateHighlightPosition);
       window.addEventListener('scroll', updateHighlightPosition);
@@ -39,7 +44,7 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0 }) => {
         window.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [isOpen, currentStep, mounted]);
+  }, [isOpen, currentStep, mounted, setSidebarVisible]);
 
   const steps = [
     {
@@ -71,14 +76,14 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0 }) => {
 
     const element = document.querySelector(step.target);
     if (element) {
-      // Scroll element into view smoothly
+      // First scroll element into view smoothly
       element.scrollIntoView({ 
         behavior: 'smooth', 
         block: 'center',
         inline: 'center'
       });
 
-      // Wait for scroll to complete before updating position
+      // Wait for scroll to complete, then update position
       setTimeout(() => {
         const rect = element.getBoundingClientRect();
         const padding = step.highlightPadding || 8;
@@ -89,7 +94,7 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0 }) => {
           height: rect.height + padding * 2,
           position: step.position
         });
-      }, 300);
+      }, 500); // Increased timeout to ensure scroll completes
     }
   };
 
@@ -124,41 +129,48 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0 }) => {
 
   // Calculate tooltip position based on highlight and preferred position
   const getTooltipPosition = () => {
-    const tooltipWidth = 320;
-    const tooltipHeight = 200;
-    const margin = 20;
+    const isMobile = window.innerWidth < 768;
+    const tooltipWidth = isMobile ? Math.min(window.innerWidth - 32, 300) : 320;
+    const tooltipHeight = isMobile ? 250 : 200;
+    const margin = isMobile ? 12 : 20;
     
     let top = highlightPosition.top;
     let left = highlightPosition.left;
 
-    switch (highlightPosition.position) {
-      case 'right':
-        left = highlightPosition.left + highlightPosition.width + margin;
-        top = highlightPosition.top + highlightPosition.height / 2 - tooltipHeight / 2;
-        break;
-      case 'left':
-        left = highlightPosition.left - tooltipWidth - margin;
-        top = highlightPosition.top + highlightPosition.height / 2 - tooltipHeight / 2;
-        break;
-      case 'bottom':
-        top = highlightPosition.top + highlightPosition.height + margin;
-        left = highlightPosition.left + highlightPosition.width / 2 - tooltipWidth / 2;
-        break;
-      case 'top':
-        top = highlightPosition.top - tooltipHeight - margin;
-        left = highlightPosition.left + highlightPosition.width / 2 - tooltipWidth / 2;
-        break;
-      default:
-        left = highlightPosition.left + highlightPosition.width + margin;
-        top = highlightPosition.top;
-    }
+    // On mobile, always position at bottom of viewport for better visibility
+    if (isMobile) {
+      top = window.innerHeight + window.scrollY - tooltipHeight - 16;
+      left = 16;
+    } else {
+      switch (highlightPosition.position) {
+        case 'right':
+          left = highlightPosition.left + highlightPosition.width + margin;
+          top = highlightPosition.top + highlightPosition.height / 2 - tooltipHeight / 2;
+          break;
+        case 'left':
+          left = highlightPosition.left - tooltipWidth - margin;
+          top = highlightPosition.top + highlightPosition.height / 2 - tooltipHeight / 2;
+          break;
+        case 'bottom':
+          top = highlightPosition.top + highlightPosition.height + margin;
+          left = highlightPosition.left + highlightPosition.width / 2 - tooltipWidth / 2;
+          break;
+        case 'top':
+          top = highlightPosition.top - tooltipHeight - margin;
+          left = highlightPosition.left + highlightPosition.width / 2 - tooltipWidth / 2;
+          break;
+        default:
+          left = highlightPosition.left + highlightPosition.width + margin;
+          top = highlightPosition.top;
+      }
 
-    // Keep tooltip on screen
-    if (left < 10) left = 10;
-    if (left + tooltipWidth > window.innerWidth - 10) left = window.innerWidth - tooltipWidth - 10;
-    if (top < 10) top = 10;
-    if (top + tooltipHeight > window.innerHeight + window.scrollY - 10) {
-      top = window.innerHeight + window.scrollY - tooltipHeight - 10;
+      // Keep tooltip on screen
+      if (left < 10) left = 10;
+      if (left + tooltipWidth > window.innerWidth - 10) left = window.innerWidth - tooltipWidth - 10;
+      if (top < 10) top = 10;
+      if (top + tooltipHeight > window.innerHeight + window.scrollY - 10) {
+        top = window.innerHeight + window.scrollY - tooltipHeight - 10;
+      }
     }
 
     return { top, left };
@@ -250,11 +262,11 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0 }) => {
         position: 'absolute',
         top: tooltipPosition.top,
         left: tooltipPosition.left,
-        width: '320px',
+        width: window.innerWidth < 768 ? `${Math.min(window.innerWidth - 32, 300)}px` : '320px',
         background: '#fff',
-        borderRadius: '16px',
+        borderRadius: window.innerWidth < 768 ? '12px' : '16px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-        padding: '24px',
+        padding: window.innerWidth < 768 ? '16px' : '24px',
         pointerEvents: 'auto',
         zIndex: 10000
       }}>
@@ -278,13 +290,13 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0 }) => {
         </div>
 
         {/* Content */}
-        <div style={{ fontSize: '0.85rem', color: '#6c757d', marginBottom: '8px', fontWeight: 500 }}>
+        <div style={{ fontSize: window.innerWidth < 768 ? '0.8rem' : '0.85rem', color: '#6c757d', marginBottom: '8px', fontWeight: 500 }}>
           {t('onboarding.step_count', { current: currentStep + 1, total: steps.length })}
         </div>
-        <h4 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#232323', marginBottom: '12px' }}>
+        <h4 style={{ fontSize: window.innerWidth < 768 ? '1.1rem' : '1.25rem', fontWeight: 700, color: '#232323', marginBottom: window.innerWidth < 768 ? '8px' : '12px' }}>
           {currentStepData.title}
         </h4>
-        <p style={{ fontSize: '0.95rem', color: '#6c757d', marginBottom: '24px', lineHeight: 1.6 }}>
+        <p style={{ fontSize: window.innerWidth < 768 ? '0.875rem' : '0.95rem', color: '#6c757d', marginBottom: window.innerWidth < 768 ? '16px' : '24px', lineHeight: 1.6 }}>
           {currentStepData.description}
         </p>
 
@@ -296,9 +308,9 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0 }) => {
               background: 'transparent',
               border: 'none',
               color: '#6c757d',
-              fontSize: '0.9rem',
+              fontSize: window.innerWidth < 768 ? '0.8rem' : '0.9rem',
               cursor: 'pointer',
-              padding: '8px 12px',
+              padding: window.innerWidth < 768 ? '6px 8px' : '8px 12px',
               fontWeight: 600,
               transition: 'color 0.2s'
             }}
@@ -316,10 +328,10 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0 }) => {
                   background: '#f5f6fa',
                   border: 'none',
                   color: '#232323',
-                  fontSize: '0.9rem',
+                  fontSize: window.innerWidth < 768 ? '0.8rem' : '0.9rem',
                   cursor: 'pointer',
-                  padding: '10px 20px',
-                  borderRadius: '12px',
+                  padding: window.innerWidth < 768 ? '8px 12px' : '10px 20px',
+                  borderRadius: window.innerWidth < 768 ? '10px' : '12px',
                   fontWeight: 600,
                   transition: 'background 0.2s'
                 }}
@@ -335,10 +347,10 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0 }) => {
                 background: '#667eea',
                 border: 'none',
                 color: '#fff',
-                fontSize: '0.9rem',
+                fontSize: window.innerWidth < 768 ? '0.8rem' : '0.9rem',
                 cursor: 'pointer',
-                padding: '10px 24px',
-                borderRadius: '12px',
+                padding: window.innerWidth < 768 ? '8px 16px' : '10px 24px',
+                borderRadius: window.innerWidth < 768 ? '10px' : '12px',
                 fontWeight: 600,
                 transition: 'background 0.2s',
                 boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
@@ -353,12 +365,13 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0 }) => {
 
         {/* Keyboard hint */}
         <div style={{ 
-          marginTop: '16px', 
-          paddingTop: '12px', 
+          marginTop: window.innerWidth < 768 ? '12px' : '16px', 
+          paddingTop: window.innerWidth < 768 ? '8px' : '12px', 
           borderTop: '1px solid #e9ecef',
-          fontSize: '0.75rem',
+          fontSize: window.innerWidth < 768 ? '0.7rem' : '0.75rem',
           color: '#adb5bd',
-          textAlign: 'center'
+          textAlign: 'center',
+          display: window.innerWidth < 480 ? 'none' : 'block'
         }}>
           <kbd style={{ 
             padding: '2px 6px', 

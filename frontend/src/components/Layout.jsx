@@ -183,6 +183,8 @@ export default function Layout() {
             context={{
               characterSidebarVisible,
               onToggleCharacterSidebar: handleToggleCharacterSidebar,
+              sidebarVisible,
+              setSidebarVisible,
             }}
           />
         </main>

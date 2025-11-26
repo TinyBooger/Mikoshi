@@ -3,7 +3,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../components/AuthProvider';
 import TextButton from './TextButton';
 
-export default function TagsInput({ tags, setTags, maxTags, placeholder }) {
+export default function TagsInput({ tags, setTags, maxTags, placeholder, hint }) {
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -59,48 +59,53 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder }) {
   };
 
   return (
-    <div className="d-flex flex-wrap gap-2 p-2 border rounded position-relative">
-      {tags.map((tag, i) => (
-        <div key={i} className="badge bg-secondary d-flex align-items-center">
-          {tag}
-          <TextButton
-            type="button"
-            onClick={() => removeTag(i)}
-            style={{ fontSize: '0.7rem', color: '#fff', marginLeft: 4, padding: 0, background: 'none' }}
-            aria-label="Remove tag"
-          >
-            <i className="bi bi-x-circle"></i>
-          </TextButton>
-        </div>
-      ))}
-      <input
-        type="text"
-        className="border-0 flex-grow-1"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onFocus={() => setShowSuggestions(true)}
-        onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
-        placeholder={placeholder || "Add a tag and press Enter"}
-      />
-      {showSuggestions && suggestions.length > 0 && (
-        <div
-          className="position-absolute border rounded p-2 d-flex flex-wrap gap-2"
-          style={{ background: '#f8f9fa', top: '100%', left: 0, right: 0, zIndex: 10 }}
-        >
-          {suggestions.map((s, i) => (
-            <div
-              key={i}
-              className="badge bg-light text-dark border d-flex align-items-center"
-              style={{ cursor: 'pointer' }}
-              onMouseDown={() => addTag(s.name)} // use onMouseDown to avoid blur before click
+    <>
+      <div className="d-flex flex-wrap gap-2 p-2 border rounded position-relative">
+        {tags.map((tag, i) => (
+          <div key={i} className="badge bg-secondary d-flex align-items-center">
+            {tag}
+            <TextButton
+              type="button"
+              onClick={() => removeTag(i)}
+              style={{ fontSize: '0.7rem', color: '#fff', marginLeft: 4, padding: 0, background: 'none' }}
+              aria-label="Remove tag"
             >
-              {s.name}
-              <i className="bi bi-plus ms-1"></i>
-            </div>
-          ))}
-        </div>
+              <i className="bi bi-x-circle"></i>
+            </TextButton>
+          </div>
+        ))}
+        <input
+          type="text"
+          className="border-0 flex-grow-1"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
+          placeholder={placeholder || "Add a tag and press Enter"}
+        />
+        {showSuggestions && suggestions.length > 0 && (
+          <div
+            className="position-absolute border rounded p-2 d-flex flex-wrap gap-2"
+            style={{ background: '#f8f9fa', top: '100%', left: 0, right: 0, zIndex: 10 }}
+          >
+            {suggestions.map((s, i) => (
+              <div
+                key={i}
+                className="badge bg-light text-dark border d-flex align-items-center"
+                style={{ cursor: 'pointer' }}
+                onMouseDown={() => addTag(s.name)} // use onMouseDown to avoid blur before click
+              >
+                {s.name}
+                <i className="bi bi-plus ms-1"></i>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {hint && (
+        <small className="text-muted d-block mt-1">{hint}</small>
       )}
-    </div>
+    </>
   );
 }
