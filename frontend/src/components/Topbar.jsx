@@ -49,12 +49,7 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
     if (trimmed) navigate(`/search?q=${encodeURIComponent(trimmed)}`);
   };
 
-  const [lang, setLang] = useState(i18n.language === 'zh' ? 'zh' : 'en');
-  const handleLangToggle = () => {
-    const newLang = lang === 'zh' ? 'en' : 'zh';
-    i18n.changeLanguage(newLang);
-    setLang(newLang);
-  };
+
 
   const [showProblemReport, setShowProblemReport] = useState(false);
   
@@ -176,34 +171,8 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
         )}
       </div>
       
-      {/* Right side controls (language switch and character sidebar toggle) */}
+      {/* Right side controls (character sidebar toggle and notification buttons) */}
       <div className="ms-auto d-flex align-items-center" style={{ gap: '0.75rem' }}>
-        <button
-          onClick={handleLangToggle}
-          aria-label={lang === 'zh' ? '切换到英文' : 'Switch to Chinese'}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            color: '#736B92',
-            fontWeight: 700,
-            fontSize: '0.86rem',
-            letterSpacing: '0.06em',
-            padding: '0.42rem 0.7rem',
-            borderRadius: 8,
-            cursor: 'pointer',
-            transition: 'background 0.16s, color 0.16s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            lineHeight: 1,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-        >
-          <span style={{ opacity: lang === 'zh' ? 1 : 0.5, fontWeight: lang === 'zh' ? 800 : 500 }}>中</span>
-          <span style={{ margin: '0 2px', opacity: 0.35 }}>|</span>
-          <span style={{ opacity: lang === 'en' ? 1 : 0.5, fontWeight: lang === 'en' ? 800 : 500 }}>En</span>
-        </button>
 
         {/* Update Notification Button */}
         <button

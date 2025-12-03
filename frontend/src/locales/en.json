@@ -145,6 +145,8 @@
   },
   "settings": {
     "title": "Settings",
+    "language": "Language",
+    "current_language": "Current language",
     "security": "Security",
     "change_password": "Change password",
     "current_password": "Current password",

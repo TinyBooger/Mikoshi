@@ -10,7 +10,7 @@ import SecondaryButton from '../components/SecondaryButton';
 export default function SettingsPage() {
   const { userData, sessionToken, refreshUserData, logout } = useContext(AuthContext);
   const toast = useToast();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [changingPassword, setChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -25,8 +25,15 @@ export default function SettingsPage() {
   const [emailError, setEmailError] = useState('');
 
   const [confirmDelete, setConfirmDelete] = useState({ show: false });
+  const [lang, setLang] = useState(i18n.language === 'zh' ? 'zh' : 'en');
 
   if (!userData) return null;
+
+  const handleLangToggle = (newLang) => {
+    i18n.changeLanguage(newLang);
+    setLang(newLang);
+    toast.show(newLang === 'zh' ? '语言已切换到中文' : 'Language switched to English', { type: 'info' });
+  };
 
   const doChangePassword = async (e) => {
     e?.preventDefault();
@@ -111,6 +118,35 @@ export default function SettingsPage() {
       <div className="container mt-4">
         <h2>{t('settings.title')}</h2>
         <div style={{ maxWidth: 720, marginTop: 16 }}>
+          <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
+            <h4>{t('settings.language') || 'Language'}</h4>
+            <p>{t('settings.current_language') || 'Current language:'} <strong>{lang === 'zh' ? '中文' : 'English'}</strong></p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <PrimaryButton 
+                onClick={() => handleLangToggle('en')}
+                disabled={lang === 'en'}
+                style={{ 
+                  background: lang === 'en' ? '#736B92' : '#e9ecef',
+                  color: lang === 'en' ? '#fff' : '#6c757d',
+                  cursor: lang === 'en' ? 'default' : 'pointer'
+                }}
+              >
+                English
+              </PrimaryButton>
+              <PrimaryButton 
+                onClick={() => handleLangToggle('zh')}
+                disabled={lang === 'zh'}
+                style={{ 
+                  background: lang === 'zh' ? '#736B92' : '#e9ecef',
+                  color: lang === 'zh' ? '#fff' : '#6c757d',
+                  cursor: lang === 'zh' ? 'default' : 'pointer'
+                }}
+              >
+                中文
+              </PrimaryButton>
+            </div>
+          </section>
+
           <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
             <h4>{t('settings.security')}</h4>
               {!showPasswordForm ? (

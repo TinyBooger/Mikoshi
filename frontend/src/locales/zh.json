@@ -145,6 +145,8 @@
   },
   "settings": {
     "title": "设置",
+    "language": "语言",
+    "current_language": "当前语言",
     "security": "安全",
     "change_password": "修改密码",
     "current_password": "当前密码",
