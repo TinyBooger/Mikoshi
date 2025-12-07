@@ -142,7 +142,7 @@ export default function Layout() {
       >
         {/* Sidebar - fixed position on both mobile and desktop */}
         <div style={sidebarStyle}>
-          <Sidebar />
+          <Sidebar isMobile={isMobile} setSidebarVisible={setSidebarVisible} />
         </div>
 
         {/* Overlay for mobile sidebar */}

@@ -18,8 +18,13 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0, sidebarVisible, setSid
   useEffect(() => {
     if (isOpen && mounted) {
       // Show sidebar when tour reaches the create button step (step 2)
-      if (currentStep === 2 && setSidebarVisible) {
-        setSidebarVisible(true);
+      // Hide sidebar when going back to earlier steps (0 or 1)
+      if (setSidebarVisible) {
+        if (currentStep === 2) {
+          setSidebarVisible(true);
+        } else if (currentStep < 2) {
+          setSidebarVisible(false);
+        }
       }
       
       updateHighlightPosition();

@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation, useOutletContext } from 'react-router';
 import { AuthContext } from './AuthProvider.jsx'; // Import the AuthContext
 import { useToast } from './ToastProvider.jsx';
 import defaultPicture from '../assets/images/default-picture.png';
@@ -10,11 +10,24 @@ import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import TextButton from './TextButton';
 
-export default function Sidebar() {
+export default function Sidebar({ isMobile, setSidebarVisible }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { userData, sessionToken, loading } = useContext(AuthContext); // Get user data from context
   const { t } = useTranslation();
   const toast = useToast();
+  
+  // Helper function to close sidebar and navigate immediately
+  const handleNavigate = (path) => {
+    console.log("Sidebar: Navigating to", path);
+    // Explicitly close sidebar before navigation
+    if (setSidebarVisible) {
+      setSidebarVisible(false);
+      console.log("Sidebar: Hiding sidebar before navigation to", path);
+    }
+    // Navigate immediately
+    navigate(path);
+  };
 
   // Derive recent characters from chat_history (no duplicates, sorted by last_updated)
   const recent = useMemo(() => {
@@ -100,7 +113,14 @@ export default function Sidebar() {
     >
       {/* Logo at top */}
       <div className="mb-3 d-flex align-items-center justify-content-center" style={{ minHeight: 144 }}>
-        <a href="/" style={{ display: 'inline-block' }}>
+        <a 
+          href="/" 
+          style={{ display: 'inline-block' }}
+          onClick={(e) => {
+            e.preventDefault();
+            handleNavigate('/');
+          }}
+        >
           <img src={logo} alt="Logo" style={{ height: 138, width: 'auto', objectFit: 'contain', display: 'block', maxWidth: 160 }} />
         </a>
       </div>
@@ -160,7 +180,12 @@ export default function Sidebar() {
                 style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                onClick={() => { setCreateOpen(false); if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); navigate('/character/create'); }}
+                onClick={() => { 
+                  setCreateOpen(false); 
+                  if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); 
+                  if (setSidebarVisible) setSidebarVisible(false);
+                  handleNavigate('/character/create'); 
+                }}
               >
                 <i className="bi bi-person-plus me-2"></i> {t('sidebar.create_character')}
               </button>
@@ -171,7 +196,12 @@ export default function Sidebar() {
                 style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                onClick={() => { setCreateOpen(false); if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); navigate('/scene/create'); }}
+                onClick={() => { 
+                  setCreateOpen(false); 
+                  if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); 
+                  if (setSidebarVisible) setSidebarVisible(false);
+                  handleNavigate('/scene/create'); 
+                }}
               >
                 <i className="bi bi-easel2 me-2"></i> {t('sidebar.create_scene')}
               </button>
@@ -182,7 +212,12 @@ export default function Sidebar() {
                 style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                onClick={() => { setCreateOpen(false); if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); navigate('/persona/create'); }}
+                onClick={() => { 
+                  setCreateOpen(false); 
+                  if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); 
+                  if (setSidebarVisible) setSidebarVisible(false);
+                  handleNavigate('/persona/create'); 
+                }}
               >
                 <i className="bi bi-person-badge me-2"></i> {t('sidebar.create_persona')}
               </button>
@@ -193,7 +228,10 @@ export default function Sidebar() {
       <button
         className="fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center"
         style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: '#fff', color: '#232323', borderRadius: 19, padding: '9px 0', border: 'none', fontWeight: 700, transition: 'background 0.2s', marginBottom: 8 }}
-        onClick={() => navigate('/browse/popular')}
+        onClick={() => {
+          if (setSidebarVisible) setSidebarVisible(false);
+          handleNavigate('/browse/popular');
+        }}
         onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; }}
         onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
         tabIndex={0}
@@ -240,7 +278,10 @@ export default function Sidebar() {
                   border: 'none',
                   transition: 'all 0.2s'
                 }}
-                onClick={() => navigate('/browse/popular')}
+                onClick={() => {
+                  if (setSidebarVisible) setSidebarVisible(false);
+                  handleNavigate('/browse/popular');
+                }}
                 onMouseEnter={e => e.currentTarget.style.background = '#5d5675'}
                 onMouseLeave={e => e.currentTarget.style.background = '#736B92'}
               >
@@ -253,7 +294,10 @@ export default function Sidebar() {
                 key={c.id}
                 className="list-group-item list-group-item-action d-flex align-items-center gap-2 border-0 rounded-4 mb-1 fw-bold"
                 style={{ background: '#fff', color: '#232323', minHeight: 38, transition: 'background 0.16s, color 0.16s', fontWeight: 600, fontSize: '0.8rem' }}
-                onClick={() => navigate(`/chat?character=${c.id}`)}
+                onClick={() => {
+                  if (setSidebarVisible) setSidebarVisible(false);
+                  handleNavigate(`/chat?character=${c.id}`);
+                }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#232323'; }}
               >
@@ -322,7 +366,11 @@ export default function Sidebar() {
                   style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem' }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                  onClick={() => { setProfileOpen(false); navigate("/profile"); }}
+                  onClick={() => { 
+                    setProfileOpen(false); 
+                    if (setSidebarVisible) setSidebarVisible(false);
+                    handleNavigate("/profile"); 
+                  }}
                 >
                   <i className="bi bi-person-circle me-2"></i> {t('sidebar.profile')}
                 </button>
@@ -334,7 +382,11 @@ export default function Sidebar() {
                     style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem' }}
                     onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                    onClick={() => { setProfileOpen(false); navigate("/admin"); }}
+                    onClick={() => { 
+                      setProfileOpen(false); 
+                      if (setSidebarVisible) setSidebarVisible(false);
+                      handleNavigate("/admin"); 
+                    }}
                   >
                     <i className="bi bi-shield-lock me-2"></i> {t('sidebar.admin_panel')}
                   </button>
@@ -358,7 +410,10 @@ export default function Sidebar() {
             <button 
               className="btn rounded-pill px-3 py-1 fw-bold shadow-sm" 
               style={{ background: '#fff', color: '#232323', fontWeight: 700, fontSize: '0.8rem' }}
-              onClick={() => navigate('/login')}
+              onClick={() => {
+                if (setSidebarVisible) setSidebarVisible(false);
+                handleNavigate('/login');
+              }}
             >
               <i className="bi bi-person-circle me-2" style={{ fontSize: '0.8rem' }}></i> {t('sidebar.login_to_continue')}
             </button>
