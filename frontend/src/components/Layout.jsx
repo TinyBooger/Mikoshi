@@ -104,22 +104,23 @@ export default function Layout() {
     <div
       className="d-flex flex-column"
       style={{
-        height: '100dvh',
-        overflow: 'visible',
+        height: '100vh',
+        overflow: 'hidden',
         width: '100%',
-        position: 'relative',
+        position: 'fixed',
+        inset: 0,
       }}
     >
       {/* Topbar always fixed at the top */}
       <div style={{
-        position: 'fixed', // CHANGED to fixed
+        position: 'fixed',
         top: 0,
         left: 0,
         height: '7dvh',
         width: '100%',
-        zIndex: 1100, // Higher z-index to stay above everything
+        zIndex: 1100,
         flexShrink: 0,
-        background: 'inherit', // Match your theme background
+        background: 'inherit',
       }}>
         <Topbar
           onToggleSidebar={handleToggleSidebar}
@@ -134,10 +135,11 @@ export default function Layout() {
       <div
         style={{
           display: 'flex',
-          height: '100dvh',
+          height: '100vh',
           width: '100%',
-          position: 'relative',
-          paddingTop: '7dvh', // ADDED padding to account for fixed topbar
+          position: 'fixed',
+          inset: 0,
+          paddingTop: '7dvh',
         }}
       >
         {/* Sidebar - fixed position on both mobile and desktop */}
@@ -154,7 +156,7 @@ export default function Layout() {
               top: '7dvh',
               left: 0,
               width: '100vw',
-              height: 'calc(100dvh - 7dvh)',
+              height: 'calc(100vh - 7dvh)',
               background: 'rgba(0,0,0,0.3)',
               zIndex: 999,
               cursor: 'pointer',
@@ -166,17 +168,17 @@ export default function Layout() {
         <main
           className="flex-grow-1 d-flex flex-column"
           style={{
-            width: isMobile ? '100%' : `calc(100% - ${sidebarVisible ? '15rem' : '0px'})`, // Adjust width based on sidebar
-            marginLeft: !isMobile && sidebarVisible ? '15rem' : '0', // Push content when sidebar is visible on desktop
+            width: isMobile ? '100%' : `calc(100% - ${sidebarVisible ? '15rem' : '0px'})`,
+            marginLeft: !isMobile && sidebarVisible ? '15rem' : '0',
             zIndex: 1,
             transition: 'margin-left 0.35s cubic-bezier(.4,0,.2,1), width 0.35s cubic-bezier(.4,0,.2,1)',
             background: 'transparent',
-            overflowY: 'auto', // ONLY this area scrolls
+            overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain',
-            height: 'calc(100dvh - 7dvh)', // Full height minus topbar
+            height: 'calc(100vh - 7dvh)',
             position: 'relative',
-            paddingTop: '0', // Remove any extra padding
+            paddingTop: '0',
           }}
         >
           <Outlet

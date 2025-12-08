@@ -88,6 +88,38 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Handle mobile keyboard viewport to prevent layout shift
+  useEffect(() => {
+    if (window.innerWidth >= 768) return; // Only on mobile
+
+    const handleResize = () => {
+      // When keyboard is open, window.innerHeight becomes smaller
+      // Lock the main scrollable area to prevent background from showing
+      const mainContent = document.querySelector('main');
+      if (mainContent) {
+        mainContent.style.maxHeight = `${window.innerHeight}px`;
+      }
+    };
+
+    const handleOrientationChange = () => {
+      // Reset on orientation change
+      setTimeout(() => {
+        const mainContent = document.querySelector('main');
+        if (mainContent) {
+          mainContent.style.maxHeight = 'unset';
+        }
+      }, 100);
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleOrientationChange);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, []);
+
   const navigate = useNavigate();
   const initialized = useRef(false);
   const isNewChat = useRef(true);
@@ -987,7 +1019,7 @@ export default function ChatPage() {
         </div>
 
         {/* Input Area (no form) */}
-        <form onSubmit={handleSend} style={{ padding: '0.8rem 1.2rem', background: '#f8f9fa', borderTop: '1.2px solid #e9ecef' }}>
+        <form onSubmit={handleSend} style={{ padding: '0.8rem 1.2rem', background: '#f8f9fa', borderTop: '1.2px solid #e9ecef', flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: '0.64rem', alignItems: 'flex-end', flexDirection: 'column' }}>
             <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'flex-end' }}>
               <textarea
@@ -1009,13 +1041,23 @@ export default function ChatPage() {
                   overflow: 'auto',
                   fontFamily: 'inherit',
                   lineHeight: '1.5',
+                  WebkitAppearance: 'none',
+                  appearance: 'none',
                 }}
                 placeholder={t('chat.input_placeholder')}
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 required
-                onFocus={e => e.target.style.border = '1.2px solid #18191a'}
+                onFocus={e => {
+                  e.target.style.border = '1.2px solid #18191a';
+                  // Prevent viewport shift on mobile
+                  if (window.innerWidth < 768) {
+                    setTimeout(() => {
+                      e.target.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+                    }, 300);
+                  }
+                }}
                 onBlur={e => e.target.style.border = '1.2px solid #e9ecef'}
                 disabled={sending}
                 rows={1}

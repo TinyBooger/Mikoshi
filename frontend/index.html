@@ -2,15 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"/>
   <title>语伴岛 - 与你感兴趣的角色聊天吧</title>
   <!-- Subtle light-lavender theme color for browser UI on mobile -->
   <meta name="theme-color" content="#F6F3FB" />
+  <!-- Prevent password managers from triggering layout shift -->
+  <meta name="password-managers" content="false" />
   <!-- Favicon and app icons (placed in frontend/public/) -->
   <link rel="icon" href="/favicon.ico" />
 </head>
 <body>
   <style>
+    /* Fix scrolling issues on iOS */
+    html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    
     body {
       /*
         Elegant, muted lavender on white:
@@ -28,7 +37,17 @@
         radial-gradient(70% 85% at 110% 50%, hsla(258, 60%, 90%, 0.45) 0%, hsla(258, 60%, 92%, 0) 60%);
       background-repeat: no-repeat;
       background-attachment: fixed;
-      min-height: 100vh;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+    }
+    
+    #root {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
     }
   </style>
   <div id="root"></div>
