@@ -119,11 +119,19 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0, sidebarVisible, setSid
 
   const handleComplete = () => {
     localStorage.setItem('onboarding_completed', 'true');
+    // Close sidebar on mobile when finishing onboarding
+    if (setSidebarVisible && window.innerWidth < 768) {
+      setSidebarVisible(false);
+    }
     onClose();
   };
 
   const handleSkip = () => {
     localStorage.setItem('onboarding_completed', 'true');
+    // Close sidebar on mobile when skipping onboarding
+    if (setSidebarVisible && window.innerWidth < 768) {
+      setSidebarVisible(false);
+    }
     onClose();
   };
 
