@@ -782,6 +782,9 @@ function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Bottom spacer for mobile browser chrome */}
+      <div style={{ height: '80px' }} />
     </PageWrapper>
   );
 }

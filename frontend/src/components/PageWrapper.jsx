@@ -35,6 +35,7 @@ function PageWrapper({ children, style = {}, className = '' }) {
           marginTop: 0,
           marginBottom: 0,
           padding: 0,
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           ...style,
         }
     : {
@@ -53,12 +54,13 @@ function PageWrapper({ children, style = {}, className = '' }) {
         ...style,
       };
 
-  const mobileClass = isMobile ? 'g-0 px-0 py-0' : 'g-0 px-2 px-md-3 px-lg-4 py-4';
+  const mobileClass = isMobile ? 'g-0 px-0' : 'g-0 px-2 px-md-3 px-lg-4 py-4';
+  const mobilePadding = isMobile ? { paddingTop: '1rem', paddingBottom: 0 } : {};
 
   return (
     <div
       className={`container-fluid ${mobileClass} ${className}`.trim()}
-      style={combinedStyle}
+      style={{...combinedStyle, ...mobilePadding}}
     >
       {children}
     </div>

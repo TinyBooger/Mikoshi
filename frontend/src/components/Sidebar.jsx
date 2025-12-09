@@ -19,13 +19,10 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   
   // Helper function to close sidebar and navigate immediately
   const handleNavigate = (path) => {
-    console.log("Sidebar: Navigating to", path);
-    // Explicitly close sidebar before navigation
-    if (setSidebarVisible) {
+    // Only close sidebar on mobile devices
+    if (isMobile && setSidebarVisible) {
       setSidebarVisible(false);
-      console.log("Sidebar: Hiding sidebar before navigation to", path);
     }
-    // Navigate immediately
     navigate(path);
   };
 
@@ -99,7 +96,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
 
   return (
     <aside
-      className="d-flex flex-column h-100 p-3"
+      className="d-flex flex-column h-100"
       style={{
         minHeight: '80vh',
         background: 'rgba(255, 255, 255, 0.98)',
@@ -109,10 +106,12 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         borderRadius: '1.5rem',
         width: '100%',
         maxWidth: '100%',
+        padding: isMobile ? '0.75rem' : '1rem',
+        overflow: 'visible',
       }}
     >
       {/* Logo at top */}
-      <div className="mb-3 d-flex align-items-center justify-content-center" style={{ minHeight: 144 }}>
+      <div className="mb-3 d-flex align-items-center justify-content-center" style={{ minHeight: isMobile ? 100 : 144 }}>
         <a 
           href="/" 
           style={{ display: 'inline-block' }}
@@ -121,7 +120,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             handleNavigate('/');
           }}
         >
-          <img src={logo} alt="Logo" style={{ height: 138, width: 'auto', objectFit: 'contain', display: 'block', maxWidth: 160 }} />
+          <img src={logo} alt="Logo" style={{ height: isMobile ? 90 : 138, width: 'auto', objectFit: 'contain', display: 'block', maxWidth: isMobile ? 120 : 160 }} />
         </a>
       </div>
       {/* Top navigation */}
@@ -167,9 +166,13 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               transition: 'opacity 0.14s, transform 0.14s',
               zIndex: 2000,
               position: 'absolute',
-              left: '100%',
-              top: 0,
-              minWidth: 160,
+              left: isMobile ? 0 : '100%',
+              top: isMobile ? '100%' : 0,
+              marginTop: isMobile ? '0.25rem' : 0,
+              marginLeft: isMobile ? 0 : '0.5rem',
+              minWidth: isMobile ? '100%' : 160,
+              maxWidth: isMobile ? '100%' : 'none',
+              width: isMobile ? '100%' : 'auto',
               fontSize: '0.86rem',
               boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
             }}
@@ -177,7 +180,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             <li>
               <button
                 className="dropdown-item rounded-3 fw-bold"
-                style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
+                style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem', whiteSpace: 'normal', wordWrap: 'break-word' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { 
@@ -193,7 +196,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             <li>
               <button
                 className="dropdown-item rounded-3 fw-bold"
-                style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
+                style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem', whiteSpace: 'normal', wordWrap: 'break-word' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { 
@@ -209,7 +212,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             <li>
               <button
                 className="dropdown-item rounded-3 fw-bold"
-                style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem' }}
+                style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem', whiteSpace: 'normal', wordWrap: 'break-word' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { 
@@ -227,7 +230,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       </div>
       <button
         className="fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center"
-        style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: '#fff', color: '#232323', borderRadius: 19, padding: '9px 0', border: 'none', fontWeight: 700, transition: 'background 0.2s', marginBottom: 8 }}
+        style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: '#fff', color: '#232323', borderRadius: 19, padding: '9px 0', border: 'none', fontWeight: 700, transition: 'background 0.2s', marginBottom: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
         onClick={() => {
           if (setSidebarVisible) setSidebarVisible(false);
           handleNavigate('/browse/popular');
@@ -241,9 +244,9 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       </button>
 
       {/* Recent chats */}
-      <div className="mb-3 d-flex flex-column" style={{ minHeight: 0, flex: '1 1 auto', overflow: 'hidden' }}>
+      <div className="mb-3 d-flex flex-column" style={{ minHeight: 0, flex: '1 1 auto', overflowX: 'hidden', overflowY: 'auto' }}>
   <h6 className="fw-bold mb-1" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px', flexShrink: 0 }}>{t('sidebar.recent_chats')}</h6>
-        <div className="list-group rounded-4" style={{ background: 'transparent', boxShadow: 'none', overflowY: 'auto', minHeight: 0 }}>
+        <div className="list-group rounded-4" style={{ background: 'transparent', boxShadow: 'none', minHeight: 0 }}>
           {recent.length === 0 ? (
             <div className="rounded-4 p-3" style={{ 
               background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)',
@@ -336,7 +339,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 alt={userData?.name || 'User'}
                 style={{ objectFit: 'cover', border: '1.6px solid #e9ecef' }}
               />
-              <span className="flex-grow-1 text-start" style={{ color: '#232323', fontWeight: 700, fontSize: '0.8rem' }}>
+              <span className="flex-grow-1 text-start text-truncate" style={{ color: '#232323', fontWeight: 700, fontSize: '0.8rem' }}>
                 {userData?.name || userData?.email}
               </span>
               <i className={`bi ms-auto ${profileOpen ? 'bi-chevron-down' : 'bi-chevron-up'}`} style={{ fontSize: '0.8rem' }}></i>
@@ -357,13 +360,14 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 left: 0,
                 right: 0,
                 bottom: '100%',
-                fontSize: '0.8rem'
+                fontSize: '0.8rem',
+                maxWidth: '100%'
               }}
             >
               <li>
                 <button
                   className="dropdown-item rounded-3 fw-bold"
-                  style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem' }}
+                  style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem', whiteSpace: 'normal', wordWrap: 'break-word' }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                   onClick={() => { 
@@ -379,7 +383,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 <li>
                   <button
                     className="dropdown-item rounded-3 fw-bold"
-                    style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem' }}
+                    style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem', whiteSpace: 'normal', wordWrap: 'break-word' }}
                     onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                     onClick={() => { 
@@ -395,7 +399,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               <li>
                 <button
                   className="dropdown-item rounded-3 fw-bold"
-                  style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem' }}
+                  style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem', whiteSpace: 'normal', wordWrap: 'break-word' }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                   onClick={() => { setProfileOpen(false); handleLogout(); }}

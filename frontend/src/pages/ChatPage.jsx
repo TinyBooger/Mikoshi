@@ -145,6 +145,13 @@ export default function ChatPage() {
     }
 
     if (!initialized.current && sessionToken && characterId) {
+      // If entering with scene or persona, show ChatInitModal
+      if (sceneId || personaId) {
+        isNewChat.current = true;
+        setInitModal(true);
+        return;
+      }
+
       // Check if user has existing chat history with this character
       const existingChats = userData?.chat_history?.filter(
         h => h.character_id === characterId
@@ -160,19 +167,41 @@ export default function ChatPage() {
         loadChat(mostRecentChat);
         initialized.current = true;
       } else {
-        // No chat history - show modal for new chat
+        // No chat history - start chat immediately (skip modal)
         isNewChat.current = true;
-        setInitModal(true);
+        startChatWithSelectedEntities();
+        initialized.current = true;
       }
       return;
     }
   }, [navigate, sessionToken, loading, characterId, sceneId, personaId, userData]);
+
+  // Reusable function to start chat with current selections (used by modal and direct entry)
+  const startChatWithSelectedEntities = async () => {
+    isNewChat.current = true;
+    // Clear IDs for any unselected entities
+    if (!selectedPersona) setPersonaId(null);
+    if (!selectedScene) setSceneId(null);
+    setWelcomeDismissed(false);
+    setInitLoading(true);
+    try {
+      const fetchedData = await fetchInitialData();
+      initializeChat(fetchedData);
+    } catch (err) {
+      console.error('Error initializing chat:', err);
+    } finally {
+      setInitLoading(false);
+    }
+  };
 
   // Fetch character, scene, and persona data if IDs are present
   const fetchInitialData = () => {
     setInitLoading(true);
     return new Promise((resolve, reject) => {
       const promises = [];
+      let character = null;
+      let scene = null;
+      let persona = null;
       
       if (characterId) {
         promises.push(
@@ -183,14 +212,17 @@ export default function ChatPage() {
               if (!res.ok) throw new Error('Character not found');
               return res.json();
             })
-            .then(character => {
-              setSelectedCharacter(character);
-              setLikes(character.likes || 0);
+            .then(data => {
+              character = data;
+              setSelectedCharacter(data);
+              setLikes(data.likes || 0);
+              return data;
             })
             .catch(err => {
               console.error('Error fetching character:', err);
               toast.show(t('chat.error_loading_character') || 'Failed to load character.', { type: 'error' });
               setSelectedCharacter(null);
+              return null;
             })
         );
       } else {
@@ -203,10 +235,15 @@ export default function ChatPage() {
             headers: { 'Authorization': sessionToken }
           })
             .then(res => res.ok ? res.json() : null)
-            .then(scene => setSelectedScene(scene))
+            .then(data => {
+              scene = data;
+              setSelectedScene(data);
+              return data;
+            })
             .catch(err => {
               console.error('Error fetching scene:', err);
               setSelectedScene(null);
+              return null;
             })
         );
       } else {
@@ -219,10 +256,15 @@ export default function ChatPage() {
             headers: { 'Authorization': sessionToken }
           })
             .then(res => res.ok ? res.json() : null)
-            .then(persona => setSelectedPersona(persona))
+            .then(data => {
+              persona = data;
+              setSelectedPersona(data);
+              return data;
+            })
             .catch(err => {
               console.error('Error fetching persona:', err);
               setSelectedPersona(null);
+              return null;
             })
         );
       } else {
@@ -247,8 +289,12 @@ export default function ChatPage() {
                 scene: data.scene ? !!data.scene.liked : false,
                 persona: data.persona ? !!data.persona.liked : false
               });
+              return data;
             })
-            .catch(() => setHasLiked({ character: false, scene: false, persona: false }))
+            .catch(() => {
+              setHasLiked({ character: false, scene: false, persona: false });
+              return null;
+            })
         );
       } else {
         setHasLiked({ character: false, scene: false, persona: false });
@@ -256,7 +302,7 @@ export default function ChatPage() {
       
       Promise.all(promises).then(() => {
         setInitLoading(false);
-        resolve();
+        resolve({ character, scene, persona });
       }).catch(err => {
         setInitLoading(false);
         reject(err);
@@ -268,15 +314,15 @@ export default function ChatPage() {
 
 
 
-  const initializeChat = () => {
-    console.log('Initializing chat with:', { characterId, sceneId, personaId });
+  const initializeChat = (fetchedData) => {
+    const { character, scene, persona } = fetchedData || {};
     // Set likes and creator from selectedCharacter
     if (characterId) {
       // Increment views for character, scene, and persona in one call
       const body = {
-        ...(selectedCharacter && { character_id: selectedCharacter.id }),
-        ...(selectedScene && { scene_id: selectedScene.id }),
-        ...(selectedPersona && { persona_id: selectedPersona.id })
+        ...(character && { character_id: character.id }),
+        ...(scene && { scene_id: scene.id }),
+        ...(persona && { persona_id: persona.id })
       };
       fetch(`${window.API_BASE_URL}/api/views/increment-multi`, {
         method: 'POST',
@@ -289,31 +335,29 @@ export default function ChatPage() {
     }
     initialized.current = true;
     if(isNewChat.current) {
-      startNewChat();
+      startNewChat(fetchedData);
     }
   };
 
-  const startNewChat = async () => {
-    console.log('starting a new chat')
+  const startNewChat = async (fetchedData) => {
+    const { character, scene, persona } = fetchedData || {};
     const sys = {
       role: "system",
       content: buildSystemMessage(
-        selectedCharacter?.name || "",
-        selectedCharacter?.persona || "",
-        selectedCharacter?.example_messages || "",
-        selectedPersona?.description || null,
-        selectedScene?.description || null
+        character?.name || "",
+        character?.persona || "",
+        character?.example_messages || "",
+        persona?.description || null,
+        scene?.description || null
       )
     };
     // Use the character's greeting if available. Do not emit a special scene greeting here
     // because the scene introduction is now handled by the welcome notice.
     // If the character uses the improvising sentinel, call the backend LLM to generate
     // the initial assistant greeting dynamically.
-    const charGreeting = selectedCharacter?.greeting;
+    const charGreeting = character?.greeting;
     setSelectedChat(null);
     setInput('');
-    // Reset welcome dismissed so the welcome notice can show for this new chat
-    setWelcomeDismissed(false);
 
     if (charGreeting === SPECIAL_IMPROVISING_GREETING) {
       // Start with only the system message while we request an initial assistant reply
@@ -863,7 +907,6 @@ export default function ChatPage() {
             // This ensures we still show welcome when nonSystem.length === 0 (no character greeting),
             // but only once per new chat session.
             const showWelcome = isNewChat.current && !welcomeDismissed;
-            console.log({ showWelcome});
 
             return (
               <>
@@ -1149,22 +1192,9 @@ export default function ChatPage() {
         setSceneId={setSceneId}
         onStartChat={async () => {
           setInitModal(false);
-          isNewChat.current = true;
-          // Clear IDs for any unselected entities
-          if (!selectedPersona) setPersonaId(null);
-          if (!selectedScene) setSceneId(null);
-          setInitLoading(true);
-          try {
-            await fetchInitialData();
-            initializeChat();
-          } catch (err) {
-            console.error('Error initializing chat:', err);
-          } finally {
-            setInitLoading(false);
-          }
+          await startChatWithSelectedEntities();
         }}
         onCancel={() => {
-          console.log(initialized.current)
           if (!initialized.current) {
             navigate(-1);
           } else {

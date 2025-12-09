@@ -30,6 +30,22 @@ export default function CharacterAssistantModal({
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
+  // Prevent body scroll on mobile when modal is open
+  useEffect(() => {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      document.body.classList.add('modal-open');
+      document.body.style.top = `-${window.scrollY}px`;
+      const scrollY = window.scrollY;
+      
+      return () => {
+        document.body.classList.remove('modal-open');
+        document.body.style.top = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, []);
+
   // Sync state with parent
   useEffect(() => {
     if (onMessagesChange) {
@@ -163,12 +179,17 @@ export default function CharacterAssistantModal({
         @media (max-width: 768px) {
           .character-assistant-modal {
             width: 100% !important;
+            max-width: 100vw !important;
             height: 70vh !important;
+            max-height: 70vh !important;
             top: auto !important;
+            left: 0 !important;
             right: 0 !important;
             bottom: 0 !important;
             border-radius: 24px 24px 0 0 !important;
             animation: slideInBottom 0.3s ease-out !important;
+            position: fixed !important;
+            transform: none !important;
           }
           .assistant-header {
             padding: 1rem !important;
@@ -190,6 +211,15 @@ export default function CharacterAssistantModal({
         @media (min-width: 769px) {
           .character-assistant-modal {
             animation: slideInBottom 0.3s ease-out !important;
+          }
+        }
+        
+        /* Prevent body scroll when modal is open on mobile */
+        @supports (-webkit-touch-callout: none) {
+          body.modal-open {
+            position: fixed;
+            width: 100%;
+            overflow: hidden;
           }
         }
       `}</style>

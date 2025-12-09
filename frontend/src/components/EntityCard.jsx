@@ -10,8 +10,9 @@ import defaultPicture from '../assets/images/default-picture.png';
  * @param {Object} props.entity
  * @param {Function} [props.onClick] Optional click handler
  * @param {boolean} [props.disableClick] Optional flag to disable click behavior
+ * @param {boolean} [props.compact] Optional flag for compact horizontal layout
  */
-export default function EntityCard({ type, entity, onClick, disableClick = false }) {
+export default function EntityCard({ type, entity, onClick, disableClick = false, compact = false }) {
   const { t } = useTranslation();
   // Mobile viewport detection
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
@@ -112,10 +113,14 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
   }
 
   // Card sizes
-  // For mobile, use a bit less than 50dvw for two-column layout with gap
-  const CARD_WIDTH = isMobile ? '46dvw' : '11.25rem'; // 180px = 11.25rem
-  const CARD_HEIGHT = isMobile ? 'calc(46dvw * 1.32)' : '15.625rem'; // 250px = 15.625rem
-  const IMAGE_SIZE = CARD_WIDTH;
+  // On mobile, use 4:5 aspect ratio for card (height = width * 1.25)
+  const CARD_WIDTH = compact ? '100%' : (isMobile ? '100%' : '11.25rem');
+  const CARD_ASPECT_RATIO = 1.25; // 4:5
+  const CARD_HEIGHT = compact
+    ? (isMobile ? '100%' : '15.625rem')
+    : (isMobile ? 'calc(100vw / 2 * 1.25 - 0.5rem)' : '15.625rem'); // 2 columns, minus gap
+  const IMAGE_ASPECT_RATIO = 0.8; // 4:5 image, but can be 1:1 if you prefer
+  const IMAGE_SIZE = compact && isMobile ? '90px' : (isMobile ? '100%' : CARD_WIDTH);
 
   // Creator name logic
   let creatorDisplay = t('entity_card.unknown');
@@ -144,48 +149,75 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
 
   return (
     <div
-      className="d-flex flex-column position-relative"
+      className={compact && isMobile ? "d-flex flex-row position-relative" : "d-flex flex-column position-relative"}
       style={{
         width: CARD_WIDTH,
         height: CARD_HEIGHT,
         background: '#f9fafb',
-        borderRadius: isMobile ? '0.75rem' : '1rem', // 12px/16px
-        boxShadow: isMobile ? '0 0.0625rem 0.375rem rgba(0,0,0,0.10)' : '0 0.125rem 0.75rem rgba(0,0,0,0.10)', // 1px/6px, 2px/12px
-        border: '0.125rem solid #e9ecef', // 2px
+        borderRadius: isMobile ? '0.75rem' : '1rem',
+        boxShadow: isMobile ? '0 0.0625rem 0.375rem rgba(0,0,0,0.10)' : '0 0.125rem 0.75rem rgba(0,0,0,0.10)',
+        border: '0.125rem solid #e9ecef',
         overflow: 'hidden',
         transition: 'box-shadow 0.16s, transform 0.16s',
         cursor: disableClick ? 'default' : 'pointer',
         pointerEvents: disableClick ? 'none' : 'auto',
-        margin: isMobile ? '0 0.125rem' : undefined, // 2px
-        minWidth: isMobile ? '8.75rem' : undefined, // 140px
-        maxWidth: isMobile ? '98vw' : undefined,
+        margin: 0,
+        maxWidth: '100%',
+        display: 'flex',
+        flexDirection: compact && isMobile ? 'row' : 'column',
       }}
       onClick={disableClick ? undefined : handleClick}
       onMouseEnter={disableClick ? undefined : e => { setHovered(true); e.currentTarget.style.boxShadow = isMobile ? '0 3px 10px rgba(0,0,0,0.13)' : '0 6px 18px rgba(0,0,0,0.13)'; e.currentTarget.style.transform = isMobile ? 'scale(1.03)' : 'translateY(-2px) scale(1.018)'; }}
       onMouseLeave={disableClick ? undefined : e => { setHovered(false); e.currentTarget.style.boxShadow = isMobile ? '0 1px 6px rgba(0,0,0,0.10)' : '0 2px 12px rgba(0,0,0,0.10)'; e.currentTarget.style.transform = 'none'; }}
     >
       {/* Top: Image */}
-      <div style={{
-        width: '100%',
-        height: typeof IMAGE_SIZE === 'string' ? IMAGE_SIZE : IMAGE_SIZE,
-        background: '#e9ecef',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderBottom: '1px solid #e3e6ea', // 1px for border
-        overflow: 'hidden',
-        padding: 0,
-      }}>
+      <div
+        style={{
+          width: compact && isMobile ? IMAGE_SIZE : '100%',
+          flex: compact && isMobile ? '0 0 auto' : '1 1 0%',
+          aspectRatio: isMobile && !compact ? '4/5' : undefined,
+          minHeight: isMobile && !compact ? 0 : undefined,
+          maxHeight: isMobile && !compact ? '70%' : undefined,
+          height: compact && isMobile ? '100%' : (isMobile ? undefined : (typeof IMAGE_SIZE === 'string' ? IMAGE_SIZE : IMAGE_SIZE)),
+          background: '#e9ecef',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderBottom: compact && isMobile ? 'none' : '1px solid #e3e6ea',
+          borderRight: compact && isMobile ? '1px solid #e3e6ea' : 'none',
+          overflow: 'hidden',
+          padding: 0,
+        }}
+      >
         <img
           src={picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${picture.replace(/^\//, '')}` : defaultPicture}
           alt={name}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0, border: 'none', transform: hovered ? 'scale(1.05)' : 'scale(1)', transition: 'transform 220ms ease-out', willChange: 'transform' }}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            borderRadius: 0,
+            border: 'none',
+            transform: hovered ? 'scale(1.05)' : 'scale(1)',
+            transition: 'transform 220ms ease-out',
+            willChange: 'transform',
+          }}
         />
       </div>
-      {/* Name & Creator */}
-      <div className="px-2 pt-2 pb-1" style={{ minWidth: 0 }}>
-        <div className="d-flex align-items-center justify-content-between" style={{ gap: '0.25rem', marginBottom: '0.15rem' }}>
-          <h5 className="fw-bold text-dark text-truncate mb-0" style={{ fontSize: isMobile ? '0.82rem' : '0.92rem', maxWidth: primaryTag ? '70%' : (isMobile ? '6.875rem' : '9.375rem'), fontFamily: 'Inter, sans-serif' }}>{name}</h5>
+      {/* Name & Creator and Info Area (footer) */}
+      <div
+        className={compact && isMobile ? "d-flex flex-column justify-content-center px-2 py-1" : "px-2 pt-2 pb-1"}
+        style={{
+          minWidth: 0,
+          flex: '0 0 auto',
+          minHeight: isMobile && !compact ? 64 : undefined, // always show info area
+          paddingTop: isMobile && !compact ? 8 : undefined,
+          paddingBottom: isMobile && !compact ? 8 : undefined,
+          background: 'inherit',
+        }}
+      >
+        <div className="d-flex align-items-center justify-content-between" style={{ gap: '0.25rem', marginBottom: compact && isMobile ? '0.05rem' : '0.15rem' }}>
+          <h5 className="fw-bold text-dark text-truncate mb-0" style={{ fontSize: compact && isMobile ? '0.85rem' : (isMobile ? '0.92rem' : '0.98rem'), maxWidth: primaryTag ? '70%' : (isMobile ? '100%' : '9.375rem'), fontFamily: 'Inter, sans-serif' }}>{name}</h5>
           {primaryTag && (
             <span
               className="badge text-uppercase"
@@ -208,13 +240,13 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
             </span>
           )}
         </div>
-        <span className="text-muted small" style={{ fontSize: isMobile ? '0.62rem' : '0.68rem', fontFamily: 'Inter, sans-serif', fontWeight: 400, display: 'block', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: isMobile ? '6.875rem' : '9.375rem' }}>
+        <span className="text-muted small" style={{ fontSize: isMobile ? '0.68rem' : '0.74rem', fontFamily: 'Inter, sans-serif', fontWeight: 400, display: 'block', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: isMobile ? '100%' : '9.375rem' }}>
           <i className="bi bi-person-circle me-1"></i>
           {creatorDisplay ? creatorDisplay : <span style={{ opacity: 0.4 }}>Unknown</span>}
         </span>
       </div>
       {/* Description/Tagline/Intro */}
-      <div className="px-2" style={{
+      {!(compact && isMobile) && (<div className="px-2" style={{
         flex: 1,
         minHeight: isMobile ? '1.125rem' : '1.375rem', // 18px/22px
         maxHeight: isMobile ? '1.125rem' : '1.375rem',
@@ -233,9 +265,9 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
         }}>
           {description || <span style={{ opacity: 0.4 }}>{t('entity_card.no_description')}</span>}
         </span>
-      </div>
+      </div>)}
       {/* Stats */}
-      <div className="d-flex align-items-center justify-content-between px-2 pb-1" style={{ minHeight: isMobile ? '0.875rem' : '1.125rem' }}> {/* 14px/18px */}
+      {!(compact && isMobile) && (<div className="d-flex align-items-center justify-content-between px-2 pb-1" style={{ minHeight: isMobile ? '0.875rem' : '1.125rem' }}> {/* 14px/18px */}
         <span className="d-flex align-items-center text-secondary" style={{ fontSize: isMobile ? '0.5625rem' : '0.625rem' }}> {/* 9px/10px */}
           <i className="bi bi-chat me-1"></i> {typeof views === 'number' ? views.toLocaleString() : 0}
         </span>
@@ -244,7 +276,7 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
             <i className="bi bi-heart me-1"></i> {typeof likes === 'number' ? likes.toLocaleString() : 0}
           </span>
         )}
-      </div>
+      </div>)}
     </div>
   );
 }

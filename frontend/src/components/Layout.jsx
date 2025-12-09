@@ -179,6 +179,7 @@ export default function Layout() {
             height: 'calc(100vh - 7dvh)',
             position: 'relative',
             paddingTop: '0',
+            paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : '0',
           }}
         >
           <Outlet

@@ -61,27 +61,25 @@ export default function ChatInitModal({
   }
 
   // Responsive card sizing
-  const CARD_WIDTH = isMobile ? '46dvw' : 180;
-  const CARD_HEIGHT = isMobile ? 'calc(46dvw * 1.32)' : 250;
+  const CARD_WIDTH = isMobile ? '100%' : 180;
+  const CARD_HEIGHT = isMobile ? 140 : 250;
 
-  // Always horizontal layout; enable horizontal scroll on mobile
+  // Vertical layout on mobile, horizontal on desktop
   const cardsContainerStyle = {
     display: 'flex',
-    flexDirection: 'row',
-    gap: isMobile ? '1.2rem' : '2rem',
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: isMobile ? '1rem' : '2rem',
     justifyContent: 'center',
-    alignItems: 'center',
-    margin: isMobile ? '1.2rem 0' : '2rem 0',
-    width: isMobile ? 'max-content' : '100%',
-    overflowX: isMobile ? 'auto' : undefined,
-    overflowY: 'hidden',
-    padding: isMobile ? '0 0.5rem' : undefined,
+    alignItems: isMobile ? 'stretch' : 'center',
+    margin: 0,
+    width: '100%',
+    padding: isMobile ? '1rem' : '2rem 0',
   };
 
   const cardStyle = (selected) => ({
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    borderRadius: '1.2rem',
+    borderRadius: isMobile ? '0.875rem' : '1.2rem',
     background: '#f5f6fa',
     border: '2px dashed #e9ecef',
     display: 'flex',
@@ -94,21 +92,22 @@ export default function ChatInitModal({
     padding: 0,
     minWidth: 0,
     minHeight: 0,
+    flexShrink: 0,
   });
 
   // Remove button style
   const removeBtnStyle = {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 28,
-    height: 28,
+    top: isMobile ? 6 : 8,
+    right: isMobile ? 6 : 8,
+    width: isMobile ? 24 : 28,
+    height: isMobile ? 24 : 28,
     border: 'none',
     borderRadius: '50%',
     background: 'rgba(0,0,0,0.08)',
     color: '#888',
     fontWeight: 700,
-    fontSize: 18,
+    fontSize: isMobile ? 16 : 18,
     cursor: 'pointer',
     zIndex: 2,
     display: 'flex',
@@ -144,9 +143,11 @@ export default function ChatInitModal({
             style={{
               flex: 1,
               overflowY: 'auto',
+              overflowX: 'hidden',
               paddingBottom: 0,
+              padding: isMobile ? '1rem' : '1.5rem',
               minHeight: 0,
-              maxHeight: isMobile ? 'calc(96vh - 120px)' : 'calc(96vh - 120px)', // header+footer ~120px
+              maxHeight: isMobile ? 'calc(96vh - 140px)' : 'calc(96vh - 120px)',
             }}
           >
             <div style={cardsContainerStyle}>
@@ -166,12 +167,12 @@ export default function ChatInitModal({
                   </button>
                 )}
                 {selectedCharacter ? (
-                  <EntityCard type="character" entity={selectedCharacter} disableClick={true} />
+                  <EntityCard type="character" entity={selectedCharacter} disableClick={true} compact={true} />
                 ) : (
-                  <>
-                    <i className="bi bi-person" style={{ fontSize: 48, color: '#bbb', marginBottom: 12 }}></i>
-                    <div style={{ fontWeight: 600, fontSize: '1.02rem', color: '#888', textAlign: 'center' }}>{t('chat_init_modal.select_character')}</div>
-                  </>
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: 'center', gap: isMobile ? '1rem' : '0.75rem', padding: isMobile ? '0 1rem' : 0 }}>
+                    <i className="bi bi-person" style={{ fontSize: isMobile ? 32 : 48, color: '#bbb' }}></i>
+                    <div style={{ fontWeight: 600, fontSize: isMobile ? '0.95rem' : '1.02rem', color: '#888', textAlign: isMobile ? 'left' : 'center' }}>{t('chat_init_modal.select_character')}</div>
+                  </div>
                 )}
               </div>
               {/* Persona Card/Placeholder */}
@@ -194,12 +195,12 @@ export default function ChatInitModal({
                   </button>
                 )}
                 {selectedPersona ? (
-                  <EntityCard type="persona" entity={selectedPersona} disableClick={true} />
+                  <EntityCard type="persona" entity={selectedPersona} disableClick={true} compact={true} />
                 ) : (
-                  <>
-                    <i className="bi bi-person-badge" style={{ fontSize: 48, color: '#bbb', marginBottom: 12 }}></i>
-                    <div style={{ fontWeight: 600, fontSize: '1.02rem', color: '#888', textAlign: 'center' }}>{t('chat_init_modal.select_persona')}</div>
-                  </>
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: 'center', gap: isMobile ? '1rem' : '0.75rem', padding: isMobile ? '0 1rem' : 0 }}>
+                    <i className="bi bi-person-badge" style={{ fontSize: isMobile ? 32 : 48, color: '#bbb' }}></i>
+                    <div style={{ fontWeight: 600, fontSize: isMobile ? '0.95rem' : '1.02rem', color: '#888', textAlign: isMobile ? 'left' : 'center' }}>{t('chat_init_modal.select_persona')}</div>
+                  </div>
                 )}
               </div>
               {/* Scene Card/Placeholder */}
@@ -222,28 +223,28 @@ export default function ChatInitModal({
                   </button>
                 )}
                 {selectedScene ? (
-                  <EntityCard type="scene" entity={selectedScene} disableClick={true} />
+                  <EntityCard type="scene" entity={selectedScene} disableClick={true} compact={true} />
                 ) : (
-                  <>
-                    <i className="bi bi-easel" style={{ fontSize: 48, color: '#bbb', marginBottom: 12 }}></i>
-                    <div style={{ fontWeight: 600, fontSize: '1.02rem', color: '#888', textAlign: 'center' }}>{t('chat_init_modal.select_scene')}</div>
-                  </>
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: 'center', gap: isMobile ? '1rem' : '0.75rem', padding: isMobile ? '0 1rem' : 0 }}>
+                    <i className="bi bi-easel" style={{ fontSize: isMobile ? 32 : 48, color: '#bbb' }}></i>
+                    <div style={{ fontWeight: 600, fontSize: isMobile ? '0.95rem' : '1.02rem', color: '#888', textAlign: isMobile ? 'left' : 'center' }}>{t('chat_init_modal.select_scene')}</div>
+                  </div>
                 )}
               </div>
             </div>
           </div>
-          <div className="modal-footer d-flex justify-content-center" style={{ gap: 16 }}>
+          <div className="modal-footer d-flex justify-content-center" style={{ gap: isMobile ? 8 : 16, padding: isMobile ? '0.75rem 1rem' : '1rem' }}>
             <SecondaryButton
               onClick={onCancel}
               isMobile={isMobile}
-              style={{ borderRadius: '1.6rem', fontWeight: 600, fontSize: '1.02rem', paddingTop: 8, paddingBottom: 8 }}
+              style={{ borderRadius: '1.6rem', fontWeight: 600, fontSize: isMobile ? '0.95rem' : '1.02rem', paddingTop: isMobile ? 6 : 8, paddingBottom: isMobile ? 6 : 8, paddingLeft: isMobile ? 16 : 20, paddingRight: isMobile ? 16 : 20 }}
             >
               {t('chat_init_modal.cancel')}
             </SecondaryButton>
             <PrimaryButton
               onClick={onStartChat}
               isMobile={isMobile}
-              style={{ borderRadius: '1.6rem', fontWeight: 700, fontSize: '1.08rem', paddingTop: 8, paddingBottom: 8 }}
+              style={{ borderRadius: '1.6rem', fontWeight: 700, fontSize: isMobile ? '1rem' : '1.08rem', paddingTop: isMobile ? 6 : 8, paddingBottom: isMobile ? 6 : 8, paddingLeft: isMobile ? 20 : 24, paddingRight: isMobile ? 20 : 24 }}
               disabled={!selectedCharacter}
             >
               {t('chat_init_modal.start_chat')}
