@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from 'react-router';
 import { AuthContext } from './AuthProvider';
 import logoText from '../assets/images/logo_text.png';
 import ProblemReportModal from './ProblemReportModal';
-import UpdateNotificationModal from './UpdateNotificationModal';
 
 
 function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, characterSidebarVisible }) {
@@ -93,16 +92,6 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
 
 
   const [showProblemReport, setShowProblemReport] = useState(false);
-  
-  // Update notification state - show every time on load
-  const [showUpdateNotification, setShowUpdateNotification] = useState(false);
-  
-  useEffect(() => {
-    // Show notification every time user opens the website (if logged in)
-    if (sessionToken) {
-      setShowUpdateNotification(true);
-    }
-  }, [sessionToken]);
 
   return (
     <div
@@ -296,9 +285,6 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
           </button>
         )}
       </div>
-      
-      {/* Update Notification Modal */}
-      <UpdateNotificationModal show={showUpdateNotification} onClose={() => setShowUpdateNotification(false)} />
       
       {/* Problem Report Modal */}
       <ProblemReportModal show={showProblemReport} onClose={() => setShowProblemReport(false)} />

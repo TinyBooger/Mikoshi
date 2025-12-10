@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import TextButton from '../components/TextButton';
 import PrimaryButton from '../components/PrimaryButton';
 import OnboardingTour from '../components/OnboardingTour';
+import UpdateNotificationModal from '../components/UpdateNotificationModal';
 
 
 function HomePage() {
@@ -35,6 +36,7 @@ function HomePage() {
   const [errorPersonas, setErrorPersonas] = useState(null);
   const [showFirstTimeBanner, setShowFirstTimeBanner] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showUpdateNotification, setShowUpdateNotification] = useState(false);
   const navigate = useNavigate();
   const { userData, sessionToken, loading } = useContext(AuthContext);
   const { sidebarVisible, setSidebarVisible } = useOutletContext() || {};
@@ -53,6 +55,13 @@ function HomePage() {
       setShowFirstTimeBanner(false);
     }
   }, [userData]);
+  
+  // Update notification state - show every time user opens the website (if logged in)
+  useEffect(() => {
+    if (sessionToken) {
+      setShowUpdateNotification(true);
+    }
+  }, [sessionToken]);
   // Fetch popular personas
   useEffect(() => {
     setLoadingPersonas(true);
@@ -785,6 +794,9 @@ function HomePage() {
 
       {/* Bottom spacer for mobile browser chrome */}
       <div style={{ height: '80px' }} />
+      
+      {/* Update Notification Modal */}
+      <UpdateNotificationModal show={showUpdateNotification} onClose={() => setShowUpdateNotification(false)} />
     </PageWrapper>
   );
 }
