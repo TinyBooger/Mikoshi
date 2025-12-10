@@ -62,18 +62,18 @@ export default function ChatInitModal({
 
   // Responsive card sizing
   const CARD_WIDTH = isMobile ? '100%' : 180;
-  const CARD_HEIGHT = isMobile ? 140 : 250;
+  const CARD_HEIGHT = isMobile ? 120 : 220;
 
   // Vertical layout on mobile, horizontal on desktop
   const cardsContainerStyle = {
     display: 'flex',
     flexDirection: isMobile ? 'column' : 'row',
-    gap: isMobile ? '1rem' : '2rem',
+    gap: isMobile ? '0.75rem' : '1.5rem',
     justifyContent: 'center',
     alignItems: isMobile ? 'stretch' : 'center',
     margin: 0,
     width: '100%',
-    padding: isMobile ? '1rem' : '2rem 0',
+    padding: isMobile ? '0.5rem 0' : '1rem 0',
   };
 
   const cardStyle = (selected) => ({
@@ -133,9 +133,9 @@ export default function ChatInitModal({
         justifyContent: 'center',
       }}
     >
-      <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? '98vw' : undefined, margin: 'auto' }}>
-        <div className="modal-content" style={{ maxHeight: '96vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
-          <div className="modal-header">
+      <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? '95vw' : undefined, margin: 'auto', maxHeight: '90vh', display: 'flex' }}>
+        <div className="modal-content" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
+          <div className="modal-header" style={{ flexShrink: 0 }}>
             <h5 className="modal-title">{t('chat_init_modal.title')}</h5>
           </div>
           <div
@@ -144,10 +144,8 @@ export default function ChatInitModal({
               flex: 1,
               overflowY: 'auto',
               overflowX: 'hidden',
-              paddingBottom: 0,
               padding: isMobile ? '1rem' : '1.5rem',
               minHeight: 0,
-              maxHeight: isMobile ? 'calc(96vh - 140px)' : 'calc(96vh - 120px)',
             }}
           >
             <div style={cardsContainerStyle}>
@@ -233,7 +231,7 @@ export default function ChatInitModal({
               </div>
             </div>
           </div>
-          <div className="modal-footer d-flex justify-content-center" style={{ gap: isMobile ? 8 : 16, padding: isMobile ? '0.75rem 1rem' : '1rem' }}>
+          <div className="modal-footer d-flex justify-content-center" style={{ gap: isMobile ? 8 : 16, padding: isMobile ? '0.75rem 1rem' : '1rem', flexShrink: 0 }}>
             <SecondaryButton
               onClick={onCancel}
               isMobile={isMobile}

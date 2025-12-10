@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useContext } from "react";
 import { AuthContext } from "../../components/AuthProvider";
+import PaginationBar from "../../components/PaginationBar";
 
 export default function ProblemReportsPage() {
   const [reports, setReports] = useState([]);
@@ -7,6 +8,8 @@ export default function ProblemReportsPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedReport, setSelectedReport] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
   const { sessionToken } = useContext(AuthContext);
 
   const fetchReports = (status = null) => {
@@ -142,23 +145,24 @@ export default function ProblemReportsPage() {
       ) : reports.length === 0 ? (
         <div className="alert alert-info">No problem reports found.</div>
       ) : (
-        <div className="table-responsive">
-          <table className="table table-hover">
-            <thead>
-              <tr>
-                <th style={{ width: '5%' }}>ID</th>
-                <th style={{ width: '15%' }}>User</th>
-                <th style={{ width: '35%' }}>Description</th>
-                <th style={{ width: '15%' }}>Target</th>
-                <th style={{ width: '10%' }}>Screenshot</th>
-                <th style={{ width: '10%' }}>Status</th>
-                <th style={{ width: '12%' }}>Created</th>
-                <th style={{ width: '13%' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reports.map(report => (
-                <tr key={report.id}>
+        <>
+          <div className="table-responsive">
+            <table className="table table-hover">
+              <thead>
+                <tr>
+                  <th style={{ width: '5%' }}>ID</th>
+                  <th style={{ width: '15%' }}>User</th>
+                  <th style={{ width: '35%' }}>Description</th>
+                  <th style={{ width: '15%' }}>Target</th>
+                  <th style={{ width: '10%' }}>Screenshot</th>
+                  <th style={{ width: '10%' }}>Status</th>
+                  <th style={{ width: '12%' }}>Created</th>
+                  <th style={{ width: '13%' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reports.slice((page - 1) * pageSize, page * pageSize).map(report => (
+                  <tr key={report.id}>
                   <td>#{report.id}</td>
                   <td>
                     <div className="small">
@@ -260,6 +264,15 @@ export default function ProblemReportsPage() {
             </tbody>
           </table>
         </div>
+
+        <PaginationBar
+          page={page}
+          total={reports.length}
+          pageSize={pageSize}
+          loading={loading}
+          onPageChange={setPage}
+        />
+        </>
       )}
 
       {/* Image Modal */}

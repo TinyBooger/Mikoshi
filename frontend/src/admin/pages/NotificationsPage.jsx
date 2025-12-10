@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../components/AuthProvider';
+import PaginationBar from '../../components/PaginationBar';
 
 export default function NotificationsPage() {
   const { sessionToken } = useContext(AuthContext);
@@ -7,6 +8,8 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   
   const [formData, setFormData] = useState({
     title: '',
@@ -271,7 +274,7 @@ export default function NotificationsPage() {
 
       <div className="card">
         <div className="card-header">
-          <h5 className="mb-0">All Notifications</h5>
+          <h5 className="mb-0">All Notifications (Total: {notifications.length})</h5>
         </div>
         <div className="card-body">
           {notifications.length === 0 ? (
@@ -280,8 +283,9 @@ export default function NotificationsPage() {
               <p className="mt-3">No notifications created yet</p>
             </div>
           ) : (
-            <div className="list-group">
-              {notifications.map((notification) => (
+            <>
+              <div className="list-group">
+                {notifications.slice((page - 1) * pageSize, page * pageSize).map((notification) => (
                 <div 
                   key={notification.id}
                   className={`list-group-item ${notification.is_active ? 'border-success border-2' : ''}`}
@@ -346,8 +350,17 @@ export default function NotificationsPage() {
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              
+              <PaginationBar
+                page={page}
+                total={notifications.length}
+                pageSize={pageSize}
+                loading={loading}
+                onPageChange={setPage}
+              />
+            </>
           )}
         </div>
       </div>

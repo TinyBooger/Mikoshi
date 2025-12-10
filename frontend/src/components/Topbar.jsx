@@ -22,6 +22,47 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
 
+  // Scroll behavior state for hiding/showing topbar on mobile
+  const [isTopbarVisible, setIsTopbarVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  // Scroll detection for mobile
+  useEffect(() => {
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          
+          // Only apply hide/show behavior on mobile (below 768px)
+          if (window.innerWidth < 768) {
+            if (currentScrollY < 10) {
+              // Always show at top
+              setIsTopbarVisible(true);
+            } else if (currentScrollY > lastScrollY && currentScrollY > 50) {
+              // Scrolling down - hide
+              setIsTopbarVisible(false);
+            } else if (currentScrollY < lastScrollY) {
+              // Scrolling up - show
+              setIsTopbarVisible(true);
+            }
+          } else {
+            // Always visible on desktop
+            setIsTopbarVisible(true);
+          }
+          
+          setLastScrollY(currentScrollY);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!sessionToken) return;
@@ -76,6 +117,8 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
         fontFamily: 'Inter, sans-serif',
         position: 'sticky',
         top: 0,
+        transform: isTopbarVisible ? 'translateY(0)' : 'translateY(-100%)',
+        transition: 'transform 0.3s ease-in-out',
       }}>
       {/* Sidebar Toggle Button - modern, clean, icon only */}
       <button

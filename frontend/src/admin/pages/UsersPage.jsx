@@ -2,21 +2,34 @@ import React, { useEffect, useState, useContext } from "react";
 import { AuthContext } from "../../components/AuthProvider";
 import Table from "../components/Table";
 import EditModal from "../components/EditModal";
+import PaginationBar from "../../components/PaginationBar";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const pageSize = 20;
   const { sessionToken } = useContext(AuthContext);
 
   const fetchUsers = () => {
+    setLoading(true);
     fetch(`${window.API_BASE_URL}/api/admin/users`, {
       headers: {
         'Authorization': sessionToken
       }
     })
       .then(res => res.json())
-      .then(setUsers)
-      .catch(err => console.error('Error fetching users:', err));
+      .then(data => {
+        setTotal(data.length);
+        setUsers(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching users:', err);
+        setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -89,16 +102,33 @@ export default function UsersPage() {
     { name: 'is_admin', label: 'Admin Status', type: 'checkbox', helperText: 'Grant admin privileges' }
   ];
 
+  // Paginate users
+  const startIdx = (page - 1) * pageSize;
+  const endIdx = startIdx + pageSize;
+  const paginatedUsers = users.slice(startIdx, endIdx);
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h2>Users</h2>
+        <span className="text-muted">Total: {total} users</span>
       </div>
-      <Table 
-        columns={["id", "email", "name", "is_admin", "status"]} 
-        data={users}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+      
+      <div className="table-responsive">
+        <Table 
+          columns={["id", "email", "name", "is_admin", "status"]} 
+          data={paginatedUsers}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      </div>
+
+      <PaginationBar
+        page={page}
+        total={total}
+        pageSize={pageSize}
+        loading={loading}
+        onPageChange={setPage}
       />
 
       {editingUser && (

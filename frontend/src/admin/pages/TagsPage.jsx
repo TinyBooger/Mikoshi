@@ -2,22 +2,35 @@ import React, { useEffect, useState, useContext } from 'react';
 import { AuthContext } from '../../components/AuthProvider';
 import Table from '../components/Table';
 import EditModal from '../components/EditModal';
+import PaginationBar from '../../components/PaginationBar';
 
 export default function TagsPage() {
   const [tags, setTags] = useState([]);
   const [editingTag, setEditingTag] = useState(null);
   const [creatingTag, setCreatingTag] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const pageSize = 20;
   const { sessionToken } = useContext(AuthContext);
 
   const fetchTags = () => {
+    setLoading(true);
     fetch(`${window.API_BASE_URL}/api/admin/tags`, {
       headers: {
         'Authorization': sessionToken
       }
     })
       .then(res => res.json())
-      .then(data => setTags(data))
-      .catch(err => console.error('Error fetching tags:', err));
+      .then(data => {
+        setTags(data);
+        setTotal(data.length);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching tags:', err);
+        setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -94,10 +107,18 @@ export default function TagsPage() {
 
   const columns = ['id', 'name', 'count', 'likes'];
 
+  // Paginate tags
+  const startIdx = (page - 1) * pageSize;
+  const endIdx = startIdx + pageSize;
+  const paginatedTags = tags.slice(startIdx, endIdx);
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2>Tags</h2>
+        <div>
+          <h2>Tags</h2>
+          <span className="text-muted">Total: {total} tags</span>
+        </div>
         <button 
           className="btn btn-primary"
           onClick={() => {
@@ -109,11 +130,22 @@ export default function TagsPage() {
           Create Tag
         </button>
       </div>
-      <Table 
-        columns={columns} 
-        data={tags}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+      
+      <div className="table-responsive">
+        <Table 
+          columns={columns} 
+          data={paginatedTags}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      </div>
+
+      <PaginationBar
+        page={page}
+        total={total}
+        pageSize={pageSize}
+        loading={loading}
+        onPageChange={setPage}
       />
 
       {editingTag && (

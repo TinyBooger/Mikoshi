@@ -29,6 +29,24 @@ export default function CharacterAssistantModal({
   const [generatedData, setGeneratedData] = useState(initialGeneratedData || null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+
+  // Handle viewport height changes (keyboard appearance on mobile)
+  useEffect(() => {
+    const handleResize = () => {
+      // Use visualViewport for more accurate keyboard detection
+      const height = window.visualViewport?.height || window.innerHeight;
+      setViewportHeight(height);
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      return () => window.visualViewport.removeEventListener('resize', handleResize);
+    } else {
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   // Prevent body scroll on mobile when modal is open
   useEffect(() => {
@@ -180,8 +198,8 @@ export default function CharacterAssistantModal({
           .character-assistant-modal {
             width: 100% !important;
             max-width: 100vw !important;
-            height: 70vh !important;
-            max-height: 70vh !important;
+            height: var(--viewport-height, 70vh) !important;
+            max-height: var(--viewport-height, 70vh) !important;
             top: auto !important;
             left: 0 !important;
             right: 0 !important;
@@ -194,6 +212,7 @@ export default function CharacterAssistantModal({
           .assistant-header {
             padding: 1rem !important;
             border-radius: 24px 24px 0 0 !important;
+            flex-shrink: 0 !important;
           }
           .assistant-header h3 {
             font-size: 1.1rem !important;
@@ -203,9 +222,12 @@ export default function CharacterAssistantModal({
           }
           .assistant-messages {
             padding: 1rem !important;
+            flex: 1 !important;
+            min-height: 0 !important;
           }
           .assistant-input-container {
             padding: 1rem !important;
+            flex-shrink: 0 !important;
           }
         }
         @media (min-width: 769px) {
@@ -239,6 +261,7 @@ export default function CharacterAssistantModal({
           display: 'flex',
           flexDirection: 'column',
           zIndex: 9999,
+          '--viewport-height': `${viewportHeight}px`,
         }}
       >
 

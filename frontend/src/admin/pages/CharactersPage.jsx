@@ -2,13 +2,19 @@ import React, { useEffect, useState, useContext } from 'react';
 import { AuthContext } from '../../components/AuthProvider';
 import Table from '../components/Table';
 import EditModal from '../components/EditModal';
+import PaginationBar from '../../components/PaginationBar';
 
 export default function CharactersPage() {
   const [characters, setCharacters] = useState([]);
   const [editingCharacter, setEditingCharacter] = useState(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const pageSize = 20;
   const { sessionToken } = useContext(AuthContext);
 
   const fetchCharacters = () => {
+    setLoading(true);
     fetch(`${window.API_BASE_URL}/api/admin/characters`, {
       headers: {
         'Authorization': sessionToken
@@ -17,8 +23,13 @@ export default function CharactersPage() {
       .then(res => res.json())
       .then(data => {
         setCharacters(data);
+        setTotal(data.length);
+        setLoading(false);
       })
-      .catch(err => console.error('Error fetching characters:', err));
+      .catch(err => {
+        console.error('Error fetching characters:', err);
+        setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -98,16 +109,33 @@ export default function CharactersPage() {
 
   const columns = ['id', 'name', 'tagline', 'creator_name', 'views', 'likes'];
 
+  // Paginate characters
+  const startIdx = (page - 1) * pageSize;
+  const endIdx = startIdx + pageSize;
+  const paginatedCharacters = characters.slice(startIdx, endIdx);
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h2>Characters</h2>
+        <span className="text-muted">Total: {total} characters</span>
       </div>
-      <Table 
-        columns={columns} 
-        data={characters}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+      
+      <div className="table-responsive">
+        <Table 
+          columns={columns} 
+          data={paginatedCharacters}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      </div>
+
+      <PaginationBar
+        page={page}
+        total={total}
+        pageSize={pageSize}
+        loading={loading}
+        onPageChange={setPage}
       />
 
       {editingCharacter && (

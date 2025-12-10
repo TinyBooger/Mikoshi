@@ -1,21 +1,32 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { AuthContext } from '../../components/AuthProvider';
+import PaginationBar from '../../components/PaginationBar';
 
 export default function InvitationCodesPage() {
   const [codes, setCodes] = useState([]);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generatedCode, setGeneratedCode] = useState(null);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const pageSize = 20;
   const { sessionToken } = useContext(AuthContext);
 
   const fetchCodes = () => {
+    setLoading(true);
     fetch(`${window.API_BASE_URL}/api/invitations`, {
       headers: {
         'Authorization': sessionToken
       }
     })
       .then(res => res.json())
-      .then(setCodes)
-      .catch(err => console.error('Error fetching invitation codes:', err));
+      .then(data => {
+        setCodes(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching invitation codes:', err);
+        setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -127,7 +138,7 @@ export default function InvitationCodesPage() {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div>
           <h2>Invitation Codes</h2>
-          <p className="text-muted mb-0">Manage alpha test invitation codes</p>
+          <p className="text-muted mb-0">Manage alpha test invitation codes - Total: {codes.length} codes</p>
         </div>
         <button 
           className="btn btn-primary"
@@ -160,7 +171,7 @@ export default function InvitationCodesPage() {
                 </td>
               </tr>
             ) : (
-              codes.map((code) => (
+              codes.slice((page - 1) * pageSize, page * pageSize).map((code) => (
                 <tr key={code.code}>
                   <td>
                     <code className="user-select-all">{code.code}</code>
@@ -219,6 +230,14 @@ export default function InvitationCodesPage() {
           </tbody>
         </table>
       </div>
+
+      <PaginationBar
+        page={page}
+        total={codes.length}
+        pageSize={pageSize}
+        loading={loading}
+        onPageChange={setPage}
+      />
 
       {/* Generate Modal */}
       {showGenerateModal && (
