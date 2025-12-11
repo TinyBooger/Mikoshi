@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 import { AuthContext } from '../components/AuthProvider';
 import EntityCard from '../components/EntityCard';
+import CardSection from '../components/CardSection';
 import PageWrapper from '../components/PageWrapper';
 import PaginationBar from '../components/PaginationBar';
 import { useTranslation } from 'react-i18next';
@@ -156,17 +157,14 @@ export default function SearchPage() {
       <div
         className="flex-grow-1 d-flex flex-column align-items-center"
         style={{
-          padding: '2.5rem 0 2rem 0',
-          width: '90%',
+          padding: '2rem 1rem',
+          width: '100%',
           maxWidth: 1400,
           margin: '0 auto',
-          height: 'calc(100vh - 4.5rem)',
-          overflowY: 'auto',
-          overflowX: 'visible',
         }}
       >
         {/* Search Bar */}
-        <div className="mb-4" style={{ width: '90%', maxWidth: 400, position: 'relative' }}>
+        <div className="mb-3" style={{ width: '100%', maxWidth: 400, position: 'relative' }}>
           <div style={{ display: 'flex', borderRadius: 26, background: '#f5f6fa', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1.2px solid #e9ecef', overflow: 'hidden' }}>
             <input
               type="text"
@@ -242,7 +240,7 @@ export default function SearchPage() {
         </div>
 
         {/* Tabs and Sorting */}
-        <div className="d-flex flex-row align-items-center justify-content-between mb-3" style={{ width: '96%', maxWidth: 1400 }}>
+        <div className="d-flex flex-row align-items-center justify-content-between mb-3 w-100" style={{ gap: 12, maxWidth: 1400, flexWrap: 'wrap' }}>
           {/* Tabs */}
           <div className="d-flex flex-row" style={{ gap: 12 }}>
             <PrimaryButton
@@ -362,19 +360,10 @@ export default function SearchPage() {
         </div>
 
         {/* Results Section */}
-        <div style={{
-          width: '96%',
-          maxWidth: 1400,
-          background: '#fff',
-          borderRadius: 19,
-          boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
-          padding: '2rem 1.6rem',
-          margin: '0 auto'
-        }}>
-          {loading ? (
-            <div className="text-center my-5">
-              <div className="spinner-border text-dark" role="status">
-                <span className="visually-hidden">{t('search.loading')}</span>
+        {loading ? (
+          <div className="text-center my-5">
+            <div className="spinner-border text-dark" role="status">
+              <span className="visually-hidden">{t('search.loading')}</span>
               </div>
             </div>
           ) : total === 0 ? (
@@ -382,34 +371,18 @@ export default function SearchPage() {
               {t('search.no_results', { query })}
             </p>
           ) : (
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '1.6rem',
-                justifyContent: 'flex-start',
-                width: '100%',
-                padding: '0.4rem 0',
-              }}
-            >
+            <CardSection title={t('search.results', 'Search Results')}>
               {activeTab === 'characters' && results.map((char) => (
-                <div key={char.id} style={{}}>
-                  <EntityCard type="character" entity={char} />
-                </div>
+                <EntityCard key={char.id} type="character" entity={char} />
               ))}
               {activeTab === 'scenes' && results.map((scene) => (
-                <div key={scene.id} style={{}}>
-                  <EntityCard type="scene" entity={scene} />
-                </div>
+                <EntityCard key={scene.id} type="scene" entity={scene} />
               ))}
               {activeTab === 'personas' && results.map((persona) => (
-                <div key={persona.id} style={{}}>
-                  <EntityCard type="persona" entity={persona} />
-                </div>
+                <EntityCard key={persona.id} type="persona" entity={persona} />
               ))}
-            </div>
+            </CardSection>
           )}
-        </div>
         {/* Bottom Pagination */}
         <PaginationBar
           page={page}

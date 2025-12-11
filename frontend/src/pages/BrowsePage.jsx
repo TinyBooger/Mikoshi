@@ -6,6 +6,7 @@ import CardSection from '../components/CardSection';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
 import PaginationBar from '../components/PaginationBar';
+import PrimaryButton from '../components/PrimaryButton';
 
 
 function BrowsePage() {
@@ -144,46 +145,47 @@ function BrowsePage() {
 
   return (
     <PageWrapper>
-      {/* Main Tabs */}
-      <div className="d-flex mx-2 mb-2" style={{ gap: 25, background: 'transparent' }}>
-        {MAIN_TABS.map(tab => (
-          <button
+      <div
+        className="flex-grow-1 d-flex flex-column align-items-center"
+        style={{
+          padding: '2rem 1rem',
+          width: '100%',
+          maxWidth: 1400,
+          margin: '0 auto',
+        }}
+      >
+        {/* Main Tabs */}
+        <div className="d-flex flex-row mb-3 w-100" style={{ gap: 12, justifyContent: 'flex-start' }}>
+          {MAIN_TABS.map(tab => (
+            <PrimaryButton
             key={tab.key}
-            className="fw-bold border-0 bg-transparent"
-            style={{
-              color: activeMainTab === tab.key ? '#736B92' : '#888',
-              fontWeight: 700,
-              fontSize: '1.02rem',
-              background: 'transparent',
-              borderBottom: activeMainTab === tab.key ? '2.5px solid #736B92' : '2.5px solid transparent',
-              borderRadius: 0,
-              outline: 'none',
-              transition: 'color 0.14s, border-bottom 0.14s',
-              padding: '0.5rem 0',
-              minWidth: 92,
-              letterSpacing: '0.16px',
-              cursor: 'pointer',
-            }}
             onClick={() => handleMainTab(tab.key)}
+            style={{
+              background: activeMainTab === tab.key ? '#736B92' : '#f5f6fa',
+              color: activeMainTab === tab.key ? '#fff' : '#232323',
+              borderRadius: 13,
+              fontSize: '1.02rem',
+              padding: '0.48rem 1.2rem',
+              boxShadow: activeMainTab === tab.key ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+              fontWeight: 700,
+            }}
             onMouseEnter={e => {
               if (activeMainTab !== tab.key) {
-                e.currentTarget.style.color = '#736B92';
-                e.currentTarget.style.borderBottom = '2.5px solid #736B92';
+                e.currentTarget.style.background = '#e9ecef';
+              } else {
+                e.currentTarget.style.background = '#6A6286';
               }
             }}
             onMouseLeave={e => {
-              if (activeMainTab !== tab.key) {
-                e.currentTarget.style.color = '#888';
-                e.currentTarget.style.borderBottom = '2.5px solid transparent';
-              }
+              e.currentTarget.style.background = activeMainTab === tab.key ? '#736B92' : '#f5f6fa';
             }}
           >
             {tab.label}
-          </button>
+          </PrimaryButton>
         ))}
       </div>
       {/* Sub Tabs */}
-      <div className="d-flex mx-2 mb-4" style={{ gap: 18, background: 'transparent' }}>
+      <div className="d-flex flex-row mb-3 w-100" style={{ gap: 12, justifyContent: 'flex-start' }}>
         {SUBTABS.map(sub => (
           <button
             key={sub.key}
@@ -255,13 +257,12 @@ function BrowsePage() {
         ) : (
           <>
             {entities.map(entity => (
-              <div key={entity.id} style={{ display: 'flex', justifyContent: 'center', padding: '0 0' }}>
-                <EntityCard type={activeMainTab.slice(0, -1)} entity={entity} />
-              </div>
+              <EntityCard key={entity.id} type={activeMainTab.slice(0, -1)} entity={entity} />
             ))}
           </>
         )}
       </CardSection>
+      </div>
       {/* Bottom Pagination */}
       <PaginationBar
         page={page}

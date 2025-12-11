@@ -208,10 +208,13 @@ export default function CharacterAssistantModal({
             bottom: 0,
             left: 0,
             right: 0,
-            width: '100%',
+            width: '100vw',
+            maxWidth: '100vw',
             maxHeight: '85vh',
             borderRadius: '24px 24px 0 0',
             animation: 'slideInBottom 0.3s ease-out',
+            boxSizing: 'border-box',
+            overflowX: 'hidden',
           } : {
             // Desktop: right-side modal
             top: 0,
