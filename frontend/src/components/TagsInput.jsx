@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../components/AuthProvider';
 import TextButton from './TextButton';
 
@@ -8,6 +9,8 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const { sessionToken } = useContext(AuthContext);
+  const { t } = useTranslation();
+  const trimmedInput = input.trim();
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -40,10 +43,14 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
   }, [input, sessionToken]);
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && input.trim()) {
+    if (e.key === "Enter" && trimmedInput) {
       e.preventDefault();
-      addTag(input.trim());
+      addTag(trimmedInput);
     }
+  };
+
+  const addTagFromInput = () => {
+    if (trimmedInput) addTag(trimmedInput);
   };
 
   const addTag = (tag) => {
@@ -51,7 +58,6 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
       setTags([...tags, tag]);
     }
     setInput("");
-    setShowSuggestions(false);
   };
 
   const removeTag = (index) => {
@@ -82,8 +88,20 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
-          placeholder={placeholder || "Add a tag and press Enter"}
+          placeholder={placeholder || "Type a tag, then tap Add or press Enter"}
+          style={{ minWidth: 140 }}
         />
+        <button
+          type="button"
+          className="btn btn-sm btn-primary"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={addTagFromInput}
+          disabled={!trimmedInput}
+          aria-label={t('common.add_tag_aria', 'Add tag')}
+          style={{ whiteSpace: 'nowrap' }}
+        >
+          {t('common.add_tag_button', 'Add')}
+        </button>
         {showSuggestions && suggestions.length > 0 && (
           <div
             className="position-absolute border rounded p-2 d-flex flex-wrap gap-2"

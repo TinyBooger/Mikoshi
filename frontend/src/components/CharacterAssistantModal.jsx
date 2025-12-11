@@ -29,23 +29,12 @@ export default function CharacterAssistantModal({
   const [generatedData, setGeneratedData] = useState(initialGeneratedData || null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
 
-  // Handle viewport height changes (keyboard appearance on mobile)
   useEffect(() => {
-    const handleResize = () => {
-      // Use visualViewport for more accurate keyboard detection
-      const height = window.visualViewport?.height || window.innerHeight;
-      setViewportHeight(height);
-    };
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleResize);
-      return () => window.visualViewport.removeEventListener('resize', handleResize);
-    } else {
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }
+    const handleResize = () => setIsMobile(window.innerWidth < 600);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Prevent body scroll on mobile when modal is open
@@ -162,6 +151,37 @@ export default function CharacterAssistantModal({
 
   const modalContent = (
     <>
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes slideInRight {
+          from {
+            transform: translateX(100%);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
+        @keyframes slideInBottom {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
+        /* Prevent body scroll when modal is open */
+        body.modal-open {
+          overflow: hidden;
+        }
+      `}</style>
+      
       {/* Backdrop overlay */}
       <div
         onClick={onHide}
@@ -177,284 +197,234 @@ export default function CharacterAssistantModal({
         }}
       />
       
-      <style>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-        @keyframes slideInBottom {
-          from {
-            transform: translateY(100%);
-          }
-          to {
-            transform: translateY(0);
-          }
-        }
-        @media (max-width: 768px) {
-          .character-assistant-modal {
-            width: 100% !important;
-            max-width: 100vw !important;
-            height: var(--viewport-height, 70vh) !important;
-            max-height: var(--viewport-height, 70vh) !important;
-            top: auto !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            border-radius: 24px 24px 0 0 !important;
-            animation: slideInBottom 0.3s ease-out !important;
-            position: fixed !important;
-            transform: none !important;
-          }
-          .assistant-header {
-            padding: 1rem !important;
-            border-radius: 24px 24px 0 0 !important;
-            flex-shrink: 0 !important;
-          }
-          .assistant-header h3 {
-            font-size: 1.1rem !important;
-          }
-          .assistant-header small {
-            font-size: 0.8rem !important;
-          }
-          .assistant-messages {
-            padding: 1rem !important;
-            flex: 1 !important;
-            min-height: 0 !important;
-          }
-          .assistant-input-container {
-            padding: 1rem !important;
-            flex-shrink: 0 !important;
-          }
-        }
-        @media (min-width: 769px) {
-          .character-assistant-modal {
-            animation: slideInBottom 0.3s ease-out !important;
-          }
-        }
-        
-        /* Prevent body scroll when modal is open on mobile */
-        @supports (-webkit-touch-callout: none) {
-          body.modal-open {
-            position: fixed;
-            width: 100%;
-            overflow: hidden;
-          }
-        }
-      `}</style>
-      
       {/* Modal */}
       <div
         className="character-assistant-modal"
         onClick={(e) => e.stopPropagation()}
         style={{
           position: 'fixed',
-          top: 0,
-          right: 0,
-          width: '450px',
-          height: '100vh',
+          ...(isMobile ? {
+            // Mobile: bottom popup
+            bottom: 0,
+            left: 0,
+            right: 0,
+            width: '100%',
+            maxHeight: '85vh',
+            borderRadius: '24px 24px 0 0',
+            animation: 'slideInBottom 0.3s ease-out',
+          } : {
+            // Desktop: right-side modal
+            top: 0,
+            right: 0,
+            width: '450px',
+            maxWidth: '90vw',
+            height: '100vh',
+            borderRadius: 0,
+            animation: 'slideInRight 0.3s ease-out',
+          }),
           background: '#fff',
-          boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
+          boxShadow: isMobile ? '0 -4px 24px rgba(0,0,0,0.15)' : '-4px 0 24px rgba(0,0,0,0.15)',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 9999,
-          '--viewport-height': `${viewportHeight}px`,
         }}
       >
-
-      {/* Header */}
-      <div
-        className="assistant-header"
-        style={{
-          padding: '1.5rem',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <i className="bi bi-magic" style={{ fontSize: '1.5rem' }}></i>
-          <div>
-            <h3 className="fw-bold mb-0" style={{ fontSize: '1.25rem' }}>
-              {t('character_assistant.title')}
-            </h3>
-            <small style={{ opacity: 0.9, fontSize: '0.85rem' }}>
-              {t('character_assistant.subtitle')}
-            </small>
-          </div>
-        </div>
-        <button
-          onClick={onHide}
+        {/* Header */}
+        <div
           style={{
-            background: 'rgba(255,255,255,0.2)',
-            border: 'none',
-            borderRadius: '50%',
-            width: '32px',
-            height: '32px',
+            padding: isMobile ? '1rem 1.25rem' : '1.5rem',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: '#fff',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            color: '#fff',
-            fontSize: '1.25rem',
-            transition: 'background 0.2s',
+            justifyContent: 'space-between',
+            borderRadius: isMobile ? '24px 24px 0 0' : 0,
+            flexShrink: 0,
           }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-          title={t('character_assistant.hide')}
         >
-          <i className="bi bi-x-lg"></i>
-        </button>
-      </div>
-
-      {/* Messages */}
-      <div
-        className="assistant-messages"
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '1.5rem',
-          background: '#f8f9fa',
-        }}
-      >
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            style={{
-              marginBottom: '1rem',
-              display: 'flex',
-              flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
-              gap: '0.75rem',
-            }}
-          >
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: msg.role === 'user' 
-                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
-                  : '#e9ecef',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                color: msg.role === 'user' ? '#fff' : '#495057',
-                fontSize: '0.9rem',
-              }}
-            >
-              <i className={msg.role === 'user' ? 'bi bi-person-fill' : 'bi bi-robot'}></i>
-            </div>
-            <div
-              style={{
-                maxWidth: '75%',
-                padding: '0.75rem 1rem',
-                borderRadius: '16px',
-                background: msg.role === 'user' ? '#667eea' : '#fff',
-                color: msg.role === 'user' ? '#fff' : '#333',
-                wordWrap: 'break-word',
-                whiteSpace: 'pre-wrap',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
-                fontSize: '0.95rem',
-                lineHeight: '1.5',
-              }}
-            >
-              {msg.content}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+            <i className="bi bi-magic" style={{ fontSize: isMobile ? '1.25rem' : '1.5rem' }}></i>
+            <div>
+              <h3 className="fw-bold mb-0" style={{ fontSize: isMobile ? '1.1rem' : '1.25rem' }}>
+                {t('character_assistant.title')}
+              </h3>
+              <small style={{ opacity: 0.9, fontSize: isMobile ? '0.8rem' : '0.85rem' }}>
+                {t('character_assistant.subtitle')}
+              </small>
             </div>
           </div>
-        ))}
-        {loading && (
-          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: '#e9ecef',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <i className="bi bi-robot"></i>
-            </div>
-            <div
-              style={{
-                padding: '0.75rem 1rem',
-                borderRadius: '16px',
-                background: '#fff',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
-              }}
-            >
-              <span className="spinner-border spinner-border-sm me-2"></span>
-              {t('character_assistant.thinking')}
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input */}
-      <div
-        className="assistant-input-container"
-        style={{
-          padding: '1rem 1.5rem',
-          borderTop: '1px solid #e9ecef',
-          background: '#fff',
-        }}
-      >
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={t('character_assistant.input_placeholder')}
-            disabled={loading}
-            rows={2}
-            style={{
-              flex: 1,
-              background: '#f5f6fa',
-              border: '1.5px solid #e9ecef',
-              borderRadius: '12px',
-              padding: '0.75rem',
-              fontSize: '0.95rem',
-              resize: 'none',
-              outline: 'none',
-              fontFamily: 'inherit',
-            }}
-          />
           <button
-            onClick={handleSend}
-            disabled={loading || !input.trim()}
+            onClick={onHide}
             style={{
-              background: loading || !input.trim() 
-                ? '#ccc' 
-                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'rgba(255,255,255,0.2)',
               border: 'none',
-              borderRadius: '12px',
-              padding: '0.75rem 1.25rem',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
               color: '#fff',
-              cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-              fontSize: '1rem',
-              transition: 'all 0.2s',
-              height: '44px',
+              fontSize: '1.25rem',
+              transition: 'background 0.2s',
+              flexShrink: 0,
+              marginLeft: '0.5rem',
             }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+            title={t('character_assistant.hide')}
           >
-            <i className="bi bi-send-fill"></i>
+            <i className="bi bi-x-lg"></i>
           </button>
         </div>
-        <small className="text-muted d-block mt-2" style={{ fontSize: '0.8rem' }}>
-          {t('character_assistant.tip')}
-        </small>
+
+        {/* Messages */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            padding: isMobile ? '1rem' : '1.5rem',
+            background: '#f8f9fa',
+            minHeight: 0,
+          }}
+        >
+              {messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    marginBottom: '1rem',
+                    display: 'flex',
+                    flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+                    gap: '0.75rem',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      background: msg.role === 'user' 
+                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+                        : '#e9ecef',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      color: msg.role === 'user' ? '#fff' : '#495057',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    <i className={msg.role === 'user' ? 'bi bi-person-fill' : 'bi bi-robot'}></i>
+                  </div>
+                  <div
+                    style={{
+                      maxWidth: '85%',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '16px',
+                      background: msg.role === 'user' ? '#667eea' : '#fff',
+                      color: msg.role === 'user' ? '#fff' : '#333',
+                      wordWrap: 'break-word',
+                      whiteSpace: 'pre-wrap',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+                      fontSize: '0.95rem',
+                      lineHeight: '1.5',
+                    }}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      background: '#e9ecef',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <i className="bi bi-robot"></i>
+                  </div>
+                  <div
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderRadius: '16px',
+                      background: '#fff',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+                    }}
+                  >
+                    <span className="spinner-border spinner-border-sm me-2"></span>
+                    {t('character_assistant.thinking')}
+                  </div>
+                </div>
+              )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <div
+          style={{
+            padding: isMobile ? '1rem' : '1rem 1.5rem',
+            borderTop: '1px solid #e9ecef',
+            background: '#fff',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={t('character_assistant.input_placeholder')}
+              disabled={loading}
+              rows={2}
+              style={{
+                flex: 1,
+                background: '#f5f6fa',
+                border: '1.5px solid #e9ecef',
+                borderRadius: '12px',
+                padding: '0.75rem',
+                fontSize: '0.95rem',
+                resize: 'none',
+                outline: 'none',
+                fontFamily: 'inherit',
+              }}
+            />
+            <button
+              onClick={handleSend}
+              disabled={loading || !input.trim()}
+              style={{
+                background: loading || !input.trim() 
+                  ? '#ccc' 
+                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '0.75rem 1.25rem',
+                color: '#fff',
+                cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+                fontSize: '1rem',
+                transition: 'all 0.2s',
+                height: '44px',
+                flexShrink: 0,
+              }}
+              title={t('character_assistant.send')}
+            >
+              <i className="bi bi-send-fill"></i>
+            </button>
+          </div>
+          <small className="text-muted d-block" style={{ fontSize: '0.8rem' }}>
+            {t('character_assistant.tip')}
+          </small>
+        </div>
       </div>
-    </div>
     </>
   );
 

@@ -200,7 +200,7 @@
     "invitation_code_placeholder": "Enter your invitation code",
     "invitation_code_hint": "This is an alpha test. An invitation code is required to sign up.",
     "profile_preview": "Profile preview",
-    "tags_input_hint": "Press Enter to add a tag"
+    "tags_input_hint": "Type a tag, then tap Add (or press Enter)"
   },
   "reset_password": {
     "title": "Reset Password",
@@ -264,7 +264,7 @@
     },
     "tags_suffix": "tags",
     "alt_preview": "preview",
-    "tags_input_hint": "Press Enter to add a tag"
+    "tags_input_hint": "Type a tag, then tap Add (or press Enter)"
   },
   "character_assistant": {
     "title": "AI Assistant",
@@ -313,7 +313,7 @@
       "intro": "e.g., \"I keep the city’s forgotten stories in my notebooks—care to add a page?\"",
       "tags": "e.g., detective, scholar, witty"
     },
-    "tags_input_hint": "Press Enter to add a tag"
+    "tags_input_hint": "Type a tag, then tap Add (or press Enter)"
   },
   "scene_form": {
     "edit_title": "Edit Scene",
@@ -348,7 +348,7 @@
       "intro": "e.g., \"Rain hisses on neon-lit pavement as footsteps echo between shuttered stalls.\"",
       "tags": "e.g., cyberpunk, night, rain"
     },
-    "tags_input_hint": "Press Enter to add a tag"
+    "tags_input_hint": "Type a tag, then tap Add (or press Enter)"
   },
   "common": {
     "confirm": "Confirm",
@@ -356,6 +356,8 @@
     "save": "Save",
     "create": "Create",
     "delete": "Delete",
+    "add_tag_button": "Add",
+    "add_tag_aria": "Add tag",
     "no_picture": "No picture",
     "ok": "OK",
     "network_error": "Network error",

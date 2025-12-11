@@ -200,7 +200,7 @@
     "invitation_code_placeholder": "请输入邀请码",
     "invitation_code_hint": "当前为内测阶段，注册需要邀请码。",
     "profile_preview": "头像预览",
-    "tags_input_hint": "按 Enter 键添加标签"
+    "tags_input_hint": "输入标签后点击“添加”（或按 Enter）"
   },
   "reset_password": {
     "title": "重置密码",
@@ -264,7 +264,7 @@
     },
     "tags_suffix": "个标签",
     "alt_preview": "预览",
-    "tags_input_hint": "按 Enter 键添加标签"
+    "tags_input_hint": "输入标签后点击“添加”（或按 Enter）"
   },
   "character_assistant": {
     "title": "AI 助手",
@@ -312,7 +312,8 @@
       "description": "例如：好奇的学者，用机智破解谜团。",
       "intro": "例如：\"我把城市被遗忘的故事都记在本子里——要不要一起添上一页？\"",
       "tags": "例如：侦探、学者、机智"
-    }
+    },
+    "tags_input_hint": "输入标签后点击“添加”（或按 Enter）"
   },
   "scene_form": {
     "edit_title": "编辑场景",
@@ -346,7 +347,8 @@
       "description": "例如：雨夜的赛博朋克后街，招牌闪烁。",
       "intro": "例如：\"雨水在霓虹灯下嘶嘶作响，脚步声在半掩的摊位间回荡。\"",
       "tags": "例如：赛博朋克、夜晚、雨"
-    }
+    },
+    "tags_input_hint": "输入标签后点击“添加”（或按 Enter）"
   },
   
   "common": {
@@ -355,6 +357,8 @@
     "save": "保存",
     "create": "创建",
     "delete": "删除",
+    "add_tag_button": "添加",
+    "add_tag_aria": "添加标签",
     "no_picture": "暂无图片",
     "ok": "确定",
     "network_error": "网络错误",

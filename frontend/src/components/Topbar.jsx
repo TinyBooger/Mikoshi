@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router';
 import { AuthContext } from './AuthProvider';
 import logoText from '../assets/images/logo_text.png';
 import ProblemReportModal from './ProblemReportModal';
+import UpdateNotificationModal from './UpdateNotificationModal';
 
 
 function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, characterSidebarVisible }) {
@@ -20,47 +21,6 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-
-  // Scroll behavior state for hiding/showing topbar on mobile
-  const [isTopbarVisible, setIsTopbarVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
-
-  // Scroll detection for mobile
-  useEffect(() => {
-    let ticking = false;
-
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY;
-          
-          // Only apply hide/show behavior on mobile (below 768px)
-          if (window.innerWidth < 768) {
-            if (currentScrollY < 10) {
-              // Always show at top
-              setIsTopbarVisible(true);
-            } else if (currentScrollY > lastScrollY && currentScrollY > 50) {
-              // Scrolling down - hide
-              setIsTopbarVisible(false);
-            } else if (currentScrollY < lastScrollY) {
-              // Scrolling up - show
-              setIsTopbarVisible(true);
-            }
-          } else {
-            // Always visible on desktop
-            setIsTopbarVisible(true);
-          }
-          
-          setLastScrollY(currentScrollY);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -89,9 +49,8 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
     if (trimmed) navigate(`/search?q=${encodeURIComponent(trimmed)}`);
   };
 
-
-
   const [showProblemReport, setShowProblemReport] = useState(false);
+  const [showUpdateNotification, setShowUpdateNotification] = useState(false);
 
   return (
     <div
@@ -104,10 +63,6 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
         WebkitBackdropFilter: 'blur(16px) saturate(160%)',
         borderBottom: '1.2px solid #e9ecef',
         fontFamily: 'Inter, sans-serif',
-        position: 'sticky',
-        top: 0,
-        transform: isTopbarVisible ? 'translateY(0)' : 'translateY(-100%)',
-        transition: 'transform 0.3s ease-in-out',
       }}>
       {/* Sidebar Toggle Button - modern, clean, icon only */}
       <button
@@ -288,6 +243,9 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
       
       {/* Problem Report Modal */}
       <ProblemReportModal show={showProblemReport} onClose={() => setShowProblemReport(false)} />
+      
+      {/* Update Notification Modal */}
+      <UpdateNotificationModal show={showUpdateNotification} onClose={() => setShowUpdateNotification(false)} />
     </div>
   );
 }

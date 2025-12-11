@@ -13,6 +13,11 @@ export default function Layout() {
   // Character sidebar state for ChatPage
   const [characterSidebarVisible, setCharacterSidebarVisible] = useState(!initialMobile);
 
+  // Topbar visibility state for mobile scroll behavior
+  const [isTopbarVisible, setIsTopbarVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const mainContentRef = useRef(null);
+
   // Mutually exclusive toggles for mobile
   const handleToggleSidebar = () => {
     if (isMobile) {
@@ -74,6 +79,46 @@ export default function Layout() {
     };
   }, [isMobile, sidebarVisible]);
 
+  // Scroll detection for topbar hide/show on mobile
+  useEffect(() => {
+    const mainContent = mainContentRef.current;
+    if (!mainContent) return;
+
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = mainContent.scrollTop;
+          
+          // Only apply hide/show behavior on mobile (below 768px)
+          if (isMobile) {
+            if (currentScrollY < 10) {
+              // Always show at top
+              setIsTopbarVisible(true);
+            } else if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+              // Scrolling down - hide
+              setIsTopbarVisible(false);
+            } else if (currentScrollY < lastScrollY.current) {
+              // Scrolling up - show
+              setIsTopbarVisible(true);
+            }
+          } else {
+            // Always visible on desktop
+            setIsTopbarVisible(true);
+          }
+          
+          lastScrollY.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    mainContent.addEventListener('scroll', handleScroll, { passive: true });
+    return () => mainContent.removeEventListener('scroll', handleScroll);
+  }, [isMobile]);
+
   // Sidebar animation state - UPDATED FOR FIXED POSITION
   const sidebarStyle = isMobile
     ? {
@@ -121,6 +166,8 @@ export default function Layout() {
         zIndex: 1100,
         flexShrink: 0,
         background: 'inherit',
+        transform: isTopbarVisible ? 'translateY(0)' : 'translateY(-100%)',
+        transition: 'transform 0.3s ease-in-out',
       }}>
         <Topbar
           onToggleSidebar={handleToggleSidebar}
@@ -166,6 +213,7 @@ export default function Layout() {
 
         {/* Main content area - ONLY this area scrolls */}
         <main
+          ref={mainContentRef}
           className="flex-grow-1 d-flex flex-column"
           style={{
             width: isMobile ? '100%' : `calc(100% - ${sidebarVisible ? '15rem' : '0px'})`,
