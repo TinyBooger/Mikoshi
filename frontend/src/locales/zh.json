@@ -213,7 +213,7 @@
   },
   "search": {
     "input_placeholder": "搜索角色、场景或自我形象...",
-    "results_title": "搜索结果",
+    "results": "搜索结果",
     "relevance": "相关性",
     "popularity": "人气",
     "recent": "最新",

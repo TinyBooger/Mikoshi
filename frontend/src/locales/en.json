@@ -213,7 +213,7 @@
   },
   "search": {
     "input_placeholder": "Search characters, scenes, personas...",
-    "results_title": "Search Results",
+    "results": "Search Results",
     "relevance": "Relevance",
     "popularity": "Popularity",
     "recent": "Recent",

@@ -371,7 +371,7 @@ export default function SearchPage() {
               {t('search.no_results', { query })}
             </p>
           ) : (
-            <CardSection title={t('search.results', 'Search Results')}>
+            <CardSection title={t('search.results')}>
               {activeTab === 'characters' && results.map((char) => (
                 <EntityCard key={char.id} type="character" entity={char} />
               ))}
