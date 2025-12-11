@@ -395,7 +395,7 @@ export default function CharacterAssistantModal({
                 border: '1.5px solid #e9ecef',
                 borderRadius: '12px',
                 padding: '0.75rem',
-                fontSize: '0.95rem',
+                fontSize: '16px',
                 resize: 'none',
                 outline: 'none',
                 fontFamily: 'inherit',
