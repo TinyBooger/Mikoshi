@@ -207,25 +207,46 @@ export default function ProfilePage() {
     const renderEntityCardSection = (entities, type, showEdit, editUrlPrefix, title, emptyMsg, page, total, onPageChange) => (
       <>
         <CardSection title={title}>
-          {entities && entities.length === 0 ? (
-            <div className="alert alert-info" style={{ background: '#f5f6fa', color: '#232323', border: 'none', gridColumn: '1/-1' }}>
-              {emptyMsg}
+          {loading ? (
+            <div className="text-center my-5" style={{ gridColumn: '1/-1' }}>
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">{t('profile.loading')}</span>
+              </div>
+            </div>
+          ) : entities && entities.length === 0 ? (
+            <div className="text-center my-5" style={{ gridColumn: '1/-1' }}>
+              <div className="alert alert-info" style={{ background: '#f5f6fa', color: '#232323', border: 'none', display: 'inline-block' }}>
+                {emptyMsg}
+              </div>
             </div>
           ) : (
-            entities && entities.map(entity => (
-              <div key={entity.id} style={{ margin: 0, padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-                <EntityCard type={type} entity={entity} />
-                {showEdit && (
-                  <ButtonRounded
-                    title={`Edit ${type.charAt(0).toUpperCase() + type.slice(1)}`}
-                    onClick={() => navigate(`/${editUrlPrefix}/edit/${entity.id}`)}
-                    style={{ marginTop: 8, width: 140 }}
-                  >
-                    <i className="bi bi-pencil-square"></i> {t('profile.edit')}
-                  </ButtonRounded>
-                )}
-              </div>
-            ))
+            <>
+              {entities && entities.map(entity => (
+                <div 
+                  key={entity.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateRows: '1fr auto',
+                    gap: '8px'
+                  }}
+                >
+                  <EntityCard type={type} entity={entity} />
+                  {showEdit && (
+                    <ButtonRounded
+                      title={`Edit ${type.charAt(0).toUpperCase() + type.slice(1)}`}
+                      onClick={() => navigate(`/${editUrlPrefix}/edit/${entity.id}`)}
+                      style={{ 
+                        width: '100%', 
+                        fontSize: '0.85rem', 
+                        padding: '0.4rem 0.8rem'
+                      }}
+                    >
+                      <i className="bi bi-pencil-square"></i> {t('profile.edit')}
+                    </ButtonRounded>
+                  )}
+                </div>
+              ))}
+            </>
           )}
         </CardSection>
         <PaginationBar
@@ -422,7 +443,16 @@ export default function ProfilePage() {
 
   return (
     <PageWrapper>
-      <div className="container mt-4" style={{ position: 'relative', zIndex: 1 }}>
+      <div
+        className="flex-grow-1 d-flex flex-column align-items-center"
+        style={{
+          padding: '2rem 1rem',
+          width: '100%',
+          maxWidth: 1400,
+          margin: '0 auto',
+          position: 'relative',
+        }}
+      >
         {/* Minimal top-right settings gear for own profile */}
         {isOwnProfile && (
           <button
@@ -444,12 +474,13 @@ export default function ProfilePage() {
               minWidth: 44,
               minHeight: 44,
               borderRadius: 8,
+              zIndex: 10,
             }}
           >
             <i className="bi bi-gear" style={{ fontSize: 26, lineHeight: 1 }}></i>
           </button>
         )}
-        <div className="d-flex align-items-center mb-3">
+        <div className="d-flex align-items-center mb-3 w-100">
           <img
             src={displayUser.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${displayUser.profile_pic.replace(/^\//, '')}` : defaultAvatar}
             alt={t('profile.alt_profile')}
@@ -485,9 +516,9 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="d-flex flex-column" style={{ gap: 24 }}>
+        <div className="d-flex flex-column w-100" style={{ gap: 24 }}>
           {/* Tabs for navigation */}
-          <div className="d-flex" style={{ borderBottom: '2px solid #111', paddingBottom: 8 }}>
+          <div className="d-flex w-100" style={{ borderBottom: '2px solid #111', paddingBottom: 8 }}>
             <button
               className={`flex-fill fw-bold py-2 border-0 ${activeTab === TAB_TYPES.CREATED ? '' : ''}`}
               style={{
@@ -522,7 +553,7 @@ export default function ProfilePage() {
             )}
           </div>
           {/* Subtabs for Created/Liked */}
-          <div className="d-flex" style={{ borderBottom: '1.5px solid #aaa', paddingBottom: 4, marginTop: 8, gap: 8 }}>
+          <div className="d-flex w-100" style={{ borderBottom: '1.5px solid #aaa', paddingBottom: 4, marginTop: 8, gap: 8 }}>
             <button
               className={`fw-bold py-1 px-3 border-0 ${activeSubtab === SUBTAB_TYPES.CHARACTERS ? '' : ''}`}
               style={{

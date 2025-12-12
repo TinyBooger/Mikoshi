@@ -371,17 +371,19 @@ export default function SearchPage() {
               {t('search.no_results', { query })}
             </p>
           ) : (
-            <CardSection title={t('search.results')}>
-              {activeTab === 'characters' && results.map((char) => (
-                <EntityCard key={char.id} type="character" entity={char} />
-              ))}
-              {activeTab === 'scenes' && results.map((scene) => (
-                <EntityCard key={scene.id} type="scene" entity={scene} />
-              ))}
-              {activeTab === 'personas' && results.map((persona) => (
-                <EntityCard key={persona.id} type="persona" entity={persona} />
-              ))}
-            </CardSection>
+            <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto' }}>
+              <CardSection title={t('search.results')}>
+                {activeTab === 'characters' && results.map((char) => (
+                  <EntityCard key={char.id} type="character" entity={char} />
+                ))}
+                {activeTab === 'scenes' && results.map((scene) => (
+                  <EntityCard key={scene.id} type="scene" entity={scene} />
+                ))}
+                {activeTab === 'personas' && results.map((persona) => (
+                  <EntityCard key={persona.id} type="persona" entity={persona} />
+                ))}
+              </CardSection>
+            </div>
           )}
         {/* Bottom Pagination */}
         <PaginationBar

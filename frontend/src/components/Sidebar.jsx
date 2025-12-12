@@ -186,7 +186,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 onClick={() => { 
                   setCreateOpen(false); 
                   if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); 
-                  if (setSidebarVisible) setSidebarVisible(false);
                   handleNavigate('/character/create'); 
                 }}
               >
@@ -202,7 +201,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 onClick={() => { 
                   setCreateOpen(false); 
                   if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); 
-                  if (setSidebarVisible) setSidebarVisible(false);
                   handleNavigate('/scene/create'); 
                 }}
               >
@@ -218,7 +216,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 onClick={() => { 
                   setCreateOpen(false); 
                   if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); 
-                  if (setSidebarVisible) setSidebarVisible(false);
                   handleNavigate('/persona/create'); 
                 }}
               >
@@ -232,7 +229,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         className="fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center"
         style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: '#fff', color: '#232323', borderRadius: 19, padding: '9px 0', border: 'none', fontWeight: 700, transition: 'background 0.2s', marginBottom: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
         onClick={() => {
-          if (setSidebarVisible) setSidebarVisible(false);
           handleNavigate('/browse/popular');
         }}
         onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; }}
@@ -282,7 +278,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                   transition: 'all 0.2s'
                 }}
                 onClick={() => {
-                  if (setSidebarVisible) setSidebarVisible(false);
                   handleNavigate('/browse/popular');
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = '#5d5675'}
@@ -298,7 +293,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 className="list-group-item list-group-item-action d-flex align-items-center gap-2 border-0 rounded-4 mb-1 fw-bold"
                 style={{ background: '#fff', color: '#232323', minHeight: 38, transition: 'background 0.16s, color 0.16s', fontWeight: 600, fontSize: '0.8rem' }}
                 onClick={() => {
-                  if (setSidebarVisible) setSidebarVisible(false);
                   handleNavigate(`/chat?character=${c.id}`);
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
@@ -372,7 +366,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                   onClick={() => { 
                     setProfileOpen(false); 
-                    if (setSidebarVisible) setSidebarVisible(false);
                     handleNavigate("/profile"); 
                   }}
                 >
@@ -388,7 +381,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                     onClick={() => { 
                       setProfileOpen(false); 
-                      if (setSidebarVisible) setSidebarVisible(false);
                       handleNavigate("/admin"); 
                     }}
                   >
@@ -415,7 +407,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               className="btn rounded-pill px-3 py-1 fw-bold shadow-sm" 
               style={{ background: '#fff', color: '#232323', fontWeight: 700, fontSize: '0.8rem' }}
               onClick={() => {
-                if (setSidebarVisible) setSidebarVisible(false);
                 handleNavigate('/login');
               }}
             >

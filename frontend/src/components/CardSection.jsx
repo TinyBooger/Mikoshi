@@ -8,14 +8,13 @@ function CardSection({ title, children }) {
       style.id = 'card-section-grid-style';
       style.innerHTML = `
         .card-section-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 200px));
-          gap: 0.5rem 0.25rem;
-          margin-left: -2px;
-          margin-right: -2px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1rem;
         }
         @media (max-width: 600px) {
           .card-section-grid {
+            display: grid;
             grid-template-columns: repeat(2, 1fr);
           }
         }

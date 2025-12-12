@@ -222,46 +222,49 @@ function BrowsePage() {
           </button>
         ))}
       </div>
-      <CardSection title={getSectionTitle()}>
-        {isLoading ? (
-          <div className="text-center my-5">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">{t('browse.loading')}</span>
+      {/* PC-adapted content wrapper */}
+      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto' }}>
+        <CardSection title={getSectionTitle()}>
+          {isLoading ? (
+            <div className="text-center my-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">{t('browse.loading')}</span>
+              </div>
             </div>
-          </div>
-        ) : entities.length === 0 ? (
-          <div className="text-center my-5">
-            {activeSubTab === 'recommended' ? (
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)',
-                borderRadius: '16px',
-                border: '1px solid rgba(115, 107, 146, 0.15)',
-                padding: '2rem',
-                maxWidth: '500px',
-                margin: '0 auto'
-              }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💡</div>
-                <h5 className="fw-bold mb-3" style={{ color: '#736B92' }}>
-                  {t('browse.no_recommendations_title', 'No Recommendations Yet')}
-                </h5>
-                <p className="text-muted mb-0" style={{ fontSize: '0.95rem', lineHeight: '1.6' }}>
-                  {t('browse.no_recommendations', 'No recommendations yet. Please like more characters to unlock personalized suggestions.')}
-                </p>
-              </div>
-            ) : (
-              <div className="alert alert-info">
-                {t('browse.no_results', 'No results found.')}
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
-            {entities.map(entity => (
-              <EntityCard key={entity.id} type={activeMainTab.slice(0, -1)} entity={entity} />
-            ))}
-          </>
-        )}
-      </CardSection>
+          ) : entities.length === 0 ? (
+            <div className="text-center my-5">
+              {activeSubTab === 'recommended' ? (
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(115, 107, 146, 0.15)',
+                  padding: '2rem',
+                  maxWidth: '500px',
+                  margin: '0 auto'
+                }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💡</div>
+                  <h5 className="fw-bold mb-3" style={{ color: '#736B92' }}>
+                    {t('browse.no_recommendations_title', 'No Recommendations Yet')}
+                  </h5>
+                  <p className="text-muted mb-0" style={{ fontSize: '0.95rem', lineHeight: '1.6' }}>
+                    {t('browse.no_recommendations', 'No recommendations yet. Please like more characters to unlock personalized suggestions.')}
+                  </p>
+                </div>
+              ) : (
+                <div className="alert alert-info">
+                  {t('browse.no_results', 'No results found.')}
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {entities.map(entity => (
+                <EntityCard key={entity.id} type={activeMainTab.slice(0, -1)} entity={entity} />
+              ))}
+            </>
+          )}
+        </CardSection>
+      </div>
       </div>
       {/* Bottom Pagination */}
       <PaginationBar
