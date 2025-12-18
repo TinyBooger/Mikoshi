@@ -42,15 +42,15 @@ function PageWrapper({ children, style = {}, className = '' }) {
         minHeight: 'auto',
         height: 'auto',
         boxSizing: 'border-box',
-        width: '80%',
+        width: '98%',
         maxWidth: '100vw',
         background: 'rgba(255, 255, 255, 0.66)',
         backdropFilter: 'blur(16px) saturate(160%)',
         WebkitBackdropFilter: 'blur(16px) saturate(160%)',
         borderRadius: '1.2rem',
         boxShadow: '0 4px 32px 0 rgba(31, 38, 135, 0.12)',
-        marginTop: '1.2rem',
-        marginBottom: '1.2rem',
+        marginTop: '0.5rem',
+        marginBottom: '0.5rem',
         ...style,
       };
 

@@ -98,7 +98,10 @@
     "new_chat_title": "新对话",
     "tab_character": "角色",
     "tab_scene": "场景",
-    "tab_persona": "自我形象"
+    "tab_persona": "自我形象",
+    "selected_character": "已选择角色",
+    "persona": "自我形象",
+    "add_persona": "添加自我形象"
   },
   "profile": {
     "created": "已创建",
@@ -432,6 +435,18 @@
     "popular_personas": "热门自我形象",
     "no_popular_personas": "暂无热门自我形象。",
     "cancel": "取消"
+  },
+  "scene_select_modal": {
+    "preparing": "正在准备场景…",
+    "loading": "加载中…",
+    "title": "为“{{scene}}”选择一个角色",
+    "title_fallback": "选择要聊天的角色",
+    "scene": "场景",
+    "prompt": "请选择一个角色，在此场景中开始聊天。",
+    "remove_character": "移除",
+    "select_character": "选择角色",
+    "cancel": "取消",
+    "start_chat": "开始对话"
   },
   "chat_init_modal": {
     "title": "初始化对话",

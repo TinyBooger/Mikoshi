@@ -115,12 +115,15 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
   // Avatar size responsive
   const AVATAR_SIZE = isMobile ? 48 : 80;
 
+  const suppressPersonaNavigation = type === 'persona' && !onClick;
+  const clickSuppressed = disableClick || suppressPersonaNavigation;
+
   const handleClick = () => {
-    if (disableClick) return;
+    if (clickSuppressed) return;
     if (onClick) return onClick(entity);
     if (type === 'character') navigate(`/chat?character=${encodeURIComponent(id)}`);
     if (type === 'scene') navigate(`/chat?scene=${encodeURIComponent(id)}`);
-    if (type === 'persona') navigate(`/chat?persona=${encodeURIComponent(id)}`);
+    if (type === 'persona') return;
   };
 
   return (
@@ -135,16 +138,16 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
         borderRadius: isMobile ? '0.5rem' : '1rem',
         border: '1px solid #e9ecef',
         boxShadow: hovered ? '0 4px 16px rgba(0,0,0,0.10)' : '0 2px 10px rgba(0,0,0,0.06)',
-        cursor: disableClick ? 'default' : 'pointer',
+        cursor: clickSuppressed ? 'default' : 'pointer',
         pointerEvents: disableClick ? 'none' : 'auto',
         transition: 'transform 160ms ease-out, box-shadow 160ms ease-out',
         transform: hovered && !isMobile ? 'translateY(-2px)' : 'translateY(0)',
         position: 'relative',
         overflow: 'hidden',
       }}
-      onClick={disableClick ? undefined : handleClick}
-      onMouseEnter={disableClick ? undefined : () => setHovered(true)}
-      onMouseLeave={disableClick ? undefined : () => setHovered(false)}
+      onClick={clickSuppressed ? undefined : handleClick}
+      onMouseEnter={clickSuppressed ? undefined : () => setHovered(true)}
+      onMouseLeave={clickSuppressed ? undefined : () => setHovered(false)}
     >
       {/* Upper content (avatar + texts) */}
       <div style={{ flex: '1 1 auto', display: 'flex', alignItems: 'flex-start', gap: isMobile ? '0.3rem' : '0.8rem', padding: isMobile ? '0.3rem 0.3rem 0.15rem' : '0.6rem 0.8rem 0.4rem' }}>

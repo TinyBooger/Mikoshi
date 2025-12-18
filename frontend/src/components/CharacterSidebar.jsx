@@ -1,7 +1,6 @@
 import React from 'react';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
-import defaultPic from '../assets/images/default-picture.png';
 
 import InfoCard from './InfoCard';
 import ProblemReportModal from './ProblemReportModal';
@@ -12,17 +11,10 @@ import { useTranslation } from 'react-i18next';
 export default function CharacterSidebar({
   characterSidebarVisible,
   onToggleCharacterSidebar,
-  initModal,
-  setInitModal,
+  onNewChat,
   selectedCharacter,
   selectedPersona,
   selectedScene,
-  personaModal,
-  setPersonaModal,
-  sceneModal,
-  setSceneModal,
-  characterModal,
-  setCharacterModal,
   userData,
   characterId,
   selectedChat,
@@ -53,33 +45,24 @@ export default function CharacterSidebar({
   const [showFullTagline, setShowFullTagline] = React.useState(false);
   const [showProblemReport, setShowProblemReport] = React.useState(false);
   const { t } = useTranslation();
-  // Track which entity type is currently shown: 'character', 'scene', 'persona'
-  const entityTypes = [];
-  if (selectedCharacter) entityTypes.push('character');
-  if (selectedScene) entityTypes.push('scene');
-  if (selectedPersona) entityTypes.push('persona');
-  // Default to character if available
-  const [currentEntityType, setCurrentEntityType] = React.useState(entityTypes[0] || null);
-  // Keep currentEntityType in sync with available entities
-  React.useEffect(() => {
-    if (!entityTypes.includes(currentEntityType)) {
-      setCurrentEntityType(entityTypes[0] || null);
-    }
-    // eslint-disable-next-line
-  }, [selectedCharacter, selectedScene, selectedPersona]);
   // Fix: Toggle menu for chat history dropdown, prevent event bubbling
   const toggleMenu = (chatId, e) => {
     e.stopPropagation();
     setMenuOpenId(menuOpenId === chatId ? null : chatId);
   };
+  // Determine entry mode based on which entity is currently selected
+  // Priority: if scene is selected, we're in scene mode (even if character is also selected)
+  // Otherwise, if character is selected, we're in character mode
+  const isSceneMode = !!selectedScene;
+  const isCharacterMode = !!selectedCharacter && !selectedScene;
   // Sidebar animation style for both mobile and desktop
   const sidebarStyle = isMobile
     ? {
         position: 'fixed',
         top: '7dvh', // Place below the topbar
         right: 0,
-  width: '90vw',
-  maxWidth: '19rem', // Reduced max width for mobile
+        width: '90vw',
+        maxWidth: '19rem', // Reduced max width for mobile
         height: 'calc(100dvh - 7dvh)',
         zIndex: 1000,
         background: 'rgba(255, 255, 255, 0.98)',
@@ -112,6 +95,7 @@ export default function CharacterSidebar({
         background: 'rgba(255, 255, 255, 0.98)',
         borderRadius: '1.5rem',
       };
+
   return (
     <>
       {/* Overlay for mobile CharacterSidebar */}
@@ -133,101 +117,48 @@ export default function CharacterSidebar({
       )}
       <div style={sidebarStyle}>
         <aside style={{ width: '100%', minHeight: 0, background: 'transparent', borderRadius: '1.2rem', margin: 0, boxShadow: 'none', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', height: 'auto' }}>
-          {/* Modern Tabs for entity type switching */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'flex-end',
-            gap: 4,
-            marginBottom: '-0.3rem',
-            zIndex: 2,
-            position: 'relative',
-          }}>
-            {['character', 'scene', 'persona'].map((type) => (
-              <button
-                key={type}
-                disabled={!entityTypes.includes(type)}
-                onClick={() => setCurrentEntityType(type)}
-                style={{
-                  padding: '0.28rem 0.7rem',
-                  border: 'none',
-                  borderTopLeftRadius: type === 'character' ? '0.7rem' : '0.35rem',
-                  borderTopRightRadius: type === 'persona' ? '0.7rem' : '0.35rem',
-                  borderBottom: currentEntityType === type ? '2px solid #18191a' : '2px solid transparent',
-                  background: currentEntityType === type ? '#fff' : '#f5f6fa',
-                  color: !entityTypes.includes(type) ? '#bbb' : currentEntityType === type ? '#18191a' : '#888',
-                  fontWeight: 600,
-                  fontSize: '0.93rem',
-                  cursor: !entityTypes.includes(type) ? 'not-allowed' : 'pointer',
-                  boxShadow: currentEntityType === type ? '0 -1.5px 6px rgba(0,0,0,0.03)' : 'none',
-                  transition: 'all 0.16s',
-                  outline: 'none',
-                  marginBottom: currentEntityType === type ? '-2px' : 0,
-                  opacity: !entityTypes.includes(type) ? 0.5 : 1,
-                  position: 'relative',
-                  minWidth: '64px',
-                  letterSpacing: '0.01em',
-                }}
-              >
-                {t(`chat.tab_${type}`)}
-              </button>
-            ))}
-          </div>
-          {/* InfoCard, visually connected to tabs */}
+          {/* Main Entity InfoCard */}
           <div style={{
             background: '#fff',
             borderRadius: '1.2rem',
             boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-            marginTop: 0,
             marginBottom: 18,
             paddingTop: '1.2rem',
-            borderTopLeftRadius: '0 0 1.2rem 1.2rem',
-            borderTopRightRadius: '0 0 1.2rem 1.2rem',
-            borderTop: 'none',
             zIndex: 1,
             position: 'relative',
           }}>
             <InfoCard
-              character={currentEntityType === 'character' ? selectedCharacter : undefined}
-              scene={currentEntityType === 'scene' ? selectedScene : undefined}
-              persona={currentEntityType === 'persona' ? selectedPersona : undefined}
+              character={isCharacterMode ? selectedCharacter : undefined}
+              scene={isSceneMode ? selectedScene : undefined}
+              persona={undefined}
               creatorHover={creatorHover}
               setCreatorHover={setCreatorHover}
               onCreatorClick={() => {
-                const entity =
-                  currentEntityType === 'character' ? selectedCharacter :
-                  currentEntityType === 'scene' ? selectedScene :
-                  currentEntityType === 'persona' ? selectedPersona : null;
+                const entity = isCharacterMode ? selectedCharacter : isSceneMode ? selectedScene : null;
                 if (entity?.creator_id) navigate(`/profile/${entity.creator_id}`);
               }}
-              hasLiked={hasLiked}
+              hasLiked={isCharacterMode ? { character: hasLiked.character } : isSceneMode ? { scene: hasLiked.scene } : {}}
               onLike={() => {
-                if (currentEntityType === 'character' && selectedCharacter) {
+                if (isCharacterMode && selectedCharacter) {
                   if (hasLiked.character) {
                     unlikeEntity('character', selectedCharacter.id);
                   } else {
                     likeEntity('character', selectedCharacter.id);
                   }
-                } else if (currentEntityType === 'scene' && selectedScene) {
+                } else if (isSceneMode && selectedScene) {
                   if (hasLiked.scene) {
                     unlikeEntity('scene', selectedScene.id);
                   } else {
                     likeEntity('scene', selectedScene.id);
                   }
-                } else if (currentEntityType === 'persona' && selectedPersona) {
-                  if (hasLiked.persona) {
-                    unlikeEntity('persona', selectedPersona.id);
-                  } else {
-                    likeEntity('persona', selectedPersona.id);
-                  }
                 }
               }}
               showFullTagline={showFullTagline}
               setShowFullTagline={setShowFullTagline}
-              isPlaceholder={!selectedCharacter && !selectedScene && !selectedPersona}
+              isPlaceholder={!selectedCharacter && !selectedScene}
             />
             {/* Report button */}
-            {(selectedCharacter || selectedScene || selectedPersona) && (
+            {(selectedCharacter || selectedScene) && (
               <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0 12px 0' }}>
                 <button
                   type="button"
@@ -243,12 +174,98 @@ export default function CharacterSidebar({
             )}
           </div>
 
+          {/* Character Selection Box (only in Scene Mode) */}
+          {isSceneMode && selectedCharacter && (
+            <div style={{
+              background: '#f5f6fa',
+              borderRadius: '0.9rem',
+              padding: '0.8rem',
+              marginBottom: 14,
+              border: '1px solid rgba(24, 25, 26, 0.08)',
+            }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.01em' }}>
+                {t('chat.selected_character')}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <img
+                  src={selectedCharacter.picture
+                    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${selectedCharacter.picture.replace(/^\//, '')}`
+                    : `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect fill='%236b8cff' width='40' height='40'/%3E%3C/svg%3E`
+                  }
+                  alt={selectedCharacter.name}
+                  style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#232323', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selectedCharacter.name}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Persona Selection Box (Character and Scene Mode) */}
+          {(isCharacterMode || isSceneMode) && (
+            <div style={{
+              background: selectedPersona ? '#f5f6fa' : '#fff',
+              borderRadius: '0.9rem',
+              padding: '0.8rem',
+              marginBottom: 14,
+              border: selectedPersona ? '1px solid rgba(24, 25, 26, 0.08)' : '1.2px dashed #d1d5db',
+              cursor: 'pointer',
+              transition: 'all 0.16s',
+            }}
+            onMouseEnter={(e) => {
+              if (!selectedPersona) {
+                e.currentTarget.style.borderColor = '#18191a';
+                e.currentTarget.style.background = '#f9fafb';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!selectedPersona) {
+                e.currentTarget.style.borderColor = '#d1d5db';
+                e.currentTarget.style.background = '#fff';
+              }
+            }}
+            onClick={() => {
+              // TODO: Open persona selector modal or show available personas
+              // For now, just a placeholder
+            }}
+            >
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.01em' }}>
+                {t('chat.persona')}
+              </div>
+              {selectedPersona ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <img
+                    src={selectedPersona.picture
+                      ? `${window.API_BASE_URL.replace(/\/$/, '')}/${selectedPersona.picture.replace(/^\//, '')}`
+                      : `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect fill='%23a28bff' width='40' height='40'/%3E%3C/svg%3E`
+                      }
+                    alt={selectedPersona.name}
+                    style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#232323', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {selectedPersona.name}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.88rem', color: '#888', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <i className="bi bi-plus-circle" style={{ fontSize: '0.9rem' }}></i>
+                  {t('chat.add_persona')}
+                </div>
+              )}
+            </div>
+          )}
+
         {/* New Chat Button */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
           <PrimaryButton
             type="button"
             isMobile={isMobile}
-            onClick={() => setInitModal(true)}
+            onClick={onNewChat}
           >
             <i className="bi bi-plus-circle me-2"></i> {t('chat.new_chat')}
           </PrimaryButton>
@@ -391,17 +408,9 @@ export default function CharacterSidebar({
       <ProblemReportModal
         show={showProblemReport}
         onClose={() => setShowProblemReport(false)}
-        targetType={currentEntityType}
-        targetId={
-          currentEntityType === 'character' ? selectedCharacter?.id :
-          currentEntityType === 'scene' ? selectedScene?.id :
-          currentEntityType === 'persona' ? selectedPersona?.id : null
-        }
-        targetName={
-          currentEntityType === 'character' ? selectedCharacter?.name :
-          currentEntityType === 'scene' ? selectedScene?.name :
-          currentEntityType === 'persona' ? selectedPersona?.name : null
-        }
+        targetType={isCharacterMode ? 'character' : isSceneMode ? 'scene' : null}
+        targetId={isCharacterMode ? selectedCharacter?.id : isSceneMode ? selectedScene?.id : null}
+        targetName={isCharacterMode ? selectedCharacter?.name : isSceneMode ? selectedScene?.name : null}
       />
     </>
   );

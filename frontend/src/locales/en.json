@@ -98,7 +98,10 @@
     "new_chat_title": "New Chat",
     "tab_character": "Character",
     "tab_scene": "Scene",
-    "tab_persona": "Persona"
+    "tab_persona": "Persona",
+    "selected_character": "Selected Character",
+    "persona": "Persona",
+    "add_persona": "Add Persona"
   },
   "profile": {
     "created": "Created",
@@ -430,6 +433,18 @@
     "popular_personas": "Popular Personas",
     "no_popular_personas": "No popular personas found.",
     "cancel": "Cancel"
+  },
+  "scene_select_modal": {
+    "preparing": "Preparing scene…",
+    "loading": "Loading…",
+    "title": "Choose a character for “{{scene}}”",
+    "title_fallback": "Choose who to chat with",
+    "scene": "Scene",
+    "prompt": "Select a character to start chatting in this scene.",
+    "remove_character": "Remove",
+    "select_character": "Select a character",
+    "cancel": "Cancel",
+    "start_chat": "Start Chat"
   },
   "chat_init_modal": {
     "title": "Initialize Chat",

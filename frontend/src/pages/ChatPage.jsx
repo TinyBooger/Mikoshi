@@ -4,11 +4,9 @@ import { useTranslation } from 'react-i18next';
 import defaultPic from '../assets/images/default-picture.png';
 import { buildSystemMessage } from '../utils/systemTemplate';
 import { AuthContext } from '../components/AuthProvider';
-import PersonaModal from '../components/PersonaModal';
-import SceneModal from '../components/SceneModal';
 import CharacterModal from '../components/CharacterModal';
 import CharacterSidebar from '../components/CharacterSidebar';
-import ChatInitModal from '../components/ChatInitModal';
+import SceneCharacterSelectModal from '../components/SceneCharacterSelectModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/ToastProvider';
 
@@ -45,8 +43,6 @@ export default function ChatPage() {
   const [selectedScene, setSelectedScene] = useState(null);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
 
-  const [personaModal, setPersonaModal] = useState({ show: false });
-  const [sceneModal, setSceneModal] = useState({ show: false });
   const [characterModal, setCharacterModal] = useState({ show: false });
   const [initModal, setInitModal] = useState(false);
 
@@ -73,13 +69,23 @@ export default function ChatPage() {
 
   const [characterId, setCharacterId] = useState(searchParams.get('character'));
   const [sceneId, setSceneId] = useState(searchParams.get('scene'));
-  const [personaId, setPersonaId] = useState(searchParams.get('persona'));
 
   // Update IDs instantly when URL searchParams change
   useEffect(() => {
     setCharacterId(searchParams.get('character'));
     setSceneId(searchParams.get('scene'));
-    setPersonaId(searchParams.get('persona'));
+    if (!searchParams.get('character')) {
+      setSelectedCharacter(null);
+    }
+    if (!searchParams.get('scene')) {
+      setSelectedScene(null);
+    }
+    setSelectedPersona(null);
+    setSelectedChat(null);
+    setMessages([]);
+    isNewChat.current = true;
+    setWelcomeDismissed(false);
+    setInitModal(false);
     initialized.current = false;
   }, [searchParams]);
 
@@ -126,63 +132,83 @@ export default function ChatPage() {
 
   // Fetch initial entity data when modal opens and IDs are present
   useEffect(() => {
-    if (initModal && (characterId || sceneId || personaId)) {
+    if (initModal && (characterId || sceneId)) {
       setInitLoading(true);
-      fetchInitialData().then(() => {
+      fetchInitialData().finally(() => {
         setInitLoading(false);
       });
     }
-  }, [initModal, characterId, sceneId, personaId]);
+  }, [initModal, characterId, sceneId]);
 
-  // Initialize character data (runs once when characterId changes)
+  const handleCharacterEntry = async () => {
+    setInitModal(false);
+    isNewChat.current = true;
+    setInitLoading(true);
+    try {
+      const fetchedData = await fetchInitialData();
+      const existingChats = userData?.chat_history?.filter(h => {
+        const characterMatches = String(h.character_id) === String(characterId);
+        const sceneMatches = sceneId ? String(h.scene_id) === String(sceneId) : true;
+        return characterMatches && sceneMatches;
+      }) || [];
+
+      if (existingChats.length > 0) {
+        const mostRecentChat = existingChats.sort(
+          (a, b) => new Date(b.last_updated) - new Date(a.last_updated)
+        )[0];
+        await loadChat(mostRecentChat);
+        initialized.current = true;
+        return;
+      }
+
+      initializeChat(fetchedData);
+      initialized.current = true;
+    } catch (err) {
+      console.error('Error handling character entry:', err);
+    } finally {
+      setInitLoading(false);
+    }
+  };
+
+  const handleSceneEntry = async () => {
+    isNewChat.current = true;
+    setInitModal(true);
+    setInitLoading(true);
+    try {
+      await fetchInitialData();
+    } catch (err) {
+      console.error('Error handling scene entry:', err);
+    } finally {
+      setInitLoading(false);
+    }
+  };
+
+  // Initialize data based on URL entry (character or scene)
   useEffect(() => {
     if (loading) return;
 
-    // Only navigate if loading is false and sessionToken is still null (i.e., auth check finished and user is not logged in)
     if (!loading && !sessionToken) {
       navigate('/');
       return;
     }
 
-    if (!initialized.current && sessionToken && characterId) {
-      // If entering with scene or persona, show ChatInitModal
-      if (sceneId || personaId) {
-        isNewChat.current = true;
-        setInitModal(true);
-        return;
-      }
+    if (initialized.current) return;
 
-      // Check if user has existing chat history with this character
-      const existingChats = userData?.chat_history?.filter(
-        h => h.character_id === characterId
-      ) || [];
-      
-      if (existingChats.length > 0) {
-        // Sort by last_updated and load the most recent chat
-        const mostRecentChat = existingChats.sort(
-          (a, b) => new Date(b.last_updated) - new Date(a.last_updated)
-        )[0];
-        
-        // Load the most recent chat automatically
-        loadChat(mostRecentChat);
-        initialized.current = true;
-      } else {
-        // No chat history - start chat immediately (skip modal)
-        isNewChat.current = true;
-        startChatWithSelectedEntities();
-        initialized.current = true;
-      }
+    if (sessionToken && characterId) {
+      handleCharacterEntry();
       return;
     }
-  }, [navigate, sessionToken, loading, characterId, sceneId, personaId, userData]);
+
+    if (sessionToken && sceneId && !initModal) {
+      handleSceneEntry();
+    }
+  }, [navigate, sessionToken, loading, characterId, sceneId, userData, initModal]);
 
   // Reusable function to start chat with current selections (used by modal and direct entry)
   const startChatWithSelectedEntities = async () => {
     isNewChat.current = true;
-    // Clear IDs for any unselected entities
-    if (!selectedPersona) setPersonaId(null);
-    if (!selectedScene) setSceneId(null);
     setWelcomeDismissed(false);
+    setInitModal(false);
     setInitLoading(true);
     try {
       const fetchedData = await fetchInitialData();
@@ -194,14 +220,36 @@ export default function ChatPage() {
     }
   };
 
-  // Fetch character, scene, and persona data if IDs are present
+  // Start chat after choosing a character for a scene entry
+  const startChatFromSceneSelection = async () => {
+    if (!selectedCharacter) return;
+    setInitModal(false);
+    const existingChats = userData?.chat_history?.filter(h => {
+      const characterMatches = String(h.character_id) === String(selectedCharacter.id);
+      const sceneMatches = sceneId ? String(h.scene_id) === String(sceneId) : true;
+      return characterMatches && sceneMatches;
+    }) || [];
+
+    if (existingChats.length > 0) {
+      const mostRecentChat = existingChats.sort(
+        (a, b) => new Date(b.last_updated) - new Date(a.last_updated)
+      )[0];
+      await loadChat(mostRecentChat);
+      initialized.current = true;
+      return;
+    }
+
+    await startChatWithSelectedEntities();
+    initialized.current = true;
+  };
+
+  // Fetch character and scene data if IDs are present
   const fetchInitialData = () => {
     setInitLoading(true);
     return new Promise((resolve, reject) => {
       const promises = [];
       let character = null;
       let scene = null;
-      let persona = null;
       
       if (characterId) {
         promises.push(
@@ -250,33 +298,13 @@ export default function ChatPage() {
         setSelectedScene(null);
       }
       
-      if (personaId) {
-        promises.push(
-          fetch(`${window.API_BASE_URL}/api/personas/${personaId}`, {
-            headers: { 'Authorization': sessionToken }
-          })
-            .then(res => res.ok ? res.json() : null)
-            .then(data => {
-              persona = data;
-              setSelectedPersona(data);
-              return data;
-            })
-            .catch(err => {
-              console.error('Error fetching persona:', err);
-              setSelectedPersona(null);
-              return null;
-            })
-        );
-      } else {
-        setSelectedPersona(null);
-      }
+      setSelectedPersona(null);
 
-      // Fetch liked status for all at once
-      if (characterId || sceneId || personaId) {
+      // Fetch liked status for available entities
+      if (characterId || sceneId) {
         const params = [];
         if (characterId) params.push(`character_id=${characterId}`);
         if (sceneId) params.push(`scene_id=${sceneId}`);
-        if (personaId) params.push(`persona_id=${personaId}`);
         promises.push(
           fetch(`${window.API_BASE_URL}/api/is-liked-multi?${params.join('&')}`, {
             credentials: 'include',
@@ -287,7 +315,7 @@ export default function ChatPage() {
               setHasLiked({
                 character: data.character ? !!data.character.liked : false,
                 scene: data.scene ? !!data.scene.liked : false,
-                persona: data.persona ? !!data.persona.liked : false
+                persona: false
               });
               return data;
             })
@@ -302,7 +330,7 @@ export default function ChatPage() {
       
       Promise.all(promises).then(() => {
         setInitLoading(false);
-        resolve({ character, scene, persona });
+        resolve({ character, scene, persona: null });
       }).catch(err => {
         setInitLoading(false);
         reject(err);
@@ -378,8 +406,8 @@ export default function ChatPage() {
           },
           body: JSON.stringify({
             character_id: characterId,
-            scene_id: selectedScene?.id || null,
-            persona_id: selectedPersona?.id || null,
+            scene_id: (scene?.id || selectedScene?.id) || null,
+            persona_id: (persona?.id || selectedPersona?.id) || null,
             messages: [sys],
             stream: true
           }),
@@ -430,8 +458,8 @@ export default function ChatPage() {
                   messages: [{ role: 'assistant', content: accumulatedReply }],
                   last_updated: new Date().toISOString(),
                   created_at: new Date().toISOString(),
-                  ...(sceneId && { scene_id: sceneId }),
-                  ...(personaId && { persona_id: personaId })
+                  ...((scene?.id || sceneId || selectedScene?.id) && { scene_id: scene?.id || sceneId || selectedScene?.id }),
+                  ...(selectedPersona?.id && { persona_id: selectedPersona.id })
                 };
                 setSelectedChat(newChat);
                 if (userData && userData.chat_history) {
@@ -567,8 +595,8 @@ export default function ChatPage() {
                   messages: [...updatedMessages, { role: 'assistant', content: accumulatedReply }],
                   last_updated: new Date().toISOString(),
                   created_at: existingChat?.created_at || new Date().toISOString(),
-                  ...(sceneId && { scene_id: sceneId }),
-                  ...(personaId && { persona_id: personaId })
+                  ...((selectedScene?.id || sceneId) && { scene_id: selectedScene?.id || sceneId }),
+                  ...(selectedPersona?.id && { persona_id: selectedPersona.id })
                 };
                 setSelectedChat(newChat);
                 
@@ -619,6 +647,29 @@ export default function ChatPage() {
     }
   };
 
+  // Unified new chat action respecting current entry mode
+  const handleNewChat = async () => {
+    setSelectedChat(null);
+    setMessages([]);
+    isNewChat.current = true;
+    setWelcomeDismissed(false);
+
+    if (sceneId || selectedScene) {
+      setSelectedCharacter(null);
+      setCharacterId(null);
+      setInitModal(true);
+      return;
+    }
+
+    if (selectedCharacter || characterId) {
+      await startChatWithSelectedEntities();
+      initialized.current = true;
+      return;
+    }
+
+    setInitModal(true);
+  };
+
   // Handle keyboard shortcuts (Enter to send, Shift+Enter for new line)
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -658,7 +709,6 @@ export default function ChatPage() {
       // Update IDs from the chat entry
       setCharacterId(chat.character_id);
       setSceneId(chat.scene_id || null);
-      setPersonaId(chat.persona_id || null);
       
       // Fetch all required entities in parallel
       const promises = [];
@@ -705,6 +755,30 @@ export default function ChatPage() {
       }
       
       await Promise.all(promises);
+
+      // Refresh liked status for the loaded entities
+      const likeParams = [];
+      if (chat.character_id) likeParams.push(`character_id=${chat.character_id}`);
+      if (chat.scene_id) likeParams.push(`scene_id=${chat.scene_id}`);
+      if (chat.persona_id) likeParams.push(`persona_id=${chat.persona_id}`);
+
+      if (likeParams.length > 0) {
+        fetch(`${window.API_BASE_URL}/api/is-liked-multi?${likeParams.join('&')}`, {
+          credentials: 'include',
+          headers: { 'Authorization': sessionToken }
+        })
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            setHasLiked({
+              character: data?.character ? !!data.character.liked : false,
+              scene: data?.scene ? !!data.scene.liked : false,
+              persona: data?.persona ? !!data.persona.liked : false,
+            });
+          })
+          .catch(() => setHasLiked({ character: false, scene: false, persona: false }));
+      } else {
+        setHasLiked({ character: false, scene: false, persona: false });
+      }
       
       // Build proper system message with all context
       const sys = {
@@ -814,12 +888,7 @@ export default function ChatPage() {
         }
         // If deleted chat was the selected one, reset to new chat state
         if (selectedChat?.chat_id === chatId) {
-          setSelectedChat(null);
-          setMessages([]);
-          isNewChat.current = true;
-          setWelcomeDismissed(false);
-          // Show init modal to start fresh
-          setInitModal(true);
+          await handleNewChat();
         }
         // Optionally refresh from backend for consistency
         refreshUserData();
@@ -1176,23 +1245,15 @@ export default function ChatPage() {
         </form>
       </div>
 
-      <ChatInitModal
+      <SceneCharacterSelectModal
         show={initModal}
         loading={initLoading}
-        onSelectCharacter={() => setCharacterModal({ show: true })}
-        onSelectPersona={() => setPersonaModal({ show: true })}
-        onSelectScene={() => setSceneModal({ show: true })}
-        selectedCharacter={selectedCharacter}
-        selectedPersona={selectedPersona}
         selectedScene={selectedScene}
+        onSelectCharacter={() => setCharacterModal({ show: true })}
+        selectedCharacter={selectedCharacter}
         setSelectedCharacter={setSelectedCharacter}
-        setSelectedPersona={setSelectedPersona}
-        setSelectedScene={setSelectedScene}
-        setPersonaId={setPersonaId}
-        setSceneId={setSceneId}
         onStartChat={async () => {
-          setInitModal(false);
-          await startChatWithSelectedEntities();
+          await startChatFromSceneSelection();
         }}
         onCancel={() => {
           if (!initialized.current) {
@@ -1206,16 +1267,10 @@ export default function ChatPage() {
       <CharacterSidebar
         characterSidebarVisible={characterSidebarVisible}
         onToggleCharacterSidebar={onToggleCharacterSidebar}
-        setInitModal={() => setInitModal(true)}
+        onNewChat={handleNewChat}
         selectedCharacter={selectedCharacter}
         selectedPersona={selectedPersona}
         selectedScene={selectedScene}
-        personaModal={personaModal}
-        setPersonaModal={setPersonaModal}
-        sceneModal={sceneModal}
-        setSceneModal={setSceneModal}
-        characterModal={characterModal}
-        setCharacterModal={setCharacterModal}
         userData={userData}
         characterId={characterId}
         selectedChat={selectedChat}
@@ -1239,24 +1294,6 @@ export default function ChatPage() {
         setSelectedCharacter={setSelectedCharacter}
         navigate={navigate}
         isMobile={isMobile}
-      />
-      <PersonaModal
-        show={personaModal.show}
-        onClose={() => setPersonaModal({ show: false })}
-        onSelect={persona => {
-          setSelectedPersona(persona);
-          setPersonaId(persona?.id || null);
-          setPersonaModal({ show: false });
-        }}
-      />
-      <SceneModal
-        show={sceneModal.show}
-        onClose={() => setSceneModal({ show: false })}
-        onSelect={scene => {
-          setSelectedScene(scene);
-          setSceneId(scene?.id || null);
-          setSceneModal({ show: false });
-        }}
       />
       <CharacterModal
         show={characterModal.show}

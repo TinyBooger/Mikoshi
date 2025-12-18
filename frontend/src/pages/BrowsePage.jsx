@@ -223,7 +223,7 @@ function BrowsePage() {
         ))}
       </div>
       {/* PC-adapted content wrapper */}
-      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ width: '100%', margin: '0 auto' }}>
         <CardSection title={getSectionTitle()}>
           {isLoading ? (
             <div className="text-center my-5">

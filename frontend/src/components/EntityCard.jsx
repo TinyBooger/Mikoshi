@@ -130,9 +130,12 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
     creatorDisplay = entity.creator_name ? entity.creator_name : t('entity_card.unknown');
   }
 
+  const suppressPersonaNavigation = type === 'persona' && !onClick;
+  const clickSuppressed = disableClick || suppressPersonaNavigation;
+
   // Card click logic
   const handleClick = () => {
-    if (disableClick) return;
+    if (clickSuppressed) return;
     if (onClick) {
       onClick(entity);
     } else if (type === 'character') {
@@ -142,8 +145,7 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
       // Navigate to scene page (adjust route as needed)
       navigate(`/chat?scene=${encodeURIComponent(id)}`);
     } else if (type === 'persona') {
-      // Navigate to persona page (adjust route as needed)
-      navigate(`/chat?persona=${encodeURIComponent(id)}`);
+      return;
     }
   };
 
@@ -159,16 +161,16 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
         border: '0.125rem solid #e9ecef',
         overflow: 'hidden',
         transition: 'box-shadow 0.16s, transform 0.16s',
-        cursor: disableClick ? 'default' : 'pointer',
+        cursor: clickSuppressed ? 'default' : 'pointer',
         pointerEvents: disableClick ? 'none' : 'auto',
         margin: 0,
         maxWidth: '100%',
         display: 'flex',
         flexDirection: compact && isMobile ? 'row' : 'column',
       }}
-      onClick={disableClick ? undefined : handleClick}
-      onMouseEnter={disableClick ? undefined : e => { setHovered(true); e.currentTarget.style.boxShadow = isMobile ? '0 3px 10px rgba(0,0,0,0.13)' : '0 6px 18px rgba(0,0,0,0.13)'; e.currentTarget.style.transform = isMobile ? 'scale(1.03)' : 'translateY(-2px) scale(1.018)'; }}
-      onMouseLeave={disableClick ? undefined : e => { setHovered(false); e.currentTarget.style.boxShadow = isMobile ? '0 1px 6px rgba(0,0,0,0.10)' : '0 2px 12px rgba(0,0,0,0.10)'; e.currentTarget.style.transform = 'none'; }}
+      onClick={clickSuppressed ? undefined : handleClick}
+      onMouseEnter={clickSuppressed ? undefined : e => { setHovered(true); e.currentTarget.style.boxShadow = isMobile ? '0 3px 10px rgba(0,0,0,0.13)' : '0 6px 18px rgba(0,0,0,0.13)'; e.currentTarget.style.transform = isMobile ? 'scale(1.03)' : 'translateY(-2px) scale(1.018)'; }}
+      onMouseLeave={clickSuppressed ? undefined : e => { setHovered(false); e.currentTarget.style.boxShadow = isMobile ? '0 1px 6px rgba(0,0,0,0.10)' : '0 2px 12px rgba(0,0,0,0.10)'; e.currentTarget.style.transform = 'none'; }}
     >
       {/* Top: Image */}
       <div
