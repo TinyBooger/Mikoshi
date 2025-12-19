@@ -37,6 +37,8 @@ class User(Base):
 
     # liked_characters, liked_scenes, liked_personas removed; now handled by junction tables
     liked_tags = Column(ARRAY(Text), default=[])
+    
+    default_persona_id = Column(Integer, ForeignKey('personas.id', ondelete='SET NULL'), nullable=True)
 
     chat_history = Column(ARRAY(JSONB), default=[])
 

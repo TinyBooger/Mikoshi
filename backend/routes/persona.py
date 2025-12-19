@@ -157,6 +157,37 @@ def delete_persona(persona_id: int, db: Session = Depends(get_db), current_user:
     db.commit()
     return JSONResponse(content={"id": persona_id, "message": "Persona deleted"})
 
+# Set persona as default
+@router.post("/api/personas/{persona_id}/set-default", response_model=None)
+def set_persona_as_default(
+    persona_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    
+    # Check if the persona belongs to the current user
+    if persona.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    user = db.query(User).filter(User.id == current_user.id).first()
+    user.default_persona_id = persona_id
+    db.commit()
+    return JSONResponse(content={"id": persona_id, "message": "Persona set as default"})
+
+# Unset default persona
+@router.post("/api/personas/unset-default", response_model=None)
+def unset_default_persona(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user = db.query(User).filter(User.id == current_user.id).first()
+    user.default_persona_id = None
+    db.commit()
+    return JSONResponse(content={"message": "Default persona unset"})
+
 # ------------------- ADDITIONAL ROUTES -------------------
 # Get personas created by a specific user (for profile page)
 @router.get("/api/personas-created", response_model=PersonaListOut)

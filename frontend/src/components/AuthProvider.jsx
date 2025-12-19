@@ -15,12 +15,14 @@ export function AuthProvider({ children }) {
   const { t } = useTranslation();
 
   // Fetch user data using session token
-  const fetchUserData = async () => {
+  const fetchUserData = async ({ silent = false } = {}) => {
     if (!sessionToken) {
       setUserData(null);
       return;
     }
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const response = await fetch(`${window.API_BASE_URL}/api/users/me`, {
@@ -39,7 +41,9 @@ export function AuthProvider({ children }) {
       setUserData(null);
       setError('Error fetching user data');
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 

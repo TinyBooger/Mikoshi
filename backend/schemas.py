@@ -74,6 +74,11 @@ class UserOut(BaseModel):
     views: int = 0
     likes: int = 0
     is_admin: bool = False
+    default_persona_id: Optional[int] = None
+    default_persona: Optional[PersonaOut] = None
+    
+    class Config:
+        from_attributes = True
 class SceneListOut(BaseModel):
     items: List[SceneOut]
     total: int

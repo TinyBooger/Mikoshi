@@ -39,7 +39,8 @@ export default function CharacterSidebar({
   setSelectedCharacter,
   navigate,
   hasLiked,
-  isMobile = false // allow parent to pass isMobile, default false
+  isMobile = false, // allow parent to pass isMobile, default false
+  setPersonaModalShow // <-- new prop to open PersonaModal
 }) {
   const [creatorHover, setCreatorHover] = React.useState(false);
   const [showFullTagline, setShowFullTagline] = React.useState(false);
@@ -228,8 +229,9 @@ export default function CharacterSidebar({
               }
             }}
             onClick={() => {
-              // TODO: Open persona selector modal or show available personas
-              // For now, just a placeholder
+              if (setPersonaModalShow) {
+                setPersonaModalShow();
+              }
             }}
             >
               <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.01em' }}>

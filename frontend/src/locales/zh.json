@@ -428,12 +428,20 @@
   },
   "persona_modal": {
     "title": "选择自我形象",
+    "my_personas": "我的形象",
+    "no_personas": "尚无形象",
     "search_placeholder": "按名称搜索自我形象...",
+    "search_results": "搜索结果",
     "searching": "搜索中...",
     "required_marker": "*",
     "no_personas_found": "未找到自我形象。",
     "popular_personas": "热门自我形象",
     "no_popular_personas": "暂无热门自我形象。",
+    "set_as_default": "设置为默认",
+    "unset_default": "取消默认",
+    "delete": "删除",
+    "confirm_delete": "确定要删除此形象吗？",
+    "confirm": "确认",
     "cancel": "取消"
   },
   "scene_select_modal": {

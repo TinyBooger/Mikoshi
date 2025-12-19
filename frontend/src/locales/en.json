@@ -427,11 +427,19 @@
   },
   "persona_modal": {
     "title": "Select Persona",
+    "my_personas": "My Personas",
+    "no_personas": "No personas yet",
     "search_placeholder": "Search personas by name...",
+    "search_results": "Search Results",
     "searching": "Searching...",
     "no_personas_found": "No personas found.",
     "popular_personas": "Popular Personas",
     "no_popular_personas": "No popular personas found.",
+    "set_as_default": "Set as Default",
+    "unset_default": "Unset Default",
+    "delete": "Delete",
+    "confirm_delete": "Are you sure you want to delete this persona?",
+    "confirm": "Confirm",
     "cancel": "Cancel"
   },
   "scene_select_modal": {

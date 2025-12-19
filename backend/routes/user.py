@@ -11,11 +11,36 @@ router = APIRouter()
 
 @router.get("/api/user/{user_id}", response_model=UserOut)
 def get_user_by_id(user_id: str, db: Session = Depends(get_db)):
+    from schemas import PersonaOut
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Fetch default persona if set and construct response dict
+    default_persona = None
+    if user.default_persona_id:
+        persona = db.query(Persona).filter(Persona.id == user.default_persona_id).first()
+        if persona:
+            default_persona = PersonaOut.model_validate(persona)
+    
+    # Build response dict with all user fields plus default_persona
+    user_dict = {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "profile_pic": user.profile_pic,
+        "bio": user.bio,
+        "liked_tags": user.liked_tags or [],
+        "chat_history": user.chat_history or [],
+        "views": user.views or 0,
+        "likes": user.likes or 0,
+        "is_admin": user.is_admin or False,
+        "default_persona_id": user.default_persona_id,
+        "default_persona": default_persona
+    }
+    
     # Note: email, liked_tags, chat_history, views, likes are not returned if not present in DB
-    return user
+    return user_dict
 
 # Add alias for plural endpoint for frontend compatibility
 @router.get("/api/users/{user_id}", response_model=UserOut)

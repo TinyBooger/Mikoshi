@@ -6,6 +6,7 @@ import { buildSystemMessage } from '../utils/systemTemplate';
 import { AuthContext } from '../components/AuthProvider';
 import CharacterModal from '../components/CharacterModal';
 import CharacterSidebar from '../components/CharacterSidebar';
+import PersonaModal from '../components/PersonaModal';
 import SceneCharacterSelectModal from '../components/SceneCharacterSelectModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/ToastProvider';
@@ -44,6 +45,7 @@ export default function ChatPage() {
   const [selectedCharacter, setSelectedCharacter] = useState(null);
 
   const [characterModal, setCharacterModal] = useState({ show: false });
+  const [personaModal, setPersonaModal] = useState({ show: false });
   const [initModal, setInitModal] = useState(false);
 
   // Loading state for initial data fetch
@@ -298,13 +300,21 @@ export default function ChatPage() {
         setSelectedScene(null);
       }
       
-      setSelectedPersona(null);
+      // Load default persona if user has one and no persona is already selected
+      let persona = null;
+      if (userData?.default_persona && !selectedPersona) {
+        persona = userData.default_persona;
+        setSelectedPersona(persona);
+      } else {
+        setSelectedPersona(null);
+      }
 
       // Fetch liked status for available entities
       if (characterId || sceneId) {
         const params = [];
         if (characterId) params.push(`character_id=${characterId}`);
         if (sceneId) params.push(`scene_id=${sceneId}`);
+        if (persona?.id) params.push(`persona_id=${persona.id}`);
         promises.push(
           fetch(`${window.API_BASE_URL}/api/is-liked-multi?${params.join('&')}`, {
             credentials: 'include',
@@ -315,7 +325,7 @@ export default function ChatPage() {
               setHasLiked({
                 character: data.character ? !!data.character.liked : false,
                 scene: data.scene ? !!data.scene.liked : false,
-                persona: false
+                persona: data.persona ? !!data.persona.liked : false
               });
               return data;
             })
@@ -330,7 +340,8 @@ export default function ChatPage() {
       
       Promise.all(promises).then(() => {
         setInitLoading(false);
-        resolve({ character, scene, persona: null });
+        // Return the persona that was loaded (default or null)
+        resolve({ character, scene, persona });
       }).catch(err => {
         setInitLoading(false);
         reject(err);
@@ -1294,6 +1305,7 @@ export default function ChatPage() {
         setSelectedCharacter={setSelectedCharacter}
         navigate={navigate}
         isMobile={isMobile}
+        setPersonaModalShow={() => setPersonaModal({ show: true })}
       />
       <CharacterModal
         show={characterModal.show}
@@ -1303,6 +1315,17 @@ export default function ChatPage() {
           setCharacterId(character?.id || null);
           setCharacterModal({ show: false });
         }}
+      />
+      <PersonaModal
+        show={personaModal.show}
+        onClose={() => setPersonaModal({ show: false })}
+        onSelect={persona => {
+          setSelectedPersona(persona);
+          setPersonaModal({ show: false });
+        }}
+        sessionToken={sessionToken}
+        refreshUserData={refreshUserData}
+        userData={userData}
       />
       <ConfirmModal
         show={confirmModal.show}

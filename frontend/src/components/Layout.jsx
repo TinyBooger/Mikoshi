@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Outlet } from 'react-router';
+import React, { useState, useEffect, useRef, useContext } from 'react';
+import { Outlet, useLocation } from 'react-router';
 import Sidebar from './Sidebar.jsx';
 import Topbar from './Topbar.jsx';
+import { AuthContext } from './AuthProvider.jsx';
 
 export default function Layout() {
+  const { refreshUserData } = useContext(AuthContext);
+  const location = useLocation();
+  
   // Initialize sidebarVisible based on viewport size
   const initialMobile = window.innerWidth < 768;
   const [isMobile, setIsMobile] = useState(initialMobile);
@@ -17,6 +21,13 @@ export default function Layout() {
   const [isTopbarVisible, setIsTopbarVisible] = useState(true);
   const lastScrollY = useRef(0);
   const mainContentRef = useRef(null);
+
+  // Silent refresh user data on route changes
+  useEffect(() => {
+    if (refreshUserData) {
+      refreshUserData({ silent: true });
+    }
+  }, [location.pathname, refreshUserData]);
 
   // Mutually exclusive toggles for mobile
   const handleToggleSidebar = () => {

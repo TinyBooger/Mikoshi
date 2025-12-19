@@ -20,13 +20,39 @@ def get_current_user(
     db: Session = Depends(get_db),
     session_token: str = Header(None, alias="Authorization")
 ):
+    from models import Persona
+    from schemas import PersonaOut
     user_id = verify_session_token(session_token)
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing session token")
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
+    
+    # Fetch default persona if set and construct response dict
+    default_persona = None
+    if user.default_persona_id:
+        persona = db.query(Persona).filter(Persona.id == user.default_persona_id).first()
+        if persona:
+            default_persona = PersonaOut.model_validate(persona)
+    
+    # Build response dict with all user fields plus default_persona
+    user_dict = {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "profile_pic": user.profile_pic,
+        "bio": user.bio,
+        "liked_tags": user.liked_tags or [],
+        "chat_history": user.chat_history or [],
+        "views": user.views or 0,
+        "likes": user.likes or 0,
+        "is_admin": user.is_admin or False,
+        "default_persona_id": user.default_persona_id,
+        "default_persona": default_persona
+    }
+
+    return user_dict
 
 
 # Registration endpoint
