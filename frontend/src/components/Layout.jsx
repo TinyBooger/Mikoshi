@@ -21,11 +21,13 @@ export default function Layout() {
   const [isTopbarVisible, setIsTopbarVisible] = useState(true);
   const lastScrollY = useRef(0);
   const mainContentRef = useRef(null);
+  const lastPathnameRef = useRef(location.pathname);
 
   // Silent refresh user data on route changes
   useEffect(() => {
-    if (refreshUserData) {
+    if (refreshUserData && location.pathname !== lastPathnameRef.current) {
       refreshUserData({ silent: true });
+      lastPathnameRef.current = location.pathname;
     }
   }, [location.pathname, refreshUserData]);
 

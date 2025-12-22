@@ -1,6 +1,6 @@
 
 
-import React, { createContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 
@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
   const { t } = useTranslation();
 
   // Fetch user data using session token
-  const fetchUserData = async ({ silent = false } = {}) => {
+  const fetchUserData = useCallback(async ({ silent = false } = {}) => {
     if (!sessionToken) {
       setUserData(null);
       return;
@@ -45,7 +45,7 @@ export function AuthProvider({ children }) {
         setLoading(false);
       }
     }
-  };
+  }, [sessionToken]);
 
   // Login function
   const login = async (email, password) => {

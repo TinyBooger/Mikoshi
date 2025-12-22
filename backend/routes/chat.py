@@ -7,7 +7,7 @@ from utils.llm_client import client, stream_chat_completion
 import uuid
 import json
 from datetime import datetime, UTC
-from models import User, Character
+from models import User, Character, Scene
 
 router = APIRouter()
 
@@ -88,6 +88,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         }
                         if scene_id:
                             new_entry["scene_id"] = scene_id
+                            # Fetch scene details for sidebar display
+                            scene = db_session.query(Scene).filter(Scene.id == scene_id).first()
+                            if scene:
+                                new_entry["scene_name"] = scene.name
+                                new_entry["scene_picture"] = scene.picture
                         if persona_id:
                             new_entry["persona_id"] = persona_id
 
@@ -141,6 +146,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             }
             if scene_id:
                 new_entry["scene_id"] = scene_id
+                # Fetch scene details for sidebar display
+                scene = db.query(Scene).filter(Scene.id == scene_id).first()
+                if scene:
+                    new_entry["scene_name"] = scene.name
+                    new_entry["scene_picture"] = scene.picture
             if persona_id:
                 new_entry["persona_id"] = persona_id
 

@@ -24,10 +24,10 @@ export default function InfoCard({
   isPlaceholder = false
 }) {
   const { t } = useTranslation();
-  // Pick the first non-null entity
-  const entity = character || scene || persona || {};
-  // Determine entity type for field mapping
-  const entityType = character ? 'character' : scene ? 'scene' : persona ? 'persona' : null;
+  // Pick the first non-null entity, prioritizing scene over character
+  const entity = scene || character || {};
+  // Determine entity type for field mapping (mutually exclusive: scene > character)
+  const entityType = scene ? 'scene' : character ? 'character' : null;
   const resolvedAvatar = entity.picture;
   const resolvedName = entity.name;
   const resolvedCreatorName = entity.creator_name;
@@ -36,11 +36,11 @@ export default function InfoCard({
   const resolvedChatCount = typeof entity.views === 'number' ? entity.views : chatCount;
   const resolvedTags = entity.tags || [];
   const navigate = useNavigate();
-  // Tagline: 'tagline' for character, 'intro' for scene/persona
+  // Tagline: 'tagline' for character, 'intro' for scene
   let resolvedTagline = '';
   if (entityType === 'character') {
     resolvedTagline = entity.tagline || '';
-  } else if (entityType === 'scene' || entityType === 'persona') {
+  } else if (entityType === 'scene') {
     resolvedTagline = entity.intro || '';
   }
   // Likes: read directly from entity.likes, but manage local state for instant UI update

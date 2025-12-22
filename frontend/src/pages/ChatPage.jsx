@@ -150,8 +150,8 @@ export default function ChatPage() {
       const fetchedData = await fetchInitialData();
       const existingChats = userData?.chat_history?.filter(h => {
         const characterMatches = String(h.character_id) === String(characterId);
-        const sceneMatches = sceneId ? String(h.scene_id) === String(sceneId) : true;
-        return characterMatches && sceneMatches;
+        const hasNoScene = !h.scene_id; // Only load chats without a scene
+        return characterMatches && hasNoScene;
       }) || [];
 
       if (existingChats.length > 0) {
@@ -173,11 +173,28 @@ export default function ChatPage() {
   };
 
   const handleSceneEntry = async () => {
+    setInitModal(false);
     isNewChat.current = true;
-    setInitModal(true);
     setInitLoading(true);
     try {
-      await fetchInitialData();
+      const fetchedData = await fetchInitialData();
+
+      const existingChats = userData?.chat_history?.filter(h => {
+        const sceneMatches = String(h.scene_id) === String(sceneId);
+        return sceneMatches;
+      }) || [];
+
+      if (existingChats.length > 0) {
+        const mostRecentChat = existingChats.sort(
+          (a, b) => new Date(b.last_updated) - new Date(a.last_updated)
+        )[0];
+        await loadChat(mostRecentChat);
+        initialized.current = true;
+        return;
+      }
+
+      initializeChat(fetchedData);
+      initialized.current = true;
     } catch (err) {
       console.error('Error handling scene entry:', err);
     } finally {
@@ -228,7 +245,7 @@ export default function ChatPage() {
     setInitModal(false);
     const existingChats = userData?.chat_history?.filter(h => {
       const characterMatches = String(h.character_id) === String(selectedCharacter.id);
-      const sceneMatches = sceneId ? String(h.scene_id) === String(sceneId) : true;
+      const sceneMatches = selectedScene ? String(h.scene_id) === String(selectedScene.id) : false;
       return characterMatches && sceneMatches;
     }) || [];
 

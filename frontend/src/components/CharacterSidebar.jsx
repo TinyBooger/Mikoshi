@@ -52,10 +52,9 @@ export default function CharacterSidebar({
     setMenuOpenId(menuOpenId === chatId ? null : chatId);
   };
   // Determine entry mode based on which entity is currently selected
-  // Priority: if scene is selected, we're in scene mode (even if character is also selected)
-  // Otherwise, if character is selected, we're in character mode
+  // Priority: Scene > Character > None (mutually exclusive states)
   const isSceneMode = !!selectedScene;
-  const isCharacterMode = !!selectedCharacter && !selectedScene;
+  const isCharacterMode = !isSceneMode && !!selectedCharacter;
   // Sidebar animation style for both mobile and desktop
   const sidebarStyle = isMobile
     ? {
@@ -289,7 +288,16 @@ export default function CharacterSidebar({
             {showChatHistory && (
               <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 12, background: '#f5f6fa', padding: 8 }}>
                 {userData.chat_history
-                  .filter(chat => chat.character_id === characterId)
+                  .filter(chat => {
+                    if (isSceneMode) {
+                      // In scene mode: show chats matching the scene_id
+                      return String(chat.scene_id) === String(selectedScene?.id);
+                    } else if (isCharacterMode) {
+                      // In character mode: show chats matching character_id AND without scene_id
+                      return String(chat.character_id) === String(characterId) && !chat.scene_id;
+                    }
+                    return false;
+                  })
                   .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated))
                   .map((chat) => (
                     <div

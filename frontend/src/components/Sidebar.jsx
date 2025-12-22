@@ -26,25 +26,48 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
     navigate(path);
   };
 
-  // Derive recent characters from chat_history (no duplicates, sorted by last_updated)
-  const recent = useMemo(() => {
+  // Derive recent chats mixed (scene and character) in time order
+  const recentChats = useMemo(() => {
     if (!userData?.chat_history) return [];
-    
-    // Group by character_id, keep only the most recent chat per character
-    const characterMap = new Map();
-    userData.chat_history
-      .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated))
-      .forEach(chat => {
-        if (chat.character_id && !characterMap.has(chat.character_id)) {
-          characterMap.set(chat.character_id, {
-            id: chat.character_id,
-            name: chat.character_name || 'Unknown Character',
-            picture: chat.character_picture
-          });
-        }
-      });
-    
-    return Array.from(characterMap.values()).slice(0, 10);
+
+    // Sort chats by last_updated descending
+    const sorted = [...userData.chat_history].sort(
+      (a, b) => new Date(b.last_updated) - new Date(a.last_updated)
+    );
+
+    // Keep only the most recent item per entity (scene or character)
+    const seen = new Set();
+    const items = [];
+
+    for (const chat of sorted) {
+      const isScene = !!chat.scene_id;
+      const key = isScene ? `scene:${chat.scene_id}` : (chat.character_id ? `character:${chat.character_id}` : null);
+      if (!key) continue;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      if (isScene) {
+        items.push({
+          type: 'scene',
+          id: chat.scene_id,
+          character_id: chat.character_id,
+          name: chat.scene_name || 'Unknown Scene',
+          picture: chat.scene_picture,
+          character_picture: chat.character_picture,
+          last_updated: chat.last_updated,
+        });
+      } else if (chat.character_id) {
+        items.push({
+          type: 'character',
+          id: chat.character_id,
+          name: chat.character_name || 'Unknown Character',
+          picture: chat.character_picture,
+          last_updated: chat.last_updated,
+        });
+      }
+    }
+
+    return items.slice(0, 10);
   }, [userData?.chat_history]);
 
   const handleLogout = async () => {
@@ -243,7 +266,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       <div className="mb-3 d-flex flex-column" style={{ minHeight: 0, flex: '1 1 auto', overflowX: 'hidden', overflowY: 'auto' }}>
   <h6 className="fw-bold mb-1" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px', flexShrink: 0 }}>{t('sidebar.recent_chats')}</h6>
         <div className="list-group rounded-4" style={{ background: 'transparent', boxShadow: 'none', minHeight: 0 }}>
-          {recent.length === 0 ? (
+          {recentChats.length === 0 ? (
             <div className="rounded-4 p-3" style={{ 
               background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)',
               border: '1px solid rgba(115, 107, 146, 0.15)'
@@ -287,26 +310,69 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               </button>
             </div>
           ) : (
-            recent.map(c => (
-              <button
-                key={c.id}
-                className="list-group-item list-group-item-action d-flex align-items-center gap-2 border-0 rounded-4 mb-1 fw-bold"
-                style={{ background: '#fff', color: '#232323', minHeight: 38, transition: 'background 0.16s, color 0.16s', fontWeight: 600, fontSize: '0.8rem' }}
-                onClick={() => {
-                  handleNavigate(`/chat?character=${c.id}`);
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#232323'; }}
-              >
-                <img
-                  src={c.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${c.picture.replace(/^\//, '')}` : defaultPicture}
-                  alt={c.name}
-                  className="rounded-circle border"
-                  style={{ width: 38, height: 38, objectFit: 'cover', border: '1.6px solid #e9ecef' }}
-                />
-                <span className="fw-bold text-truncate" style={{ color: '#232323', fontWeight: 700 }}>{c.name}</span>
-              </button>
-            ))
+            <>
+              {/* Mixed recent chats (scenes and characters) */}
+              {recentChats.map(item => (
+                item.type === 'scene' ? (
+                  <button
+                    key={`scene-${item.id}`}
+                    className="list-group-item list-group-item-action d-flex align-items-center gap-2 border-0 rounded-4 mb-1 fw-bold"
+                    style={{ background: '#fff', color: '#232323', minHeight: 38, transition: 'background 0.16s, color 0.16s', fontWeight: 600, fontSize: '0.8rem' }}
+                    onClick={() => {
+                      handleNavigate(`/chat?scene=${item.id}`);
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#232323'; }}
+                  >
+                    <div style={{ position: 'relative', width: 38, height: 38, flexShrink: 0 }}>
+                      <img
+                        src={item.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${item.picture.replace(/^\//, '')}` : defaultPicture}
+                        alt={item.name}
+                        className="rounded-circle border"
+                        style={{ width: 38, height: 38, objectFit: 'cover', border: '1.6px solid #e9ecef' }}
+                      />
+                      {item.character_picture && (
+                        <img
+                          src={`${window.API_BASE_URL.replace(/\/$/, '')}/${item.character_picture.replace(/^\//, '')}`}
+                          alt="Character"
+                          className="rounded-circle border"
+                          style={{ 
+                            width: 18, 
+                            height: 18, 
+                            objectFit: 'cover', 
+                            border: '1.2px solid #fff',
+                            position: 'absolute',
+                            bottom: -2,
+                            right: -2,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                          }}
+                        />
+                      )}
+                    </div>
+                    <span className="fw-bold text-truncate" style={{ color: '#232323', fontWeight: 700 }}>{item.name}</span>
+                  </button>
+                ) : (
+                  <button
+                    key={`character-${item.id}`}
+                    className="list-group-item list-group-item-action d-flex align-items-center gap-2 border-0 rounded-4 mb-1 fw-bold"
+                    style={{ background: '#fff', color: '#232323', minHeight: 38, transition: 'background 0.16s, color 0.16s', fontWeight: 600, fontSize: '0.8rem' }}
+                    onClick={() => {
+                      handleNavigate(`/chat?character=${item.id}`);
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#232323'; }}
+                  >
+                    <img
+                      src={item.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${item.picture.replace(/^\//, '')}` : defaultPicture}
+                      alt={item.name}
+                      className="rounded-circle border"
+                      style={{ width: 38, height: 38, objectFit: 'cover', border: '1.6px solid #e9ecef' }}
+                    />
+                    <span className="fw-bold text-truncate" style={{ color: '#232323', fontWeight: 700 }}>{item.name}</span>
+                  </button>
+                )
+              ))}
+            </>
           )}
         </div>
       </div>
