@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
-from sqlalchemy.orm import Session, attributes
+from sqlalchemy.orm import Session
 from database import get_db
 from utils.session import get_current_user
 from utils.llm_client import client, stream_chat_completion
+from utils.chat_history_utils import fetch_chat_history_entry, upsert_chat_history_entry, serialize_chat_history_entry
 import uuid
 import json
 from datetime import datetime, UTC
-from models import User, Character, Scene
+from models import User, Character, Scene, ChatHistory
 
 router = APIRouter()
 
@@ -35,14 +36,9 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         return JSONResponse(content={"error": "Invalid or missing messages"}, status_code=400)
 
     # Get existing chat info if this is an existing chat
-    existing_title = None
-    existing_created_at = None
-    if chat_id and current_user.chat_history:
-        for chat in current_user.chat_history:
-            if chat.get("chat_id") == chat_id:
-                existing_title = chat.get("title")
-                existing_created_at = chat.get("created_at")
-                break
+    existing_entry = None
+    if chat_id:
+        existing_entry = fetch_chat_history_entry(db, current_user.id, chat_id)
 
     # Generate chat_id upfront for new chats
     if not chat_id and character_id:
@@ -64,48 +60,42 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     from database import SessionLocal
                     db_session = SessionLocal()
                     try:
-                        # Refresh user object in new session
-                        db_user = db_session.query(User).filter(User.id == current_user.id).first()
-                        if not db_user:
-                            yield f"data: {json.dumps({'error': 'User not found'})}\n\n"
-                            return
-                        
                         updated_messages = messages + [{"role": "assistant", "content": accumulated_reply}]
                         updated_messages = updated_messages[-50:]
 
                         # Fetch character details for sidebar display
                         character = db_session.query(Character).filter(Character.id == character_id).first()
-                        
-                        new_entry = {
-                            "chat_id": chat_id,
+
+                        payload = {
                             "character_id": character_id,
                             "character_name": character.name if character else None,
                             "character_picture": character.picture if character else None,
-                            "title": generate_chat_title(messages, existing_title),
+                            "title": generate_chat_title(messages, existing_entry.title if existing_entry else None),
                             "messages": updated_messages,
-                            "last_updated": datetime.now(UTC).isoformat(),
-                            "created_at": existing_created_at if existing_created_at else datetime.now(UTC).isoformat()
+                            "last_updated": datetime.now(UTC),
+                            "created_at": existing_entry.created_at if existing_entry else datetime.now(UTC),
                         }
                         if scene_id:
-                            new_entry["scene_id"] = scene_id
+                            payload["scene_id"] = scene_id
                             # Fetch scene details for sidebar display
                             scene = db_session.query(Scene).filter(Scene.id == scene_id).first()
                             if scene:
-                                new_entry["scene_name"] = scene.name
-                                new_entry["scene_picture"] = scene.picture
+                                payload["scene_name"] = scene.name
+                                payload["scene_picture"] = scene.picture
                         if persona_id:
-                            new_entry["persona_id"] = persona_id
+                            payload["persona_id"] = persona_id
 
-                        filtered = [h for h in (db_user.chat_history or []) if h.get("chat_id") != chat_id]
-                        filtered.insert(0, new_entry)
-                        db_user.chat_history = filtered[:30]
-                        attributes.flag_modified(db_user, "chat_history")
-                        db_session.commit()
+                        entry = upsert_chat_history_entry(
+                            db_session,
+                            user_id=current_user.id,
+                            chat_id=chat_id,
+                            payload=payload,
+                        )
                     finally:
                         db_session.close()
 
                 # Send final metadata
-                yield f"data: {json.dumps({'done': True, 'chat_id': chat_id, 'chat_title': generate_chat_title(messages, existing_title)})}\n\n"
+                yield f"data: {json.dumps({'done': True, 'chat_id': chat_id, 'chat_title': generate_chat_title(messages, existing_entry.title if existing_entry else None)})}\n\n"
             
             except Exception as e:
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
@@ -134,37 +124,36 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             # Fetch character details for sidebar display
             character = db.query(Character).filter(Character.id == character_id).first()
 
-            new_entry = {
-                "chat_id": chat_id,
+            payload = {
                 "character_id": character_id,
                 "character_name": character.name if character else None,
                 "character_picture": character.picture if character else None,
-                "title": generate_chat_title(messages, existing_title),
+                "title": generate_chat_title(messages, existing_entry.title if existing_entry else None),
                 "messages": updated_messages,
-                "last_updated": datetime.now(UTC).isoformat(),
-                "created_at": existing_created_at if existing_created_at else datetime.now(UTC).isoformat()
+                "last_updated": datetime.now(UTC),
+                "created_at": existing_entry.created_at if existing_entry else datetime.now(UTC),
             }
             if scene_id:
-                new_entry["scene_id"] = scene_id
+                payload["scene_id"] = scene_id
                 # Fetch scene details for sidebar display
                 scene = db.query(Scene).filter(Scene.id == scene_id).first()
                 if scene:
-                    new_entry["scene_name"] = scene.name
-                    new_entry["scene_picture"] = scene.picture
+                    payload["scene_name"] = scene.name
+                    payload["scene_picture"] = scene.picture
             if persona_id:
-                new_entry["persona_id"] = persona_id
+                payload["persona_id"] = persona_id
 
-            filtered = [h for h in (current_user.chat_history or []) if h.get("chat_id") != chat_id]
-            
-            filtered.insert(0, new_entry)
-            current_user.chat_history = filtered[:30]
-            attributes.flag_modified(current_user, "chat_history")
-            db.commit()
+            entry = upsert_chat_history_entry(
+                db,
+                user_id=current_user.id,
+                chat_id=chat_id,
+                payload=payload,
+            )
 
             return {
                 "response": reply,
-                "chat_id": new_entry["chat_id"],
-                "chat_title": new_entry["title"]
+                "chat_id": entry.chat_id,
+                "chat_title": entry.title
             }
 
         return {"response": reply}
@@ -178,30 +167,14 @@ async def rename_chat(request: Request, current_user: User = Depends(get_current
     if not chat_id or not new_title:
         return JSONResponse(content={"error": "Missing chat_id or new_title"}, status_code=400)
 
-    if current_user.chat_history:
-        # Create a new list to force SQLAlchemy to detect changes
-        updated_history = []
-        modified = False
-        
-        for chat in current_user.chat_history:
-            if chat.get("chat_id") == chat_id:
-                # Create a new dict instead of modifying in-place
-                updated_chat = dict(chat)
-                updated_chat["title"] = new_title
-                updated_chat["last_updated"] = datetime.now(UTC).isoformat()
-                updated_history.append(updated_chat)
-                modified = True
-            else:
-                updated_history.append(chat)
-        
-        if modified:
-            # Assign the new list to trigger change detection
-            current_user.chat_history = updated_history
-            attributes.flag_modified(current_user, "chat_history")
-            db.commit()
-            return {"status": "success"}
-    
-    return JSONResponse(content={"error": "Chat not found"}, status_code=404)
+    entry = fetch_chat_history_entry(db, current_user.id, chat_id)
+    if not entry:
+        return JSONResponse(content={"error": "Chat not found"}, status_code=404)
+
+    entry.title = new_title
+    entry.last_updated = datetime.now(UTC)
+    db.commit()
+    return {"status": "success"}
 
 @router.post("/api/chat/delete")
 async def delete_chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -211,10 +184,10 @@ async def delete_chat(request: Request, current_user: User = Depends(get_current
     if not chat_id:
         return JSONResponse(content={"error": "Missing chat_id"}, status_code=400)
 
-    if current_user.chat_history:
-        current_user.chat_history = [chat for chat in current_user.chat_history if chat.get("chat_id") != chat_id]
-        attributes.flag_modified(current_user, "chat_history")
-        db.commit()
-        return {"status": "success"}
-    
-    return JSONResponse(content={"error": "Chat not found"}, status_code=404)
+    entry = fetch_chat_history_entry(db, current_user.id, chat_id)
+    if not entry:
+        return JSONResponse(content={"error": "Chat not found"}, status_code=404)
+
+    db.delete(entry)
+    db.commit()
+    return {"status": "success"}

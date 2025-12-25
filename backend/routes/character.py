@@ -9,6 +9,7 @@ from database import get_db
 from models import Character, User, Tag, UserLikedCharacter
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
+from utils.chat_history_utils import fetch_user_chat_history
 from utils.validators import validate_character_fields
 from schemas import CharacterOut, CharacterListOut
 
@@ -226,11 +227,11 @@ def get_recommended_characters(
     # Collect character IDs to exclude (already viewed or chatted with)
     excluded_ids = set()
     
-    # Add character IDs from chat_history
-    if current_user.chat_history:
-        for chat in current_user.chat_history:
-            if "character_id" in chat:
-                excluded_ids.add(chat["character_id"])
+    # Add character IDs from chat history
+    chat_history = fetch_user_chat_history(db, current_user.id)
+    for chat in chat_history:
+        if chat.get("character_id"):
+            excluded_ids.add(chat["character_id"])
     
     user_tags = current_user.liked_tags or []
     tags_array = array(user_tags, type_=TEXT)

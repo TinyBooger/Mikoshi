@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey, UniqueConstraint, Boolean, Numeric
+from sqlalchemy.orm import relationship
 from database import Base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from datetime import datetime, UTC
@@ -44,7 +45,29 @@ class User(Base):
     
     default_persona_id = Column(Integer, ForeignKey('personas.id', ondelete='SET NULL'), nullable=True)
 
-    chat_history = Column(ARRAY(JSONB), default=[])
+    chat_histories = relationship("ChatHistory", back_populates="user", cascade="all, delete-orphan")
+
+
+class ChatHistory(Base):
+    __tablename__ = "chat_histories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(String, unique=True, nullable=False, index=True)
+    user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    character_id = Column(Integer, ForeignKey('characters.id', ondelete='SET NULL'), nullable=True)
+    scene_id = Column(Integer, ForeignKey('scenes.id', ondelete='SET NULL'), nullable=True)
+    persona_id = Column(Integer, ForeignKey('personas.id', ondelete='SET NULL'), nullable=True)
+
+    character_name = Column(String, nullable=True)
+    character_picture = Column(String, nullable=True)
+    scene_name = Column(String, nullable=True)
+    scene_picture = Column(String, nullable=True)
+    title = Column(String(255), nullable=False)
+    messages = Column(JSONB, default=[])
+    last_updated = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    user = relationship("User", back_populates="chat_histories")
 
 
 class Persona(Base):

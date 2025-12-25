@@ -6,6 +6,7 @@ from database import get_db
 from models import User
 from schemas import UserOut
 from utils.session import create_session_token, verify_session_token
+from utils.user_utils import build_user_response
 from utils.validators import validate_account_fields
 
 router = APIRouter()
@@ -20,8 +21,6 @@ def get_current_user(
     db: Session = Depends(get_db),
     session_token: str = Header(None, alias="Authorization")
 ):
-    from models import Persona
-    from schemas import PersonaOut
     user_id = verify_session_token(session_token)
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing session token")
@@ -29,30 +28,7 @@ def get_current_user(
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     
-    # Fetch default persona if set and construct response dict
-    default_persona = None
-    if user.default_persona_id:
-        persona = db.query(Persona).filter(Persona.id == user.default_persona_id).first()
-        if persona:
-            default_persona = PersonaOut.model_validate(persona)
-    
-    # Build response dict with all user fields plus default_persona
-    user_dict = {
-        "id": user.id,
-        "email": user.email,
-        "name": user.name,
-        "profile_pic": user.profile_pic,
-        "bio": user.bio,
-        "liked_tags": user.liked_tags or [],
-        "chat_history": user.chat_history or [],
-        "views": user.views or 0,
-        "likes": user.likes or 0,
-        "is_admin": user.is_admin or False,
-        "default_persona_id": user.default_persona_id,
-        "default_persona": default_persona
-    }
-
-    return user_dict
+    return build_user_response(user, db)
 
 
 # Registration endpoint
@@ -130,7 +106,8 @@ def register_user(
             # Non-fatal: registration succeeded but image saving failed
             pass
     token = create_session_token(user)
-    return {"message": "User registered successfully", "token": token, "user": user}
+    user_response = build_user_response(user, db)
+    return {"message": "User registered successfully", "token": token, "user": user_response}
 
 # Login endpoint
 @router.post("/api/login")
@@ -146,7 +123,8 @@ def login_user(
     if not hashed_password or not pwd_context.verify(password, hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
     token = create_session_token(user)
-    return {"message": "Login successful", "token": token, "user": user}
+    user_response = build_user_response(user, db)
+    return {"message": "Login successful", "token": token, "user": user_response}
 
 # Password reset endpoint
 @router.post("/api/reset-password")
