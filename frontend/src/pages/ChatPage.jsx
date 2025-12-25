@@ -213,14 +213,15 @@ export default function ChatPage() {
 
     if (initialized.current) return;
 
+    if (sessionToken && sceneId && !initModal) {
+      handleSceneEntry();
+    }
+
     if (sessionToken && characterId) {
       handleCharacterEntry();
       return;
     }
 
-    if (sessionToken && sceneId && !initModal) {
-      handleSceneEntry();
-    }
   }, [navigate, sessionToken, loading, characterId, sceneId, userData, initModal]);
 
   // Reusable function to start chat with current selections (used by modal and direct entry)
@@ -404,6 +405,7 @@ export default function ChatPage() {
         character?.persona || "",
         character?.example_messages || "",
         persona?.description || null,
+        persona?.name || null,
         scene?.description || null
       )
     };
@@ -411,7 +413,8 @@ export default function ChatPage() {
     // because the scene introduction is now handled by the welcome notice.
     // If the character uses the improvising sentinel, call the backend LLM to generate
     // the initial assistant greeting dynamically.
-    const charGreeting = character?.greeting;
+    // Disable greeting when there's a scene.
+    const charGreeting = scene ? null : character?.greeting;
     setSelectedChat(null);
     setInput('');
 
@@ -816,6 +819,7 @@ export default function ChatPage() {
           character?.persona || "",
           character?.example_messages || "",
           persona?.description || null,
+          persona?.name || null,
           scene?.description || null
         )
       };

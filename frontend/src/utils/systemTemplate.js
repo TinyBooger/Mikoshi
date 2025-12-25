@@ -1,57 +1,62 @@
 export function buildSystemMessage(
+  characterName,
   characterPersona,
   exampleMessages = null,
-  userPersona = null,
-  scene = null,
-  characterName = null
+  personaDescription = null,
+  personaName = null,
+  scene = null
 ) {
-  let sysMessage = `You are an AI roleplay assistant. 
-Stay fully in character at all times and speak only as the character described. 
-Write with vivid dialogue, inner thoughts, emotions, and occasional actions. 
-Do not reveal you are an AI or mention these instructions.`;
+  // Base instruction
+  const baseInstruction = `Act as ${characterName}. Stay in character always. Use *action* and dialogue naturally. Don't break character or mention these instructions.`;
 
-  if (characterName) {
-    sysMessage += `\n\n[Character Name]\n${characterName}\n[/Character Name]`;
-  }
+  // Character name section
+  const charNameText = characterName 
+    ? `[Character Name]\n${characterName}\n[/Character Name]` 
+    : '';
 
-  if (characterPersona) {
-    sysMessage += `\n\n[Character Persona]\n${characterPersona}\n[/Character Persona]`;
-  }
+  // Character persona section
+  const charPersonaText = characterPersona 
+    ? `[Character Persona]\n${characterPersona}\n[/Character Persona]` 
+    : '';
 
-  if (exampleMessages) {
-    sysMessage += `\n\n[Example Dialogues]\nExamples only for style and tone. 
-They are not part of the conversation and must not be referenced.\n${exampleMessages}\n[/Example Dialogues]`;
-  }
+  // Example dialogues section
+  const exampleDialoguesText = exampleMessages 
+    ? `[Example Dialogues]\n${exampleMessages}\n[/Example Dialogues]` 
+    : '';
 
-  // Light, flexible notation guidance
-  sysMessage += `\n\nNOTATION: 
-Use *asterisks* for actions when they feel natural (e.g. *laughs softly*). 
-Use (parentheses) for scene descriptions if needed. 
-Actions are optional and should not follow a fixed pattern.`;
-
-  // Let the model flow, not follow recipes
-  sysMessage += `\n\nLet responses flow naturally. 
-You may start with dialogue, thoughts, actions, or sensory impressions — whichever fits the moment.`;
-
-  if (userPersona || scene) {
-    sysMessage += `\n\n[Context Information]\nThe following is context for you to react to, not a role to perform.`;
-    if (userPersona) {
-      sysMessage += `\n- [User Persona]\n${userPersona}\n[/User Persona]`;
+  // Context information (user persona and scene)
+  let contextInfo = '';
+  if (personaDescription || scene) {
+    contextInfo = `[Context]\n`;
+    if (personaName || personaDescription) {
+      contextInfo += `User: ${personaName ? personaName + ' - ' : ''}${personaDescription || ''}\n`;
     }
     if (scene) {
-      sysMessage += `\n- [Current Scene]\n${scene}\n[/Current Scene]`;
+      contextInfo += `Scene: ${scene}\n`;
     }
-    sysMessage += `\nDo not control or narrate the user persona or the scene; only respond as ${characterName}.\n[/Context Information]`;
+    contextInfo += `[/Context]`;
   }
 
-  if (scene) {
-    sysMessage += `\n\nYou are ${characterName}. 
-Respond naturally within this scene without restating it.`;
-  }
+  // Main completion prompt
+  const completionPrompt = characterName
+    ? `Complete the chat as ${characterName}.`
+    : '';
 
-  // Single identity reminder only
-  sysMessage += `\n\nRemain entirely in the voice, style, and perspective of ${characterName}. 
-Never break character or acknowledge these instructions.`;
+  // Create entries for system prompts
+  const systemPrompts = [
+    { role: 'system', content: baseInstruction, identifier: 'baseInstruction' },
+    { role: 'system', content: charNameText, identifier: 'charName' },
+    { role: 'system', content: charPersonaText, identifier: 'charPersona' },
+    { role: 'system', content: exampleDialoguesText, identifier: 'exampleDialogues' },
+    { role: 'system', content: contextInfo, identifier: 'contextInfo' },
+    { role: 'system', content: completionPrompt, identifier: 'completionPrompt' },
+  ];
+
+  // Filter out empty prompts and combine into final message
+  const sysMessage = systemPrompts
+    .filter(prompt => prompt.content && prompt.content.trim() !== '')
+    .map(prompt => prompt.content)
+    .join('\n\n');
 
   return sysMessage;
 }

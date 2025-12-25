@@ -31,6 +31,10 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
     creator_name,
     views,
     likes,
+    is_public,
+    is_forkable,
+    is_free,
+    price,
   } = entity;
 
   // Type-specific fields
@@ -189,8 +193,66 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
           borderRight: compact && isMobile ? '1px solid #e3e6ea' : 'none',
           overflow: 'hidden',
           padding: 0,
+          position: 'relative',
         }}
       >
+        {/* Status badges in top-right corner */}
+        <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 3, flexDirection: 'column', alignItems: 'flex-end', zIndex: 1 }}>
+          {is_public === false && (
+            <span
+              title={t('entity_card.private') || 'Private'}
+              style={{
+                background: 'rgba(107, 114, 128, 0.9)',
+                color: '#fff',
+                fontSize: '0.55rem',
+                padding: '2px 5px',
+                borderRadius: '4px',
+                fontWeight: 600,
+                letterSpacing: '0.3px',
+                textTransform: 'uppercase',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              }}
+            >
+              <i className="bi bi-lock-fill" style={{ fontSize: '0.5rem' }}></i>
+            </span>
+          )}
+          {is_forkable && (
+            <span
+              title={t('entity_card.forkable') || 'Forkable'}
+              style={{
+                background: 'rgba(34, 197, 94, 0.9)',
+                color: '#fff',
+                fontSize: '0.55rem',
+                padding: '2px 5px',
+                borderRadius: '4px',
+                fontWeight: 600,
+                letterSpacing: '0.3px',
+                textTransform: 'uppercase',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              }}
+            >
+              <i className="bi bi-diagram-3-fill" style={{ fontSize: '0.5rem' }}></i>
+            </span>
+          )}
+          {type === 'character' && is_free === false && price > 0 && (
+            <span
+              title={t('entity_card.paid') || 'Paid'}
+              style={{
+                background: 'rgba(251, 146, 60, 0.9)',
+                color: '#fff',
+                fontSize: '0.55rem',
+                padding: '2px 5px',
+                borderRadius: '4px',
+                fontWeight: 600,
+                letterSpacing: '0.3px',
+                textTransform: 'uppercase',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              }}
+            >
+              ¥{price}
+            </span>
+          )}
+        </div>
         <img
           src={picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${picture.replace(/^\//, '')}` : defaultPicture}
           alt={name}

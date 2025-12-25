@@ -24,6 +24,7 @@ def search_characters(
     
     # Base query with filtering
     base_query = db.query(Character).filter(
+        Character.is_public == True,
         Character.name.ilike(ilike_pattern) | 
         Character.persona.ilike(ilike_pattern) |
         func.array_to_string(Character.tags, ',').ilike(ilike_pattern)
@@ -76,6 +77,7 @@ def search_scenes(
 ):
     ilike_pattern = f"%{q}%"
     base_query = db.query(Scene).filter(
+        Scene.is_public == True,
         Scene.name.ilike(ilike_pattern) |
         Scene.description.ilike(ilike_pattern) |
         func.array_to_string(Scene.tags, ',').ilike(ilike_pattern)
@@ -121,6 +123,7 @@ def search_personas(
 ):
     ilike_pattern = f"%{q}%"
     base_query = db.query(Persona).filter(
+        Persona.is_public == True,
         Persona.name.ilike(ilike_pattern) |
         Persona.description.ilike(ilike_pattern) |
         func.array_to_string(Persona.tags, ',').ilike(ilike_pattern)

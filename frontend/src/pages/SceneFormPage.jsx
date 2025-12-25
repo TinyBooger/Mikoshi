@@ -30,6 +30,8 @@ export default function SceneFormPage() {
     description: '',
     intro: '',
     tags: [],
+    is_public: true,
+    is_forkable: false,
   });
   const [picture, setPicture] = useState(null);
   const [picturePreview, setPicturePreview] = useState(null);
@@ -65,6 +67,8 @@ export default function SceneFormPage() {
             description: data.description || '',
             intro: data.intro || '',
             tags: data.tags || [],
+            is_public: !!data.is_public,
+            is_forkable: !!data.is_forkable,
           });
           setPicture(null);
           setLoading(false);
@@ -97,6 +101,8 @@ export default function SceneFormPage() {
     formData.append("description", sceneData.description.trim());
     formData.append("intro", sceneData.intro.trim());
     sceneData.tags.forEach(tag => formData.append("tags", tag));
+    formData.append("is_public", String(!!sceneData.is_public));
+    formData.append("is_forkable", String(!!sceneData.is_forkable));
     if (picture) formData.append("picture", picture);
     try {
       const res = await fetch(mode === 'edit' ? `${window.API_BASE_URL}/api/scenes/${id}` : `${window.API_BASE_URL}/api/scenes/`, {
@@ -262,6 +268,68 @@ export default function SceneFormPage() {
               placeholder={t('scene_form.placeholders.tags')}
               hint={t('scene_form.tags_input_hint')}
             />
+          </div>
+          {/* Visibility & Options */}
+          <div className="mb-4">
+            <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '1rem' }}>
+              {t('scene_form.visibility_settings') || 'Visibility & Access'}
+            </label>
+            
+            {/* Public/Private Toggle */}
+            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+              <div className="d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <i className={`bi ${sceneData.is_public ? 'bi-globe2' : 'bi-lock-fill'}`} style={{ fontSize: '1.2rem', color: sceneData.is_public ? '#10b981' : '#6b7280' }}></i>
+                  <div>
+                    <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
+                      {sceneData.is_public ? (t('scene_form.public') || 'Public') : (t('scene_form.private') || 'Private')}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                      {sceneData.is_public 
+                        ? (t('scene_form.public_desc') || 'Visible to everyone')
+                        : (t('scene_form.private_desc') || 'Only visible to you')}
+                    </div>
+                  </div>
+                </div>
+                <div className="form-check form-switch">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    role="switch"
+                    checked={!!sceneData.is_public}
+                    onChange={e => handleChange('is_public', e.target.checked)}
+                    style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Forkable Toggle */}
+            <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+              <div className="d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.2rem', color: '#22c55e' }}></i>
+                  <div>
+                    <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
+                      {t('scene_form.forkable') || 'Allow Forking'}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                      {t('scene_form.forkable_desc') || 'Users can create their own versions'}
+                    </div>
+                  </div>
+                </div>
+                <div className="form-check form-switch">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    role="switch"
+                    checked={!!sceneData.is_forkable}
+                    onChange={e => handleChange('is_forkable', e.target.checked)}
+                    style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
             {/* Profile Picture (moved to end) */}
             <div className="mb-4">

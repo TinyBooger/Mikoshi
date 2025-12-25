@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey, UniqueConstraint, Boolean
+from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey, UniqueConstraint, Boolean, Numeric
 from database import Base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from datetime import datetime, UTC
@@ -11,6 +11,10 @@ class Character(Base):
     example_messages = Column(Text, default="")
     tagline = Column(String(255), default="")  # 50 words fits ~255 chars
     tags = Column(ARRAY(Text), default=[])   # array of strings
+    is_public = Column(Boolean, default=True, nullable=False)
+    is_forkable = Column(Boolean, default=False, nullable=False)
+    is_free = Column(Boolean, default=True, nullable=False)
+    price = Column(Numeric(10, 2), default=0, nullable=False)  # Price in CNY
 
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
@@ -56,6 +60,8 @@ class Persona(Base):
     created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     likes = Column(Integer, default=0)
     views = Column(Integer, default=0)
+    is_public = Column(Boolean, default=True, nullable=False)
+    is_forkable = Column(Boolean, default=False, nullable=False)
 
 
 class SearchTerm(Base):
@@ -85,6 +91,8 @@ class Scene(Base):
     created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     likes = Column(Integer, default=0)
     views = Column(Integer, default=0)
+    is_public = Column(Boolean, default=True, nullable=False)
+    is_forkable = Column(Boolean, default=False, nullable=False)
 
 # Junction table for character likes
 class UserLikedCharacter(Base):

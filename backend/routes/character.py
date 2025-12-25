@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import array, TEXT
-from typing import List
+from typing import List, Optional
 from datetime import datetime, UTC
 
 from database import get_db
@@ -22,6 +22,10 @@ async def create_character(
     tags: List[str] = Form([]),
     greeting: str = Form(""),
     sample_dialogue: str = Form(""),
+    is_public: bool = Form(False),
+    is_forkable: bool = Form(False),
+    is_free: bool = Form(True),
+    price: float = Form(0),
     picture: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -36,6 +40,21 @@ async def create_character(
     error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags)
     if error:
         raise HTTPException(status_code=400, detail=error)
+    
+    # Enforce: paid characters cannot be forkable
+    if not is_free and is_forkable:
+        raise HTTPException(status_code=400, detail="Paid characters cannot be forkable")
+    
+    # Validate price consistency
+    if is_free and price > 0:
+        price = 0
+    elif not is_free:
+        if price < 0.1:
+            raise HTTPException(status_code=400, detail="Paid characters must have a price of at least ¥0.1")
+        if price > 100:
+            raise HTTPException(status_code=400, detail="Price cannot exceed ¥100")
+        # Round to 2 decimals
+        price = round(price, 2)
 
     for tag_name in tags:  # update tags
         tag = db.query(Tag).filter(Tag.name == tag_name).first()
@@ -53,6 +72,10 @@ async def create_character(
         example_messages=sample_dialogue.strip(),
         creator_id=current_user.id,
         creator_name=current_user.name,
+        is_public=is_public,
+        is_forkable=is_forkable,
+        is_free=is_free,
+        price=price,
         views=0,
         picture=None
     )
@@ -77,6 +100,10 @@ async def update_character(
     tags: List[str] = Form([]),
     greeting: str = Form(""),
     sample_dialogue: str = Form(""),
+    is_public: Optional[bool] = Form(None),
+    is_forkable: Optional[bool] = Form(None),
+    is_free: Optional[bool] = Form(None),
+    price: Optional[float] = Form(None),
     picture: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -89,6 +116,25 @@ async def update_character(
     error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags)
     if error:
         raise HTTPException(status_code=400, detail=error)
+    
+    # Enforce: paid characters cannot be forkable
+    final_is_free = is_free if is_free is not None else char.is_free
+    final_is_forkable = is_forkable if is_forkable is not None else char.is_forkable
+    final_price = price if price is not None else char.price
+    
+    if not final_is_free and final_is_forkable:
+        raise HTTPException(status_code=400, detail="Paid characters cannot be forkable")
+    
+    # Validate price consistency
+    if final_is_free and final_price > 0:
+        final_price = 0
+    elif not final_is_free:
+        if final_price < 0.1:
+            raise HTTPException(status_code=400, detail="Paid characters must have a price of at least ¥0.1")
+        if final_price > 100:
+            raise HTTPException(status_code=400, detail="Price cannot exceed ¥100")
+        # Round to 2 decimals
+        final_price = round(final_price, 2)
 
     char.name = name
     char.persona = persona
@@ -96,6 +142,15 @@ async def update_character(
     char.tags = tags
     char.greeting = greeting.strip()
     char.example_messages = sample_dialogue.strip()
+
+    if is_public is not None:
+        char.is_public = is_public
+    if is_forkable is not None:
+        char.is_forkable = is_forkable
+    if is_free is not None:
+        char.is_free = is_free
+    if price is not None:
+        char.price = final_price
 
     if picture:
         char.picture = save_image(picture.file, 'character', char.id, picture.filename)
@@ -105,7 +160,7 @@ async def update_character(
 
 @router.get("/api/characters", response_model=List[CharacterOut])
 def get_characters(search: str = None, db: Session = Depends(get_db)):
-    query = db.query(Character)
+    query = db.query(Character).filter(Character.is_public == True)
     if search:
         # Case-insensitive search by name
         query = query.filter(Character.name.ilike(f"%{search}%"))
@@ -114,10 +169,13 @@ def get_characters(search: str = None, db: Session = Depends(get_db)):
 
 
 @router.get("/api/character/{character_id}", response_model=CharacterOut)
-def get_character(character_id: int, db: Session = Depends(get_db)):
+def get_character(character_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     c = db.query(Character).filter(Character.id == character_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Character not found")
+    if not c.is_public:
+        if not current_user or c.creator_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Character not found")
     return c
 
 @router.delete("/api/character/{character_id}/delete")
@@ -146,7 +204,7 @@ def get_popular_characters(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Character).order_by(Character.views.desc())
+    base_query = db.query(Character).filter(Character.is_public == True).order_by(Character.views.desc())
     total = base_query.count()
     if short:
         items = base_query.limit(10).all()
@@ -178,7 +236,7 @@ def get_recommended_characters(
     tags_array = array(user_tags, type_=TEXT)
     
     # Query characters matching user tags, excluding already viewed ones
-    query = db.query(Character).filter(Character.tags.overlap(tags_array))
+    query = db.query(Character).filter(Character.is_public == True).filter(Character.tags.overlap(tags_array))
     
     if excluded_ids:
         query = query.filter(~Character.id.in_(excluded_ids))
@@ -198,6 +256,7 @@ def get_characters_by_tag(
     limit: int = 12
 ):
     chars = db.query(Character).filter(
+        Character.is_public == True,
         Character.tags.any(tag_name)
     ).order_by(
         Character.views.desc()
@@ -211,7 +270,7 @@ def get_recent_characters(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Character).order_by(Character.created_time.desc())
+    base_query = db.query(Character).filter(Character.is_public == True).order_by(Character.created_time.desc())
     total = base_query.count()
     if short:
         items = base_query.limit(10).all()
@@ -237,6 +296,9 @@ def get_user_created_characters(
     """
     if userId:
         query = db.query(Character).filter(Character.creator_id == userId)
+        # If viewing another user's creations, show only public
+        if not current_user or current_user.id != userId:
+            query = query.filter(Character.is_public == True)
     else:
         if not current_user:
             return CharacterListOut(items=[], total=0, page=1, page_size=0, short=False)
@@ -261,10 +323,13 @@ def get_user_liked_characters(
     liked_ids = [row.character_id for row in liked.offset((page - 1) * page_size).limit(page_size).all()]
     if not liked_ids:
         return CharacterListOut(items=[], total=total, page=page, page_size=page_size, short=False)
-    characters = db.query(Character).filter(Character.id.in_(liked_ids)).all()
+    characters = db.query(Character).filter(Character.id.in_(liked_ids), Character.is_public == True).all()
     return CharacterListOut(items=characters, total=total, page=page, page_size=page_size, short=False)
 
 @router.get("/api/user/{user_id}/characters", response_model=List[CharacterOut])
-def get_user_characters(user_id: str, db: Session = Depends(get_db)):
-    characters = db.query(Character).filter(Character.creator_id == user_id).all()
+def get_user_characters(user_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    query = db.query(Character).filter(Character.creator_id == user_id)
+    if not current_user or current_user.id != user_id:
+        query = query.filter(Character.is_public == True)
+    characters = query.all()
     return characters

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, Form, UploadFile, File, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from database import get_db
 from models import Persona, User, Tag, UserLikedPersona
@@ -21,7 +21,7 @@ def get_popular_personas(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Persona).order_by(Persona.views.desc())
+    base_query = db.query(Persona).filter(Persona.is_public == True).order_by(Persona.views.desc())
     total = base_query.count()
     if short:
         items = base_query.limit(10).all()
@@ -37,7 +37,7 @@ def get_recent_personas(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Persona).order_by(Persona.created_time.desc())
+    base_query = db.query(Persona).filter(Persona.is_public == True).order_by(Persona.created_time.desc())
     total = base_query.count()
     if short:
         items = base_query.limit(10).all()
@@ -53,7 +53,7 @@ def get_recommended_personas(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Persona).order_by(Persona.views.desc(), Persona.created_time.desc())
+    base_query = db.query(Persona).filter(Persona.is_public == True).order_by(Persona.views.desc(), Persona.created_time.desc())
     total = base_query.count()
     if short:
         items = base_query.limit(10).all()
@@ -70,6 +70,8 @@ async def create_persona(
     description: str = Form(None),
     intro: str = Form(None),
     tags: List[str] = Form([]),
+    is_public: bool = Form(False),
+    is_forkable: bool = Form(False),
     picture: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -82,6 +84,8 @@ async def create_persona(
         creator_id=current_user.id,
         creator_name=current_user.name,
         created_time=datetime.now(UTC),
+        is_public=is_public,
+        is_forkable=is_forkable,
         picture=None
     )
     db.add(persona)
@@ -99,7 +103,7 @@ async def create_persona(
 # Read all Personas or search by name
 @router.get("/api/personas/", response_model=List[PersonaOut])
 def get_personas(search: str = None, db: Session = Depends(get_db)):
-    query = db.query(Persona)
+    query = db.query(Persona).filter(Persona.is_public == True)
     if search:
         # Case-insensitive search by name
         query = query.filter(Persona.name.ilike(f"%{search}%"))
@@ -108,10 +112,13 @@ def get_personas(search: str = None, db: Session = Depends(get_db)):
 
 # Read single Persona
 @router.get("/api/personas/{persona_id}", response_model=PersonaOut)
-def get_persona(persona_id: int, db: Session = Depends(get_db)):
+def get_persona(persona_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(status_code=404, detail="Persona not found")
+    if not persona.is_public:
+        if not current_user or persona.creator_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Persona not found")
     return persona
 
 # Update Persona
@@ -122,6 +129,8 @@ async def update_persona(
     description: str = Form(None),
     intro: str = Form(None),
     tags: List[str] = Form(None),
+    is_public: Optional[bool] = Form(None),
+    is_forkable: Optional[bool] = Form(None),
     picture: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -139,6 +148,10 @@ async def update_persona(
         persona.intro = intro
     if tags is not None:
         persona.tags = tags
+    if is_public is not None:
+        persona.is_public = is_public
+    if is_forkable is not None:
+        persona.is_forkable = is_forkable
     if picture:
         persona.picture = save_image(picture.file, 'persona', persona.id, picture.filename)
     db.commit()
@@ -204,6 +217,8 @@ def get_personas_created(
     """
     if userId:
         query = db.query(Persona).filter(Persona.creator_id == userId).order_by(Persona.created_time.desc())
+        if not current_user or current_user.id != userId:
+            query = query.filter(Persona.is_public == True)
     else:
         if not current_user:
             return PersonaListOut(items=[], total=0, page=1, page_size=0, short=False)
@@ -237,5 +252,5 @@ def get_personas_liked(
     persona_ids = [pid for (pid,) in liked_query.offset((page - 1) * page_size).limit(page_size).all()]
     if not persona_ids:
         return PersonaListOut(items=[], total=total, page=page, page_size=page_size, short=False)
-    personas = db.query(Persona).filter(Persona.id.in_(persona_ids)).all()
+    personas = db.query(Persona).filter(Persona.id.in_(persona_ids), Persona.is_public == True).all()
     return PersonaListOut(items=personas, total=total, page=page, page_size=page_size, short=False)

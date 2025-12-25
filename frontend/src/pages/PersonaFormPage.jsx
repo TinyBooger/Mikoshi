@@ -28,6 +28,8 @@ export default function PersonaFormPage() {
     description: '',
     intro: '',
     tags: [],
+    is_public: true,
+    is_forkable: false,
   });
   const [picture, setPicture] = useState(null);
   const [picturePreview, setPicturePreview] = useState(null);
@@ -63,6 +65,8 @@ export default function PersonaFormPage() {
             description: data.description || '',
             intro: data.intro || '',
             tags: data.tags || [],
+            is_public: !!data.is_public,
+            is_forkable: !!data.is_forkable,
           });
           setPicture(null);
           setLoading(false);
@@ -95,6 +99,8 @@ export default function PersonaFormPage() {
     formData.append("description", personaData.description.trim());
     formData.append("intro", personaData.intro.trim());
     personaData.tags.forEach(tag => formData.append("tags", tag));
+    formData.append("is_public", String(!!personaData.is_public));
+    formData.append("is_forkable", String(!!personaData.is_forkable));
     if (picture) formData.append("picture", picture);
     try {
       const res = await fetch(mode === 'edit' ? `${window.API_BASE_URL}/api/personas/${id}` : `${window.API_BASE_URL}/api/personas/`, {
@@ -259,6 +265,68 @@ export default function PersonaFormPage() {
               placeholder={t('persona_form.placeholders.tags')}
               hint={t('persona_form.tags_input_hint')}
             />
+          </div>
+          {/* Visibility & Options */}
+          <div className="mb-4">
+            <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '1rem' }}>
+              {t('persona_form.visibility_settings') || 'Visibility & Access'}
+            </label>
+            
+            {/* Public/Private Toggle */}
+            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+              <div className="d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <i className={`bi ${personaData.is_public ? 'bi-globe2' : 'bi-lock-fill'}`} style={{ fontSize: '1.2rem', color: personaData.is_public ? '#10b981' : '#6b7280' }}></i>
+                  <div>
+                    <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
+                      {personaData.is_public ? (t('persona_form.public') || 'Public') : (t('persona_form.private') || 'Private')}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                      {personaData.is_public 
+                        ? (t('persona_form.public_desc') || 'Visible to everyone')
+                        : (t('persona_form.private_desc') || 'Only visible to you')}
+                    </div>
+                  </div>
+                </div>
+                <div className="form-check form-switch">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    role="switch"
+                    checked={!!personaData.is_public}
+                    onChange={e => handleChange('is_public', e.target.checked)}
+                    style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Forkable Toggle */}
+            <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+              <div className="d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.2rem', color: '#22c55e' }}></i>
+                  <div>
+                    <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
+                      {t('persona_form.forkable') || 'Allow Forking'}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                      {t('persona_form.forkable_desc') || 'Users can create their own versions'}
+                    </div>
+                  </div>
+                </div>
+                <div className="form-check form-switch">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    role="switch"
+                    checked={!!personaData.is_forkable}
+                    onChange={e => handleChange('is_forkable', e.target.checked)}
+                    style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
             {/* Profile Picture (moved to end) */}
             <div className="mb-4">

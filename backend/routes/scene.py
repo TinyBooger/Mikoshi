@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from database import get_db
 from models import Scene, User, UserLikedScene
 from utils.local_storage_utils import save_image
@@ -23,6 +23,8 @@ async def create_scene(
     description: str = Form(...),
     intro: str = Form(None),
     tags: List[str] = Form([]),
+    is_public: bool = Form(False),
+    is_forkable: bool = Form(False),
     picture: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -35,6 +37,8 @@ async def create_scene(
         creator_id=current_user.id,
         creator_name=current_user.name,
         created_time=datetime.now(UTC),
+        is_public=is_public,
+        is_forkable=is_forkable,
         picture=None
     )
     db.add(scene)
@@ -54,7 +58,7 @@ async def create_scene(
 # Read all Scenes or search by name
 @router.get("/api/scenes/", response_model=List[SceneOut])
 def get_scenes(search: str = None, db: Session = Depends(get_db)):
-    query = db.query(Scene)
+    query = db.query(Scene).filter(Scene.is_public == True)
     if search:
         # Case-insensitive search by name
         query = query.filter(Scene.name.ilike(f"%{search}%"))
@@ -76,6 +80,8 @@ def get_scenes_created(
     """
     if userId:
         query = db.query(Scene).filter(Scene.creator_id == userId).order_by(Scene.created_time.desc())
+        if not current_user or current_user.id != userId:
+            query = query.filter(Scene.is_public == True)
     else:
         if not current_user:
             return SceneListOut(items=[], total=0, page=1, page_size=0, short=False)
@@ -94,7 +100,7 @@ def get_popular_scenes(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Scene).order_by(Scene.views.desc())
+    base_query = db.query(Scene).filter(Scene.is_public == True).order_by(Scene.views.desc())
     total = base_query.count()
     if short:
         items = base_query.limit(10).all()
@@ -110,7 +116,7 @@ def get_recent_scenes(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Scene).order_by(Scene.created_time.desc())
+    base_query = db.query(Scene).filter(Scene.is_public == True).order_by(Scene.created_time.desc())
     total = base_query.count()
     if short:
         items = base_query.limit(10).all()
@@ -132,7 +138,7 @@ def get_recommended_scenes(
         return SceneListOut(items=[], total=0, page=1, page_size=0, short=short)
     user_tags = current_user.liked_tags or []
     tags_array = array(user_tags, type_=TEXT)
-    base_query = db.query(Scene).filter(Scene.tags.overlap(tags_array)).order_by(Scene.views.desc())
+    base_query = db.query(Scene).filter(Scene.is_public == True).filter(Scene.tags.overlap(tags_array)).order_by(Scene.views.desc())
     total = base_query.count()
     if short:
         items = base_query.limit(10).all()
@@ -142,10 +148,13 @@ def get_recommended_scenes(
 
 # Read single Scene
 @router.get("/api/scenes/{scene_id}", response_model=SceneOut)
-def get_scene(scene_id: int, db: Session = Depends(get_db)):
+def get_scene(scene_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
+    if not scene.is_public:
+        if not current_user or scene.creator_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Scene not found")
     return scene
 
 # Update Scene
@@ -156,6 +165,8 @@ async def update_scene(
     description: str = Form(None),
     intro: str = Form(None),
     tags: List[str] = Form(None),
+    is_public: Optional[bool] = Form(None),
+    is_forkable: Optional[bool] = Form(None),
     picture: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -173,6 +184,10 @@ async def update_scene(
         scene.intro = intro
     if tags is not None:
         scene.tags = tags
+    if is_public is not None:
+        scene.is_public = is_public
+    if is_forkable is not None:
+        scene.is_forkable = is_forkable
     if picture:
         scene.picture = save_image(picture.file, 'scene', scene.id, picture.filename)
     db.commit()
@@ -217,5 +232,5 @@ def get_scenes_liked(
     scene_ids = [sid for (sid,) in liked_query.offset((page - 1) * page_size).limit(page_size).all()]
     if not scene_ids:
         return SceneListOut(items=[], total=total, page=page, page_size=page_size, short=False)
-    scenes = db.query(Scene).filter(Scene.id.in_(scene_ids)).all()
+    scenes = db.query(Scene).filter(Scene.id.in_(scene_ids), Scene.is_public == True).all()
     return SceneListOut(items=scenes, total=total, page=page, page_size=page_size, short=False)

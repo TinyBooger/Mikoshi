@@ -203,7 +203,14 @@
     "invitation_code_placeholder": "请输入邀请码",
     "invitation_code_hint": "当前为内测阶段，注册需要邀请码。",
     "profile_preview": "头像预览",
-    "tags_input_hint": "输入标签后点击“添加”（或按 Enter）"
+    "tags_input_hint": "输入标签后点击\"添加\"（或按 Enter）",
+    "visibility_settings": "可见性与访问权限",
+    "public": "公开",
+    "private": "私密",
+    "public_desc": "所有人可见",
+    "private_desc": "仅自己可见",
+    "forkable": "允许参考",
+    "forkable_desc": "允许其他用户以此为基础，参考和创建自己的版本"
   },
   "reset_password": {
     "title": "重置密码",
@@ -267,7 +274,24 @@
     },
     "tags_suffix": "个标签",
     "alt_preview": "预览",
-    "tags_input_hint": "输入标签后点击“添加”（或按 Enter）"
+    "tags_input_hint": "输入标签后点击\"添加\"（或按 Enter）",
+    "visibility_settings": "可见性与访问权限",
+    "public": "公开",
+    "private": "私密",
+    "public_desc": "所有人可见",
+    "private_desc": "仅自己可见",
+    "forkable": "允许参考",
+    "free_only": "（仅限免费角色）",
+    "forkable_desc": "允许其他用户以此为基础，参考和创建自己的版本",
+    "pricing": "定价",
+    "free": "免费",
+    "paid_character": "付费角色？",
+    "paid_character_desc": "免费用户可创建 2 个付费角色，专业版用户无限制",
+    "paid_limit_free": "免费用户最多可创建 2 个付费角色。升级到专业版以获得无限制。",
+    "paid_limit_pro": "您已达到付费角色限制",
+    "custom_price": "自定义价格",
+    "price_range": "¥0.1 - ¥100",
+    "cny": "人民币"
   },
   "character_assistant": {
     "title": "AI 助手",
@@ -351,7 +375,14 @@
       "intro": "例如：\"雨水在霓虹灯下嘶嘶作响，脚步声在半掩的摊位间回荡。\"",
       "tags": "例如：赛博朋克、夜晚、雨"
     },
-    "tags_input_hint": "输入标签后点击“添加”（或按 Enter）"
+    "tags_input_hint": "输入标签后点击\"添加\"（或按 Enter）",
+    "visibility_settings": "可见性与访问权限",
+    "public": "公开",
+    "private": "私密",
+    "public_desc": "所有人可见",
+    "private_desc": "仅自己可见",
+    "forkable": "允许参考",
+    "forkable_desc": "允许其他用户以此为基础，参考和创建自己的版本"
   },
   
   "common": {
@@ -497,7 +528,10 @@
     "unknown": "未知",
     "no_description": "暂无简介",
     "views": "浏览",
-    "likes": "点赞"
+    "likes": "点赞",
+    "private": "私密",
+    "forkable": "可分叉",
+    "paid": "付费"
   },
   "terms": {
     "title": "语伴岛 用户服务协议",

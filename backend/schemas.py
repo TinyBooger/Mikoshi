@@ -14,6 +14,8 @@ class SceneOut(BaseModel):
     likes: int = 0
     views: int = 0
     picture: Optional[str] = None
+    is_public: bool = False
+    is_forkable: bool = False
 
     class Config:
         from_attributes = True
@@ -30,6 +32,8 @@ class PersonaOut(BaseModel):
     picture: Optional[str] = None
     likes: int = 0
     views: int = 0
+    is_public: bool = False
+    is_forkable: bool = False
 
     class Config:
         from_attributes = True
@@ -48,6 +52,10 @@ class CharacterOut(BaseModel):
     created_time: Any
     creator_id: str
     creator_name: Optional[str] = None
+    is_public: bool = False
+    is_forkable: bool = False
+    is_free: bool = True
+    price: float = 0
 
     class Config:
         from_attributes = True

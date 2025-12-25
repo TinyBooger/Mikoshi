@@ -267,7 +267,24 @@
     },
     "tags_suffix": "tags",
     "alt_preview": "preview",
-    "tags_input_hint": "Type a tag, then tap Add (or press Enter)"
+    "tags_input_hint": "Type a tag, then tap Add (or press Enter)",
+    "visibility_settings": "Visibility & Access",
+    "public": "Public",
+    "private": "Private",
+    "public_desc": "Visible to everyone",
+    "private_desc": "Only visible to you",
+    "forkable": "Allow Forking",
+    "free_only": "Free Only",
+    "forkable_desc": "Users can create their own versions",
+    "pricing": "Pricing",
+    "free": "Free",
+    "paid_character": "Paid Character?",
+    "paid_character_desc": "Free users can create 2 paid characters, Pro users unlimited",
+    "paid_limit_free": "Free users can create a maximum of 2 paid characters. Upgrade to Pro for unlimited.",
+    "paid_limit_pro": "You've reached the paid character limit",
+    "custom_price": "Custom:",
+    "price_range": "¥0.1 - ¥100",
+    "cny": "Chinese Yuan"
   },
   "character_assistant": {
     "title": "AI Assistant",
@@ -316,7 +333,14 @@
       "intro": "e.g., \"I keep the city’s forgotten stories in my notebooks—care to add a page?\"",
       "tags": "e.g., detective, scholar, witty"
     },
-    "tags_input_hint": "Type a tag, then tap Add (or press Enter)"
+    "tags_input_hint": "Type a tag, then tap Add (or press Enter)",
+    "visibility_settings": "Visibility & Access",
+    "public": "Public",
+    "private": "Private",
+    "public_desc": "Visible to everyone",
+    "private_desc": "Only visible to you",
+    "forkable": "Allow Forking",
+    "forkable_desc": "Users can create their own versions"
   },
   "scene_form": {
     "edit_title": "Edit Scene",
@@ -351,7 +375,14 @@
       "intro": "e.g., \"Rain hisses on neon-lit pavement as footsteps echo between shuttered stalls.\"",
       "tags": "e.g., cyberpunk, night, rain"
     },
-    "tags_input_hint": "Type a tag, then tap Add (or press Enter)"
+    "tags_input_hint": "Type a tag, then tap Add (or press Enter)",
+    "visibility_settings": "Visibility & Access",
+    "public": "Public",
+    "private": "Private",
+    "public_desc": "Visible to everyone",
+    "private_desc": "Only visible to you",
+    "forkable": "Allow Forking",
+    "forkable_desc": "Users can create their own versions"
   },
   "common": {
     "confirm": "Confirm",
@@ -494,7 +525,10 @@
     "unknown": "Unknown",
     "no_description": "No description",
     "views": "views",
-    "likes": "likes"
+    "likes": "likes",
+    "private": "Private",
+    "forkable": "Forkable",
+    "paid": "Paid"
   },
   "terms": {
     "title": "Terms of Service",
