@@ -10,6 +10,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import CharacterAssistantModal from '../components/CharacterAssistantModal';
+import { silentExpGain } from '../utils/expUtils';
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
@@ -27,6 +28,10 @@ export default function CharacterFormPage() {
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
 
   const { sessionToken, userData } = useContext(AuthContext);
+  const userLevel = Number(userData?.level || 1);
+  const canPrivate = userLevel >= 2;
+  const canFork = userLevel >= 2;
+  const canPaid = userLevel >= 3;
   const navigate = useNavigate();
   const toast = useToast();
   const [charData, setCharData] = useState({
@@ -50,6 +55,23 @@ export default function CharacterFormPage() {
   const [showAssistant, setShowAssistant] = useState(false);
   const [assistantMessages, setAssistantMessages] = useState(null);
   const [assistantGeneratedData, setAssistantGeneratedData] = useState(null);
+
+  // Enforce level locks on fork/paid options
+  useEffect(() => {
+    setCharData(prev => {
+      let next = prev;
+      if (!canPrivate && !prev.is_public) {
+        next = { ...next, is_public: true };
+      }
+      if (!canFork && prev.is_forkable) {
+        next = { ...next, is_forkable: false };
+      }
+      if (!canPaid && !prev.is_free) {
+        next = { ...next, is_free: true, price: 0 };
+      }
+      return next;
+    });
+  }, [canPrivate, canFork, canPaid]);
 
   useEffect(() => {
     if (mode === 'edit') {
@@ -127,12 +149,18 @@ export default function CharacterFormPage() {
         // Count paid characters
         const paidCharacterCount = (characters || []).filter(char => !char.is_free).length;
         
-        // Free users can create max 2 paid characters, check if user has pro status
-        const isPro = userData?.is_admin || userData?.subscription_type === 'pro'; // Adjust field name if needed
-        const maxPaidCharacters = isPro ? Infinity : 2;
+        // Level-based limits: L3=1, L4=2, L5+=unlimited
+        let maxPaidCharacters = Infinity;
+        if (userLevel === 3) {
+          maxPaidCharacters = 1;
+        } else if (userLevel === 4) {
+          maxPaidCharacters = 2;
+        }
         
         if (paidCharacterCount >= maxPaidCharacters) {
-          const maxMsg = isPro ? t('character_form.paid_limit_pro') || 'You\'ve reached the paid character limit' : t('character_form.paid_limit_free') || 'Free users can create maximum 2 paid characters. Upgrade to Pro for unlimited.';
+          const maxMsg = userLevel === 3 
+            ? t('character_form.paid_limit_l3') || 'Level 3 allows 1 paid character. Reach level 4 for more.'
+            : t('character_form.paid_limit_l4') || 'Level 4 allows 2 paid characters. Reach level 5 for unlimited.';
           toast.show(maxMsg, { type: 'error' });
           return;
         }
@@ -166,6 +194,10 @@ export default function CharacterFormPage() {
       const data = await res.json();
       if (res.ok) {
         toast.show(mode === 'edit' ? t('character_form.updated') : t('character_form.created'));
+        // Silently award EXP for character creation (backend handles it but we can trigger refresh)
+        if (mode === 'create') {
+          silentExpGain('create_character', null, sessionToken).catch(() => {});
+        }
         navigate(mode === 'edit' ? "/profile" : "/");
       } else {
         toast.show(data.message || data.detail || t('character_form.error'), { type: 'error' });
@@ -420,7 +452,7 @@ export default function CharacterFormPage() {
             </label>
             
             {/* Public/Private Toggle */}
-            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canPrivate && !charData.is_public ? 0.55 : 1 }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className={`bi ${charData.is_public ? 'bi-globe2' : 'bi-lock-fill'}`} style={{ fontSize: '1.2rem', color: charData.is_public ? '#10b981' : '#6b7280' }}></i>
@@ -433,6 +465,11 @@ export default function CharacterFormPage() {
                         ? (t('character_form.public_desc') || 'Visible to everyone')
                         : (t('character_form.private_desc') || 'Only visible to you')}
                     </div>
+                    {!canPrivate && !charData.is_public && (
+                      <div className="text-danger" style={{ fontSize: '0.75rem' }}>
+                        {t('character_form.level_lock_notice', { level: 2 }) || 'This function will be available at level 2'}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="form-check form-switch">
@@ -441,15 +478,16 @@ export default function CharacterFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!!charData.is_public}
+                    disabled={!canPrivate && !charData.is_public}
                     onChange={e => handleChange('is_public', e.target.checked)}
-                    style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: (!canPrivate && !charData.is_public) ? 'not-allowed' : 'pointer' }}
                   />
                 </div>
               </div>
             </div>
 
             {/* Forkable Toggle */}
-            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !charData.is_free ? 0.5 : 1 }}>
+            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !charData.is_free || !canFork ? 0.5 : 1 }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.2rem', color: '#22c55e' }}></i>
@@ -461,6 +499,11 @@ export default function CharacterFormPage() {
                     <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                       {t('character_form.forkable_desc') || 'Users can create their own versions'}
                     </div>
+                    {!canFork && (
+                      <div className="text-danger" style={{ fontSize: '0.75rem' }}>
+                        {t('character_form.level_lock_notice', { level: 2 }) || 'This function will be available at level 2'}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="form-check form-switch">
@@ -469,16 +512,16 @@ export default function CharacterFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!!charData.is_forkable}
-                    disabled={!charData.is_free}
+                    disabled={!charData.is_free || !canFork}
                     onChange={e => handleChange('is_forkable', e.target.checked)}
-                    style={{ width: '3rem', height: '1.5rem', cursor: charData.is_free ? 'pointer' : 'not-allowed' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: charData.is_free && canFork ? 'pointer' : 'not-allowed' }}
                   />
                 </div>
               </div>
             </div>
 
             {/* Paid Character Toggle */}
-            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canPaid ? 0.55 : 1 }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className="bi bi-currency-dollar" style={{ fontSize: '1.2rem', color: '#f59e0b' }}></i>
@@ -489,6 +532,11 @@ export default function CharacterFormPage() {
                     <div className="text-muted" style={{ fontSize: '0.7rem', lineHeight: '1.3' }}>
                       {t('character_form.paid_character_desc') || 'Free users can create 2 paid characters, Pro users unlimited'}
                     </div>
+                    {!canPaid && (
+                      <div className="text-danger" style={{ fontSize: '0.75rem' }}>
+                        {t('character_form.level_lock_notice', { level: 3 }) || 'This function will be available at level 3'}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="form-check form-switch">
@@ -497,6 +545,7 @@ export default function CharacterFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!charData.is_free}
+                    disabled={!canPaid}
                     onChange={e => {
                       if (e.target.checked) {
                         // Switching to paid
@@ -511,14 +560,14 @@ export default function CharacterFormPage() {
                         handleChange('price', 0);
                       }
                     }}
-                    style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: canPaid ? 'pointer' : 'not-allowed' }}
                   />
                 </div>
               </div>
             </div>
 
             {/* Pricing Tiers - Show only when Paid is selected */}
-            {!charData.is_free && (
+            {!charData.is_free && canPaid && (
               <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
                 <div className="mb-3">
                   <div className="fw-semibold" style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>

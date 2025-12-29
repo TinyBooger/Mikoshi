@@ -28,6 +28,8 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
         "views": user.views or 0,
         "likes": user.likes or 0,
         "is_admin": user.is_admin or False,
+        "level": getattr(user, "level", 1) or 1,
+        "exp": getattr(user, "exp", 0) or 0,
         "default_persona_id": user.default_persona_id,
         "default_persona": default_persona,
     }

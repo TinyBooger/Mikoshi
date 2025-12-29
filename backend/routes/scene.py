@@ -10,6 +10,7 @@ from utils.session import get_current_user
 from datetime import datetime, UTC
 from schemas import SceneOut, SceneListOut
 from sqlalchemy.dialects.postgresql import array, TEXT
+from utils.level_system import award_exp_with_limits
 
 
 router = APIRouter()
@@ -29,6 +30,10 @@ async def create_scene(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Enforce level-based private scene access (L2+)
+    if not is_public and current_user.level < 2:
+        raise HTTPException(status_code=403, detail="Private scenes require level 2 or higher")
+    
     scene = Scene(
         name=name,
         description=description,
@@ -44,12 +49,21 @@ async def create_scene(
     db.add(scene)
     db.commit()
     db.refresh(scene)
-    db.commit()
     if picture:
         scene.picture = save_image(picture.file, 'scene', scene.id, picture.filename)
         db.commit()
         db.refresh(scene)
-    return JSONResponse(content={"id": scene.id, "message": "Scene created"})
+    
+    # Award EXP to creator for creating a scene
+    exp_result = award_exp_with_limits(current_user, "create_scene", db)
+    
+    return JSONResponse(content={
+        "id": scene.id,
+        "message": "Scene created",
+        "exp": current_user.exp,
+        "level": current_user.level,
+        "exp_result": exp_result
+    })
 
 
 
@@ -176,6 +190,12 @@ async def update_scene(
         raise HTTPException(status_code=404, detail="Scene not found")
     if scene.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Enforce level-based private scene access (L2+)
+    final_is_public = is_public if is_public is not None else scene.is_public
+    if not final_is_public and current_user.level < 2:
+        raise HTTPException(status_code=403, detail="Private scenes require level 2 or higher")
+    
     if name is not None:
         scene.name = name
     if description is not None:

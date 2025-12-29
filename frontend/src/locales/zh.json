@@ -210,7 +210,8 @@
     "public_desc": "所有人可见",
     "private_desc": "仅自己可见",
     "forkable": "允许参考",
-    "forkable_desc": "允许其他用户以此为基础，参考和创建自己的版本"
+    "forkable_desc": "允许其他用户以此为基础，参考和创建自己的版本",
+    "level_lock_notice": "该功能将在达到等级 {{level}} 后开放"
   },
   "reset_password": {
     "title": "重置密码",
@@ -283,12 +284,15 @@
     "forkable": "允许参考",
     "free_only": "（仅限免费角色）",
     "forkable_desc": "允许其他用户以此为基础，参考和创建自己的版本",
+    "level_lock_notice": "该功能将在达到等级 {{level}} 后开放",
     "pricing": "定价",
     "free": "免费",
     "paid_character": "付费角色？",
     "paid_character_desc": "免费用户可创建 2 个付费角色，专业版用户无限制",
     "paid_limit_free": "免费用户最多可创建 2 个付费角色。升级到专业版以获得无限制。",
     "paid_limit_pro": "您已达到付费角色限制",
+    "paid_limit_l3": "等级 3 允许创建 1 个付费角色。达到等级 4 以创建更多。",
+    "paid_limit_l4": "等级 4 允许创建 2 个付费角色。达到等级 5 以获得无限制。",
     "custom_price": "自定义价格",
     "price_range": "¥0.1 - ¥100",
     "cny": "人民币"
@@ -340,7 +344,8 @@
       "intro": "例如：\"我把城市被遗忘的故事都记在本子里——要不要一起添上一页？\"",
       "tags": "例如：侦探、学者、机智"
     },
-    "tags_input_hint": "输入标签后点击“添加”（或按 Enter）"
+    "tags_input_hint": "输入标签后点击“添加”（或按 Enter）",
+    "level_lock_notice": "该功能将在达到等级 {{level}} 后开放"
   },
   "scene_form": {
     "edit_title": "编辑场景",
@@ -708,5 +713,57 @@
     "step3_title": "创建你自己的",
     "step3_description": "准备好让想象力成为现实了吗？点击这里创建你自己的角色、场景或自我形象。",
     "replay_tour": "重播引导"
+  },
+
+  "level_progress": {
+    "level_names": {
+      "L1": "新手",
+      "L2": "创作者",
+      "L3": "进阶",
+      "L4": "专业",
+      "L5": "精英",
+      "L6": "大师"
+    },
+    "unlocks": {
+      "L1": "创建角色、场景、自我形象",
+      "L2": "参考、私密角色",
+      "L3": "1个付费角色、基础数据",
+      "L4": "2个付费角色、提示词控制",
+      "L5": "精选推荐、测试功能",
+      "L6": "创作者徽章、收益工具"
+    },
+    "details_button": "等级详情",
+    "unlocks_label": "解锁：",
+    "exp_label": "经验",
+    "next_label": "下一等级：",
+    "max_level": "已达最高等级",
+    "max_level_body": "你已达到最高等级。",
+    "keep_creating": "继续创作来保持亮点！",
+    "unlock_path": "等级路径",
+    "next_level": "下一等级",
+    "maxed": "已满级",
+    "maxed_desc": "尽享所有创作者特权",
+    "earn_exp": "获得经验的方式",
+    "rewards": {
+      "create_character": "创建角色 (+30)",
+      "create_scene": "创建场景 (+15)",
+      "create_persona": "创建自我形象 (+15)",
+      "character_liked": "角色被点赞 (+5)",
+      "forked": "被参考 (+10)",
+      "paid_char_sold": "付费角色成交 (+50)",
+      "daily_chat": "每日聊天 (+20)"
+    },
+    "daily_limits": {
+      "daily_chat": "1次/天",
+      "create_character": "2次/天",
+      "create_scene": "2次/天",
+      "create_persona": "2次/天",
+      "character_liked": "20次/天"
+    },
+    "view_all_levels": "查看所有等级",
+    "level_requirements_title": "等级需求",
+    "table_level": "等级",
+    "table_exp_required": "所需经验",
+    "table_benefits": "获得的权益"
   }
 }

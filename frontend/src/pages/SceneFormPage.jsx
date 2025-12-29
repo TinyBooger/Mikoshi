@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
+import { silentExpGain } from '../utils/expUtils';
 
 export default function SceneFormPage() {
   const { t } = useTranslation();
@@ -22,7 +23,9 @@ export default function SceneFormPage() {
   const mode = id ? 'edit' : 'create';
   console.log("SceneFormPage mode:", mode, id ? `(id: ${id})` : '');
 
-  const { sessionToken } = useContext(AuthContext);
+  const { sessionToken, userData } = useContext(AuthContext);
+  const userLevel = Number(userData?.level || 1);
+  const canFork = userLevel >= 2;
   const navigate = useNavigate();
   const toast = useToast();
   const [sceneData, setSceneData] = useState({
@@ -38,6 +41,12 @@ export default function SceneFormPage() {
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit');
+
+  useEffect(() => {
+    if (!canFork && sceneData.is_forkable) {
+      setSceneData(prev => ({ ...prev, is_forkable: false }));
+    }
+  }, [canFork, sceneData.is_forkable]);
 
   useEffect(() => {
     if (mode === 'edit') {
@@ -113,6 +122,9 @@ export default function SceneFormPage() {
       const data = await res.json();
       if (res.ok) {
         toast.show(mode === 'edit' ? t('scene_form.updated') : t('scene_form.created'));
+        if (mode === 'create') {
+          silentExpGain('create_scene', null, sessionToken).catch(() => {});
+        }
         navigate("/profile");
       } else {
         toast.show(data.message || data.detail || t('scene_form.error'), { type: 'error' });
@@ -276,7 +288,7 @@ export default function SceneFormPage() {
             </label>
             
             {/* Public/Private Toggle */}
-            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canPrivate && !sceneData.is_public ? 0.55 : 1 }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className={`bi ${sceneData.is_public ? 'bi-globe2' : 'bi-lock-fill'}`} style={{ fontSize: '1.2rem', color: sceneData.is_public ? '#10b981' : '#6b7280' }}></i>
@@ -289,6 +301,11 @@ export default function SceneFormPage() {
                         ? (t('scene_form.public_desc') || 'Visible to everyone')
                         : (t('scene_form.private_desc') || 'Only visible to you')}
                     </div>
+                    {!canPrivate && !sceneData.is_public && (
+                      <div className="text-danger" style={{ fontSize: '0.75rem' }}>
+                        {t('scene_form.level_lock_notice', { level: 2 }) || 'This function will be available at level 2'}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="form-check form-switch">
@@ -297,15 +314,16 @@ export default function SceneFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!!sceneData.is_public}
+                    disabled={!canPrivate && !sceneData.is_public}
                     onChange={e => handleChange('is_public', e.target.checked)}
-                    style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: (!canPrivate && !sceneData.is_public) ? 'not-allowed' : 'pointer' }}
                   />
                 </div>
               </div>
             </div>
 
             {/* Forkable Toggle */}
-            <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+            <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canFork ? 0.55 : 1 }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.2rem', color: '#22c55e' }}></i>
@@ -316,6 +334,11 @@ export default function SceneFormPage() {
                     <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                       {t('scene_form.forkable_desc') || 'Users can create their own versions'}
                     </div>
+                    {!canFork && (
+                      <div className="text-danger" style={{ fontSize: '0.75rem' }}>
+                        {t('scene_form.level_lock_notice', { level: 2 }) || 'This function will be available at level 2'}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="form-check form-switch">
@@ -324,8 +347,9 @@ export default function SceneFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!!sceneData.is_forkable}
+                    disabled={!canFork}
                     onChange={e => handleChange('is_forkable', e.target.checked)}
-                    style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: canFork ? 'pointer' : 'not-allowed' }}
                   />
                 </div>
               </div>

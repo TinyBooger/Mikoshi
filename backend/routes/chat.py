@@ -9,6 +9,7 @@ import uuid
 import json
 from datetime import datetime, UTC
 from models import User, Character, Scene, ChatHistory
+from utils.level_system import award_exp_with_limits
 
 router = APIRouter()
 
@@ -34,6 +35,9 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
     if not messages or not isinstance(messages, list):
         return JSONResponse(content={"error": "Invalid or missing messages"}, status_code=400)
+
+    # Award daily chat EXP (handled by centralized function with limits)
+    exp_result = award_exp_with_limits(current_user, "daily_chat", db)
 
     # Get existing chat info if this is an existing chat
     existing_entry = None

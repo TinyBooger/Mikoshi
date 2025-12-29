@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
+import { silentExpGain } from '../utils/expUtils';
 
 export default function PersonaFormPage() {
   const { t } = useTranslation();
@@ -20,7 +21,9 @@ export default function PersonaFormPage() {
   const params = useParams();
   const id = params.id;
   const mode = id ? 'edit' : 'create';
-  const { sessionToken } = useContext(AuthContext);
+  const { sessionToken, userData } = useContext(AuthContext);
+  const userLevel = Number(userData?.level || 1);
+  const canFork = userLevel >= 2;
   const toast = useToast();
   const navigate = useNavigate();
   const [personaData, setPersonaData] = useState({
@@ -36,6 +39,12 @@ export default function PersonaFormPage() {
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit');
+
+  useEffect(() => {
+    if (!canFork && personaData.is_forkable) {
+      setPersonaData(prev => ({ ...prev, is_forkable: false }));
+    }
+  }, [canFork, personaData.is_forkable]);
 
   useEffect(() => {
     if (mode === 'edit') {
@@ -111,6 +120,9 @@ export default function PersonaFormPage() {
       const data = await res.json();
       if (res.ok) {
         toast.show(mode === 'edit' ? t('persona_form.updated') : t('persona_form.created'));
+        if (mode === 'create') {
+          silentExpGain('create_persona', null, sessionToken).catch(() => {});
+        }
         navigate("/profile");
       } else {
         toast.show(data.message || data.detail || t('persona_form.error'), { type: 'error' });
@@ -273,7 +285,7 @@ export default function PersonaFormPage() {
             </label>
             
             {/* Public/Private Toggle */}
-            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canPrivate && !personaData.is_public ? 0.55 : 1 }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className={`bi ${personaData.is_public ? 'bi-globe2' : 'bi-lock-fill'}`} style={{ fontSize: '1.2rem', color: personaData.is_public ? '#10b981' : '#6b7280' }}></i>
@@ -286,6 +298,11 @@ export default function PersonaFormPage() {
                         ? (t('persona_form.public_desc') || 'Visible to everyone')
                         : (t('persona_form.private_desc') || 'Only visible to you')}
                     </div>
+                    {!canPrivate && !personaData.is_public && (
+                      <div className="text-danger" style={{ fontSize: '0.75rem' }}>
+                        {t('persona_form.level_lock_notice', { level: 2 }) || 'This function will be available at level 2'}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="form-check form-switch">
@@ -294,15 +311,16 @@ export default function PersonaFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!!personaData.is_public}
+                    disabled={!canPrivate && !personaData.is_public}
                     onChange={e => handleChange('is_public', e.target.checked)}
-                    style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: (!canPrivate && !personaData.is_public) ? 'not-allowed' : 'pointer' }}
                   />
                 </div>
               </div>
             </div>
 
             {/* Forkable Toggle */}
-            <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+            <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canFork ? 0.55 : 1 }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.2rem', color: '#22c55e' }}></i>
@@ -313,6 +331,11 @@ export default function PersonaFormPage() {
                     <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                       {t('persona_form.forkable_desc') || 'Users can create their own versions'}
                     </div>
+                    {!canFork && (
+                      <div className="text-danger" style={{ fontSize: '0.75rem' }}>
+                        {t('persona_form.level_lock_notice', { level: 2 }) || 'This function will be available at level 2'}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="form-check form-switch">
@@ -321,8 +344,9 @@ export default function PersonaFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!!personaData.is_forkable}
+                    disabled={!canFork}
                     onChange={e => handleChange('is_forkable', e.target.checked)}
-                    style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: canFork ? 'pointer' : 'not-allowed' }}
                   />
                 </div>
               </div>

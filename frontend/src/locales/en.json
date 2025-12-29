@@ -276,12 +276,15 @@
     "forkable": "Allow Forking",
     "free_only": "Free Only",
     "forkable_desc": "Users can create their own versions",
+    "level_lock_notice": "This function will be available at level {{level}}",
     "pricing": "Pricing",
     "free": "Free",
     "paid_character": "Paid Character?",
     "paid_character_desc": "Free users can create 2 paid characters, Pro users unlimited",
     "paid_limit_free": "Free users can create a maximum of 2 paid characters. Upgrade to Pro for unlimited.",
     "paid_limit_pro": "You've reached the paid character limit",
+    "paid_limit_l3": "Level 3 allows 1 paid character. Reach level 4 for more.",
+    "paid_limit_l4": "Level 4 allows 2 paid characters. Reach level 5 for unlimited.",
     "custom_price": "Custom:",
     "price_range": "¥0.1 - ¥100",
     "cny": "Chinese Yuan"
@@ -340,7 +343,8 @@
     "public_desc": "Visible to everyone",
     "private_desc": "Only visible to you",
     "forkable": "Allow Forking",
-    "forkable_desc": "Users can create their own versions"
+    "forkable_desc": "Users can create their own versions",
+    "level_lock_notice": "This function will be available at level {{level}}"
   },
   "scene_form": {
     "edit_title": "Edit Scene",
@@ -382,7 +386,8 @@
     "public_desc": "Visible to everyone",
     "private_desc": "Only visible to you",
     "forkable": "Allow Forking",
-    "forkable_desc": "Users can create their own versions"
+    "forkable_desc": "Users can create their own versions",
+    "level_lock_notice": "This function will be available at level {{level}}"
   },
   "common": {
     "confirm": "Confirm",
@@ -699,5 +704,57 @@
     "step3_title": "Create Your Own",
     "step3_description": "Ready to bring your imagination to life? Click here to create your own characters, scenes, or personas.",
     "replay_tour": "Replay Tour"
+  },
+
+  "level_progress": {
+    "level_names": {
+      "L1": "Newbie",
+      "L2": "Creator",
+      "L3": "Advanced",
+      "L4": "Pro",
+      "L5": "Elite",
+      "L6": "Master"
+    },
+    "unlocks": {
+      "L1": "Create chars, scenes, personas",
+      "L2": "Fork, private chars",
+      "L3": "1 paid char, basic analytics",
+      "L4": "2 paid chars, prompt controls",
+      "L5": "Featured chance, beta tools",
+      "L6": "Creator badge, early revenue tools"
+    },
+    "details_button": "Level details",
+    "unlocks_label": "Unlocks:",
+    "exp_label": "EXP",
+    "next_label": "Next:",
+    "max_level": "Max level reached",
+    "max_level_body": "You are at max level.",
+    "keep_creating": "Keep creating to stay featured!",
+    "unlock_path": "Unlock path",
+    "next_level": "Next",
+    "maxed": "Maxed",
+    "maxed_desc": "Enjoy all creator perks",
+    "earn_exp": "Ways to earn EXP",
+    "rewards": {
+      "create_character": "Create character (+30)",
+      "create_scene": "Create scene (+15)",
+      "create_persona": "Create persona (+15)",
+      "character_liked": "Character liked (+5)",
+      "forked": "Forked (+10)",
+      "paid_char_sold": "Paid char sold (+50)",
+      "daily_chat": "Daily chat (+20)"
+    },
+    "daily_limits": {
+      "daily_chat": "1/day",
+      "create_character": "2/day",
+      "create_scene": "2/day",
+      "create_persona": "2/day",
+      "character_liked": "20/day"
+    },
+    "view_all_levels": "View all levels",
+    "level_requirements_title": "Level Requirements",
+    "table_level": "Level",
+    "table_exp_required": "EXP Required",
+    "table_benefits": "Benefits"
   }
 }

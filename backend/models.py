@@ -39,6 +39,16 @@ class User(Base):
 
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
+    
+    # Level and EXP system
+    level = Column(Integer, default=1, nullable=False)  # User level (1-6)
+    exp = Column(Integer, default=0, nullable=False)  # Current experience points
+    last_chat_date = Column(DateTime(timezone=True), nullable=True)  # Track daily chat activity for EXP
+    
+    # Daily EXP limits and tracking
+    daily_exp_gained = Column(Integer, default=0, nullable=False)  # EXP gained today
+    last_exp_reset_date = Column(DateTime(timezone=True), nullable=True)  # Last daily reset
+    daily_action_counts = Column(JSONB, default={}, nullable=False)  # Track daily action counts
 
     # liked_characters, liked_scenes, liked_personas removed; now handled by junction tables
     liked_tags = Column(ARRAY(Text), default=[])

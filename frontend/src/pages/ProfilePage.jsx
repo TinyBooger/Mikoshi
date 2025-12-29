@@ -14,6 +14,7 @@ import CardSection from '../components/CardSection';
 import PaginationBar from '../components/PaginationBar';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
+import LevelProgress from '../components/LevelProgress';
 
 export default function ProfilePage() {
   const { t } = useTranslation();
@@ -480,38 +481,86 @@ export default function ProfilePage() {
             <i className="bi bi-gear" style={{ fontSize: 26, lineHeight: 1 }}></i>
           </button>
         )}
-        <div className="d-flex align-items-center mb-3 w-100">
-          <img
-            src={displayUser.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${displayUser.profile_pic.replace(/^\//, '')}` : defaultAvatar}
-            alt={t('profile.alt_profile')}
-            style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover', border: '2.4px solid #222', marginRight: 24, background: '#fff' }}
-          />
-          <div style={{ flex: 1 }}>
-            <h2 style={{ color: '#111', fontWeight: 700, fontSize: '1.4rem', marginBottom: 6 }}>{displayUser.name}</h2>
-            <p className="mb-0" style={{ fontSize: '1.02rem', maxWidth: 400, whiteSpace: 'pre-line', color: '#444' }}>
-              {displayUser.bio && displayUser.bio.trim()
-                ? displayUser.bio
-                : (isOwnProfile
-                    ? t('profile.bio_prompt')
-                    : t('profile.bio_not_set'))}
-            </p>
-            {/* Total Stats */}
-            <div className="d-flex align-items-center gap-3 mt-2" style={{ fontSize: '0.95rem', color: '#555' }}>
-              <span className="d-flex align-items-center gap-1">
-                <i className="bi bi-chat" style={{ fontSize: '1.1rem' }}></i>
-                <strong>{totalChats.toLocaleString()}</strong> {t('profile.total_chats') || 'total chats'}
-              </span>
-              <span className="d-flex align-items-center gap-1">
-                <i className="bi bi-heart" style={{ fontSize: '1.1rem' }}></i>
-                <strong>{totalLikes.toLocaleString()}</strong> {t('profile.total_likes') || 'total likes'}
-              </span>
-            </div>
-            {isOwnProfile && (
-              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                <ButtonRounded onClick={openEditProfile} style={{ width: 140 }}>
-                  <i className="bi bi-pencil"></i> {t('profile.edit_profile')}
-                </ButtonRounded>
+        <div
+          className="w-100 mb-3"
+          style={{
+            borderRadius: 16,
+            padding: '18px 20px',
+          }}
+        >
+          <div
+            className="d-flex flex-wrap align-items-start"
+            style={{ rowGap: 14, columnGap: 18 }}
+          >
+            <img
+              src={displayUser.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${displayUser.profile_pic.replace(/^\//, '')}` : defaultAvatar}
+              alt={t('profile.alt_profile')}
+              style={{ width: 104, height: 104, borderRadius: '50%', objectFit: 'cover', border: '2.4px solid #222', background: '#fff' }}
+            />
+
+            <div style={{ flex: '1 1 340px', minWidth: 260, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="d-flex align-items-center flex-wrap" style={{ gap: 10 }}>
+                <h2 style={{ color: '#111', fontWeight: 800, fontSize: '1.5rem', marginBottom: 0 }}>{displayUser.name}</h2>
               </div>
+              <p className="mb-0" style={{ fontSize: '1.02rem', lineHeight: 1.5, maxWidth: 640, whiteSpace: 'pre-line', color: '#3a3a3a' }}>
+                {displayUser.bio && displayUser.bio.trim()
+                  ? displayUser.bio
+                  : (isOwnProfile
+                      ? t('profile.bio_prompt')
+                      : t('profile.bio_not_set'))}
+              </p>
+              {isOwnProfile && (
+                <div style={{ marginTop: 6 }}>
+                  <ButtonRounded onClick={openEditProfile} style={{ padding: '0.5rem 1rem', fontSize: '0.95rem', width: 'fit-content' }}>
+                    <i className="bi bi-pencil"></i> {t('profile.edit_profile')}
+                  </ButtonRounded>
+                </div>
+              )}
+            </div>
+
+            <div style={{ flex: '0 0 240px', minWidth: 220 }}>
+              <div className="d-flex flex-column" style={{ gap: 10 }}>
+                <div
+                  className="d-flex align-items-center justify-content-start flex-wrap"
+                  style={{ gap: 12, fontSize: '0.96rem', color: '#222' }}
+                >
+                  <span
+                    className="d-flex align-items-center gap-2"
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 12,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    }}
+                  >
+                    <i className="bi bi-chat" style={{ fontSize: '1.05rem' }}></i>
+                    <div className="d-flex flex-column" style={{ lineHeight: 1.15 }}>
+                      <strong style={{ fontSize: '1.05rem' }}>{totalChats.toLocaleString()}</strong>
+                      <span style={{ fontSize: '0.83rem', color: '#555' }}>{t('profile.total_chats') || 'total chats'}</span>
+                    </div>
+                  </span>
+                  <span
+                    className="d-flex align-items-center gap-2"
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 12,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    }}
+                  >
+                    <i className="bi bi-heart" style={{ fontSize: '1.05rem' }}></i>
+                    <div className="d-flex flex-column" style={{ lineHeight: 1.15 }}>
+                      <strong style={{ fontSize: '1.05rem' }}>{totalLikes.toLocaleString()}</strong>
+                      <span style={{ fontSize: '0.83rem', color: '#555' }}>{t('profile.total_likes') || 'total likes'}</span>
+                    </div>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Level & EXP Progress below header row */}
+          <div className="mt-3">
+            {typeof displayUser?.level !== 'undefined' && typeof displayUser?.exp !== 'undefined' && (
+              <LevelProgress level={displayUser.level} exp={displayUser.exp} />
             )}
           </div>
         </div>

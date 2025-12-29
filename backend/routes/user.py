@@ -7,6 +7,7 @@ from utils.session import get_current_user
 from utils.local_storage_utils import save_image
 from utils.user_utils import build_user_response
 from utils.validators import validate_account_fields
+from utils.level_system import award_exp_with_limits
 
 router = APIRouter()
 
@@ -103,6 +104,11 @@ def like_entity(
             current_user.liked_tags = current_user.liked_tags + [tag]
 
     db.commit()
+
+    # Award EXP to creator when their character is liked
+    if entity_type == "character" and creator:
+        award_exp_with_limits(creator, "character_liked", db)
+
     return {"likes": entity.likes}
 
 # Unlike route for character, scene, or persona

@@ -84,6 +84,8 @@ class UserOut(BaseModel):
     is_admin: bool = False
     default_persona_id: Optional[int] = None
     default_persona: Optional[PersonaOut] = None
+    level: int = 1
+    exp: int = 0
     
     class Config:
         from_attributes = True

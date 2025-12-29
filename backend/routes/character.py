@@ -12,6 +12,7 @@ from utils.local_storage_utils import save_image
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.validators import validate_character_fields
 from schemas import CharacterOut, CharacterListOut
+from utils.level_system import award_exp_with_limits
 
 router = APIRouter()
 
@@ -87,10 +88,18 @@ async def create_character(
     if picture:
         char.picture = save_image(picture.file, 'character', char.id, picture.filename)
 
-
     db.commit()
-    db.refresh(current_user)
-    return {"message": f"Character '{name}' created."}
+    db.refresh(char)
+
+    # Award EXP to creator for creating a character
+    exp_result = award_exp_with_limits(current_user, "create_character", db)
+    
+    return {
+        "message": f"Character '{name}' created.",
+        "exp": current_user.exp,
+        "level": current_user.level,
+        "exp_result": exp_result
+    }
 
 @router.post("/api/update-character")
 async def update_character(
@@ -118,10 +127,33 @@ async def update_character(
     if error:
         raise HTTPException(status_code=400, detail=error)
     
+    # Enforce level-based private character access (L2+)
+    final_is_public = is_public if is_public is not None else char.is_public
+    if not final_is_public and current_user.level < 2:
+        raise HTTPException(status_code=403, detail="Private characters require level 2 or higher")
+    
     # Enforce: paid characters cannot be forkable
     final_is_free = is_free if is_free is not None else char.is_free
     final_is_forkable = is_forkable if is_forkable is not None else char.is_forkable
     final_price = price if price is not None else char.price
+    
+    # Enforce paid character limits by level
+    if not final_is_free:
+        user_level = current_user.level or 1
+        if user_level < 3:
+            raise HTTPException(status_code=403, detail="Paid characters require level 3 or higher")
+        
+        # Only count if switching from free to paid (not if already paid)
+        if char.is_free:
+            paid_count = db.query(Character).filter(
+                Character.creator_id == current_user.id,
+                Character.is_free == False
+            ).count()
+            
+            if user_level == 3 and paid_count >= 1:
+                raise HTTPException(status_code=403, detail="Level 3 allows 1 paid character. Reach level 4 for more.")
+            elif user_level == 4 and paid_count >= 2:
+                raise HTTPException(status_code=403, detail="Level 4 allows 2 paid characters. Reach level 5 for unlimited.")
     
     if not final_is_free and final_is_forkable:
         raise HTTPException(status_code=400, detail="Paid characters cannot be forkable")

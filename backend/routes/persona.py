@@ -9,6 +9,7 @@ from utils.local_storage_utils import save_image
 from utils.session import get_current_user
 from datetime import datetime, UTC
 from schemas import PersonaOut, PersonaListOut
+from utils.level_system import award_exp_with_limits
 
 router = APIRouter()
 
@@ -76,6 +77,10 @@ async def create_persona(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Enforce level-based private persona access (L2+)
+    if not is_public and current_user.level < 2:
+        raise HTTPException(status_code=403, detail="Private personas require level 2 or higher")
+    
     persona = Persona(
         name=name,
         description=description,
@@ -91,12 +96,21 @@ async def create_persona(
     db.add(persona)
     db.commit()
     db.refresh(persona)
-    db.commit()
     if picture:
         persona.picture = save_image(picture.file, 'persona', persona.id, picture.filename)
         db.commit()
         db.refresh(persona)
-    return JSONResponse(content={"id": persona.id, "message": "Persona created"})
+    
+    # Award EXP to creator for creating a persona
+    exp_result = award_exp_with_limits(current_user, "create_persona", db)
+    
+    return JSONResponse(content={
+        "id": persona.id,
+        "message": "Persona created",
+        "exp": current_user.exp,
+        "level": current_user.level,
+        "exp_result": exp_result
+    })
 
 
 
@@ -140,6 +154,12 @@ async def update_persona(
         raise HTTPException(status_code=404, detail="Persona not found")
     if persona.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Enforce level-based private persona access (L2+)
+    final_is_public = is_public if is_public is not None else persona.is_public
+    if not final_is_public and current_user.level < 2:
+        raise HTTPException(status_code=403, detail="Private personas require level 2 or higher")
+    
     if name is not None:
         persona.name = name
     if description is not None:
