@@ -102,12 +102,13 @@ async def create_character(
     # Award EXP to creator for creating a character
     exp_result = award_exp_with_limits(current_user, "create_character", db)
     
-    # Award EXP to original creator if this is a fork
+    # Award EXP to original creator if this is a fork (only if forked by someone else)
     if forked_from_id:
         original_char = db.query(Character).filter(Character.id == forked_from_id).first()
         if original_char and original_char.creator_id:
             original_creator = db.query(User).filter(User.id == original_char.creator_id).first()
-            if original_creator:
+            # Only award EXP if the forker is not the original creator
+            if original_creator and original_creator.id != current_user.id:
                 award_exp_with_limits(original_creator, "forked", db)
     
     return {
