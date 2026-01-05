@@ -1,15 +1,86 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
-from schemas import UserOut
+from schemas import UserOut, UserListOut
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
-from utils.user_utils import build_user_response
+from utils.user_utils import build_user_response, enrich_user_with_character_count
 from utils.validators import validate_account_fields
 from utils.level_system import award_exp_with_limits
+from utils.badge_system import check_and_award_chat_badges, award_badge
 
 router = APIRouter()
+
+# --- Browse Users Endpoints (MUST come before {user_id} route) ---
+
+@router.get("/api/users/browse", response_model=UserListOut)
+def browse_users(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """Get users sorted by views (descending)"""
+    query = db.query(User).order_by(User.views.desc(), User.level.desc())
+    total = query.count()
+    users = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = [enrich_user_with_character_count(user, db) for user in users]
+    return UserListOut(items=items, total=total, page=page, page_size=page_size)
+
+@router.get("/api/users/popular", response_model=UserListOut)
+def get_popular_users(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """Get popular users sorted by views and level"""
+    query = db.query(User).order_by(User.views.desc(), User.level.desc())
+    total = query.count()
+    users = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = [enrich_user_with_character_count(user, db) for user in users]
+    return UserListOut(items=items, total=total, page=page, page_size=page_size)
+
+@router.get("/api/users/recent", response_model=UserListOut)
+def get_recent_users(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """Get recently active users sorted by level and experience"""
+    query = db.query(User).order_by(User.level.desc(), User.exp.desc())
+    total = query.count()
+    users = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = [enrich_user_with_character_count(user, db) for user in users]
+    return UserListOut(items=items, total=total, page=page, page_size=page_size)
+
+@router.get("/api/users/recommended", response_model=UserListOut)
+def get_recommended_users(
+    current_user: User = Depends(get_current_user),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """Get recommended users based on liked tags and level"""
+    if not current_user:
+        # Return popular users if not authenticated
+        query = db.query(User).order_by(User.views.desc(), User.level.desc())
+        total = query.count()
+        users = query.offset((page - 1) * page_size).limit(page_size).all()
+        items = [enrich_user_with_character_count(user, db) for user in users]
+        return UserListOut(items=items, total=total, page=page, page_size=page_size)
+    
+    # Recommend users with similar level or high engagement
+    # Exclude current user
+    query = db.query(User).filter(User.id != current_user.id)
+    
+    # Order by level proximity and views
+    query = query.order_by(User.views.desc(), User.level.desc())
+    total = query.count()
+    users = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = [enrich_user_with_character_count(user, db) for user in users]
+    return UserListOut(items=items, total=total, page=page, page_size=page_size)
+
+# --- Single User Endpoints (comes AFTER specific routes above) ---
 
 @router.get("/api/user/{user_id}", response_model=UserOut)
 def get_user_by_id(user_id: str, db: Session = Depends(get_db)):
@@ -23,6 +94,14 @@ def get_user_by_id(user_id: str, db: Session = Depends(get_db)):
 @router.get("/api/users/{user_id}", response_model=UserOut)
 def get_user_by_id_alias(user_id: str, db: Session = Depends(get_db)):
     return get_user_by_id(user_id, db)
+    # Exclude current user
+    query = db.query(User).filter(User.id != current_user.id)
+    
+    # Order by level proximity and views
+    query = query.order_by(User.views.desc(), User.level.desc())
+    total = query.count()
+    users = query.offset((page - 1) * page_size).limit(page_size).all()
+    return UserListOut(items=users, total=total, page=page, page_size=page_size)
 
 @router.post("/api/update-profile")
 async def update_profile(
@@ -286,3 +365,129 @@ def delete_account(payload: dict = Body(...), current_user: User = Depends(get_c
     db.commit()
     return {"message": "Account deleted"}
 
+
+# ----------------------- Badge Endpoints -----------------------
+
+@router.get("/api/badges")
+def get_all_badges():
+    """Get information about all available badges"""
+    from utils.badge_system import get_all_badges_info
+    return get_all_badges_info()
+
+
+@router.get("/api/user/{user_id}/badges")
+def get_user_badges(user_id: str, db: Session = Depends(get_db)):
+    """Get all badges for a user"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"badges": user.badges or {}}
+
+
+@router.post("/api/user/badges/check-and-award")
+def check_and_award_badges(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Check if current user qualifies for any new badges and award them.
+    Returns list of newly awarded badges.
+    Called when user visits their own profile.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    newly_awarded = check_and_award_chat_badges(current_user, db)
+    
+    # Return newly awarded badges with their details
+    awarded_badges = {}
+    if newly_awarded:
+        for badge_key in newly_awarded:
+            if badge_key in current_user.badges:
+                awarded_badges[badge_key] = current_user.badges[badge_key]
+    
+    return {
+        "newly_awarded": newly_awarded,
+        "badges": awarded_badges,
+        "message": f"Congratulations! You earned {len(newly_awarded)} new badge(s)!" if newly_awarded else "No new badges earned"
+    }
+
+
+@router.post("/api/admin/badges/{user_id}/award")
+def admin_award_badge(
+    user_id: str,
+    badge_key: str = Form(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Admin endpoint to manually award a badge to a user (e.g., Pioneer badge)"""
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can award badges")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    success = award_badge(user, badge_key, db)
+    if success:
+        return {"message": f"Badge {badge_key} awarded to user {user_id}"}
+    else:
+        raise HTTPException(status_code=400, detail=f"User already has badge {badge_key} or badge doesn't exist")
+
+
+@router.post("/api/admin/badges/{user_id}/remove")
+def admin_remove_badge(
+    user_id: str,
+    badge_key: str = Form(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Admin endpoint to remove a badge from a user"""
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can remove badges")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    from utils.badge_system import remove_badge
+    success = remove_badge(user, badge_key, db)
+    if success:
+        return {"message": f"Badge {badge_key} removed from user {user_id}"}
+    else:
+        raise HTTPException(status_code=400, detail=f"User doesn't have badge {badge_key}")
+
+
+@router.post("/api/user/active-badge")
+def set_active_badge(
+    payload: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Set the active/displayed badge for current user.
+    Payload: { "badge_key": "bronze_creator" } or { "badge_key": null } to remove
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    badge_key = payload.get("badge_key")
+    
+    # If badge_key is None, allow removing active badge
+    if badge_key is None:
+        current_user.active_badge = None
+        db.commit()
+        return {"message": "Active badge removed", "active_badge": None}
+    
+    # Validate user has this badge
+    if badge_key not in (current_user.badges or {}):
+        raise HTTPException(status_code=400, detail=f"You don't have badge {badge_key}")
+    
+    current_user.active_badge = badge_key
+    db.commit()
+    
+    return {
+        "message": f"Active badge set to {badge_key}",
+        "active_badge": badge_key,
+        "badge_info": current_user.badges[badge_key]
+    }

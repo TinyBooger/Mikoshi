@@ -15,6 +15,7 @@ import PaginationBar from '../components/PaginationBar';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import LevelProgress from '../components/LevelProgress';
+import AvatarFrame from '../components/AvatarFrame';
 
 export default function ProfilePage() {
   const { t } = useTranslation();
@@ -66,7 +67,43 @@ export default function ProfilePage() {
   // Total stats for all created characters
   const [totalChats, setTotalChats] = useState(0);
   const [totalLikes, setTotalLikes] = useState(0);
+  
+  // Badge award modal state
+  const [newlyAwardedBadges, setNewlyAwardedBadges] = useState([]);
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
+  
+  // Badge selection modal state
+  const [showBadgeSelector, setShowBadgeSelector] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState(userData?.active_badge || null);
 
+  // Sync selectedBadge with userData when it changes
+  useEffect(() => {
+    if (userData?.active_badge !== undefined) {
+      setSelectedBadge(userData.active_badge);
+    }
+  }, [userData?.active_badge]);
+
+  // Check and award badges when user visits their own profile
+  useEffect(() => {
+    if (isOwnProfile && sessionToken) {
+      fetch(`${window.API_BASE_URL}/api/user/badges/check-and-award`, {
+        method: 'POST',
+        headers: { 'Authorization': sessionToken }
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.newly_awarded && data.newly_awarded.length > 0) {
+            setNewlyAwardedBadges(data.newly_awarded);
+            setShowBadgeModal(true);
+            // Refresh user data to get updated badges
+            if (refreshUserData) {
+              refreshUserData();
+            }
+          }
+        })
+        .catch(err => console.error('Error checking badges:', err));
+    }
+  }, [isOwnProfile, sessionToken, refreshUserData]);
 
   // Fetch created and liked entities for profile
   useEffect(() => {
@@ -361,9 +398,43 @@ export default function ProfilePage() {
     setShowModal(true);
   };
 
+  // Handle setting active badge
+  const handleSetActiveBadge = async (badgeKey) => {
+    setSelectedBadge(badgeKey);
+    
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/user/active-badge`, {
+        method: 'POST',
+        headers: {
+          'Authorization': sessionToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ badge_key: badgeKey })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast.show(data.message);
+        
+        // Update user data with new active badge
+        if (refreshUserData) {
+          refreshUserData();
+        }
+      } else {
+        const error = await res.json();
+        toast.show(error.detail || 'Failed to update badge');
+      }
+    } catch (err) {
+      console.error('Error setting badge:', err);
+      toast.show('Error updating badge');
+    }
+  };
+
   // Save profile changes
   const handleSave = async (e) => {
     e.preventDefault();
+    
+    // Save profile data
     const formData = new FormData();
     formData.append('name', editName.trim());
     formData.append('bio', editBio);
@@ -376,10 +447,18 @@ export default function ProfilePage() {
     });
 
     const data = await res.json();
-    toast.show(data.message || data.detail);
+    
     if (res.ok) {
+      // Also update the active badge if changed
+      if (selectedBadge !== userData?.active_badge) {
+        await handleSetActiveBadge(selectedBadge);
+      }
+      
+      toast.show(data.message || data.detail);
       setShowModal(false);
       await refreshUserData();
+    } else {
+      toast.show(data.message || data.detail);
     }
   };
 
@@ -444,6 +523,269 @@ export default function ProfilePage() {
 
   return (
     <PageWrapper>
+      {/* Badge Award Modal */}
+      {showBadgeModal && (
+        <ModalPortal>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+            }}
+            onClick={() => setShowBadgeModal(false)}
+          >
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: '1rem',
+                padding: '2rem',
+                maxWidth: '500px',
+                width: '90%',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+                animation: 'slideUp 0.3s ease-out',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
+                <h2 style={{ color: '#111', margin: 0, fontSize: '1.8rem', fontWeight: 700 }}>
+                  {t('profile.congratulations', 'Congratulations!')}
+                </h2>
+              </div>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <p style={{ color: '#666', fontSize: '1rem', textAlign: 'center', marginBottom: '1.5rem' }}>
+                  {t('profile.earned_badge', 'You have earned a new achievement!')}
+                </p>
+                
+                {/* Display each newly awarded badge */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {newlyAwardedBadges.map(badgeKey => {
+                    const badgeData = userData?.badges?.[badgeKey];
+                    if (!badgeData) return null;
+                    return (
+                      <div
+                        key={badgeKey}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1rem',
+                          padding: '1rem',
+                          background: '#f9f9f9',
+                          borderRadius: '0.75rem',
+                          border: '2px solid #e9ecef',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 60,
+                            height: 60,
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '2rem',
+                            background: getBadgeColorProfile(badgeKey),
+                            color: '#fff',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {getBadgeEmojiProfile(badgeKey)}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#111', marginBottom: '0.25rem' }}>
+                            {badgeData.name}
+                          </div>
+                          <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                            {badgeData.description}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowBadgeModal(false)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1.5rem',
+                  background: '#111',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background 0.2s',
+                }}
+                onMouseOver={e => e.target.style.background = '#333'}
+                onMouseOut={e => e.target.style.background = '#111'}
+              >
+                {t('profile.awesome', 'Awesome!')}
+              </button>
+            </div>
+            
+            <style>{`
+              @keyframes slideUp {
+                from {
+                  opacity: 0;
+                  transform: translateY(20px);
+                }
+                to {
+                  opacity: 1;
+                  transform: translateY(0);
+                }
+              }
+            `}</style>
+          </div>
+        </ModalPortal>
+      )}
+
+      {/* Badge Selector Modal */}
+      {showBadgeSelector && (
+        <ModalPortal>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+            }}
+            onClick={() => setShowBadgeSelector(false)}
+          >
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: '1rem',
+                padding: '2rem',
+                maxWidth: '600px',
+                width: '90%',
+                maxHeight: '80vh',
+                overflowY: 'auto',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <h2 style={{ color: '#111', marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 700 }}>
+                {t('profile.select_badge', 'Select Display Badge')}
+              </h2>
+
+              {/* No badge option */}
+              <div
+                onClick={() => handleSetActiveBadge(null)}
+                style={{
+                  padding: '1rem',
+                  marginBottom: '1rem',
+                  background: selectedBadge === null ? '#f0f0f0' : '#fafafa',
+                  border: selectedBadge === null ? '2px solid #111' : '2px solid #e0e0e0',
+                  borderRadius: '0.75rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={e => e.currentTarget.style.background = selectedBadge === null ? '#f0f0f0' : '#f5f5f5'}
+                onMouseOut={e => e.currentTarget.style.background = selectedBadge === null ? '#f0f0f0' : '#fafafa'}
+              >
+                <div style={{ fontSize: '1rem', fontWeight: 600, color: '#111' }}>
+                  {t('profile.no_badge', 'No Badge')}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                  {t('profile.no_badge_desc', 'Don\'t display any badge')}
+                </div>
+              </div>
+
+              {/* Badge options */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {userData?.badges && Object.entries(userData.badges).map(([badgeKey, badgeData]) => (
+                  <div
+                    key={badgeKey}
+                    onClick={() => handleSetActiveBadge(badgeKey)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1rem',
+                      padding: '1rem',
+                      background: selectedBadge === badgeKey ? '#f0f0f0' : '#fafafa',
+                      border: selectedBadge === badgeKey ? '2px solid #111' : '2px solid #e0e0e0',
+                      borderRadius: '0.75rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseOver={e => e.currentTarget.style.background = selectedBadge === badgeKey ? '#f0f0f0' : '#f5f5f5'}
+                    onMouseOut={e => e.currentTarget.style.background = selectedBadge === badgeKey ? '#f0f0f0' : '#fafafa'}
+                  >
+                    <div
+                      style={{
+                        width: 50,
+                        height: 50,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.5rem',
+                        background: getBadgeColorProfile(badgeKey),
+                        color: '#fff',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {getBadgeEmojiProfile(badgeKey)}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '1rem', fontWeight: 600, color: '#111' }}>
+                        {badgeData.name}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                        {badgeData.description}
+                      </div>
+                    </div>
+                    {selectedBadge === badgeKey && (
+                      <div style={{ color: '#111', fontSize: '1.2rem' }}>
+                        ✓
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setShowBadgeSelector(false)}
+                style={{
+                  width: '100%',
+                  marginTop: '1.5rem',
+                  padding: '0.75rem 1.5rem',
+                  background: '#111',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background 0.2s',
+                }}
+                onMouseOver={e => e.target.style.background = '#333'}
+                onMouseOut={e => e.target.style.background = '#111'}
+              >
+                {t('common.done', 'Done')}
+              </button>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+
       <div
         className="flex-grow-1 d-flex flex-column align-items-center"
         style={{
@@ -492,11 +834,13 @@ export default function ProfilePage() {
             className="d-flex flex-wrap align-items-start"
             style={{ rowGap: 14, columnGap: 18 }}
           >
-            <img
-              src={displayUser.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${displayUser.profile_pic.replace(/^\//, '')}` : defaultAvatar}
-              alt={t('profile.alt_profile')}
-              style={{ width: 104, height: 104, borderRadius: '50%', objectFit: 'cover', border: '2.4px solid #222', background: '#fff' }}
-            />
+            <AvatarFrame badge={displayUser?.active_badge} size={104}>
+              <img
+                src={displayUser.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${displayUser.profile_pic.replace(/^\//, '')}` : defaultAvatar}
+                alt={t('profile.alt_profile')}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </AvatarFrame>
 
             <div style={{ flex: '1 1 340px', minWidth: 260, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div className="d-flex align-items-center flex-wrap" style={{ gap: 10 }}>
@@ -563,6 +907,59 @@ export default function ProfilePage() {
               <LevelProgress level={displayUser.level} exp={displayUser.exp} />
             )}
           </div>
+          
+          {/* Badges Section */}
+          {displayUser?.badges && Object.keys(displayUser.badges).length > 0 && (
+            <div className="mt-3">
+              <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: '#111' }}>
+                {t('profile.badges', 'Badges')}
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                {Object.entries(displayUser.badges).map(([badgeKey, badgeData]) => (
+                  <div
+                    key={badgeKey}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem 0.75rem',
+                      background: '#f5f5f5',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #ddd',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    title={badgeData.description}
+                  >
+                    <div
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        background: getBadgeColorProfile(badgeKey),
+                        color: '#fff',
+                      }}
+                    >
+                      {getBadgeEmojiProfile(badgeKey)}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#111' }}>
+                        {badgeData.name}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#666' }}>
+                        {badgeData.description}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="d-flex flex-column w-100" style={{ gap: 24 }}>
@@ -715,6 +1112,77 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Badge Selection */}
+                  {userData?.badges && Object.keys(userData.badges).length > 0 && (
+                    <div className="mb-3">
+                      <label className="form-label fw-bold" style={{ color: '#111' }}>
+                        {t('profile.display_badge', 'Display Badge')}
+                      </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {/* No badge option */}
+                        <div
+                          onClick={() => setSelectedBadge(null)}
+                          style={{
+                            padding: '0.75rem',
+                            background: selectedBadge === null ? '#f0f0f0' : '#fff',
+                            border: selectedBadge === null ? '2px solid #111' : '1.5px solid #ddd',
+                            borderRadius: '0.5rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                          }}
+                        >
+                          <span style={{ fontSize: '0.9rem', color: '#111' }}>
+                            {t('profile.no_badge', 'No Badge')}
+                          </span>
+                          {selectedBadge === null && <span style={{ color: '#111' }}>✓</span>}
+                        </div>
+                        
+                        {/* Badge options */}
+                        {Object.entries(userData.badges).map(([badgeKey, badgeData]) => (
+                          <div
+                            key={badgeKey}
+                            onClick={() => setSelectedBadge(badgeKey)}
+                            style={{
+                              padding: '0.75rem',
+                              background: selectedBadge === badgeKey ? '#f0f0f0' : '#fff',
+                              border: selectedBadge === badgeKey ? '2px solid #111' : '1.5px solid #ddd',
+                              borderRadius: '0.5rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '1rem',
+                                background: getBadgeColorProfile(badgeKey),
+                                color: '#fff',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {getBadgeEmojiProfile(badgeKey)}
+                            </div>
+                            <span style={{ fontSize: '0.9rem', color: '#111', flex: 1 }}>
+                              {badgeData.name}
+                            </span>
+                            {selectedBadge === badgeKey && <span style={{ color: '#111' }}>✓</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="modal-footer" style={{ borderTop: '2px solid #111', background: '#fff' }}>
                   <PrimaryButton type="submit">
@@ -759,6 +1227,39 @@ function ModalPortal({ children }) {
   if (typeof document === 'undefined') return null;
   const main = document.querySelector('main');
   return createPortal(children, main || document.body);
+}
+
+// Helper function to get badge color for profile page
+function getBadgeColorProfile(badgeKey) {
+  const colors = {
+    pioneer: '#FF6B6B',        // Red for Pioneer
+    bronze_creator: '#CD7F32',  // Bronze
+    silver_creator: '#C0C0C0',  // Silver
+    gold_creator: '#FFD700',    // Gold
+  };
+  return colors[badgeKey] || '#999';
+}
+
+// Helper function to get badge emoji/symbol for profile page
+function getBadgeEmojiProfile(badgeKey) {
+  const emojis = {
+    pioneer: '⭐',
+    bronze_creator: '1K+',
+    silver_creator: '🥈',
+    gold_creator: '🥇',
+  };
+  return emojis[badgeKey] || '✓';
+}
+
+// Helper function to get badge background color for text badge
+function getBadgeBackgroundColor(badgeKey) {
+  const colors = {
+    pioneer: '#FF6B6B',
+    bronze_creator: '#CD7F32',
+    silver_creator: '#C0C0C0',
+    gold_creator: '#FFD700',
+  };
+  return colors[badgeKey] || '#999';
 }
 
 // Exporting ModalPortal isn't necessary; it is used internally by ProfilePage via JSX

@@ -4,12 +4,12 @@ from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 from database import get_db
 from models import SearchTerm, Character, User, Scene, Persona
-from schemas import CharacterOut, SceneOut, PersonaOut, CharacterListOut, SceneListOut, PersonaListOut
+from schemas import CharacterOut, SceneOut, PersonaOut, CharacterListOut, SceneListOut, PersonaListOut, UserOut, UserListOut
+from utils.user_utils import enrich_user_with_character_count
 
 from datetime import datetime, UTC
 
 router = APIRouter()
-
 
 @router.get("/api/characters/search", response_model=CharacterListOut)
 def search_characters(
@@ -196,3 +196,56 @@ def get_search_suggestions(q: str, db: Session = Depends(get_db)):
         .all()
     )
     return [{"keyword": t.keyword, "count": t.search_count} for t in terms]
+
+# --- User Search Endpoint ---
+@router.get("/api/search/users", response_model=UserListOut)
+def search_users(
+    q: str,
+    sort: str = "relevance",
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    ilike_pattern = f"%{q}%"
+    
+    # Base query - search by name or bio
+    base_query = db.query(User).filter(
+        User.name.ilike(ilike_pattern) |
+        User.bio.ilike(ilike_pattern)
+    )
+
+    # Apply sorting
+    if sort == "relevance":
+        # Prioritize name matches over bio matches, then by views (profile visits)
+        NAME_WEIGHT = 3.0
+        BIO_WEIGHT = 1.0
+        
+        score_case = case(
+            (User.name.ilike(ilike_pattern), NAME_WEIGHT),
+            (User.bio.ilike(ilike_pattern), BIO_WEIGHT),
+            else_=0
+        ).label("relevance_score")
+        
+        query = base_query.add_columns(score_case)
+        query = query.group_by(User.id)
+        query = query.order_by(score_case.desc(), User.views.desc(), User.level.desc())
+        total = query.count()
+        results = query.offset((page - 1) * page_size).limit(page_size).all()
+        users = [r[0] for r in results]  # Extract User objects
+    elif sort == "popularity":
+        # Sort by views (profile visits)
+        query = base_query.order_by(User.views.desc(), User.level.desc())
+        total = query.count()
+        users = query.offset((page - 1) * page_size).limit(page_size).all()
+    elif sort == "recent":
+        # Sort by level/exp as a proxy for activity
+        query = base_query.order_by(User.level.desc(), User.exp.desc())
+        total = query.count()
+        users = query.offset((page - 1) * page_size).limit(page_size).all()
+    else:
+        query = base_query.order_by(User.name.asc())
+        total = query.count()
+        users = query.offset((page - 1) * page_size).limit(page_size).all()
+    
+    items = [enrich_user_with_character_count(user, db) for user in users]
+    return UserListOut(items=items, total=total, page=page, page_size=page_size)

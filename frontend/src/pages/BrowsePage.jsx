@@ -2,7 +2,9 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import EntityCard from '../components/EntityCard';
+import UserCard from '../components/UserCard';
 import CardSection from '../components/CardSection';
+import HorizontalCardSection from '../components/HorizontalCardSection';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
 import PaginationBar from '../components/PaginationBar';
@@ -21,6 +23,7 @@ function BrowsePage() {
     { key: 'characters', label: t('browse.characters', 'Characters') },
     { key: 'scenes', label: t('browse.scenes', 'Scenes') },
     { key: 'personas', label: t('browse.personas', 'Personas') },
+    { key: 'users', label: t('browse.users', 'Users') },
   ];
   const SUBTABS = [
     { key: 'recommended', label: t('browse.for_you', 'For You') },
@@ -97,6 +100,8 @@ function BrowsePage() {
       url = `${window.API_BASE_URL}/api/scenes/${activeSubTab}`;
     } else if (activeMainTab === 'personas') {
       url = `${window.API_BASE_URL}/api/personas/${activeSubTab}`;
+    } else if (activeMainTab === 'users') {
+      url = `${window.API_BASE_URL}/api/users/browse`;
     }
     const params = new URLSearchParams({ short: 'false', page: String(page) });
     const fetchUrl = `${url}?${params.toString()}`;
@@ -139,6 +144,8 @@ function BrowsePage() {
       if (activeSubTab === 'popular') return t('browse.popular_personas', 'Popular Personas');
       if (activeSubTab === 'recent') return t('browse.recent_personas', 'Recent Personas');
       if (activeSubTab === 'recommended') return t('browse.recommended_personas', 'Recommended Personas');
+    } else if (activeMainTab === 'users') {
+      return t('browse.users_by_views', 'Users');
     }
     return '';
   };
@@ -184,7 +191,8 @@ function BrowsePage() {
           </PrimaryButton>
         ))}
       </div>
-      {/* Sub Tabs */}
+      {/* Sub Tabs - Hidden for users */}
+      {activeMainTab !== 'users' && (
       <div className="d-flex flex-row mb-3 w-100" style={{ gap: 12, justifyContent: 'flex-start' }}>
         {SUBTABS.map(sub => (
           <button
@@ -222,10 +230,11 @@ function BrowsePage() {
           </button>
         ))}
       </div>
+      )}
       {/* PC-adapted content wrapper */}
       <div style={{ width: '100%', margin: '0 auto' }}>
-        <CardSection title={getSectionTitle()}>
-          {isLoading ? (
+        {activeMainTab === 'users' ? (
+          isLoading ? (
             <div className="text-center my-5">
               <div className="spinner-border text-primary" role="status">
                 <span className="visually-hidden">{t('browse.loading')}</span>
@@ -233,38 +242,64 @@ function BrowsePage() {
             </div>
           ) : entities.length === 0 ? (
             <div className="text-center my-5">
-              {activeSubTab === 'recommended' ? (
-                <div style={{
-                  background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)',
-                  borderRadius: '16px',
-                  border: '1px solid rgba(115, 107, 146, 0.15)',
-                  padding: '2rem',
-                  maxWidth: '500px',
-                  margin: '0 auto'
-                }}>
-                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💡</div>
-                  <h5 className="fw-bold mb-3" style={{ color: '#736B92' }}>
-                    {t('browse.no_recommendations_title', 'No Recommendations Yet')}
-                  </h5>
-                  <p className="text-muted mb-0" style={{ fontSize: '0.95rem', lineHeight: '1.6' }}>
-                    {t('browse.no_recommendations', 'No recommendations yet. Please like more characters to unlock personalized suggestions.')}
-                  </p>
-                </div>
-              ) : (
-                <div className="alert alert-info">
-                  {t('browse.no_results', 'No results found.')}
-                </div>
-              )}
+              <div className="alert alert-info">
+                {t('browse.no_results', 'No results found.')}
+              </div>
             </div>
           ) : (
-            <>
-              {entities.map(entity => (
-                <EntityCard key={entity.id} type={activeMainTab.slice(0, -1)} entity={entity} />
-              ))}
-            </>
-          )}
-        </CardSection>
-      </div>
+            <div style={{ width: '100%' }}>
+              <h6 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '1rem', color: '#232323' }}>
+                {getSectionTitle()}
+              </h6>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                {entities.map((user) => (
+                  <UserCard key={user.id} user={user} />
+                ))}
+              </div>
+            </div>
+          )
+        ) : (
+          <CardSection title={getSectionTitle()}>
+            {isLoading ? (
+              <div className="text-center my-5">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">{t('browse.loading')}</span>
+                </div>
+              </div>
+            ) : entities.length === 0 ? (
+              <div className="text-center my-5">
+                {activeSubTab === 'recommended' ? (
+                  <div style={{
+                    background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.05) 0%, rgba(155, 143, 184, 0.08) 100%)',
+                    borderRadius: '16px',
+                    border: '1px solid rgba(115, 107, 146, 0.15)',
+                    padding: '2rem',
+                    maxWidth: '500px',
+                    margin: '0 auto'
+                  }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💡</div>
+                    <h5 className="fw-bold mb-3" style={{ color: '#736B92' }}>
+                      {t('browse.no_recommendations_title', 'No Recommendations Yet')}
+                    </h5>
+                    <p className="text-muted mb-0" style={{ fontSize: '0.95rem', lineHeight: '1.6' }}>
+                      {t('browse.no_recommendations', 'No recommendations yet. Please like more characters to unlock personalized suggestions.')}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="alert alert-info">
+                    {t('browse.no_results', 'No results found.')}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {entities.map(entity => (
+                  <EntityCard key={entity.id} type={activeMainTab.slice(0, -1)} entity={entity} />
+                ))}
+              </>
+            )}
+          </CardSection>
+        )}
       </div>
       {/* Bottom Pagination */}
       <PaginationBar
@@ -277,6 +312,7 @@ function BrowsePage() {
           updatePageInUrl(next);
         }}
       />
+      </div>
     </PageWrapper>
   );
 }

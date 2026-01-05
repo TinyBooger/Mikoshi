@@ -49,6 +49,7 @@
     "characters": "角色",
     "scenes": "场景",
     "personas": "自我形象",
+    "users": "用户",
     "for_you": "为您推荐",
     "popular": "热门",
     "recent": "最近",
@@ -61,6 +62,7 @@
     "popular_personas": "热门自我形象",
     "recent_personas": "最近自我形象",
     "recommended_personas": "推荐自我形象",
+    "users_by_views": "用户",
     "loading": "加载中...",
     "no_results": "未找到结果。",
     "no_recommendations_title": "暂无推荐",
@@ -232,11 +234,13 @@
     "no_results": "没有找到与“{{query}}”相关的结果",
     "characters_tab": "角色",
     "scenes_tab": "场景",
-    "personas_tab": "自我形象"
+    "personas_tab": "自我形象",
+    "users_tab": "用户"
   },
   "character_form": {
     "edit_title": "编辑角色",
     "create_title": "新建角色",
+    "fork_title": "衍生角色",
     "name": "名称",
     "persona": "人设",
     "required_marker": "*",
@@ -281,9 +285,11 @@
     "private": "私密",
     "public_desc": "所有人可见",
     "private_desc": "仅自己可见",
-    "forkable": "允许参考",
+    "forkable": "开源",
     "free_only": "（仅限免费角色）",
-    "forkable_desc": "允许其他用户以此为基础，参考和创建自己的版本",
+    "forkable_desc": "允许其他用户在此基础上创作",
+    "forked_from": "参考自",
+    "fork_must_be_free": "衍生角色必须免费",
     "level_lock_notice": "该功能将在达到等级 {{level}} 后开放",
     "pricing": "定价",
     "free": "免费",
@@ -314,6 +320,7 @@
   "persona_form": {
     "edit_title": "编辑自我形象",
     "create_title": "新建自我形象",
+    "fork_title": "衍生自我形象",
     "name": "名称",
     "description": "描述",
     "intro": "介绍",
@@ -345,11 +352,20 @@
       "tags": "例如：侦探、学者、机智"
     },
     "tags_input_hint": "输入标签后点击“添加”（或按 Enter）",
+    "visibility_settings": "可见性与访问权限",
+    "public": "公开",
+    "private": "私密",
+    "public_desc": "所有人可见",
+    "private_desc": "仅自己可见",
+    "forkable": "开源",
+    "forkable_desc": "允许其他用户在此基础上创作",
+    "forked_from": "参考自",
     "level_lock_notice": "该功能将在达到等级 {{level}} 后开放"
   },
   "scene_form": {
     "edit_title": "编辑场景",
     "create_title": "新建场景",
+    "fork_title": "衍生场景",
     "name": "名称",
     "description": "描述",
     "intro": "介绍",
@@ -386,8 +402,9 @@
     "private": "私密",
     "public_desc": "所有人可见",
     "private_desc": "仅自己可见",
-    "forkable": "允许参考",
-    "forkable_desc": "允许其他用户以此为基础，参考和创建自己的版本"
+    "forkable": "开源",
+    "forkable_desc": "允许其他用户在此基础上创作",
+    "forked_from": "参考自"
   },
   
   "common": {
@@ -535,8 +552,33 @@
     "views": "浏览",
     "likes": "点赞",
     "private": "私密",
-    "forkable": "可分叉",
-    "paid": "付费"
+    "forkable": "开源",
+    "paid": "付费",
+    "view_detail": "查看详情"
+  },
+  "entity_detail": {
+    "fetch_error": "加载实体失败",
+    "like_error": "点赞失败",
+    "confirm_delete": "您确定要删除吗？",
+    "delete_success": "删除成功",
+    "delete_error": "删除失败",
+    "by": "作者",
+    "unknown": "未知",
+    "private": "私密",
+    "views": "浏览",
+    "likes": "点赞",
+    "not_forkable": "该条目不可开源",
+    "forked_from": "参考自",
+    "start_chat": "开始聊天",
+    "like": "点赞",
+    "unlike": "取消点赞",
+    "edit": "编辑",
+    "delete": "删除",
+    "forkable": "开源",
+    "persona": "设定",
+    "description": "描述",
+    "greeting": "问候语",
+    "sample_dialogue": "示例对话"
   },
   "terms": {
     "title": "语伴岛 用户服务协议",
@@ -765,5 +807,11 @@
     "table_level": "等级",
     "table_exp_required": "所需经验",
     "table_benefits": "获得的权益"
+  },
+  "user_card": {
+    "no_bio": "暂无简介",
+    "chats": "聊天",
+    "likes": "点赞",
+    "characters_created": "角色"
   }
 }

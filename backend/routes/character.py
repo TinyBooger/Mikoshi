@@ -28,6 +28,8 @@ async def create_character(
     is_forkable: bool = Form(False),
     is_free: bool = Form(True),
     price: float = Form(0),
+    forked_from_id: Optional[int] = Form(None),
+    forked_from_name: Optional[str] = Form(None),
     picture: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -42,6 +44,10 @@ async def create_character(
     error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags)
     if error:
         raise HTTPException(status_code=400, detail=error)
+    
+    # Enforce: forking requires level 2 or higher
+    if forked_from_id and current_user.level < 2:
+        raise HTTPException(status_code=403, detail="Forking requires level 2 or higher")
     
     # Enforce: paid characters cannot be forkable
     if not is_free and is_forkable:
@@ -79,7 +85,9 @@ async def create_character(
         is_free=is_free,
         price=price,
         views=0,
-        picture=None
+        picture=None,
+        forked_from_id=forked_from_id,
+        forked_from_name=forked_from_name,
     )
     db.add(char)
     db.commit()
@@ -93,6 +101,14 @@ async def create_character(
 
     # Award EXP to creator for creating a character
     exp_result = award_exp_with_limits(current_user, "create_character", db)
+    
+    # Award EXP to original creator if this is a fork
+    if forked_from_id:
+        original_char = db.query(Character).filter(Character.id == forked_from_id).first()
+        if original_char and original_char.creator_id:
+            original_creator = db.query(User).filter(User.id == original_char.creator_id).first()
+            if original_creator:
+                award_exp_with_limits(original_creator, "forked", db)
     
     return {
         "message": f"Character '{name}' created.",

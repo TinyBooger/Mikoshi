@@ -25,6 +25,10 @@ class Character(Base):
     created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     creator_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     creator_name = Column(String, nullable=True)
+    
+    # Fork tracking - give credit to original creator
+    forked_from_id = Column(Integer, ForeignKey('characters.id', ondelete='SET NULL'), nullable=True)
+    forked_from_name = Column(String, nullable=True)
 
 class User(Base):
     __tablename__ = "users"
@@ -52,6 +56,10 @@ class User(Base):
 
     # liked_characters, liked_scenes, liked_personas removed; now handled by junction tables
     liked_tags = Column(ARRAY(Text), default=[])
+    
+    # Badge system
+    badges = Column(JSONB, default={}, nullable=False)  # Badge data: {badge_name: {awarded_at: timestamp, frame: frame_id}}
+    active_badge = Column(String, nullable=True)  # Currently displayed badge key (e.g., "bronze_creator", "gold_creator")
     
     default_persona_id = Column(Integer, ForeignKey('personas.id', ondelete='SET NULL'), nullable=True)
 
@@ -95,6 +103,10 @@ class Persona(Base):
     views = Column(Integer, default=0)
     is_public = Column(Boolean, default=True, nullable=False)
     is_forkable = Column(Boolean, default=False, nullable=False)
+    
+    # Fork tracking - give credit to original creator
+    forked_from_id = Column(Integer, ForeignKey('personas.id', ondelete='SET NULL'), nullable=True)
+    forked_from_name = Column(String, nullable=True)
 
 
 class SearchTerm(Base):
@@ -126,6 +138,10 @@ class Scene(Base):
     views = Column(Integer, default=0)
     is_public = Column(Boolean, default=True, nullable=False)
     is_forkable = Column(Boolean, default=False, nullable=False)
+    
+    # Fork tracking - give credit to original creator
+    forked_from_id = Column(Integer, ForeignKey('scenes.id', ondelete='SET NULL'), nullable=True)
+    forked_from_name = Column(String, nullable=True)
 
 # Junction table for character likes
 class UserLikedCharacter(Base):

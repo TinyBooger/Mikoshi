@@ -26,10 +26,16 @@ async def create_scene(
     tags: List[str] = Form([]),
     is_public: bool = Form(False),
     is_forkable: bool = Form(False),
+    forked_from_id: Optional[int] = Form(None),
+    forked_from_name: Optional[str] = Form(None),
     picture: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Enforce: forking requires level 2 or higher
+    if forked_from_id and current_user.level < 2:
+        raise HTTPException(status_code=403, detail="Forking requires level 2 or higher")
+    
     # Enforce level-based private scene access (L2+)
     if not is_public and current_user.level < 2:
         raise HTTPException(status_code=403, detail="Private scenes require level 2 or higher")
@@ -44,7 +50,9 @@ async def create_scene(
         created_time=datetime.now(UTC),
         is_public=is_public,
         is_forkable=is_forkable,
-        picture=None
+        picture=None,
+        forked_from_id=forked_from_id,
+        forked_from_name=forked_from_name,
     )
     db.add(scene)
     db.commit()
@@ -56,6 +64,14 @@ async def create_scene(
     
     # Award EXP to creator for creating a scene
     exp_result = award_exp_with_limits(current_user, "create_scene", db)
+    
+    # Award EXP to original creator if this is a fork
+    if forked_from_id:
+        original_scene = db.query(Scene).filter(Scene.id == forked_from_id).first()
+        if original_scene and original_scene.creator_id:
+            original_creator = db.query(User).filter(User.id == original_scene.creator_id).first()
+            if original_creator:
+                award_exp_with_limits(original_creator, "forked", db)
     
     return JSONResponse(content={
         "id": scene.id,

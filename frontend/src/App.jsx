@@ -8,8 +8,7 @@ import HomePage from './pages/HomePage';
 import BrowsePage from './pages/BrowsePage.jsx';
 import WelcomePage from './pages/WelcomePage';
 import SignUpPage from './pages/SignUpPage';
-import PersonaFormPage from './pages/PersonaFormPage';
-import SceneFormPage from './pages/SceneFormPage';
+import EntityFormPage from './pages/EntityFormPage';
 import CharacterFormPage from './pages/CharacterFormPage';
 import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
@@ -28,6 +27,7 @@ import TestPage from './pages/TestPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import TermsOfServicePage from './pages/TermsOfServicePage.jsx';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx';
+import EntityDetailPage from './pages/EntityDetailPage.jsx';
 
 export default function App() {
   const { userData, loading } = useContext(AuthContext);
@@ -48,10 +48,14 @@ export default function App() {
             { path: 'browse/:mainTab', element: <BrowsePage /> },
             { path: 'character/create', element: <CharacterFormPage /> },
             { path: 'character/edit/:id', element: <CharacterFormPage /> },
-            { path: 'persona/create', element: <PersonaFormPage /> },
-            { path: 'persona/edit/:id', element: <PersonaFormPage /> },
-            { path: 'scene/create', element: <SceneFormPage /> },
-            { path: 'scene/edit/:id', element: <SceneFormPage /> },
+            { path: 'character/fork/:id', element: <CharacterFormPage /> },
+            { path: 'persona/create', element: <EntityFormPage /> },
+            { path: 'persona/edit/:id', element: <EntityFormPage /> },
+            { path: 'persona/fork/:id', element: <EntityFormPage /> },
+            { path: 'scene/create', element: <EntityFormPage /> },
+            { path: 'scene/edit/:id', element: <EntityFormPage /> },
+            { path: 'scene/fork/:id', element: <EntityFormPage /> },
+            { path: ':type/:id', element: <EntityDetailPage /> },
             { path: 'chat', element: <ChatPage /> },
             { path: 'profile', element: <ProfilePage /> },
             { path: 'profile/:userId', element: <ProfilePage publicView={true} /> },

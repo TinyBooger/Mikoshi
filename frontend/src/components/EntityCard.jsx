@@ -153,6 +153,11 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
     }
   };
 
+  const handleViewDetail = (e) => {
+    e.stopPropagation(); // Prevent card click
+    navigate(`/${type}/${id}`);
+  };
+
   return (
     <div
       className={compact && isMobile ? "d-flex flex-row position-relative" : "d-flex flex-column position-relative"}
@@ -341,6 +346,30 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
           </span>
         )}
       </div>)}
+      {/* View Detail Button for forkable entities */}
+      {is_forkable && !(compact && isMobile) && (
+        <div className="px-2 pb-2">
+          <button
+            onClick={handleViewDetail}
+            className="w-100 btn btn-sm"
+            style={{
+              fontSize: isMobile ? '0.65rem' : '0.7rem',
+              padding: isMobile ? '0.25rem 0.5rem' : '0.3rem 0.6rem',
+              background: '#736B92',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '0.375rem',
+              fontWeight: 500,
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#6A6286'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#736B92'}
+          >
+            <i className="bi bi-info-circle me-1"></i>
+            {t('entity_card.view_detail')}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

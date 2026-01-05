@@ -9,6 +9,7 @@ import logo from '../assets/images/logo.png';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import TextButton from './TextButton';
+import AvatarFrame from './AvatarFrame';
 
 export default function Sidebar({ isMobile, setSidebarVisible }) {
   const navigate = useNavigate();
@@ -391,14 +392,13 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               aria-haspopup="true"
               tabIndex={0}
             >
-              <img
-                src={userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar}
-                className="rounded-circle border"
-                width="32"
-                height="32"
-                alt={userData?.name || 'User'}
-                style={{ objectFit: 'cover', border: '1.6px solid #e9ecef' }}
-              />
+              <AvatarFrame badge={userData?.active_badge} size={32}>
+                <img
+                  src={userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar}
+                  alt={userData?.name || 'User'}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </AvatarFrame>
               <span className="flex-grow-1 text-start text-truncate" style={{ color: '#232323', fontWeight: 700, fontSize: '0.8rem' }}>
                 {userData?.name || userData?.email}
               </span>

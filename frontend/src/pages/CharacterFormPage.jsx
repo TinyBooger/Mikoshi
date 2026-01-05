@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useLocation } from "react-router";
 import TagsInput from '../components/TagsInput';
 import ImageCropModal from '../components/ImageCropModal';
 import { createPortal } from 'react-dom';
@@ -20,7 +20,9 @@ export default function CharacterFormPage() {
   // Get id param from route
   const params = useParams();
   const id = params.id;
-  const mode = id ? 'edit' : 'create';
+  const location = useLocation();
+  const isForkMode = location.pathname.includes('/fork/');
+  const mode = id ? (isForkMode ? 'fork' : 'edit') : 'create';
   const MAX_GREETING_LENGTH = 200;
   const MAX_SAMPLE_LENGTH = 1000;
   const MAX_TAGS = 20;
@@ -45,13 +47,15 @@ export default function CharacterFormPage() {
     is_forkable: false,
     is_free: true,
     price: 0,
+    forked_from_id: null,
+    forked_from_name: null,
   });
   const [picture, setPicture] = useState(null);
   const [picturePreview, setPicturePreview] = useState(null);
   const [isImprovisingGreeting, setIsImprovisingGreeting] = useState(false);
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
-  const [loading, setLoading] = useState(mode === 'edit');
+  const [loading, setLoading] = useState(mode === 'edit' || mode === 'fork');
   const [showAssistant, setShowAssistant] = useState(false);
   const [assistantMessages, setAssistantMessages] = useState(null);
   const [assistantGeneratedData, setAssistantGeneratedData] = useState(null);
@@ -69,12 +73,16 @@ export default function CharacterFormPage() {
       if (!canPaid && !prev.is_free) {
         next = { ...next, is_free: true, price: 0 };
       }
+      // In fork mode, must be free and forkable
+      if (mode === 'fork') {
+        next = { ...next, is_free: true, price: 0, is_forkable: true };
+      }
       return next;
     });
-  }, [canPrivate, canFork, canPaid]);
+  }, [canPrivate, canFork, canPaid, mode]);
 
   useEffect(() => {
-    if (mode === 'edit') {
+    if (mode === 'edit' || mode === 'fork') {
       if (!id) {
         toast.show(t('character_form.missing_id'), { type: 'error' });
         navigate("/");
@@ -100,18 +108,40 @@ export default function CharacterFormPage() {
           const loadedGreeting = data.greeting || '';
           const isImprov = loadedGreeting && loadedGreeting.indexOf(SPECIAL_IMPROVISING_GREETING) !== -1;
           setIsImprovisingGreeting(!!isImprov);
-          setCharData({
-            name: data.name || '',
-            persona: data.persona || '',
-            sample: data.example_messages || '',
-            tagline: data.tagline || '',
-            tags: data.tags || [],
-            greeting: isImprov ? '' : loadedGreeting,
-            is_public: !!data.is_public,
-            is_forkable: !!data.is_forkable,
-            is_free: data.is_free !== false,
-            price: data.price || 0,
-          });
+          
+          if (mode === 'fork') {
+            // In fork mode, set forked_from fields and clear the name for new creation
+            setCharData({
+              name: `${data.name} (Fork)`,
+              persona: data.persona || '',
+              sample: data.example_messages || '',
+              tagline: data.tagline || '',
+              tags: data.tags || [],
+              greeting: isImprov ? '' : loadedGreeting,
+              is_public: !!data.is_public,
+              is_forkable: true,
+              is_free: true,
+              price: 0,
+              forked_from_id: data.id,
+              forked_from_name: data.name,
+            });
+          } else {
+            // Edit mode
+            setCharData({
+              name: data.name || '',
+              persona: data.persona || '',
+              sample: data.example_messages || '',
+              tagline: data.tagline || '',
+              tags: data.tags || [],
+              greeting: isImprov ? '' : loadedGreeting,
+              is_public: !!data.is_public,
+              is_forkable: !!data.is_forkable,
+              is_free: data.is_free !== false,
+              price: data.price || 0,
+              forked_from_id: data.forked_from_id || null,
+              forked_from_name: data.forked_from_name || null,
+            });
+          }
           setLoading(false);
         });
     }
@@ -172,6 +202,11 @@ export default function CharacterFormPage() {
 
     const formData = new FormData();
     if (mode === 'edit') formData.append("id", id);
+    // In fork mode, don't append id - create a new entity
+    if (mode === 'fork') {
+      formData.append("forked_from_id", charData.forked_from_id);
+      formData.append("forked_from_name", charData.forked_from_name);
+    }
     formData.append("name", charData.name.trim());
     formData.append("persona", charData.persona.trim());
     formData.append("tagline", charData.tagline.trim());
@@ -193,12 +228,12 @@ export default function CharacterFormPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.show(mode === 'edit' ? t('character_form.updated') : t('character_form.created'));
+        toast.show(mode === 'edit' ? t('character_form.updated') : mode === 'fork' ? t('character_form.forked', 'Character forked successfully') : t('character_form.created'));
         // Silently award EXP for character creation (backend handles it but we can trigger refresh)
-        if (mode === 'create') {
+        if (mode === 'create' || mode === 'fork') {
           silentExpGain('create_character', null, sessionToken).catch(() => {});
         }
-        navigate(mode === 'edit' ? "/profile" : "/");
+        navigate(mode === 'edit' ? "/profile" : "/profile");
       } else {
         toast.show(data.message || data.detail || t('character_form.error'), { type: 'error' });
       }
@@ -266,9 +301,17 @@ export default function CharacterFormPage() {
           padding: '2.5rem 2rem',
           margin: '0 auto',
         }}>
-          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? t('character_form.edit_title') : t('character_form.create_title')}</h2>
+          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? t('character_form.edit_title') : mode === 'fork' ? t('character_form.fork_title', 'Fork Character') : t('character_form.create_title')}</h2>
 
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
+          {/* Forked From - Display only */}
+          {charData.forked_from_id && charData.forked_from_name && (
+            <div className="alert alert-info mb-4" role="alert">
+              <i className="bi bi-code-fork me-2"></i>
+              {t('character_form.forked_from', 'This is a fork based on')} <strong>{charData.forked_from_name}</strong>
+            </div>
+          )}
+
           {/* Name */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
@@ -512,16 +555,16 @@ export default function CharacterFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!!charData.is_forkable}
-                    disabled={!charData.is_free || !canFork}
+                    disabled={!charData.is_free || !canFork || mode === 'fork'}
                     onChange={e => handleChange('is_forkable', e.target.checked)}
-                    style={{ width: '3rem', height: '1.5rem', cursor: charData.is_free && canFork ? 'pointer' : 'not-allowed' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: (charData.is_free && canFork && mode !== 'fork') ? 'pointer' : 'not-allowed' }}
                   />
                 </div>
               </div>
             </div>
 
             {/* Paid Character Toggle */}
-            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canPaid ? 0.55 : 1 }}>
+            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: (!canPaid || mode === 'fork') ? 0.55 : 1 }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className="bi bi-currency-dollar" style={{ fontSize: '1.2rem', color: '#f59e0b' }}></i>
@@ -530,7 +573,9 @@ export default function CharacterFormPage() {
                       {t('character_form.paid_character') || 'Paid Character?'}
                     </div>
                     <div className="text-muted" style={{ fontSize: '0.7rem', lineHeight: '1.3' }}>
-                      {t('character_form.paid_character_desc') || 'Free users can create 2 paid characters, Pro users unlimited'}
+                      {mode === 'fork' 
+                        ? t('character_form.fork_must_be_free', 'Forked characters must be free') 
+                        : (t('character_form.paid_character_desc') || 'Free users can create 2 paid characters, Pro users unlimited')}
                     </div>
                     {!canPaid && (
                       <div className="text-danger" style={{ fontSize: '0.75rem' }}>
@@ -545,7 +590,7 @@ export default function CharacterFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!charData.is_free}
-                    disabled={!canPaid}
+                    disabled={!canPaid || mode === 'fork'}
                     onChange={e => {
                       if (e.target.checked) {
                         // Switching to paid
@@ -560,7 +605,7 @@ export default function CharacterFormPage() {
                         handleChange('price', 0);
                       }
                     }}
-                    style={{ width: '3rem', height: '1.5rem', cursor: canPaid ? 'pointer' : 'not-allowed' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: (canPaid && mode !== 'fork') ? 'pointer' : 'not-allowed' }}
                   />
                 </div>
               </div>

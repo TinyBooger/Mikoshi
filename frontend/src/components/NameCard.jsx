@@ -126,6 +126,11 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
     if (type === 'persona') return;
   };
 
+  const handleViewDetail = (e) => {
+    e.stopPropagation();
+    navigate(`/${type}/${id}`);
+  };
+
   return (
     <div
       className="entity-name-card"
@@ -150,25 +155,49 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
       onMouseLeave={clickSuppressed ? undefined : () => setHovered(false)}
     >
       {/* Upper content (avatar + texts) */}
-      <div style={{ flex: '1 1 auto', display: 'flex', alignItems: 'flex-start', gap: isMobile ? '0.3rem' : '0.8rem', padding: isMobile ? '0.3rem 0.3rem 0.15rem' : '0.6rem 0.8rem 0.4rem' }}>
+      <div style={{ flex: '1 1 auto', display: 'flex', alignItems: 'flex-start', gap: isMobile ? '0.3rem' : '0.8rem', padding: isMobile ? '0.3rem 0.3rem 0.15rem' : '0.6rem 0.8rem 0.4rem', position: 'relative' }}>
         {/* Avatar */}
-        <div
-          style={{
-            width: AVATAR_SIZE,
-            height: AVATAR_SIZE,
-            borderRadius: '50%',
-            overflow: 'hidden',
-            border: isMobile ? '1px solid #e9ecef' : '2px solid #e9ecef',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-            flexShrink: 0,
-            background: '#f3f4f6',
-          }}
-        >
-          <img
-            src={picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(picture).replace(/^\//, '')}` : defaultPicture}
-            alt={name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
+        <div style={{ position: 'relative' }}>
+          <div
+            style={{
+              width: AVATAR_SIZE,
+              height: AVATAR_SIZE,
+              borderRadius: '50%',
+              overflow: 'hidden',
+              border: isMobile ? '1px solid #e9ecef' : '2px solid #e9ecef',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+              flexShrink: 0,
+              background: '#f3f4f6',
+            }}
+          >
+            <img
+              src={picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(picture).replace(/^\//, '')}` : defaultPicture}
+              alt={name}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </div>
+          {/* Forkable badge on avatar */}
+          {entity.is_forkable && (
+            <div style={{ position: 'absolute', top: -2, right: -2, zIndex: 2 }}>
+              <span
+                title={t('entity_card.forkable') || 'Forkable'}
+                style={{
+                  background: 'rgba(34, 197, 94, 0.95)',
+                  color: '#fff',
+                  fontSize: '0.5rem',
+                  padding: '2px 4px',
+                  borderRadius: '3px',
+                  fontWeight: 600,
+                  letterSpacing: '0.2px',
+                  textTransform: 'uppercase',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                  display: 'inline-block',
+                }}
+              >
+                <i className="bi bi-diagram-3-fill" style={{ fontSize: '0.45rem' }}></i>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Texts */}
@@ -237,6 +266,30 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
           <span className="text-truncate">{creatorDisplay}</span>
         </div>
       </div>
+      {/* View Detail Button for forkable entities */}
+      {entity.is_forkable && (
+        <div style={{ padding: isMobile ? '0 0.3rem 0.3rem' : '0 0.8rem 0.6rem' }}>
+          <button
+            onClick={handleViewDetail}
+            className="w-100 btn btn-sm"
+            style={{
+              fontSize: isMobile ? '0.65rem' : '0.7rem',
+              padding: isMobile ? '0.25rem 0.5rem' : '0.3rem 0.6rem',
+              background: '#736B92',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '0.375rem',
+              fontWeight: 500,
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#6A6286'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#736B92'}
+          >
+            <i className="bi bi-info-circle me-1"></i>
+            {t('entity_card.view_detail')}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

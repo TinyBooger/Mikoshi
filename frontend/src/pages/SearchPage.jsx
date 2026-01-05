@@ -3,7 +3,9 @@ import { useNavigate, useLocation } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 import { AuthContext } from '../components/AuthProvider';
 import EntityCard from '../components/EntityCard';
+import UserCard from '../components/UserCard';
 import CardSection from '../components/CardSection';
+import HorizontalCardSection from '../components/HorizontalCardSection';
 import PageWrapper from '../components/PageWrapper';
 import PaginationBar from '../components/PaginationBar';
 import { useTranslation } from 'react-i18next';
@@ -60,6 +62,7 @@ export default function SearchPage() {
       let endpoint = "/api/characters/search";
       if (activeTab === "scenes") endpoint = "/api/scenes/search";
       if (activeTab === "personas") endpoint = "/api/personas/search";
+      if (activeTab === "users") endpoint = "/api/search/users";
       try {
         const fetchParams = new URLSearchParams({
           q: q,
@@ -312,6 +315,29 @@ export default function SearchPage() {
             >
               {t('search.personas_tab') || 'Personas'}
             </PrimaryButton>
+            <PrimaryButton
+              onClick={() => handleTabChange('users')}
+              style={{
+                background: activeTab === 'users' ? '#736B92' : '#f5f6fa',
+                color: activeTab === 'users' ? '#fff' : '#232323',
+                borderRadius: 13,
+                fontSize: '1.04rem',
+                padding: '0.48rem 1.6rem',
+                boxShadow: activeTab === 'users' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+              }}
+              onMouseEnter={e => {
+                if (activeTab !== 'users') {
+                  e.currentTarget.style.background = '#e9ecef';
+                } else {
+                  e.currentTarget.style.background = '#6A6286';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = activeTab === 'users' ? '#736B92' : '#f5f6fa';
+              }}
+            >
+              {t('search.users_tab') || 'Users'}
+            </PrimaryButton>
           </div>
           {/* Sorting Toggle Dropdown */}
           <div className="dropdown" style={{ minWidth: 140 }}>
@@ -371,18 +397,31 @@ export default function SearchPage() {
               {t('search.no_results', { query })}
             </p>
           ) : (
-            <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto' }}>
-              <CardSection title={t('search.results')}>
-                {activeTab === 'characters' && results.map((char) => (
-                  <EntityCard key={char.id} type="character" entity={char} />
-                ))}
-                {activeTab === 'scenes' && results.map((scene) => (
-                  <EntityCard key={scene.id} type="scene" entity={scene} />
-                ))}
-                {activeTab === 'personas' && results.map((persona) => (
-                  <EntityCard key={persona.id} type="persona" entity={persona} />
-                ))}
-              </CardSection>
+            <div style={{ width: '100%', maxWidth: 1400, margin: '0 auto' }}>
+              {activeTab === 'users' ? (
+                <div style={{ width: '100%' }}>
+                  <h6 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '1rem', color: '#232323' }}>
+                    {t('search.results')}
+                  </h6>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                    {results.map((user) => (
+                      <UserCard key={user.id} user={user} />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <CardSection title={t('search.results')}>
+                  {activeTab === 'characters' && results.map((char) => (
+                    <EntityCard key={char.id} type="character" entity={char} />
+                  ))}
+                  {activeTab === 'scenes' && results.map((scene) => (
+                    <EntityCard key={scene.id} type="scene" entity={scene} />
+                  ))}
+                  {activeTab === 'personas' && results.map((persona) => (
+                    <EntityCard key={persona.id} type="persona" entity={persona} />
+                  ))}
+                </CardSection>
+              )}
             </div>
           )}
         {/* Bottom Pagination */}

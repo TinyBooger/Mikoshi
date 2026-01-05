@@ -121,6 +121,11 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
     if (type === 'persona') navigate(`/chat?persona=${encodeURIComponent(id)}`);
   };
 
+  const handleViewDetail = (e) => {
+    e.stopPropagation();
+    navigate(`/${type}/${id}`);
+  };
+
   return (
     <div
       className="entity-card-horizontal"
@@ -155,6 +160,27 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
           overflow: 'hidden',
         }}
       >
+        {/* Forkable badge on image */}
+        {entity.is_forkable && (
+          <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 10 }}>
+            <span
+              title={t('entity_card.forkable') || 'Forkable'}
+              style={{
+                background: 'rgba(34, 197, 94, 0.95)',
+                color: '#fff',
+                fontSize: '0.55rem',
+                padding: '3px 6px',
+                borderRadius: '4px',
+                fontWeight: 600,
+                letterSpacing: '0.3px',
+                textTransform: 'uppercase',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+              }}
+            >
+              <i className="bi bi-diagram-3-fill" style={{ fontSize: '0.5rem' }}></i>
+            </span>
+          </div>
+        )}
         <img
           src={picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(picture).replace(/^\//, '')}` : defaultPicture}
           alt={name}
@@ -254,6 +280,28 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
             <span className="text-truncate">{creatorDisplay}</span>
           </div>
         </div>
+        {/* View Detail Button for forkable entities */}
+        {entity.is_forkable && (
+          <button
+            onClick={handleViewDetail}
+            className="w-100 btn btn-sm mt-2"
+            style={{
+              fontSize: isMobile ? '0.65rem' : '0.7rem',
+              padding: isMobile ? '0.25rem 0.5rem' : '0.3rem 0.6rem',
+              background: '#736B92',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '0.375rem',
+              fontWeight: 500,
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#6A6286'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#736B92'}
+          >
+            <i className="bi bi-info-circle me-1"></i>
+            {t('entity_card.view_detail')}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function Table({ columns, data, onEdit, onDelete, actions = true }) {
+export default function Table({ columns, data, onEdit, onDelete, customActions = [], actions = true }) {
   return (
     <table className="table table-striped table-hover">
       <thead className="table-dark">
@@ -42,6 +42,17 @@ export default function Table({ columns, data, onEdit, onDelete, actions = true 
                       <i className="bi bi-trash"></i>
                     </button>
                   )}
+                  {customActions.map((action, idx) => (
+                    <button
+                      key={idx}
+                      className={`btn ${action.className || 'btn-outline-secondary'}`}
+                      onClick={() => action.onClick(row)}
+                      title={action.label}
+                    >
+                      {action.icon && <i className={`bi ${action.icon}`}></i>}
+                      {action.text && <span className="ms-1">{action.text}</span>}
+                    </button>
+                  ))}
                 </div>
               </td>
             )}

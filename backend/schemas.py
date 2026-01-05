@@ -16,6 +16,8 @@ class SceneOut(BaseModel):
     picture: Optional[str] = None
     is_public: bool = False
     is_forkable: bool = False
+    forked_from_id: Optional[int] = None
+    forked_from_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -34,6 +36,8 @@ class PersonaOut(BaseModel):
     views: int = 0
     is_public: bool = False
     is_forkable: bool = False
+    forked_from_id: Optional[int] = None
+    forked_from_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -56,6 +60,8 @@ class CharacterOut(BaseModel):
     is_forkable: bool = False
     is_free: bool = True
     price: float = 0
+    forked_from_id: Optional[int] = None
+    forked_from_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -81,11 +87,14 @@ class UserOut(BaseModel):
     chat_history: list[Any] = []
     views: int = 0
     likes: int = 0
+    characters_created: int = 0
     is_admin: bool = False
     default_persona_id: Optional[int] = None
     default_persona: Optional[PersonaOut] = None
     level: int = 1
     exp: int = 0
+    badges: dict[str, Any] = {}
+    active_badge: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -105,6 +114,15 @@ class PersonaListOut(BaseModel):
     page: int
     page_size: int
     short: bool
+
+    class Config:
+        from_attributes = True
+
+class UserListOut(BaseModel):
+    items: List[UserOut]
+    total: int
+    page: int
+    page_size: int
 
     class Config:
         from_attributes = True

@@ -46,7 +46,9 @@ def get_all_users(
             "status": "active",  # You can add a status field to User model if needed
             "views": user.views,
             "likes": user.likes,
-            "profile_pic": user.profile_pic
+            "profile_pic": user.profile_pic,
+            "badges": user.badges or {},
+            "active_badge": user.active_badge
         }
         for user in users
     ]
