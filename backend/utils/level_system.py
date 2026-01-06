@@ -229,13 +229,6 @@ def can_perform_action(level: int, action: str) -> bool:
 
 
 def reset_daily_limits_if_needed(user) -> None:
-    """
-    Reset daily EXP and action counts if it's a new day.
-    Modifies user object in place.
-    
-    Args:
-        user: User SQLAlchemy model instance
-    """
     from datetime import datetime, UTC
     
     today = datetime.now(UTC).date()
@@ -243,7 +236,13 @@ def reset_daily_limits_if_needed(user) -> None:
     
     if last_reset != today:
         user.daily_exp_gained = 0
-        user.daily_action_counts = {}
+        
+        # Only reset counts to 0, don't create new empty dict
+        if user.daily_action_counts is not None:
+            # Reset all counters to 0 but keep the keys
+            for key in user.daily_action_counts:
+                user.daily_action_counts[key] = 0
+        
         user.last_exp_reset_date = datetime.now(UTC)
 
 
@@ -272,6 +271,14 @@ def award_exp_with_limits(user, action: str, db_session) -> Dict[str, any]:
         }
     """
     from datetime import datetime, UTC
+
+    # Initialize daily_action_counts if None
+    if user.daily_action_counts is None:
+        user.daily_action_counts = {}
+
+    # Ensure the current action has an initialized counter to avoid KeyError when accessed later
+    if action not in user.daily_action_counts:
+        user.daily_action_counts[action] = 0
     
     # Reset daily limits if needed
     reset_daily_limits_if_needed(user)
@@ -287,10 +294,6 @@ def award_exp_with_limits(user, action: str, db_session) -> Dict[str, any]:
     exp_value = EXP_REWARDS[action]
     action_limit = DAILY_ACTION_LIMITS.get(action)
     daily_cap = DAILY_EXP_CAPS.get(user.level or 1, 150)
-    
-    # Initialize daily_action_counts if None
-    if user.daily_action_counts is None:
-        user.daily_action_counts = {}
     
     # Check action limit
     current_action_count = user.daily_action_counts.get(action, 0)
@@ -337,6 +340,9 @@ def award_exp_with_limits(user, action: str, db_session) -> Dict[str, any]:
             "exp_added": 0
         }
     
+    print(f"Awarded {actual_exp} EXP to user {user.id} for action {action}. New EXP: {user.exp}, Level: {user.level}")
+    print(user.daily_action_counts)
+    
     return {
         "success": True,
         "exp_added": actual_exp,
@@ -345,7 +351,7 @@ def award_exp_with_limits(user, action: str, db_session) -> Dict[str, any]:
         "leveled_up": leveled_up,
         "daily_exp_gained": user.daily_exp_gained,
         "daily_exp_cap": daily_cap,
-        "action_count": user.daily_action_counts[action],
+        "action_count": user.daily_action_counts.get(action, 0),
         "action_limit": action_limit,
         "progress": get_level_progress(user.exp, user.level)
     }
