@@ -661,6 +661,40 @@ function HomePage() {
       
       {/* Update Notification Modal */}
       <UpdateNotificationModal show={showUpdateNotification} onClose={() => setShowUpdateNotification(false)} />
+
+      {/* ICP filing - subtle fixed footer */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: '12px',
+          left: 0,
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+          zIndex: 10,
+        }}
+      >
+        <a
+          href="https://beian.miit.gov.cn/"
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            fontSize: '0.8rem',
+            color: '#adb5bd',
+            opacity: 0.8,
+            textDecoration: 'none',
+            padding: '4px 10px',
+            borderRadius: '999px',
+            background: 'rgba(255,255,255,0.6)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            pointerEvents: 'auto',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          滇ICP备2025072925号
+        </a>
+      </div>
     </PageWrapper>
   );
 }
