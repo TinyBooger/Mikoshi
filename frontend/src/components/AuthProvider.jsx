@@ -139,6 +139,124 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('sessionToken');
   };
 
+  // Send SMS verification code
+  const sendVerificationCode = async (phoneNumber) => {
+    // Don't use setLoading to avoid full-page overlay
+    setError(null);
+    try {
+      const response = await fetch(`${window.API_BASE_URL}/api/send-verification-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ phone_number: phoneNumber })
+      });
+      const result = await response.json();
+      if (response.ok) {
+        setError(null);
+        return { success: true, message: result.message, code: result.verify_code };
+      } else {
+        setError(result.detail || 'Failed to send verification code');
+        return { success: false, message: result.detail };
+      }
+    } catch (err) {
+      setError('Error sending verification code');
+      return { success: false, message: 'Network error' };
+    }
+  };
+
+  // Verify phone number with code
+  const verifyPhone = async (phoneNumber, code) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${window.API_BASE_URL}/api/verify-phone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ phone_number: phoneNumber, verification_code: code })
+      });
+      const result = await response.json();
+      if (response.ok) {
+        if (result.status === 'existing_user') {
+          // 已有用户，直接登录
+          setSessionToken(result.session_token);
+          localStorage.setItem('sessionToken', result.session_token);
+          setUserData(result.user);
+          setError(null);
+          return { success: true, status: 'existing_user' };
+        } else {
+          // 新用户，返回token用于注册
+          setError(null);
+          return { 
+            success: true, 
+            status: 'new_user',
+            verifiedPhoneToken: result.verified_phone_token,
+            phoneNumber: result.phone_number
+          };
+        }
+      } else {
+        setError(result.detail || 'Verification failed');
+        return { success: false, message: result.detail };
+      }
+    } catch (err) {
+      setError('Verification error');
+      return { success: false, message: 'Network error' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Register with verified phone number
+  const registerWithPhone = async (verifiedPhoneToken, name, invitationCode, bio, email, password, profileFile) => {
+    setLoading(true);
+    setError(null);
+    try {
+      let response;
+      if (profileFile) {
+        const formData = new FormData();
+        formData.append('verified_phone_token', verifiedPhoneToken);
+        formData.append('name', name);
+        formData.append('invitation_code', invitationCode);
+        if (bio) formData.append('bio', bio);
+        if (email) formData.append('email', email);
+        if (password) formData.append('password', password);
+        formData.append('profile_pic', profileFile);
+        response = await fetch(`${window.API_BASE_URL}/api/register-with-phone`, {
+          method: 'POST',
+          body: formData
+        });
+      } else {
+        const params = { 
+          verified_phone_token: verifiedPhoneToken,
+          name, 
+          invitation_code: invitationCode, 
+          bio: bio || '' 
+        };
+        if (email) params.email = email;
+        if (password) params.password = password;
+        response = await fetch(`${window.API_BASE_URL}/api/register-with-phone`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(params)
+        });
+      }
+      const result = await response.json();
+      if (response.ok && result.token) {
+        setSessionToken(result.token);
+        localStorage.setItem('sessionToken', result.token);
+        setUserData(result.user);
+        setError(null);
+        return { success: true };
+      } else {
+        setError(result.detail || 'Registration failed');
+        return { success: false, message: result.detail };
+      }
+    } catch (err) {
+      setError('Registration error');
+      return { success: false, message: 'Network error' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch user data on mount or when sessionToken changes
   useEffect(() => {
     fetchUserData();
@@ -155,6 +273,9 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      sendVerificationCode,
+      verifyPhone,
+      registerWithPhone,
       refreshUserData: fetchUserData
     }}>
       {children}

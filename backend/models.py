@@ -34,7 +34,8 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(String, primary_key=True, index=True)
-    email = Column(String, unique=True, nullable=False)
+    email = Column(String, unique=True, nullable=True)
+    phone_number = Column(String(20), unique=True, nullable=True, index=True)
     name = Column(String)
     profile_pic = Column(String, nullable=True)
     bio = Column(Text, nullable=True)  # Short bio, optional

@@ -8,6 +8,8 @@ from schemas import UserOut
 from utils.session import create_session_token, verify_session_token
 from utils.user_utils import build_user_response
 from utils.validators import validate_account_fields
+from utils.sms_utils import send_verification_code, verify_code, create_verified_phone_token, verify_phone_token
+import re
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -116,7 +118,14 @@ def login_user(
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.email == email).first()
+    # Accept either email or phone number in the same field
+    account = email.strip()
+    user = None
+    if '@' in account:
+        user = db.query(User).filter(User.email == account).first()
+    else:
+        # treat as phone number
+        user = db.query(User).filter(User.phone_number == account).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
     hashed_password = getattr(user, "hashed_password", None)
@@ -168,5 +177,196 @@ def change_password(payload: dict = None, db: Session = Depends(get_db), session
     db.commit()
     return {"message": "Password changed"}
 
+
+# Send SMS verification code endpoint
+@router.post("/api/send-verification-code")
+async def send_sms_code(phone_number: str = Form(...)):
+    """发送短信验证码"""
+    # 验证手机号格式（中国大陆）
+    if not re.match(r'^1[3-9]\d{9}$', phone_number):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid phone number format"
+        )
+    
+    result = await send_verification_code(phone_number)
+    if not result['success']:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result['message']
+        )
+    
+    return result
+
+
+# Phone number verification - returns token for new users or logs in existing users
+@router.post("/api/verify-phone")
+def verify_phone(
+    phone_number: str = Form(...),
+    verification_code: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """
+    验证手机号验证码
+    - 如果手机号已存在，直接登录返回session token
+    - 如果手机号不存在，返回verified_phone_token用于注册
+    """
+    # 验证验证码
+    if not verify_code(phone_number, verification_code):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired verification code"
+        )
+    
+    # 查找用户
+    user = db.query(User).filter(User.phone_number == phone_number).first()
+    
+    if user:
+        # 已存在用户，直接登录
+        token = create_session_token(user)
+        user_response = build_user_response(user, db)
+        return {
+            "status": "existing_user",
+            "message": "Login successful",
+            "session_token": token,
+            "user": user_response
+        }
+    else:
+        # 新用户，生成验证token用于注册
+        verified_token = create_verified_phone_token(phone_number)
+        return {
+            "status": "new_user",
+            "message": "Phone verified, please complete registration",
+            "verified_phone_token": verified_token,
+            "phone_number": phone_number
+        }
+
+
+# Phone number registration endpoint
+@router.post("/api/register-with-phone")
+def register_with_phone(
+    verified_phone_token: str = Form(...),
+    name: str = Form(...),
+    invitation_code: str = Form(...),
+    email: str = Form(None),
+    password: str = Form(None),
+    bio: str = Form(None),
+    profile_pic: UploadFile = File(None),
+    db: Session = Depends(get_db)
+):
+    """
+    使用已验证的手机号完成注册
+    """
+    # 验证token并获取手机号
+    phone_number = verify_phone_token(verified_phone_token)
+    if not phone_number:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired verification token"
+        )
+    
+    # 检查手机号是否已被注册（防止重复）
+    if db.query(User).filter(User.phone_number == phone_number).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phone number already registered"
+        )
+    
+    # 如果提供了邮箱，检查是否已被使用
+    if email and email.strip():
+        if db.query(User).filter(User.email == email.strip()).first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+    
+    # 验证邀请码
+    from models import InvitationCode
+    from datetime import datetime, UTC
+    
+    invitation = db.query(InvitationCode).filter(
+        InvitationCode.code == invitation_code.upper()
+    ).first()
+    
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid invitation code"
+        )
+    
+    if not invitation.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This invitation code has been revoked"
+        )
+    
+    if invitation.use_count >= invitation.max_uses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This invitation code has reached its usage limit"
+        )
+    
+    if invitation.expires_at and datetime.now(UTC) > invitation.expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This invitation code has expired"
+        )
+    
+    # 验证用户名
+    error = validate_account_fields(name=name)
+    if error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error
+        )
+    
+    # 创建新用户
+    user_id = f"phone_{phone_number}"
+    
+    # Hash password if provided
+    hashed_pw = ""
+    if password and password.strip():
+        hashed_pw = pwd_context.hash(password.strip())
+    
+    user = User(
+        id=user_id,
+        phone_number=phone_number,
+        name=name,
+        email=email.strip() if email and email.strip() else None,
+        bio=bio,
+        hashed_password=hashed_pw,
+        profile_pic=None
+    )
+    
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    # 如果上传了头像，保存它
+    if profile_pic:
+        try:
+            from utils.local_storage_utils import save_image
+            user.profile_pic = save_image(profile_pic.file, 'user', user.id, profile_pic.filename)
+            db.commit()
+            db.refresh(user)
+        except Exception:
+            pass
+    
+    # 更新邀请码使用记录
+    invitation.use_count += 1
+    if invitation.use_count == 1:
+        invitation.used_by = user.id
+        invitation.used_at = datetime.now(UTC)
+    db.commit()
+    
+    # 创建session token
+    token = create_session_token(user)
+    user_response = build_user_response(user, db)
+    
+    return {
+        "message": "Registration successful",
+        "token": token,
+        "user": user_response
+    }
 
 

@@ -1,5 +1,5 @@
-import React, { useState, useContext } from 'react';
-import { useNavigate } from 'react-router';
+import React, { useState, useContext, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import PageWrapper from '../components/PageWrapper';
 import ImageCropModal from '../components/ImageCropModal';
@@ -10,6 +10,12 @@ import TextButton from '../components/TextButton';
 export default function SignUpPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Get phone registration parameters
+  const phoneToken = searchParams.get('phone_token');
+  const phoneNumber = searchParams.get('phone');
+  
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +28,7 @@ export default function SignUpPage() {
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [error, setError] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const { register, loading } = useContext(AuthContext);
+  const { registerWithPhone, loading } = useContext(AuthContext);
 
   const handleGoBack = () => {
     navigate(-1);
@@ -31,28 +37,43 @@ export default function SignUpPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // Validate password confirmation
     if (password !== confirmPassword) {
       setError(t('signup.passwords_no_match'));
       return;
     }
+    
+    // Validate invitation code
     if (!invitationCode.trim()) {
       setError(t('signup.invitation_code_required'));
       return;
     }
+    
+    // Validate terms
     if (!agreedToTerms) {
       setError(t('signup.terms_required'));
       return;
     }
-    const success = await register(email, name, password, bio, profileFile, invitationCode);
-    if (success) {
+    
+    const success = await registerWithPhone(phoneToken, name, invitationCode, bio, email, password, profileFile);
+    if (success.success) {
       navigate('/', { replace: true });
     } else {
-      setError(t('signup.registration_failed'));
+      setError(success.message || t('signup.registration_failed'));
     }
   };
 
   return (
-    <>
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      overflow: 'auto',
+      paddingTop: '60px',
+    }}>
       <TextButton
         onClick={handleGoBack}
         style={{ position: 'absolute', top: 24, left: 24, zIndex: 1000 }}
@@ -60,12 +81,25 @@ export default function SignUpPage() {
         <span style={{ fontSize: '1.5rem', marginRight: 6 }}>&larr;</span> {t('signup.back')}
       </TextButton>
       <PageWrapper>
-        <div className="container">
+        <div className="container" style={{ paddingBottom: '3rem' }}>
           <div className="mx-auto" style={{ maxWidth: 400 }}>
-            <h2 className="mb-4 text-center fw-bold py-4" style={{ fontWeight: 700, paddingTop: '2rem', paddingBottom: '2rem' }}>{t('signup.title')}</h2>
+            <h2 className="mb-4 text-center fw-bold py-4" style={{ fontWeight: 700, paddingTop: '2rem', paddingBottom: '2rem' }}>
+              完成注册
+            </h2>
             {error && <div className="alert alert-danger">{error}</div>}
             {loading && <div className="text-center"><div className="spinner-border text-primary" role="status"></div></div>}
             <form onSubmit={handleSubmit}>
+              <div className="mb-3">
+                <label className="form-label">手机号</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={phoneNumber}
+                  disabled
+                  style={{ backgroundColor: '#f0f0f0' }}
+                />
+                <small className="form-text text-muted">已验证</small>
+              </div>
               <div className="mb-3">
                 <label className="form-label">{t('signup.invitation_code')}</label>
                 <input
@@ -92,13 +126,16 @@ export default function SignUpPage() {
                 />
               </div>
               <div className="mb-3">
-                <label className="form-label">{t('signup.email')}</label>
+                <label className="form-label">
+                  {t('signup.email')} 
+                  <span className="text-muted" style={{ fontWeight: 400, fontSize: '0.9em' }}> {t('signup.optional')}</span>
+                </label>
                 <input
                   type="email"
                   className="form-control"
-                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  placeholder="可选，用于找回账号"
                 />
               </div>
               <div className="mb-3">
@@ -207,6 +244,6 @@ export default function SignUpPage() {
             size={96}
           />
         )}
-    </>
+    </div>
   );
 }
