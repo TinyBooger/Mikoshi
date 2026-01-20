@@ -6,6 +6,11 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
+from utils.security_middleware import (
+    RateLimitMiddleware,
+    SecurityHeadersMiddleware,
+    RequestSizeLimitMiddleware
+)
 
 print(f"Current working directory: {os.getcwd()}")
 
@@ -28,6 +33,16 @@ app = FastAPI(middleware=middleware)
 # Disable HTTPS redirects in development
 if os.getenv("ENVIRONMENT") != "production":
     app.force_https = False  # If using FastAPI-HTTPS middleware
+
+# Add security middleware
+# Note: Order matters - rate limiting should be early, security headers last
+app.add_middleware(RequestSizeLimitMiddleware, max_size=10 * 1024 * 1024)  # 10MB limit
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=100,  # Adjust based on your needs
+    requests_per_hour=1000     # Adjust based on your needs
+)
 
 # Configure CORS
 app.add_middleware(

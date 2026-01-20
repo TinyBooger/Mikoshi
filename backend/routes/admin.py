@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from database import get_db
 from models import User, Character, Tag, SearchTerm
 from utils.session import get_current_admin_user
+from utils.security_middleware import get_rate_limit_status
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -358,3 +359,28 @@ def delete_search_term(
     return {"message": "Search term deleted successfully"}
 
 
+@router.get("/security/rate-limit/{ip}")
+def get_ip_rate_limit_status(
+    ip: str,
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Get rate limit status for a specific IP - Admin only"""
+    status = get_rate_limit_status(ip)
+    return status
+
+
+@router.get("/security/rate-limit")
+def get_current_rate_limit_status(
+    request: Request,
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Get rate limit status for the current IP - Admin only"""
+    # Extract IP from request
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        ip = forwarded_for.split(",")[0].strip()
+    else:
+        ip = request.headers.get("X-Real-IP") or request.client.host
+    
+    status = get_rate_limit_status(ip)
+    return status
