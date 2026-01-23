@@ -164,14 +164,18 @@ export function AuthProvider({ children }) {
   };
 
   // Verify phone number with code
-  const verifyPhone = async (phoneNumber, code) => {
+  const verifyPhone = async (phoneNumber, code, captchaVerifyParam = null) => {
     setLoading(true);
     setError(null);
     try {
+      const params = { phone_number: phoneNumber, verification_code: code };
+      if (captchaVerifyParam) {
+        params.captcha_verify_param = captchaVerifyParam;
+      }
       const response = await fetch(`${window.API_BASE_URL}/api/verify-phone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ phone_number: phoneNumber, verification_code: code })
+        body: new URLSearchParams(params)
       });
       const result = await response.json();
       if (response.ok) {

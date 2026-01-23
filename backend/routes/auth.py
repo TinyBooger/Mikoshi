@@ -9,6 +9,7 @@ from utils.session import create_session_token, verify_session_token
 from utils.user_utils import build_user_response
 from utils.validators import validate_account_fields
 from utils.sms_utils import send_verification_code, verify_code, create_verified_phone_token, verify_phone_token
+from utils.captcha_utils import verify_captcha_param, get_captcha_verifier
 import re
 
 router = APIRouter()
@@ -31,6 +32,53 @@ def get_current_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     
     return build_user_response(user, db)
+
+
+# 阿里云人机验证码验证接口
+@router.post("/api/verify-captcha")
+def verify_captcha_endpoint(
+    captcha_verify_param: str = Form(...)
+):
+    """
+    验证阿里云人机验证码
+    
+    参数：
+    - captcha_verify_param: 客户端验证码验证后返回的验签参数
+    
+    返回：
+    {
+        "success": true,
+        "passed": true,
+        "message": "Verification pass",
+        "certify_result": "pass",
+        "request_id": "xxx"
+    }
+    """
+    try:
+        verifier = get_captcha_verifier()
+        result = verifier.verify_captcha(captcha_verify_param)
+        
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.get("message", "Captcha verification failed")
+            )
+        
+        # 返回完整的验证结果
+        return {
+            "success": True,
+            "passed": result.get("passed", False),
+            "message": result.get("message", "Verification completed"),
+            "certify_result": result.get("certify_result"),
+            "request_id": result.get("request_id")
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
 
 
 # Registration endpoint
@@ -204,14 +252,41 @@ async def send_sms_code(phone_number: str = Form(...)):
 def verify_phone(
     phone_number: str = Form(...),
     verification_code: str = Form(...),
+    captcha_verify_param: str = Form(None),
     db: Session = Depends(get_db)
 ):
     """
     验证手机号验证码
+    - 首先验证人机验证码（如果提供）
     - 如果手机号已存在，直接登录返回session token
     - 如果手机号不存在，返回verified_phone_token用于注册
+    
+    参数：
+    - phone_number: 手机号
+    - verification_code: 手机验证码
+    - captcha_verify_param: 人机验证码验签参数（建议必填）
     """
-    # 验证验证码
+    # 验证人机验证码（可选但推荐）
+    if captcha_verify_param:
+        try:
+            print(f"📞 收到登录请求 - phone: {phone_number}, captcha_param长度: {len(captcha_verify_param)}")
+            verification_result = verify_captcha_param(captcha_verify_param)
+            print(f"🔐 验证码验证结果: {verification_result}")
+            if not verification_result:
+                print("❌ 验证码验证失败")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Captcha verification failed"
+                )
+            print("✓ 验证码验证通过")
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"❌ 验证码验证异常: {str(e)}")
+            # 如果验证码服务异常，允许继续（但应该记录警告）
+            print("⚠️  验证码服务异常，允许继续登录（请检查配置）")
+    
+    # 验证手机号验证码
     if not verify_code(phone_number, verification_code):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -13,4 +13,7 @@ python-dotenv
 openai
 alibabacloud_dypnsapi20170525==2.0.0
 alibabacloud_credentials>=0.3.0
+alibabacloud_captcha20230305==1.1.4
+alibabacloud_tea_openapi>=0.3.9
+alibabacloud_tea_util>=0.1.14
 slowapi>=0.1.9

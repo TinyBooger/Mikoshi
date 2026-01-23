@@ -166,11 +166,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self, 
         app, 
         requests_per_minute: int = 100,
-        requests_per_hour: int = 1000
+        requests_per_hour: int = 1000,
+        exempt_paths: list = None
     ):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self.requests_per_hour = requests_per_hour
+        self.exempt_paths = exempt_paths or []
 
     def get_client_ip(self, request: Request) -> str:
         """Extract client IP from request, considering proxy headers"""
@@ -192,6 +194,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return "unknown"
 
     async def dispatch(self, request: Request, call_next):
+        # Check if path is exempt from rate limiting
+        request_path = request.url.path
+        for exempt_path in self.exempt_paths:
+            if request_path.startswith(exempt_path):
+                # Skip rate limiting for exempt paths
+                response = await call_next(request)
+                return response
+        
         client_ip = self.get_client_ip(request)
         
         # Check if IP is blocked

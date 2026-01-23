@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, UTC
 import secrets
 import string
 
-router = APIRouter(prefix="/api/invitations", tags=["invitations"])
+router = APIRouter(prefix="/api/admin/invitations", tags=["invitations"])
 
 
 class GenerateCodeRequest(BaseModel):

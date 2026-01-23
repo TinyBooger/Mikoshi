@@ -13,7 +13,7 @@ export default function InvitationCodesPage() {
 
   const fetchCodes = () => {
     setLoading(true);
-    fetch(`${window.API_BASE_URL}/api/invitations`, {
+    fetch(`${window.API_BASE_URL}/api/admin/invitations`, {
       headers: {
         'Authorization': sessionToken
       }
@@ -41,7 +41,7 @@ export default function InvitationCodesPage() {
     const notes = formData.get('notes') || '';
 
     try {
-      const response = await fetch(`${window.API_BASE_URL}/api/invitations/generate`, {
+      const response = await fetch(`${window.API_BASE_URL}/api/admin/invitations/generate`, {
         method: 'POST',
         headers: {
           'Authorization': sessionToken,
@@ -74,7 +74,7 @@ export default function InvitationCodesPage() {
     }
 
     try {
-      const response = await fetch(`${window.API_BASE_URL}/api/invitations/${code}`, {
+      const response = await fetch(`${window.API_BASE_URL}/api/admin/invitations/${code}`, {
         method: 'DELETE',
         headers: {
           'Authorization': sessionToken
@@ -96,7 +96,7 @@ export default function InvitationCodesPage() {
 
   const handleReactivate = async (code) => {
     try {
-      const response = await fetch(`${window.API_BASE_URL}/api/invitations/${code}/reactivate`, {
+      const response = await fetch(`${window.API_BASE_URL}/api/admin/invitations/${code}/reactivate`, {
         method: 'PATCH',
         headers: {
           'Authorization': sessionToken

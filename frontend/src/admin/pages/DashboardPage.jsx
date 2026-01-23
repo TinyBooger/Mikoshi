@@ -28,7 +28,7 @@ export default function DashboardPage() {
           fetch(`${window.API_BASE_URL}/api/admin/search-terms`, {
             headers: { 'Authorization': sessionToken }
           }),
-          fetch(`${window.API_BASE_URL}/api/invitations`, {
+          fetch(`${window.API_BASE_URL}/api/admin/invitations`, {
             headers: { 'Authorization': sessionToken }
           })
         ]);

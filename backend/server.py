@@ -41,7 +41,8 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     RateLimitMiddleware,
     requests_per_minute=100,  # Adjust based on your needs
-    requests_per_hour=1000     # Adjust based on your needs
+    requests_per_hour=1000,   # Adjust based on your needs
+    exempt_paths=["/api"]  # Exempt all API routes - they're legitimate frontend requests
 )
 
 # Configure CORS
