@@ -7,9 +7,17 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import { AuthProvider } from './components/AuthProvider';
 import ToastProvider from './components/ToastProvider';
+import { errorLogger } from './utils/errorLogger';
 
 // Set global API base URL - this runs before any component code
-window.API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const envApiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+window.API_BASE_URL = envApiBaseUrl && envApiBaseUrl.trim() !== ""
+  ? envApiBaseUrl
+  : window.location.origin;
+console.log('API_BASE_URL:', window.API_BASE_URL);
+
+// Initialize error logging with global handlers
+errorLogger.init();
 
 // Dev-only: log Vite environment variables once on startup
 if (import.meta && import.meta.env && import.meta.env.DEV) {

@@ -23,6 +23,7 @@ import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
 import InvitationCodesPage from './admin/pages/InvitationCodesPage.jsx';
 import ProblemReportsPage from './admin/pages/ProblemReportsPage.jsx';
 import NotificationsPage from './admin/pages/NotificationsPage.jsx';
+import ErrorLogsPage from './admin/pages/ErrorLogsPage.jsx';
 import TestPage from './pages/TestPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import TermsOfServicePage from './pages/TermsOfServicePage.jsx';
@@ -88,6 +89,7 @@ export default function App() {
         { path: 'invitations', element: <InvitationCodesPage /> },
         { path: 'problem-reports', element: <ProblemReportsPage /> },
         { path: 'notifications', element: <NotificationsPage /> },
+        { path: 'error-logs', element: <ErrorLogsPage /> },
       ],
     },
   ]);

@@ -220,3 +220,26 @@ class SystemNotification(Base):
     created_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+
+# Error Log (for tracking application errors)
+class ErrorLogModel(Base):
+    __tablename__ = "error_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True)
+    message = Column(Text, nullable=False)
+    error_type = Column(String(100), nullable=False, index=True)  # ValueError, HTTPException, etc.
+    severity = Column(String(20), default="error", nullable=False, index=True)  # info, warning, error, critical
+    source = Column(String(20), default="backend", nullable=False, index=True)  # backend or frontend
+    user_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+    endpoint = Column(String(255), nullable=True, index=True)  # API endpoint or page URL
+    method = Column(String(10), nullable=True)  # HTTP method (GET, POST, etc.)
+    status_code = Column(Integer, nullable=True, index=True)  # HTTP status code
+    client_ip = Column(String(45), nullable=True, index=True)  # IPv4 or IPv6
+    user_agent = Column(Text, nullable=True)  # Browser/client user agent
+    request_body = Column(Text, nullable=True)  # JSON request payload
+    stack_trace = Column(Text, nullable=True)  # Full error stack trace
+    context = Column(Text, nullable=True)  # Additional JSON context
+    resolved = Column(Boolean, default=False, nullable=False, index=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)

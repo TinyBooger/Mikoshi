@@ -283,3 +283,36 @@ def get_rate_limit_status(ip: str) -> dict:
         "requests_last_minute": requests_last_minute,
         "requests_last_hour": requests_last_hour
     }
+
+
+class ErrorLoggingMiddleware(BaseHTTPMiddleware):
+    """Middleware to log unhandled exceptions and HTTP errors"""
+    
+    async def dispatch(self, request: Request, call_next):
+        try:
+            response = await call_next(request)
+            
+            # Log errors with 5xx status codes
+            if response.status_code >= 500:
+                from utils.error_logger import get_error_logger
+                error_logger = get_error_logger()
+                error_logger.log_http_error(
+                    request=request,
+                    status_code=response.status_code,
+                    message=f"HTTP {response.status_code} error"
+                )
+            
+            return response
+        except Exception as e:
+            # Log the unhandled exception
+            from utils.error_logger import get_error_logger
+            error_logger = get_error_logger()
+            error_logger.log_http_error(
+                request=request,
+                exception=e,
+                status_code=500,
+                message=f"Unhandled exception: {str(e)}"
+            )
+            
+            # Re-raise the exception to be handled by FastAPI
+            raise

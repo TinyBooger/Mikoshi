@@ -4,12 +4,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware import Middleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 import os
 from dotenv import load_dotenv
 from utils.security_middleware import (
     RateLimitMiddleware,
     SecurityHeadersMiddleware,
-    RequestSizeLimitMiddleware
+    RequestSizeLimitMiddleware,
+    ErrorLoggingMiddleware
 )
 
 print(f"Current working directory: {os.getcwd()}")
@@ -19,10 +21,15 @@ if os.path.exists("../secrets/Mikoshi.env"):
     print("Loading environment variables from .env file")
     load_dotenv("../secrets/Mikoshi.env")
 
-from database import engine, Base
+from database import engine, Base, SessionLocal
 # Import models so that all SQLAlchemy mappers are registered before create_all
 import models  # noqa: F401
-from routes import auth, character, chat, user, search, tags, scene, persona, admin, invitation, problem_report, notification, character_assistant, exp
+from routes import auth, character, chat, user, search, tags, scene, persona, admin, invitation, problem_report, notification, character_assistant, exp, error_log
+
+# Initialize error logger with database factory
+from utils.error_logger import set_db_factory
+set_db_factory(SessionLocal)
+
 
 # Middleware
 middleware = []
@@ -34,18 +41,7 @@ app = FastAPI(middleware=middleware)
 if os.getenv("ENVIRONMENT") != "production":
     app.force_https = False  # If using FastAPI-HTTPS middleware
 
-# Add security middleware
-# Note: Order matters - rate limiting should be early, security headers last
-app.add_middleware(RequestSizeLimitMiddleware, max_size=10 * 1024 * 1024)  # 10MB limit
-app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(
-    RateLimitMiddleware,
-    requests_per_minute=100,  # Adjust based on your needs
-    requests_per_hour=1000,   # Adjust based on your needs
-    exempt_paths=["/api"]  # Exempt all API routes - they're legitimate frontend requests
-)
-
-# Configure CORS
+# Configure CORS (must run before other middleware so errors/preflights get CORS headers)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -54,7 +50,6 @@ app.add_middleware(
         "http://localhost:80",
         "https://localhost",
         "https://localhost:443",
-        "https://mikoshi-frontend.onrender.com",
         "http://43.138.173.199",           # Add this
         "http://43.138.173.199:80",        # Add this
         "https://43.138.173.199",          # Add this (for future SSL)
@@ -64,6 +59,18 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
     allow_headers=["*"],
     expose_headers=["*"]  # Expose all headers to the frontend
+)
+
+# Add security middleware
+# Note: Order matters - error logging should be early, rate limiting and security last
+app.add_middleware(ErrorLoggingMiddleware)
+app.add_middleware(RequestSizeLimitMiddleware, max_size=10 * 1024 * 1024)  # 10MB limit
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=100,  # Adjust based on your needs
+    requests_per_hour=1000,   # Adjust based on your needs
+    exempt_paths=["/api"]  # Exempt all API routes - they're legitimate frontend requests
 )
 
 # Wake up PostgreSQL database and wait for it to be available
@@ -113,6 +120,7 @@ app.include_router(problem_report.router)
 app.include_router(notification.router)
 app.include_router(character_assistant.router)
 app.include_router(exp.router)
+app.include_router(error_log.router)
 
 
 # (Optional) You can still keep the async wake-up for later pings if needed
