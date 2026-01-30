@@ -10,6 +10,8 @@ from utils.user_utils import build_user_response
 from utils.validators import validate_account_fields
 from utils.sms_utils import send_verification_code, verify_code, create_verified_phone_token, verify_phone_token
 from utils.captcha_utils import verify_captcha_param, get_captcha_verifier
+from utils.audit_logger import record_audit
+from utils.request_utils import get_client_ip, get_user_agent, get_request_metadata
 import re
 
 router = APIRouter()
@@ -84,6 +86,7 @@ def verify_captcha_endpoint(
 # Registration endpoint
 @router.post("/api/users")
 def register_user(
+    request: Request,
     email: str = Form(...),
     name: str = Form(...),
     password: str = Form(...),
@@ -157,11 +160,19 @@ def register_user(
             pass
     token = create_session_token(user)
     user_response = build_user_response(user, db)
+    record_audit(
+        user_id=user.id,
+        action="register",
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request),
+        metadata=get_request_metadata(request, {"email": email, "name": name})
+    )
     return {"message": "User registered successfully", "token": token, "user": user_response}
 
 # Login endpoint
 @router.post("/api/login")
 def login_user(
+    request: Request,
     email: str = Form(...),
     password: str = Form(...),
     db: Session = Depends(get_db)
@@ -171,39 +182,83 @@ def login_user(
     user = None
     if '@' in account:
         user = db.query(User).filter(User.email == account).first()
+        login_method = "email"
     else:
         # treat as phone number
         user = db.query(User).filter(User.phone_number == account).first()
+        login_method = "phone"
     if not user:
+        record_audit(
+            user_id=None,
+            action="login_failed",
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
+            status="failure",
+            error_message="Invalid credentials",
+            metadata=get_request_metadata(request, {"login_method": login_method, "identifier": account})
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
     hashed_password = getattr(user, "hashed_password", None)
     if not hashed_password or not pwd_context.verify(password, hashed_password):
+        record_audit(
+            user_id=user.id,
+            action="login_failed",
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
+            status="failure",
+            error_message="Invalid password",
+            metadata=get_request_metadata(request, {"login_method": login_method})
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
     token = create_session_token(user)
     user_response = build_user_response(user, db)
+    record_audit(
+        user_id=user.id,
+        action="login",
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request),
+        metadata=get_request_metadata(request, {"login_method": login_method})
+    )
     return {"message": "Login successful", "token": token, "user": user_response}
 
 # Password reset endpoint
 @router.post("/api/reset-password")
 def reset_password(
+    request: Request,
     email: str = Form(...),
     new_password: str = Form(...),
     db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(User.email == email).first()
     if not user:
+        record_audit(
+            user_id=None,
+            action="reset_password_failed",
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
+            status="failure",
+            error_message="User not found",
+            metadata=get_request_metadata(request, {"email": email})
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     # If user has no hashed_password, allow reset (legacy Firebase user)
     # Or allow reset for any user (with proper frontend flow)
     hashed_password = pwd_context.hash(new_password)
     setattr(user, "hashed_password", hashed_password)
     db.commit()
+    record_audit(
+        user_id=user.id,
+        action="reset_password",
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request),
+        metadata=get_request_metadata(request, {"email": email})
+    )
     return {"message": "Password reset successful"}
 
 
 # Change password for current user (requires Authorization header)
 @router.post("/api/change-password")
-def change_password(payload: dict = None, db: Session = Depends(get_db), session_token: str = Header(None, alias="Authorization")):
+def change_password(request: Request, payload: dict = None, db: Session = Depends(get_db), session_token: str = Header(None, alias="Authorization")):
     # payload expected: { currentPassword: '...', newPassword: '...' }
     currentPassword = None
     newPassword = None
@@ -220,9 +275,25 @@ def change_password(payload: dict = None, db: Session = Depends(get_db), session
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     hashed = getattr(user, 'hashed_password', None)
     if not hashed or not pwd_context.verify(currentPassword, hashed):
+        record_audit(
+            user_id=user.id,
+            action="change_password_failed",
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
+            status="failure",
+            error_message="Current password incorrect",
+            metadata=get_request_metadata(request)
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password incorrect")
     user.hashed_password = pwd_context.hash(newPassword)
     db.commit()
+    record_audit(
+        user_id=user.id,
+        action="change_password",
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request),
+        metadata=get_request_metadata(request)
+    )
     return {"message": "Password changed"}
 
 
