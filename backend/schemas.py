@@ -80,6 +80,7 @@ class CharacterListOut(BaseModel):
 class UserOut(BaseModel):
     id: str
     email: Optional[EmailStr] = None
+    phone_number: Optional[str] = None
     name: Optional[str] = None
     profile_pic: Optional[str] = None
     bio: Optional[str] = None

@@ -15,6 +15,7 @@ def enrich_user_with_character_count(user: User, db: Session) -> dict:
     return {
         "id": user.id,
         "email": user.email,
+        "phone_number": user.phone_number,
         "name": user.name,
         "profile_pic": user.profile_pic,
         "bio": user.bio,
@@ -45,6 +46,7 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
     return {
         "id": user.id,
         "email": user.email,
+        "phone_number": user.phone_number,
         "name": user.name,
         "profile_pic": user.profile_pic,
         "bio": user.bio,

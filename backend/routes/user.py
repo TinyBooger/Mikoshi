@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Body
 from schemas import UserOut, UserListOut
 from sqlalchemy.orm import Session
 from database import get_db
@@ -9,6 +9,8 @@ from utils.user_utils import build_user_response, enrich_user_with_character_cou
 from utils.validators import validate_account_fields
 from utils.level_system import award_exp_with_limits
 from utils.badge_system import check_and_award_chat_badges, award_badge
+from utils.sms_utils import send_verification_code, verify_code
+import re
 
 router = APIRouter()
 
@@ -340,6 +342,126 @@ def request_change_email(payload: dict = Body(...), current_user: User = Depends
     current_user.email = new_email
     db.commit()
     return {"message": "Email updated"}
+
+
+@router.post('/api/change-phone/send-current-code')
+async def send_code_to_current_phone(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    步骤1：发送验证码到当前手机号
+    """
+    if not current_user.phone_number:
+        raise HTTPException(status_code=400, detail='当前账号未绑定手机号')
+    
+    # 发送验证码到当前手机号
+    result = await send_verification_code(current_user.phone_number)
+    
+    if not result.get('success'):
+        raise HTTPException(status_code=400, detail=result.get('message', '发送验证码失败'))
+    
+    return {
+        "message": "验证码已发送到当前手机号",
+        "phone_hint": current_user.phone_number[-4:]  # 只返回后4位
+    }
+
+
+@router.post('/api/change-phone/verify-current')
+async def verify_current_phone(
+    payload: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    步骤2：验证当前手机号的验证码
+    """
+    code = payload.get('code')
+    if not code:
+        raise HTTPException(status_code=400, detail='请输入验证码')
+    
+    if not current_user.phone_number:
+        raise HTTPException(status_code=400, detail='当前账号未绑定手机号')
+    
+    # 验证验证码
+    if not verify_code(current_user.phone_number, code):
+        raise HTTPException(status_code=400, detail='验证码错误或已过期')
+    
+    return {"message": "当前手机号验证成功", "verified": True}
+
+
+@router.post('/api/change-phone/send-new-code')
+async def send_code_to_new_phone(
+    payload: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    步骤3：发送验证码到新手机号
+    """
+    new_phone = payload.get('newPhone')
+    if not new_phone:
+        raise HTTPException(status_code=400, detail='请输入新手机号')
+    
+    # 验证手机号格式
+    if not re.match(r'^1[3-9]\d{9}$', new_phone):
+        raise HTTPException(status_code=400, detail='手机号格式不正确')
+    
+    # 检查新手机号是否已被使用
+    existing_user = db.query(User).filter(User.phone_number == new_phone).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail='该手机号已被其他账号使用')
+    
+    # 发送验证码到新手机号
+    result = await send_verification_code(new_phone)
+    
+    if not result.get('success'):
+        raise HTTPException(status_code=400, detail=result.get('message', '发送验证码失败'))
+    
+    return {
+        "message": "验证码已发送到新手机号",
+        "phone_hint": new_phone[-4:]
+    }
+
+
+@router.post('/api/change-phone/confirm')
+async def confirm_phone_change(
+    payload: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    步骤4：验证新手机号验证码并完成更换
+    """
+    new_phone = payload.get('newPhone')
+    code = payload.get('code')
+    
+    if not new_phone or not code:
+        raise HTTPException(status_code=400, detail='缺少必要参数')
+    
+    # 验证手机号格式
+    if not re.match(r'^1[3-9]\d{9}$', new_phone):
+        raise HTTPException(status_code=400, detail='手机号格式不正确')
+    
+    # 再次检查新手机号是否已被使用
+    existing_user = db.query(User).filter(User.phone_number == new_phone).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail='该手机号已被其他账号使用')
+    
+    # 验证新手机号的验证码
+    if not verify_code(new_phone, code):
+        raise HTTPException(status_code=400, detail='验证码错误或已过期')
+    
+    # 更新手机号
+    old_phone = current_user.phone_number
+    current_user.phone_number = new_phone
+    db.commit()
+    
+    return {
+        "message": "手机号更换成功",
+        "old_phone_hint": old_phone[-4:] if old_phone else "",
+        "new_phone_hint": new_phone[-4:]
+    }
 
 
 @router.post('/api/delete-account')
