@@ -610,8 +610,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-
-  <ConfirmModal show={confirmDelete.show} title={t('settings.delete_account')} message={t('settings.delete_account_confirm')} onCancel={() => setConfirmDelete({ show: false })} onConfirm={() => { setConfirmDelete({ show: false }); doDeleteAccount(); }} confirmText={t('common.delete')} cancelText={t('common.cancel')} />
+      <ConfirmModal show={confirmDelete.show} title={t('settings.delete_account')} message={t('settings.delete_account_confirm')} onCancel={() => setConfirmDelete({ show: false })} onConfirm={() => { setConfirmDelete({ show: false }); doDeleteAccount(); }} confirmText={t('common.delete')} cancelText={t('common.cancel')} />
     </PageWrapper>
   );
 }

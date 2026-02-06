@@ -24,7 +24,7 @@ if os.path.exists("../secrets/Mikoshi.env"):
 from database import engine, Base, SessionLocal
 # Import models so that all SQLAlchemy mappers are registered before create_all
 import models  # noqa: F401
-from routes import auth, character, chat, user, search, tags, scene, persona, admin, invitation, problem_report, notification, character_assistant, exp, error_log, audit_log
+from routes import auth, character, chat, user, search, tags, scene, persona, admin, invitation, problem_report, notification, character_assistant, exp, error_log, audit_log, alipay
 
 # Initialize error logger with database factory
 from utils.error_logger import set_db_factory
@@ -122,6 +122,7 @@ app.include_router(character_assistant.router)
 app.include_router(exp.router)
 app.include_router(error_log.router)
 app.include_router(audit_log.router)
+app.include_router(alipay.router)
 
 
 # (Optional) You can still keep the async wake-up for later pings if needed

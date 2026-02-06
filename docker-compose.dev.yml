@@ -21,6 +21,7 @@ services:
       - ./secrets/Mikoshi.env
     environment:
       - DATABASE_URL=postgresql://tinybooger:473k979k@host.docker.internal:5432/mikoshidb
+      - FRONTEND_BASE_URL=http://localhost
     volumes:
       - backend_static:/app/static/images
     logging:

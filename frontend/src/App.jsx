@@ -30,6 +30,8 @@ import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import TermsOfServicePage from './pages/TermsOfServicePage.jsx';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx';
 import EntityDetailPage from './pages/EntityDetailPage.jsx';
+import AlipayTestPage from './pages/AlipayTestPage.jsx';
+import AlipayReturnPage from './pages/AlipayReturnPage.jsx';
 
 export default function App() {
   const { userData, loading } = useContext(AuthContext);
@@ -63,6 +65,8 @@ export default function App() {
             { path: 'profile/:userId', element: <ProfilePage publicView={true} /> },
             { path: 'settings', element: <SettingsPage /> },
             { path: 'search', element: <SearchPage /> },
+            { path: 'alipay/test', element: <AlipayTestPage /> },
+            { path: 'alipay/return', element: <AlipayReturnPage /> },
             { path: 'terms-of-service', element: <TermsOfServicePage /> },
             { path: 'privacy-policy', element: <PrivacyPolicyPage /> },
           ],
