@@ -15,8 +15,10 @@ from alipay.aop.api.request.AlipayTradeWapPayRequest import AlipayTradeWapPayReq
 from alipay.aop.api.request.AlipayTradeQueryRequest import AlipayTradeQueryRequest
 from alipay.aop.api.request.AlipayTradeCloseRequest import AlipayTradeCloseRequest
 from alipay.aop.api.request.AlipayTradeRefundRequest import AlipayTradeRefundRequest
+from alipay.aop.api.util.SignatureUtils import get_sign_content, verify_with_rsa
 from datetime import datetime
 import logging
+from urllib.parse import unquote
 
 logger = logging.getLogger(__name__)
 
@@ -167,25 +169,66 @@ class AlipayClient:
         验证支付宝异步通知签名
         
         Args:
-            data: 支付宝POST过来的数据，字典格式
+            data: 支付宝POST/GET过来的数据，字典格式
             
         Returns:
             bool: 验证是否成功
+            
+        注意: 按照支付宝文档 https://opendocs.alipay.com/common/02mse3
+        1. 剔除sign和sign_type参数
+        2. 剔除空值参数
+        3. 对参数按照key进行字典排序
+        4. 将排序后的参数与其对应值，组合成"参数=参数值"的格式，用&字符连接
+        5. 使用支付宝公钥验证签名
         """
         if not self.alipay:
             raise Exception("支付宝客户端未初始化")
         
+        if not self.alipay_public_key:
+            logger.error("支付宝公钥未配置")
+            return False
+        
         try:
-            signature = data.pop("sign", None)
+            # 获取签名
+            signature = data.get("sign", None)
             if not signature:
                 logger.error("通知数据中缺少签名")
                 return False
             
-            success = self.alipay.verify(data, signature)
-            logger.info(f"异步通知验签{'成功' if success else '失败'}")
+            # URL解码签名（因为签名可能被URL编码）
+            signature = unquote(signature)
+            
+            # 准备待验签数据：移除sign和sign_type，并过滤空值
+            verify_data = {}
+            for key, value in data.items():
+                if key not in ["sign", "sign_type"] and value:
+                    # 对于GET参数，需要URL解码
+                    if isinstance(value, str):
+                        verify_data[key] = unquote(value)
+                    else:
+                        verify_data[key] = value
+            
+            # 按照支付宝要求生成待验签字符串
+            sign_content = get_sign_content(verify_data)
+            
+            # 使用支付宝公钥验证签名
+            # 注意：verify_with_rsa需要bytes类型的message
+            if isinstance(sign_content, str):
+                sign_content = sign_content.encode('utf-8')
+            
+            success = verify_with_rsa(self.alipay_public_key, sign_content, signature)
+            
+            if success:
+                logger.info("签名验证成功")
+            else:
+                logger.warning(f"签名验证失败，待验签内容: {sign_content[:200]}...")
+            
             return success
+            
         except Exception as e:
             logger.error(f"验签失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
     
     def query_order(self, out_trade_no: str = None, trade_no: str = None):

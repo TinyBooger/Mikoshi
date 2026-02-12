@@ -254,8 +254,8 @@ async def alipay_notify(request: Request, db: Session = Depends(get_db)):
         
         logger.info(f"收到支付宝异步通知: {data_dict}")
         
-        # 验证签名
-        if not alipay_client.verify_notify(data_dict.copy()):
+        # 验证签名（不要修改原始数据）
+        if not alipay_client.verify_notify(data_dict):
             logger.warning("支付宝异步通知验签失败")
             return "failure"
         
@@ -298,8 +298,8 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
         
         logger.info(f"收到支付宝同步返回: {data}")
         
-        # 验证签名
-        if not alipay_client.verify_notify(data.copy()):
+        # 验证签名（不要修改原始数据）
+        if not alipay_client.verify_notify(data):
             logger.warning("支付宝同步返回验签失败")
             raise HTTPException(status_code=400, detail="签名验证失败")
         
