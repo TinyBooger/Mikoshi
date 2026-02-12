@@ -378,6 +378,58 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         </div>
       </div>
 
+      {/* Pro Upgrade Button */}
+      {userData && (
+        <div className="px-1 mb-3" style={{ flexShrink: 0 }}>
+          <div
+            style={{
+              position: 'relative',
+              padding: '2px',
+              borderRadius: 21,
+              background: 'linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3, #54a0ff, #ff6b6b)',
+              backgroundSize: '300% 100%',
+              animation: 'rainbow-slide 4s linear infinite'
+            }}
+            title={t('sidebar.upgrade_to_pro_tooltip', '升级到Pro会员解锁更多功能')}
+          >
+            <button
+              className="fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center"
+              style={{
+                fontSize: '0.86rem',
+                letterSpacing: '0.4px',
+                background: '#fff',
+                borderRadius: 19,
+                padding: '9px 0',
+                border: 'none',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                fontWeight: 700,
+                transition: 'all 0.2s',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: '#fff'
+              }}
+              onClick={() => {
+                handleNavigate('/pro-upgrade');
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 16px rgba(102, 126, 234, 0.3)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '';
+              }}
+              tabIndex={0}
+            >
+              <span className="d-flex align-items-center justify-content-center w-100">
+                <i className="bi bi-star-fill me-2"></i> {t('sidebar.upgrade_to_pro', '升级为Pro用户')}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Profile / Login */}
       <div className="mt-auto px-1" style={{ fontSize: '0.8rem', flexShrink: 0 }}>
   {userData ? (

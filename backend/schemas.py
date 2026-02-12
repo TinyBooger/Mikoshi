@@ -96,6 +96,9 @@ class UserOut(BaseModel):
     exp: int = 0
     badges: dict[str, Any] = {}
     active_badge: Optional[str] = None
+    is_pro: bool = False
+    pro_start_date: Optional[Any] = None
+    pro_expire_date: Optional[Any] = None
     
     class Config:
         from_attributes = True

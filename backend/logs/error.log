@@ -4827,3 +4827,4 @@ timestamp
   Input should be a valid string [type=string_type, input_value=datetime.datetime(2026, 1...medelta(seconds=28800))), input_type=datetime]
     For further information visit https://errors.pydantic.dev/2.11/v/string_type
 
+2026-02-09 16:18:50 - utils.error_logger - ERROR - [Error] Uncaught Error: Objects are not valid as a React child (found: object with keys {type, loc, msg, input}). If you meant to render a collection of children, use an array instead. | Endpoint: None http://localhost:3000/pro-upgrade | User: HAeAnts3IJW6bfPHgyjKfcurWfE2

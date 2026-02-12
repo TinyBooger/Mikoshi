@@ -41,6 +41,11 @@ class User(Base):
     bio = Column(Text, nullable=True)  # Short bio, optional
     hashed_password = Column(String, nullable=False)  # Store password hash
     is_admin = Column(Boolean, default=False, nullable=False)  # Admin role flag
+    
+    # Pro user (paid subscription)
+    is_pro = Column(Boolean, default=False, nullable=False)  # Pro user status
+    pro_start_date = Column(DateTime(timezone=True), nullable=True)  # When Pro subscription started
+    pro_expire_date = Column(DateTime(timezone=True), nullable=True)  # When Pro subscription expires
 
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)

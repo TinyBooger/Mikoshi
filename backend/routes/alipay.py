@@ -3,19 +3,150 @@
 提供支付宝支付相关的API接口
 """
 from fastapi import APIRouter, HTTPException, Request, Depends
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, ValidationError
+from typing import Optional, Tuple
 from datetime import datetime
 import os
 import logging
 import uuid
+import traceback
+
+from sqlalchemy.orm import Session
 
 from utils.alipay_utils import alipay_client
 from utils.session import get_current_user
+from utils.user_utils import upgrade_to_pro
+from database import get_db
+from models import User
+from utils.audit_logger import AuditLog
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/alipay", tags=["alipay"])
+
+
+def _is_public_base_url(base_url: str) -> bool:
+    if not base_url:
+        return False
+    lowered = base_url.lower()
+    if "localhost" in lowered or "127.0.0.1" in lowered:
+        return False
+    return lowered.startswith("http://") or lowered.startswith("https://")
+
+
+def _extract_user_id(out_trade_no: Optional[str]) -> Optional[str]:
+    if not out_trade_no or "_U" not in out_trade_no:
+        return None
+    parts = out_trade_no.split("_U")
+    return parts[-1] or None
+
+
+def _get_trade_status(result: dict) -> Tuple[Optional[str], Optional[str]]:
+    if not isinstance(result, dict):
+        return None, None
+    payload = result.get("alipay_trade_query_response") or result
+    return payload.get("trade_status"), payload.get("code")
+
+
+def _is_order_processed(db, out_trade_no: str) -> bool:
+    action = f"alipay_pro_upgrade:{out_trade_no}"
+    return db.query(AuditLog).filter(AuditLog.action == action).first() is not None
+
+
+def _record_order_result(
+    db,
+    out_trade_no: str,
+    user_id: Optional[str],
+    trade_no: Optional[str],
+    total_amount: Optional[str],
+    source: str,
+    status: str = "success",
+    error_message: Optional[str] = None,
+):
+    action = f"alipay_pro_upgrade:{out_trade_no}"
+    audit_entry = AuditLog(
+        user_id=user_id,
+        action=action,
+        meta={
+            "trade_no": trade_no,
+            "total_amount": total_amount,
+            "source": source,
+        },
+        status=status,
+        error_message=error_message,
+    )
+    db.add(audit_entry)
+    db.commit()
+
+
+def _handle_pro_upgrade(
+    db,
+    out_trade_no: str,
+    trade_no: Optional[str],
+    total_amount: Optional[str],
+    source: str,
+):
+    if not out_trade_no.startswith("PRO_"):
+        return
+
+    if _is_order_processed(db, out_trade_no):
+        logger.info(f"订单已处理，跳过升级: {out_trade_no}")
+        return
+
+    user_id = _extract_user_id(out_trade_no)
+    if not user_id:
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            user_id=None,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            status="failure",
+            error_message="missing_user_id",
+        )
+        logger.error(f"订单缺少用户ID: {out_trade_no}")
+        return
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            status="failure",
+            error_message="user_not_found",
+        )
+        logger.error(f"未找到用户 {user_id}")
+        return
+
+    try:
+        upgrade_to_pro(user, db, duration_days=30)
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            status="success",
+        )
+        logger.info(f"用户 {user_id} 已升级为Pro会员")
+    except Exception as e:
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            status="error",
+            error_message=str(e),
+        )
+        logger.error(f"升级Pro会员失败: {e}")
 
 
 # 请求模型
@@ -26,6 +157,8 @@ class CreateOrderRequest(BaseModel):
     body: Optional[str] = None  # 订单描述
     payment_type: Optional[str] = "page"  # 支付类型: page(电脑网站), wap(手机网站)
     timeout_express: Optional[str] = None  # 超时时间: 30m、2h、1d等 (沙箱环境不超过15小时)
+    order_type: Optional[str] = None  # 订单类型: pro_upgrade等
+    user_id: Optional[str] = None  # 用户ID (Firebase UID是字符串)
 
 
 class QueryOrderRequest(BaseModel):
@@ -51,13 +184,25 @@ async def create_order(request: CreateOrderRequest):
         - out_trade_no: 商户订单号
     """
     try:
-        # 生成唯一订单号
-        out_trade_no = f"MK{datetime.now().strftime('%Y%m%d%H%M%S')}{uuid.uuid4().hex[:8]}"
+        logger.info(f"收到创建订单请求: amount={request.total_amount}, subject={request.subject}, body={request.body}, "
+                   f"payment_type={request.payment_type}, order_type={request.order_type}, user_id={request.user_id}")
+        
+        # 生成唯一订单号，包含订单类型前缀以便后续识别
+        prefix = "PRO_" if request.order_type == "pro_upgrade" else "MK"
+        out_trade_no = f"{prefix}{datetime.now().strftime('%Y%m%d%H%M%S')}{uuid.uuid4().hex[:8]}"
+        
+        # 如果是Pro升级订单，将user_id附加到订单号末尾
+        if request.order_type == "pro_upgrade" and request.user_id:
+            out_trade_no = f"{out_trade_no}_U{request.user_id}"
         
         # 构造回调URL（使用完整URL以确保支付宝可以正确跳转）
-        frontend_base_url = os.getenv("FRONTEND_BASE_URL").rstrip("/")
-        return_url = f"{frontend_base_url}/alipay/return"  # 支付完成返回页面
-        notify_url = "http://your-domain.com/api/alipay/notify"  # 异步通知地址（需要公网可访问）
+        frontend_base_url = os.getenv("FRONTEND_BASE_URL", "").rstrip("/")
+        return_url = f"{frontend_base_url}/alipay/return" if frontend_base_url else None
+
+        # 异步通知地址（需要公网可访问）；本地环境使用回退逻辑
+        notify_url = None
+        if _is_public_base_url(frontend_base_url):
+            notify_url = f"{frontend_base_url}/api/alipay/notify"
         
         # 根据支付类型创建订单
         if request.payment_type == "wap":
@@ -95,7 +240,7 @@ async def create_order(request: CreateOrderRequest):
 
 
 @router.post("/notify")
-async def alipay_notify(request: Request):
+async def alipay_notify(request: Request, db: Session = Depends(get_db)):
     """
     支付宝异步通知接口
     支付宝会POST支付结果到这个接口
@@ -123,10 +268,13 @@ async def alipay_notify(request: Request):
         # 支付成功
         if trade_status == "TRADE_SUCCESS" or trade_status == "TRADE_FINISHED":
             logger.info(f"订单支付成功: {out_trade_no}, 支付宝交易号: {trade_no}, 金额: {total_amount}")
-            
-            # TODO: 在这里处理业务逻辑
-            # 例如：更新订单状态、增加用户积分等
-            
+            _handle_pro_upgrade(
+                db=db,
+                out_trade_no=out_trade_no or "",
+                trade_no=trade_no,
+                total_amount=total_amount,
+                source="notify",
+            )
             return "success"
         
         # 其他状态
@@ -139,7 +287,7 @@ async def alipay_notify(request: Request):
 
 
 @router.get("/return")
-async def alipay_return(request: Request):
+async def alipay_return(request: Request, db: Session = Depends(get_db)):
     """
     支付宝同步返回接口
     支付完成后用户会被重定向到这个页面
@@ -159,13 +307,33 @@ async def alipay_return(request: Request):
         out_trade_no = data.get("out_trade_no")
         trade_no = data.get("trade_no")
         total_amount = data.get("total_amount")
-        
+
+        # 按照沙箱指引：同步返回只做展示，关键结果以主动查询/异步通知为准
+        trade_status = None
+        query_code = None
+        if out_trade_no or trade_no:
+            try:
+                query_result = alipay_client.query_order(out_trade_no=out_trade_no, trade_no=trade_no)
+                trade_status, query_code = _get_trade_status(query_result)
+            except Exception as e:
+                logger.warning(f"查询订单状态失败: {e}")
+
+        if query_code == "10000" and trade_status in ("TRADE_SUCCESS", "TRADE_FINISHED"):
+            _handle_pro_upgrade(
+                db=db,
+                out_trade_no=out_trade_no or "",
+                trade_no=trade_no,
+                total_amount=total_amount,
+                source="return_query",
+            )
+
         return {
             "success": True,
-            "message": "支付成功",
+            "message": "支付结果已接收",
             "out_trade_no": out_trade_no,
             "trade_no": trade_no,
-            "total_amount": total_amount
+            "total_amount": total_amount,
+            "trade_status": trade_status
         }
         
     except Exception as e:
