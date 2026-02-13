@@ -33,6 +33,7 @@ import EntityDetailPage from './pages/EntityDetailPage.jsx';
 import AlipayTestPage from './pages/AlipayTestPage.jsx';
 import AlipayReturnPage from './pages/AlipayReturnPage.jsx';
 import ProUpgradePage from './pages/ProUpgradePage.jsx';
+import NotFoundPage from './pages/NotFoundPage.jsx';
 
 export default function App() {
   const { userData, loading } = useContext(AuthContext);
@@ -99,6 +100,10 @@ export default function App() {
         { path: 'error-logs', element: <ErrorLogsPage /> },
         { path: 'audit-logs', element: <AuditLogsPage /> },
       ],
+    },
+    {
+      path: '*',
+      element: <NotFoundPage />,
     },
   ]);
 
