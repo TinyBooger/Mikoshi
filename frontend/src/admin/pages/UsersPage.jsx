@@ -3,6 +3,7 @@ import { AuthContext } from "../../components/AuthProvider";
 import Table from "../components/Table";
 import EditModal from "../components/EditModal";
 import PaginationBar from "../../components/PaginationBar";
+import "./UsersPage.css";
 
 const AVAILABLE_BADGES = {
   pioneer: { name: "Pioneer", description: "Early adopter of Mikoshi" },
@@ -18,6 +19,8 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterPro, setFilterPro] = useState("all");
   const pageSize = 20;
   const { sessionToken } = useContext(AuthContext);
 
@@ -84,8 +87,12 @@ export default function UsersPage() {
         },
         body: JSON.stringify({
           name: userData.name,
+          phone_number: userData.phone_number,
           bio: userData.bio,
-          is_admin: userData.is_admin
+          is_admin: userData.is_admin,
+          is_pro: userData.is_pro,
+          level: userData.level ? parseInt(userData.level) : undefined,
+          exp: userData.exp ? parseInt(userData.exp) : undefined
         })
       });
 
@@ -105,9 +112,13 @@ export default function UsersPage() {
 
   const userFields = [
     { name: 'email', label: 'Email', type: 'email', required: true, readOnly: true },
+    { name: 'phone_number', label: 'Phone Number', type: 'tel' },
     { name: 'name', label: 'Name', type: 'text', required: true },
     { name: 'bio', label: 'Bio', type: 'textarea', rows: 3 },
-    { name: 'is_admin', label: 'Admin Status', type: 'checkbox', helperText: 'Grant admin privileges' }
+    { name: 'is_admin', label: 'Admin Status', type: 'checkbox', helperText: 'Grant admin privileges' },
+    { name: 'is_pro', label: 'Pro Status', type: 'checkbox', helperText: 'Mark as premium user' },
+    { name: 'level', label: 'User Level', type: 'number', min: 1, max: 6 },
+    { name: 'exp', label: 'Experience Points', type: 'number', min: 0 }
   ];
 
   const handleManageBadges = (user) => {
@@ -221,37 +232,171 @@ export default function UsersPage() {
     }
   };
 
-  // Paginate users
+  // Filter and search users
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user.phone_number && user.phone_number.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesFilter = 
+      filterPro === 'all' || 
+      (filterPro === 'pro' && user.is_pro) ||
+      (filterPro === 'free' && !user.is_pro);
+    
+    return matchesSearch && matchesFilter;
+  });
+
   const startIdx = (page - 1) * pageSize;
   const endIdx = startIdx + pageSize;
-  const paginatedUsers = users.slice(startIdx, endIdx);
+  const paginatedUsers = filteredUsers.slice(startIdx, endIdx);
+
+  // Transform user data for display
+  const displayUsers = paginatedUsers.map(user => ({
+    ...user,
+    'Email/Phone': (
+      <div style={{ fontSize: '0.9rem' }}>
+        <div><strong>{user.email}</strong></div>
+        {user.phone_number && <div style={{ color: '#666' }}>{user.phone_number}</div>}
+      </div>
+    ),
+    'Status': (
+      <div style={{ fontSize: '0.85rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+        {user.is_admin && (
+          <span style={{
+            background: '#ff9800',
+            color: '#fff',
+            padding: '0.25rem 0.5rem',
+            borderRadius: '0.25rem',
+            fontWeight: 600
+          }}>Admin</span>
+        )}
+        {user.is_pro && (
+          <span style={{
+            background: '#4CAF50',
+            color: '#fff',
+            padding: '0.25rem 0.5rem',
+            borderRadius: '0.25rem',
+            fontWeight: 600
+          }}>Pro</span>
+        )}
+      </div>
+    ),
+    'Level': (
+      <div style={{ textAlign: 'center' }}>
+        <span style={{
+          display: 'inline-block',
+          background: '#2196F3',
+          color: '#fff',
+          width: '2.5rem',
+          height: '2.5rem',
+          lineHeight: '2.5rem',
+          borderRadius: '50%',
+          fontWeight: 'bold'
+        }}>
+          {user.level || 1}
+        </span>
+      </div>
+    ),
+    'EXP': (
+      <div style={{ textAlign: 'right' }}>
+        <strong>{user.exp || 0}</strong>
+        <div style={{ fontSize: '0.8rem', color: '#999' }}>
+          {user.daily_exp_gained || 0}/day
+        </div>
+      </div>
+    )
+  }));
 
   return (
-    <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2>Users</h2>
-        <span className="text-muted">Total: {total} users</span>
+    <div className="users-page-container">
+      <div className="users-header mb-4">
+        <div>
+          <h2 style={{ marginBottom: '0.5rem' }}>👥 User Management</h2>
+          <p style={{ marginBottom: 0, color: '#666' }}>
+            Manage users, update permissions, and award badges
+          </p>
+        </div>
+        <div style={{
+          background: '#f5f5f5',
+          padding: '1rem',
+          borderRadius: '0.5rem',
+          textAlign: 'right'
+        }}>
+          <div style={{ fontSize: '0.9rem', color: '#666' }}>Total Users</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#2196F3' }}>
+            {total}
+          </div>
+        </div>
       </div>
-      
-      <div className="table-responsive">
-        <Table 
-          columns={["id", "email", "name", "is_admin", "status"]} 
-          data={paginatedUsers}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          customActions={[
-            {
-              label: "Badges",
-              icon: "bi-award",
-              onClick: handleManageBadges
-            }
-          ]}
-        />
+
+      {/* Filters and Search */}
+      <div className="filters-section mb-4">
+        <div className="row g-3">
+          <div className="col-md-6">
+            <input
+              type="text"
+              className="form-control form-control-lg"
+              placeholder="🔍 Search by name, email, or phone..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
+              style={{ borderRadius: '0.5rem' }}
+            />
+          </div>
+          <div className="col-md-6">
+            <select
+              className="form-select form-select-lg"
+              value={filterPro}
+              onChange={(e) => {
+                setFilterPro(e.target.value);
+                setPage(1);
+              }}
+              style={{ borderRadius: '0.5rem' }}
+            >
+              <option value="all">All Users</option>
+              <option value="pro">Pro Users Only</option>
+              <option value="free">Free Users Only</option>
+            </select>
+          </div>
+        </div>
+        <small style={{ color: '#999', marginTop: '0.5rem', display: 'block' }}>
+          Found {filteredUsers.length} users
+        </small>
+      </div>
+
+      {/* Table */}
+      <div className="table-section mb-4">
+        <div style={{
+          background: '#fff',
+          borderRadius: '0.5rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          overflow: 'hidden'
+        }}>
+          <div className="table-responsive">
+            <Table 
+              columns={["id", "name", "Email/Phone", "Status", "Level", "EXP"]} 
+              data={displayUsers}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              customActions={[
+                {
+                  label: "Badges",
+                  icon: "bi-award",
+                  className: "btn-outline-warning",
+                  onClick: (row) => handleManageBadges(users.find(u => u.id === row.id))
+                }
+              ]}
+            />
+          </div>
+        </div>
       </div>
 
       <PaginationBar
         page={page}
-        total={total}
+        total={filteredUsers.length}
         pageSize={pageSize}
         loading={loading}
         onPageChange={setPage}
@@ -259,7 +404,7 @@ export default function UsersPage() {
 
       {editingUser && (
         <EditModal
-          title="Edit User"
+          title={`Edit User: ${editingUser.name}`}
           fields={userFields}
           initialData={editingUser}
           onSave={handleSave}
@@ -269,145 +414,118 @@ export default function UsersPage() {
 
       {managingBadges && (
         <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999
-          }}
+          className="badge-modal-overlay"
           onClick={() => setManagingBadges(null)}
         >
           <div 
-            style={{
-              background: '#fff',
-              borderRadius: '0.5rem',
-              padding: '1.5rem',
-              maxWidth: '600px',
-              width: '90%',
-              maxHeight: '80vh',
-              overflow: 'auto'
-            }}
+            className="badge-modal-content"
             onClick={e => e.stopPropagation()}
           >
-            <h4 className="mb-3">Manage Badges - {managingBadges.name}</h4>
+            <div className="badge-modal-header">
+              <h4>🏅 Manage Badges</h4>
+              <p style={{ marginBottom: 0, color: '#666' }}>
+                {managingBadges.name} ({managingBadges.email})
+              </p>
+              <button
+                type="button"
+                className="btn-close"
+                onClick={() => setManagingBadges(null)}
+                style={{ position: 'absolute', top: '1.5rem', right: '1.5rem' }}
+              ></button>
+            </div>
             
-            <div className="mb-4">
-              <h6 className="text-muted mb-2">Current Badges</h6>
-              {managingBadges.badges && Object.keys(managingBadges.badges).length > 0 ? (
-                <div className="d-flex flex-column gap-2">
-                  {Object.entries(managingBadges.badges).map(([key, badge]) => (
+            <div className="badge-modal-body">
+              <div className="badge-section">
+                <h6 className="section-title">Current Badges</h6>
+                {managingBadges.badges && Object.keys(managingBadges.badges).length > 0 ? (
+                  <div className="badge-list">
+                    {Object.entries(managingBadges.badges).map(([key, badge]) => (
+                      <div 
+                        key={key}
+                        className="badge-item"
+                      >
+                        <div className="badge-info">
+                          <div>
+                            <strong>{badge.name || AVAILABLE_BADGES[key]?.name}</strong>
+                            {managingBadges.active_badge === key && (
+                              <span className="active-badge-label">Active</span>
+                            )}
+                          </div>
+                          <div className="badge-description">
+                            {badge.description || AVAILABLE_BADGES[key]?.description}
+                          </div>
+                        </div>
+                        <div className="badge-actions">
+                          {managingBadges.active_badge !== key && (
+                            <button
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => handleSetActiveBadge(key)}
+                              title="Set as active display badge"
+                            >
+                              Set Active
+                            </button>
+                          )}
+                          {managingBadges.active_badge === key && (
+                            <button
+                              className="btn btn-sm btn-outline-secondary"
+                              onClick={() => handleSetActiveBadge(null)}
+                              title="Clear active badge"
+                            >
+                              Clear
+                            </button>
+                          )}
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleRemoveBadge(key)}
+                            title="Remove badge from user"
+                          >
+                            <i className="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: 0 }}>
+                    No badges yet
+                  </p>
+                )}
+              </div>
+
+              <div className="badge-section">
+                <h6 className="section-title">Award New Badge</h6>
+                <div className="badge-list">
+                  {Object.entries(AVAILABLE_BADGES).map(([key, badge]) => (
                     <div 
                       key={key}
+                      className="badge-item"
                       style={{
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '0.35rem',
-                        padding: '0.75rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '1rem',
-                        flexWrap: 'wrap'
+                        opacity: managingBadges.badges?.[key] ? 0.5 : 1,
+                        pointerEvents: managingBadges.badges?.[key] ? 'none' : 'auto'
                       }}
                     >
-                      <div style={{ flex: '1 1 auto', minWidth: '150px' }}>
+                      <div className="badge-info">
                         <div>
                           <strong>{badge.name}</strong>
-                          {managingBadges.active_badge === key && (
-                            <span 
-                              style={{
-                                marginLeft: '0.5rem',
-                                padding: '0.15rem 0.5rem',
-                                background: '#4CAF50',
-                                color: '#fff',
-                                fontSize: '0.75rem',
-                                borderRadius: '0.25rem',
-                                fontWeight: 600
-                              }}
-                            >
-                              Active
-                            </span>
-                          )}
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                        <div className="badge-description">
                           {badge.description}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-                        {managingBadges.active_badge !== key && (
-                          <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => handleSetActiveBadge(key)}
-                            title="Set as active display badge"
-                          >
-                            Set Active
-                          </button>
-                        )}
-                        {managingBadges.active_badge === key && (
-                          <button
-                            className="btn btn-sm btn-outline-secondary"
-                            onClick={() => handleSetActiveBadge(null)}
-                            title="Clear active badge"
-                          >
-                            Clear Active
-                          </button>
-                        )}
-                        <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleRemoveBadge(key)}
-                          title="Remove badge from user"
-                        >
-                          <i className="bi bi-trash"></i> Remove
-                        </button>
-                      </div>
+                      <button
+                        className="btn btn-sm btn-primary"
+                        onClick={() => handleAwardBadge(key)}
+                        disabled={!!managingBadges.badges?.[key]}
+                      >
+                        <i className="bi bi-plus-circle"></i> Award
+                      </button>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-muted" style={{ fontSize: '0.9rem' }}>No badges yet</p>
-              )}
-            </div>
-
-            <div className="mb-3">
-              <h6 className="text-muted mb-2">Award New Badge</h6>
-              <div className="d-flex flex-column gap-2">
-                {Object.entries(AVAILABLE_BADGES).map(([key, badge]) => (
-                  <div 
-                    key={key}
-                    style={{
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '0.35rem',
-                      padding: '0.75rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      opacity: managingBadges.badges?.[key] ? 0.5 : 1
-                    }}
-                  >
-                    <div>
-                      <strong>{badge.name}</strong>
-                      <div style={{ fontSize: '0.85rem', color: '#666' }}>
-                        {badge.description}
-                      </div>
-                    </div>
-                    <button
-                      className="btn btn-sm btn-primary"
-                      onClick={() => handleAwardBadge(key)}
-                      disabled={!!managingBadges.badges?.[key]}
-                    >
-                      <i className="bi bi-plus-circle"></i> Award
-                    </button>
-                  </div>
-                ))}
               </div>
             </div>
 
-            <div className="d-flex justify-content-end">
+            <div className="badge-modal-footer">
               <button
                 className="btn btn-secondary"
                 onClick={() => setManagingBadges(null)}

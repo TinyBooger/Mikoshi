@@ -65,6 +65,8 @@ export default function EditModal({ title, fields, initialData, onSave, onClose 
                       onChange={(e) => handleChange(field.name, e.target.value)}
                       required={field.required}
                       readOnly={field.readOnly}
+                      min={field.min}
+                      max={field.max}
                     />
                   )}
                   {field.helperText && field.type !== 'checkbox' && (

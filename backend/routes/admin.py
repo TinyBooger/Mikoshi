@@ -14,8 +14,12 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 # Pydantic models for request bodies
 class UserUpdate(BaseModel):
     name: Optional[str] = None
+    phone_number: Optional[str] = None
     bio: Optional[str] = None
     is_admin: Optional[bool] = None
+    is_pro: Optional[bool] = None
+    level: Optional[int] = None
+    exp: Optional[int] = None
 
 
 class CharacterUpdate(BaseModel):
@@ -42,9 +46,16 @@ def get_all_users(
         {
             "id": user.id,
             "email": user.email,
+            "phone_number": user.phone_number,
             "name": user.name,
+            "bio": user.bio,
             "is_admin": user.is_admin,
-            "status": "active",  # You can add a status field to User model if needed
+            "is_pro": user.is_pro,
+            "pro_start_date": user.pro_start_date,
+            "pro_expire_date": user.pro_expire_date,
+            "level": user.level,
+            "exp": user.exp,
+            "daily_exp_gained": user.daily_exp_gained,
             "views": user.views,
             "likes": user.likes,
             "profile_pic": user.profile_pic,
@@ -203,6 +214,8 @@ def update_user(
     # Update only provided fields
     if update_data.name is not None:
         user.name = update_data.name
+    if update_data.phone_number is not None:
+        user.phone_number = update_data.phone_number
     if update_data.bio is not None:
         user.bio = update_data.bio
     if update_data.is_admin is not None:
@@ -210,6 +223,16 @@ def update_user(
         if user.id == current_admin.id and not update_data.is_admin:
             raise HTTPException(status_code=400, detail="Cannot remove your own admin status")
         user.is_admin = update_data.is_admin
+    if update_data.is_pro is not None:
+        user.is_pro = update_data.is_pro
+    if update_data.level is not None:
+        if update_data.level < 1 or update_data.level > 6:
+            raise HTTPException(status_code=400, detail="Level must be between 1 and 6")
+        user.level = update_data.level
+    if update_data.exp is not None:
+        if update_data.exp < 0:
+            raise HTTPException(status_code=400, detail="EXP cannot be negative")
+        user.exp = update_data.exp
     
     db.commit()
     db.refresh(user)
@@ -219,9 +242,13 @@ def update_user(
         "user": {
             "id": user.id,
             "email": user.email,
+            "phone_number": user.phone_number,
             "name": user.name,
             "bio": user.bio,
-            "is_admin": user.is_admin
+            "is_admin": user.is_admin,
+            "is_pro": user.is_pro,
+            "level": user.level,
+            "exp": user.exp
         }
     }
 

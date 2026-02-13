@@ -18,7 +18,9 @@ export default function Table({ columns, data, onEdit, onDelete, customActions =
                   ? (row[col] ? '✓' : '✗')
                   : Array.isArray(row[col])
                     ? row[col].join(', ')
-                    : String(row[col] ?? '')}
+                    : typeof row[col] === 'object' && row[col]?.$$typeof
+                      ? row[col]
+                      : String(row[col] ?? '')}
               </td>
             ))}
             {actions && (
