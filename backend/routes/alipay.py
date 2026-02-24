@@ -17,7 +17,7 @@ from utils.alipay_utils import alipay_client
 from utils.session import verify_session_token, get_current_admin_user
 from utils.user_utils import upgrade_to_pro
 from database import get_db
-from models import User, PaymentOrder
+from models import User, PaymentOrder, Character, CharacterPurchase
 from utils.audit_logger import AuditLog
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,7 @@ router = APIRouter(prefix="/api/alipay", tags=["alipay"])
 PRO_UPGRADE_PRICE_CNY = float(os.getenv("PRO_UPGRADE_PRICE_CNY", "29"))
 PRO_UPGRADE_DURATION_DAYS = int(os.getenv("PRO_UPGRADE_DURATION_DAYS", "30"))
 PRO_AMOUNT_TOLERANCE = 0.01
+CHARACTER_AMOUNT_TOLERANCE = 0.01
 
 
 def _is_public_base_url(base_url: str) -> bool:
@@ -43,6 +44,16 @@ def _extract_user_id(out_trade_no: Optional[str]) -> Optional[str]:
         return None
     parts = out_trade_no.split("_U")
     return parts[-1] or None
+
+
+def _extract_character_id(out_trade_no: Optional[str]) -> Optional[int]:
+    if not out_trade_no or "_C" not in out_trade_no:
+        return None
+    try:
+        suffix = out_trade_no.split("_C")[-1]
+        return int(suffix)
+    except (TypeError, ValueError):
+        return None
 
 
 def _get_trade_status(result: dict) -> Tuple[Optional[str], Optional[str]]:
@@ -62,6 +73,17 @@ def _is_valid_pro_upgrade_amount(total_amount: Optional[str | float | int]) -> b
         return False
 
 
+def _is_valid_character_purchase_amount(total_amount: Optional[str | float | int], character_price: Optional[str | float | int]) -> bool:
+    try:
+        if total_amount is None or character_price is None:
+            return False
+        amount = float(total_amount)
+        price = float(character_price)
+        return abs(amount - price) <= CHARACTER_AMOUNT_TOLERANCE
+    except (TypeError, ValueError):
+        return False
+
+
 def _build_notify_url() -> Optional[str]:
     backend_base_url = os.getenv("BACKEND_BASE_URL", "").rstrip("/")
     if _is_public_base_url(backend_base_url):
@@ -72,17 +94,22 @@ def _build_notify_url() -> Optional[str]:
 def _claim_payment_order(
     db: Session,
     out_trade_no: str,
+    order_type: str,
     user_id: Optional[str],
     trade_no: Optional[str],
     total_amount: Optional[str],
     source: str,
+    target_type: Optional[str] = None,
+    target_id: Optional[int] = None,
 ) -> Optional[PaymentOrder]:
     payment_order = PaymentOrder(
         out_trade_no=out_trade_no,
         user_id=user_id,
-        order_type="pro_upgrade",
+        order_type=order_type,
         trade_no=trade_no,
         total_amount=str(total_amount) if total_amount is not None else None,
+        target_type=target_type,
+        target_id=target_id,
         source=source,
         status="processing",
     )
@@ -120,14 +147,17 @@ def _finalize_payment_order(
 def _record_order_result(
     db,
     out_trade_no: str,
+    order_type: str,
     user_id: Optional[str],
     trade_no: Optional[str],
     total_amount: Optional[str],
     source: str,
+    target_type: Optional[str] = None,
+    target_id: Optional[int] = None,
     status: str = "success",
     error_message: Optional[str] = None,
 ):
-    action = f"alipay_pro_upgrade:{out_trade_no}"
+    action = f"alipay_{order_type}:{out_trade_no}"
     audit_entry = AuditLog(
         user_id=user_id,
         action=action,
@@ -135,6 +165,9 @@ def _record_order_result(
             "trade_no": trade_no,
             "total_amount": total_amount,
             "source": source,
+            "order_type": order_type,
+            "target_type": target_type,
+            "target_id": target_id,
         },
         status=status,
         error_message=error_message,
@@ -162,6 +195,7 @@ def _handle_pro_upgrade(
     payment_order = _claim_payment_order(
         db=db,
         out_trade_no=out_trade_no,
+        order_type="pro_upgrade",
         user_id=user_id,
         trade_no=trade_no,
         total_amount=total_amount,
@@ -186,6 +220,7 @@ def _handle_pro_upgrade(
         _record_order_result(
             db,
             out_trade_no=out_trade_no,
+            order_type="pro_upgrade",
             user_id=user_id,
             trade_no=trade_no,
             total_amount=total_amount,
@@ -209,6 +244,7 @@ def _handle_pro_upgrade(
         _record_order_result(
             db,
             out_trade_no=out_trade_no,
+            order_type="pro_upgrade",
             user_id=None,
             trade_no=trade_no,
             total_amount=total_amount,
@@ -233,6 +269,7 @@ def _handle_pro_upgrade(
         _record_order_result(
             db,
             out_trade_no=out_trade_no,
+            order_type="pro_upgrade",
             user_id=user_id,
             trade_no=trade_no,
             total_amount=total_amount,
@@ -258,6 +295,7 @@ def _handle_pro_upgrade(
         _record_order_result(
             db,
             out_trade_no=out_trade_no,
+            order_type="pro_upgrade",
             user_id=user_id,
             trade_no=trade_no,
             total_amount=total_amount,
@@ -281,6 +319,7 @@ def _handle_pro_upgrade(
         _record_order_result(
             db,
             out_trade_no=out_trade_no,
+            order_type="pro_upgrade",
             user_id=user_id,
             trade_no=trade_no,
             total_amount=total_amount,
@@ -289,6 +328,280 @@ def _handle_pro_upgrade(
             error_message=str(e),
         )
         logger.error(f"升级Pro会员失败: {e}")
+
+
+def _handle_character_purchase(
+    db,
+    out_trade_no: str,
+    trade_no: Optional[str],
+    total_amount: Optional[str],
+    source: str,
+):
+    if not out_trade_no.startswith("CHAR_"):
+        return
+
+    user_id = _extract_user_id(out_trade_no)
+    character_id = _extract_character_id(out_trade_no)
+
+    payment_order = _claim_payment_order(
+        db=db,
+        out_trade_no=out_trade_no,
+        order_type="character_purchase",
+        user_id=user_id,
+        trade_no=trade_no,
+        total_amount=total_amount,
+        source=source,
+        target_type="character",
+        target_id=character_id,
+    )
+    if payment_order is None:
+        existing = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
+        existing_status = existing.status if existing else "unknown"
+        logger.info(f"角色订单已被处理或处理中，跳过发货: {out_trade_no}, status={existing_status}")
+        return
+
+    if not user_id:
+        _finalize_payment_order(
+            db=db,
+            payment_order=payment_order,
+            status="failure",
+            error_message="missing_user_id",
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+        )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="character_purchase",
+            user_id=None,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            target_type="character",
+            target_id=character_id,
+            status="failure",
+            error_message="missing_user_id",
+        )
+        return
+
+    if not character_id:
+        _finalize_payment_order(
+            db=db,
+            payment_order=payment_order,
+            status="failure",
+            error_message="missing_character_id",
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+        )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="character_purchase",
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            target_type="character",
+            target_id=None,
+            status="failure",
+            error_message="missing_character_id",
+        )
+        return
+
+    user = db.query(User).filter(User.id == user_id).first()
+    character = db.query(Character).filter(Character.id == character_id).first()
+
+    if not user:
+        _finalize_payment_order(
+            db=db,
+            payment_order=payment_order,
+            status="failure",
+            error_message="user_not_found",
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+        )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="character_purchase",
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            target_type="character",
+            target_id=character_id,
+            status="failure",
+            error_message="user_not_found",
+        )
+        return
+
+    if not character:
+        _finalize_payment_order(
+            db=db,
+            payment_order=payment_order,
+            status="failure",
+            error_message="character_not_found",
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+        )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="character_purchase",
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            target_type="character",
+            target_id=character_id,
+            status="failure",
+            error_message="character_not_found",
+        )
+        return
+
+    if character.is_free:
+        _finalize_payment_order(
+            db=db,
+            payment_order=payment_order,
+            status="failure",
+            error_message="character_is_free",
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+        )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="character_purchase",
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            target_type="character",
+            target_id=character_id,
+            status="failure",
+            error_message="character_is_free",
+        )
+        return
+
+    if character.creator_id == user_id:
+        _finalize_payment_order(
+            db=db,
+            payment_order=payment_order,
+            status="failure",
+            error_message="self_purchase_not_allowed",
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+        )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="character_purchase",
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            target_type="character",
+            target_id=character_id,
+            status="failure",
+            error_message="self_purchase_not_allowed",
+        )
+        return
+
+    if not _is_valid_character_purchase_amount(total_amount, character.price):
+        _finalize_payment_order(
+            db=db,
+            payment_order=payment_order,
+            status="failure",
+            error_message="invalid_amount",
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+        )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="character_purchase",
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            target_type="character",
+            target_id=character_id,
+            status="failure",
+            error_message="invalid_amount",
+        )
+        return
+
+    try:
+        existing_purchase = db.query(CharacterPurchase).filter(
+            CharacterPurchase.user_id == user_id,
+            CharacterPurchase.character_id == character_id
+        ).first()
+        if not existing_purchase:
+            db.add(CharacterPurchase(
+                user_id=user_id,
+                character_id=character_id,
+                price_paid=float(total_amount),
+                out_trade_no=out_trade_no,
+                trade_no=trade_no,
+            ))
+            db.commit()
+
+        payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
+        if payment_order:
+            _finalize_payment_order(
+                db=db,
+                payment_order=payment_order,
+                status="success",
+                trade_no=trade_no,
+                total_amount=total_amount,
+                source=source,
+            )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="character_purchase",
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            target_type="character",
+            target_id=character_id,
+            status="success",
+        )
+    except Exception as e:
+        db.rollback()
+        payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
+        if payment_order:
+            _finalize_payment_order(
+                db=db,
+                payment_order=payment_order,
+                status="error",
+                error_message=str(e),
+                trade_no=trade_no,
+                total_amount=total_amount,
+                source=source,
+            )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="character_purchase",
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            target_type="character",
+            target_id=character_id,
+            status="error",
+            error_message=str(e),
+        )
+        logger.error(f"角色发货失败: {e}")
 
 
 # 请求模型
@@ -301,6 +614,7 @@ class CreateOrderRequest(BaseModel):
     timeout_express: Optional[str] = None  # 超时时间: 30m、2h、1d等 (沙箱环境不超过15小时)
     order_type: Optional[str] = None  # 订单类型: pro_upgrade等
     user_id: Optional[str] = None  # 用户ID (Firebase UID是字符串)
+    character_id: Optional[int] = None  # 角色ID（购买角色时必填）
 
 
 class QueryOrderRequest(BaseModel):
@@ -334,6 +648,7 @@ async def create_order(
                    f"payment_type={request.payment_type}, order_type={request.order_type}, user_id={request.user_id}")
 
         resolved_user_id: Optional[str] = None
+        resolved_character_id: Optional[int] = None
         if request.order_type == "pro_upgrade":
             if not _is_valid_pro_upgrade_amount(request.total_amount):
                 raise HTTPException(status_code=400, detail=f"Pro升级金额必须为 {PRO_UPGRADE_PRICE_CNY:.2f}")
@@ -350,14 +665,45 @@ async def create_order(
                 raise HTTPException(status_code=403, detail="不能为其他用户创建Pro升级订单")
 
             resolved_user_id = authed_user_id
+        elif request.order_type == "character_purchase":
+            authed_user_id = verify_session_token(session_token)
+            if not authed_user_id:
+                raise HTTPException(status_code=401, detail="购买角色需要登录")
+
+            authed_user = db.query(User).filter(User.id == authed_user_id).first()
+            if not authed_user:
+                raise HTTPException(status_code=401, detail="无效用户会话")
+
+            if not request.character_id:
+                raise HTTPException(status_code=400, detail="character_id 为必填")
+
+            character = db.query(Character).filter(Character.id == request.character_id).first()
+            if not character:
+                raise HTTPException(status_code=404, detail="角色不存在")
+            if character.is_free:
+                raise HTTPException(status_code=400, detail="该角色为免费角色，无需购买")
+            if character.creator_id == authed_user_id:
+                raise HTTPException(status_code=400, detail="不能购买自己创建的角色")
+            if not _is_valid_character_purchase_amount(request.total_amount, character.price):
+                raise HTTPException(status_code=400, detail="角色购买金额不正确")
+
+            resolved_user_id = authed_user_id
+            resolved_character_id = character.id
         
         # 生成唯一订单号，包含订单类型前缀以便后续识别
-        prefix = "PRO_" if request.order_type == "pro_upgrade" else "MK"
+        if request.order_type == "pro_upgrade":
+            prefix = "PRO_"
+        elif request.order_type == "character_purchase":
+            prefix = "CHAR_"
+        else:
+            prefix = "MK"
         out_trade_no = f"{prefix}{datetime.now().strftime('%Y%m%d%H%M%S')}{uuid.uuid4().hex[:8]}"
         
         # 如果是Pro升级订单，将user_id附加到订单号末尾
         if request.order_type == "pro_upgrade" and resolved_user_id:
             out_trade_no = f"{out_trade_no}_U{resolved_user_id}"
+        elif request.order_type == "character_purchase" and resolved_user_id and resolved_character_id:
+            out_trade_no = f"{out_trade_no}_U{resolved_user_id}_C{resolved_character_id}"
         
         # 构造回调URL（使用完整URL以确保支付宝可以正确跳转）
         frontend_base_url = os.getenv("FRONTEND_BASE_URL", "").rstrip("/")
@@ -395,7 +741,8 @@ async def create_order(
             "payment_url": payment_url,
             "out_trade_no": out_trade_no,
             "total_amount": request.total_amount,
-            "subject": request.subject
+            "subject": request.subject,
+            "character_id": resolved_character_id
         }
 
     except HTTPException:
@@ -435,6 +782,13 @@ async def alipay_notify(request: Request, db: Session = Depends(get_db)):
         if trade_status == "TRADE_SUCCESS" or trade_status == "TRADE_FINISHED":
             logger.info(f"订单支付成功: {out_trade_no}, 支付宝交易号: {trade_no}, 金额: {total_amount}")
             _handle_pro_upgrade(
+                db=db,
+                out_trade_no=out_trade_no or "",
+                trade_no=trade_no,
+                total_amount=total_amount,
+                source="notify",
+            )
+            _handle_character_purchase(
                 db=db,
                 out_trade_no=out_trade_no or "",
                 trade_no=trade_no,
@@ -486,6 +840,13 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
 
         if query_code == "10000" and trade_status in ("TRADE_SUCCESS", "TRADE_FINISHED"):
             _handle_pro_upgrade(
+                db=db,
+                out_trade_no=out_trade_no or "",
+                trade_no=trade_no,
+                total_amount=total_amount,
+                source="return_query",
+            )
+            _handle_character_purchase(
                 db=db,
                 out_trade_no=out_trade_no or "",
                 trade_no=trade_no,

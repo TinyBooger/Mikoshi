@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from database import get_db
@@ -10,6 +10,7 @@ import json
 from datetime import datetime, UTC
 from models import User, Character, Scene, ChatHistory
 from utils.level_system import award_exp_with_limits
+from utils.character_purchase_utils import can_access_character
 
 router = APIRouter()
 
@@ -47,6 +48,14 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     # Generate chat_id upfront for new chats
     if not chat_id and character_id:
         chat_id = str(uuid.uuid4())
+
+    effective_character_id = character_id or (existing_entry.character_id if existing_entry else None)
+    if effective_character_id:
+        character = db.query(Character).filter(Character.id == effective_character_id).first()
+        if not character:
+            raise HTTPException(status_code=404, detail="Character not found")
+        if not can_access_character(db, current_user.id, character):
+            raise HTTPException(status_code=403, detail="CHARACTER_NOT_PURCHASED: This paid character requires purchase")
 
     if stream:
         # Return streaming response

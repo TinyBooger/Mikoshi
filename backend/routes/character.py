@@ -6,13 +6,14 @@ from typing import List, Optional
 from datetime import datetime, UTC
 
 from database import get_db
-from models import Character, User, Tag, UserLikedCharacter
+from models import Character, User, Tag, UserLikedCharacter, CharacterPurchase
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.validators import validate_character_fields
 from schemas import CharacterOut, CharacterListOut
 from utils.level_system import award_exp_with_limits
+from utils.character_purchase_utils import can_access_character, has_character_purchase
 
 router = APIRouter()
 
@@ -228,6 +229,35 @@ def get_character(character_id: int, current_user: User = Depends(get_current_us
             raise HTTPException(status_code=404, detail="Character not found")
     return c
 
+
+@router.get("/api/character/{character_id}/access")
+def get_character_access(
+    character_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    character = db.query(Character).filter(Character.id == character_id).first()
+    if not character:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    if not character.is_public and character.creator_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    is_owner = character.creator_id == current_user.id
+    is_free = bool(character.is_free)
+    is_purchased = has_character_purchase(db, current_user.id, character.id)
+    has_access = can_access_character(db, current_user.id, character)
+
+    return {
+        "character_id": character.id,
+        "is_owner": is_owner,
+        "is_free": is_free,
+        "is_purchased": is_purchased,
+        "has_access": has_access,
+        "requires_purchase": (not has_access and not is_free and not is_owner),
+        "price": float(character.price or 0)
+    }
+
 @router.delete("/api/character/{character_id}/delete")
 async def delete_character(
     character_id: int,
@@ -376,6 +406,31 @@ def get_user_liked_characters(
     characters = db.query(Character).filter(Character.id.in_(liked_ids), Character.is_public == True).all()
     return CharacterListOut(items=characters, total=total, page=page, page_size=page_size, short=False)
 
+
+@router.get("/api/characters-purchased", response_model=CharacterListOut)
+def get_user_purchased_characters(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user:
+        return CharacterListOut(items=[], total=0, page=1, page_size=0, short=False)
+
+    purchased_query = db.query(CharacterPurchase.character_id).filter(
+        CharacterPurchase.user_id == current_user.id
+    ).order_by(CharacterPurchase.purchased_at.desc())
+
+    total = purchased_query.count()
+    purchased_ids = [row.character_id for row in purchased_query.offset((page - 1) * page_size).limit(page_size).all()]
+    if not purchased_ids:
+        return CharacterListOut(items=[], total=total, page=page, page_size=page_size, short=False)
+
+    characters = db.query(Character).filter(Character.id.in_(purchased_ids)).all()
+    ordered_characters = sorted(characters, key=lambda character: purchased_ids.index(character.id))
+
+    return CharacterListOut(items=ordered_characters, total=total, page=page, page_size=page_size, short=False)
+
 @router.get("/api/user/{user_id}/characters", response_model=List[CharacterOut])
 def get_user_characters(user_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     query = db.query(Character).filter(Character.creator_id == user_id)
@@ -383,3 +438,14 @@ def get_user_characters(user_id: str, current_user: User = Depends(get_current_u
         query = query.filter(Character.is_public == True)
     characters = query.all()
     return characters
+
+
+@router.get("/api/user/purchased-characters")
+def get_purchased_characters(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    purchases = db.query(CharacterPurchase.character_id).filter(
+        CharacterPurchase.user_id == current_user.id
+    ).all()
+    return {"character_ids": [row.character_id for row in purchases]}

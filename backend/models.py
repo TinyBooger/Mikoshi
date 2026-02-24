@@ -250,6 +250,22 @@ class ErrorLogModel(Base):
     resolved_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
 
+class CharacterPurchase(Base):
+    __tablename__ = "character_purchases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    character_id = Column(Integer, ForeignKey('characters.id', ondelete='CASCADE'), nullable=False, index=True)
+    price_paid = Column(Numeric(10, 2), nullable=False, default=0)
+    out_trade_no = Column(String(128), nullable=True, index=True)
+    trade_no = Column(String(128), nullable=True, index=True)
+    purchased_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'character_id', name='uix_user_character_purchase'),
+    )
+
+
 class PaymentOrder(Base):
     __tablename__ = "payment_orders"
 
@@ -258,6 +274,8 @@ class PaymentOrder(Base):
     order_type = Column(String(50), nullable=False, default="unknown")
     trade_no = Column(String(128), nullable=True, index=True)
     total_amount = Column(String(32), nullable=True)
+    target_type = Column(String(50), nullable=True)
+    target_id = Column(Integer, nullable=True, index=True)
     source = Column(String(32), nullable=True)
     status = Column(String(20), nullable=False, default="processing", index=True)
     error_message = Column(Text, nullable=True)
