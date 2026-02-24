@@ -31,9 +31,10 @@ export default function CharacterFormPage() {
 
   const { sessionToken, userData } = useContext(AuthContext);
   const userLevel = Number(userData?.level || 1);
+  const isProUser = !!userData?.is_pro;
   const canPrivate = userLevel >= 2;
-  const canFork = userLevel >= 2;
-  const canPaid = userLevel >= 3;
+  const canFork = userLevel >= 2 || isProUser;
+  const canPaid = userLevel >= 3 || isProUser;
   const navigate = useNavigate();
   const toast = useToast();
   const [charData, setCharData] = useState({
@@ -168,7 +169,7 @@ export default function CharacterFormPage() {
     }
 
     // Check paid character limit for new characters
-    if (mode === 'create' && !charData.is_free) {
+    if (mode === 'create' && !charData.is_free && !isProUser) {
       try {
         // Fetch user's created characters to count paid ones
         const res = await fetch(`${window.API_BASE_URL}/api/user/characters`, {

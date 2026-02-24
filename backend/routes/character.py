@@ -45,10 +45,18 @@ async def create_character(
     error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags)
     if error:
         raise HTTPException(status_code=400, detail=error)
+
+    is_pro_user = bool(current_user.is_pro)
+    can_use_fork_features = is_pro_user or (current_user.level or 1) >= 2
+    can_create_paid = is_pro_user or (current_user.level or 1) >= 3
     
     # Enforce: forking requires level 2 or higher
-    if forked_from_id and current_user.level < 2:
+    if forked_from_id and not can_use_fork_features:
         raise HTTPException(status_code=403, detail="Forking requires level 2 or higher")
+
+    # Enforce: open-source/forkable characters require level 2+ or Pro
+    if is_forkable and not can_use_fork_features:
+        raise HTTPException(status_code=403, detail="Forkable characters require level 2 or higher")
     
     # Enforce: paid characters cannot be forkable
     if not is_free and is_forkable:
@@ -58,6 +66,21 @@ async def create_character(
     if is_free and price > 0:
         price = 0
     elif not is_free:
+        if not can_create_paid:
+            raise HTTPException(status_code=403, detail="Paid characters require level 3 or higher")
+
+        # Non-Pro users keep level-based paid character quantity limits
+        if not is_pro_user:
+            paid_count = db.query(Character).filter(
+                Character.creator_id == current_user.id,
+                Character.is_free == False
+            ).count()
+            user_level = current_user.level or 1
+            if user_level == 3 and paid_count >= 1:
+                raise HTTPException(status_code=403, detail="Level 3 allows 1 paid character. Reach level 4 for more.")
+            elif user_level == 4 and paid_count >= 2:
+                raise HTTPException(status_code=403, detail="Level 4 allows 2 paid characters. Reach level 5 for unlimited.")
+
         if price < 0.1:
             raise HTTPException(status_code=400, detail="Paid characters must have a price of at least ¥0.1")
         if price > 100:
@@ -145,6 +168,10 @@ async def update_character(
     if error:
         raise HTTPException(status_code=400, detail=error)
     
+    is_pro_user = bool(current_user.is_pro)
+    can_use_fork_features = is_pro_user or (current_user.level or 1) >= 2
+    can_create_paid = is_pro_user or (current_user.level or 1) >= 3
+
     # Enforce level-based private character access (L2+)
     final_is_public = is_public if is_public is not None else char.is_public
     if not final_is_public and current_user.level < 2:
@@ -155,14 +182,18 @@ async def update_character(
     final_is_forkable = is_forkable if is_forkable is not None else char.is_forkable
     final_price = price if price is not None else char.price
     
+    # Enforce open-source/forkable character capability by level or Pro
+    if final_is_forkable and not can_use_fork_features:
+        raise HTTPException(status_code=403, detail="Forkable characters require level 2 or higher")
+
     # Enforce paid character limits by level
     if not final_is_free:
         user_level = current_user.level or 1
-        if user_level < 3:
+        if not can_create_paid:
             raise HTTPException(status_code=403, detail="Paid characters require level 3 or higher")
-        
-        # Only count if switching from free to paid (not if already paid)
-        if char.is_free:
+
+        # Only non-Pro users have paid quantity limits
+        if (not is_pro_user) and char.is_free:
             paid_count = db.query(Character).filter(
                 Character.creator_id == current_user.id,
                 Character.is_free == False
