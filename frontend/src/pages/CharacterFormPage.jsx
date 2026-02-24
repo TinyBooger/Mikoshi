@@ -32,7 +32,7 @@ export default function CharacterFormPage() {
   const { sessionToken, userData } = useContext(AuthContext);
   const userLevel = Number(userData?.level || 1);
   const isProUser = !!userData?.is_pro;
-  const canPrivate = userLevel >= 2;
+  const canPrivate = userLevel >= 2 || isProUser;
   const canFork = userLevel >= 2 || isProUser;
   const canPaid = userLevel >= 3 || isProUser;
   const navigate = useNavigate();

@@ -47,8 +47,13 @@ async def create_character(
         raise HTTPException(status_code=400, detail=error)
 
     is_pro_user = bool(current_user.is_pro)
+    can_create_private = is_pro_user or (current_user.level or 1) >= 2
     can_use_fork_features = is_pro_user or (current_user.level or 1) >= 2
     can_create_paid = is_pro_user or (current_user.level or 1) >= 3
+
+    # Enforce private character capability by level or Pro
+    if not is_public and not can_create_private:
+        raise HTTPException(status_code=403, detail="Private characters require level 2 or higher")
     
     # Enforce: forking requires level 2 or higher
     if forked_from_id and not can_use_fork_features:
@@ -169,12 +174,13 @@ async def update_character(
         raise HTTPException(status_code=400, detail=error)
     
     is_pro_user = bool(current_user.is_pro)
+    can_create_private = is_pro_user or (current_user.level or 1) >= 2
     can_use_fork_features = is_pro_user or (current_user.level or 1) >= 2
     can_create_paid = is_pro_user or (current_user.level or 1) >= 3
 
     # Enforce level-based private character access (L2+)
     final_is_public = is_public if is_public is not None else char.is_public
-    if not final_is_public and current_user.level < 2:
+    if not final_is_public and not can_create_private:
         raise HTTPException(status_code=403, detail="Private characters require level 2 or higher")
     
     # Enforce: paid characters cannot be forkable
