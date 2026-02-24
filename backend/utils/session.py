@@ -3,6 +3,7 @@ from fastapi import Request, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User
+from utils.user_utils import check_and_expire_pro
 import os
 from itsdangerous import URLSafeSerializer
 
@@ -30,6 +31,7 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    user = check_and_expire_pro(user, db)
     return user
 
 

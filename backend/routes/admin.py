@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
+from datetime import datetime, timedelta, UTC
 from database import get_db
 from models import User, Character, Tag, SearchTerm
 from utils.session import get_current_admin_user
 from utils.security_middleware import get_rate_limit_status
+from utils.user_utils import enrich_user_with_character_count, build_user_response
 from typing import List, Optional
 from pydantic import BaseModel
+from schemas import UserOut, UserMessageOut
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -18,6 +21,8 @@ class UserUpdate(BaseModel):
     bio: Optional[str] = None
     is_admin: Optional[bool] = None
     is_pro: Optional[bool] = None
+    pro_start_date: Optional[datetime] = None
+    pro_expire_date: Optional[datetime] = None
     level: Optional[int] = None
     exp: Optional[int] = None
 
@@ -35,35 +40,14 @@ class TagUpdate(BaseModel):
     name: Optional[str] = None
 
 
-@router.get("/users")
+@router.get("/users", response_model=List[UserOut])
 def get_all_users(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
     """Get all users - Admin only"""
     users = db.query(User).all()
-    return [
-        {
-            "id": user.id,
-            "email": user.email,
-            "phone_number": user.phone_number,
-            "name": user.name,
-            "bio": user.bio,
-            "is_admin": user.is_admin,
-            "is_pro": user.is_pro,
-            "pro_start_date": user.pro_start_date,
-            "pro_expire_date": user.pro_expire_date,
-            "level": user.level,
-            "exp": user.exp,
-            "daily_exp_gained": user.daily_exp_gained,
-            "views": user.views,
-            "likes": user.likes,
-            "profile_pic": user.profile_pic,
-            "badges": user.badges or {},
-            "active_badge": user.active_badge
-        }
-        for user in users
-    ]
+    return [enrich_user_with_character_count(user, db) for user in users]
 
 
 @router.get("/characters")
@@ -199,7 +183,7 @@ def toggle_admin_status(
     }
 
 
-@router.patch("/users/{user_id}")
+@router.patch("/users/{user_id}", response_model=UserMessageOut)
 def update_user(
     user_id: str,
     update_data: UserUpdate,
@@ -210,6 +194,8 @@ def update_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    provided_fields = update_data.model_fields_set
     
     # Update only provided fields
     if update_data.name is not None:
@@ -225,6 +211,24 @@ def update_user(
         user.is_admin = update_data.is_admin
     if update_data.is_pro is not None:
         user.is_pro = update_data.is_pro
+    if "pro_start_date" in provided_fields:
+        user.pro_start_date = update_data.pro_start_date
+    if "pro_expire_date" in provided_fields:
+        user.pro_expire_date = update_data.pro_expire_date
+
+    effective_pro_start_date = update_data.pro_start_date if "pro_start_date" in provided_fields else user.pro_start_date
+    effective_pro_expire_date = update_data.pro_expire_date if "pro_expire_date" in provided_fields else user.pro_expire_date
+
+    if update_data.is_pro is True and not effective_pro_start_date and not effective_pro_expire_date:
+        now = datetime.now(UTC)
+        user.pro_start_date = now
+        user.pro_expire_date = now + timedelta(days=30)
+        effective_pro_start_date = user.pro_start_date
+        effective_pro_expire_date = user.pro_expire_date
+
+    if effective_pro_start_date and effective_pro_expire_date and effective_pro_expire_date < effective_pro_start_date:
+        raise HTTPException(status_code=400, detail="Pro expire date must be after pro start date")
+
     if update_data.level is not None:
         if update_data.level < 1 or update_data.level > 6:
             raise HTTPException(status_code=400, detail="Level must be between 1 and 6")
@@ -239,17 +243,7 @@ def update_user(
     
     return {
         "message": "User updated successfully",
-        "user": {
-            "id": user.id,
-            "email": user.email,
-            "phone_number": user.phone_number,
-            "name": user.name,
-            "bio": user.bio,
-            "is_admin": user.is_admin,
-            "is_pro": user.is_pro,
-            "level": user.level,
-            "exp": user.exp
-        }
+        "user": build_user_response(user, db)
     }
 
 

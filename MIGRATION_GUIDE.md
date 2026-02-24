@@ -43,7 +43,15 @@ python migrations/add_system_notifications.py
 python migrations/create_invitation_codes_table.py
 
 # Other migrations (as needed)
-python migrations/add_phone_authentication.sql  # If using SQL directly
+# SQL migrations (run with psql)
+psql "$DATABASE_URL" -f migrations/add_phone_authentication.sql
+psql "$DATABASE_URL" -f migrations/add_error_logging.sql
+psql "$DATABASE_URL" -f migrations/add_payment_orders.sql
+
+# PowerShell example
+psql "$env:DATABASE_URL" -f migrations/add_payment_orders.sql
+
+# Python migrations
 python migrations/add_default_persona.py
 python migrations/add_forked_from_fields.py
 python migrations/add_visibility_and_fork_flags.py

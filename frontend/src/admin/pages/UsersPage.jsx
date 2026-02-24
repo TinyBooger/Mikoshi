@@ -24,6 +24,21 @@ export default function UsersPage() {
   const pageSize = 20;
   const { sessionToken } = useContext(AuthContext);
 
+  const toDateTimeLocalValue = (dateValue) => {
+    if (!dateValue) return '';
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return '';
+    const offsetMs = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+  };
+
+  const toIsoOrNull = (dateValue) => {
+    if (!dateValue) return null;
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString();
+  };
+
   const fetchUsers = () => {
     setLoading(true);
     fetch(`${window.API_BASE_URL}/api/admin/users`, {
@@ -48,7 +63,11 @@ export default function UsersPage() {
   }, [sessionToken]);
 
   const handleEdit = (user) => {
-    setEditingUser(user);
+    setEditingUser({
+      ...user,
+      pro_start_date: toDateTimeLocalValue(user.pro_start_date),
+      pro_expire_date: toDateTimeLocalValue(user.pro_expire_date),
+    });
   };
 
   const handleDelete = async (user) => {
@@ -91,6 +110,8 @@ export default function UsersPage() {
           bio: userData.bio,
           is_admin: userData.is_admin,
           is_pro: userData.is_pro,
+          pro_start_date: toIsoOrNull(userData.pro_start_date),
+          pro_expire_date: toIsoOrNull(userData.pro_expire_date),
           level: userData.level ? parseInt(userData.level) : undefined,
           exp: userData.exp ? parseInt(userData.exp) : undefined
         })
@@ -117,6 +138,8 @@ export default function UsersPage() {
     { name: 'bio', label: 'Bio', type: 'textarea', rows: 3 },
     { name: 'is_admin', label: 'Admin Status', type: 'checkbox', helperText: 'Grant admin privileges' },
     { name: 'is_pro', label: 'Pro Status', type: 'checkbox', helperText: 'Mark as premium user' },
+    { name: 'pro_start_date', label: 'Pro Start Date', type: 'datetime-local', helperText: 'Optional: when Pro membership started' },
+    { name: 'pro_expire_date', label: 'Pro Expire Date', type: 'datetime-local', helperText: 'Optional: when Pro membership expires' },
     { name: 'level', label: 'User Level', type: 'number', min: 1, max: 6 },
     { name: 'exp', label: 'Experience Points', type: 'number', min: 0 }
   ];

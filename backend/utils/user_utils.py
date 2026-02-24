@@ -11,8 +11,32 @@ from schemas import PersonaOut
 from utils.chat_history_utils import fetch_user_chat_history
 
 
+def get_pro_state(user: User) -> dict[str, Any]:
+    """Single source of truth for Pro subscription state.
+
+    Pro activity is derived only from expiration date and current UTC time.
+    """
+    now = datetime.now(UTC)
+    expire_date = getattr(user, "pro_expire_date", None)
+
+    pro_active = bool(expire_date and now < expire_date)
+    pro_days_remaining = 0
+    if expire_date and now < expire_date:
+        pro_days_remaining = max(0, (expire_date - now).days)
+
+    pro_status = "active" if pro_active else ("expired" if expire_date else "free")
+
+    return {
+        "active": pro_active,
+        "days_remaining": pro_days_remaining,
+        "status": pro_status,
+    }
+
+
 def enrich_user_with_character_count(user: User, db: Session) -> dict:
     """Convert User to dict with characters_created count"""
+    pro_state = get_pro_state(user)
+
     return {
         "id": user.id,
         "email": user.email,
@@ -28,11 +52,15 @@ def enrich_user_with_character_count(user: User, db: Session) -> dict:
         "default_persona_id": user.default_persona_id,
         "level": getattr(user, "level", 1) or 1,
         "exp": getattr(user, "exp", 0) or 0,
+        "daily_exp_gained": getattr(user, "daily_exp_gained", 0) or 0,
         "badges": user.badges or {},
         "active_badge": user.active_badge,
-        "is_pro": getattr(user, "is_pro", False) or False,
+        "is_pro": pro_state["active"],
         "pro_start_date": getattr(user, "pro_start_date", None),
         "pro_expire_date": getattr(user, "pro_expire_date", None),
+        "pro_active": pro_state["active"],
+        "pro_days_remaining": pro_state["days_remaining"],
+        "pro_status": pro_state["status"],
     }
 
 
@@ -46,6 +74,7 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
 
     # Calculate characters_created by counting characters where creator_id matches user.id
     characters_created = db.query(Character).filter(Character.creator_id == user.id).count()
+    pro_state = get_pro_state(user)
 
     return {
         "id": user.id,
@@ -62,26 +91,23 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
         "is_admin": user.is_admin or False,
         "level": getattr(user, "level", 1) or 1,
         "exp": getattr(user, "exp", 0) or 0,
+        "daily_exp_gained": getattr(user, "daily_exp_gained", 0) or 0,
         "default_persona_id": user.default_persona_id,
         "default_persona": default_persona,
         "badges": user.badges or {},
         "active_badge": user.active_badge,
-        "is_pro": getattr(user, "is_pro", False) or False,
+        "is_pro": pro_state["active"],
         "pro_start_date": getattr(user, "pro_start_date", None),
         "pro_expire_date": getattr(user, "pro_expire_date", None),
+        "pro_active": pro_state["active"],
+        "pro_days_remaining": pro_state["days_remaining"],
+        "pro_status": pro_state["status"],
     }
 
 
 def is_pro_active(user: User) -> bool:
     """Check if a user's Pro subscription is currently active."""
-    if not getattr(user, "is_pro", False):
-        return False
-    
-    expire_date = getattr(user, "pro_expire_date", None)
-    if not expire_date:
-        return False
-    
-    return datetime.now(UTC) < expire_date
+    return get_pro_state(user)["active"]
 
 
 def upgrade_to_pro(user: User, db: Session, duration_days: int = 30) -> User:
@@ -161,8 +187,4 @@ def get_pro_days_remaining(user: User) -> int:
     Returns:
         Number of days remaining (0 if not Pro or expired)
     """
-    if not user.is_pro or not user.pro_expire_date:
-        return 0
-    
-    remaining = user.pro_expire_date - datetime.now(UTC)
-    return max(0, remaining.days)
+    return get_pro_state(user)["days_remaining"]

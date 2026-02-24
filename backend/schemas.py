@@ -1,6 +1,6 @@
 
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Union
 
 class SceneOut(BaseModel):
     id: int
@@ -94,11 +94,15 @@ class UserOut(BaseModel):
     default_persona: Optional[PersonaOut] = None
     level: int = 1
     exp: int = 0
+    daily_exp_gained: int = 0
     badges: dict[str, Any] = {}
     active_badge: Optional[str] = None
     is_pro: bool = False
     pro_start_date: Optional[Any] = None
     pro_expire_date: Optional[Any] = None
+    pro_active: bool = False
+    pro_days_remaining: int = 0
+    pro_status: str = "free"
     
     class Config:
         from_attributes = True
@@ -130,6 +134,29 @@ class UserListOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class AuthUserOut(BaseModel):
+    message: str
+    token: str
+    user: UserOut
+
+class UserMessageOut(BaseModel):
+    message: str
+    user: UserOut
+
+class VerifyPhoneExistingUserOut(BaseModel):
+    status: str
+    message: str
+    session_token: str
+    user: UserOut
+
+class VerifyPhoneNewUserOut(BaseModel):
+    status: str
+    message: str
+    verified_phone_token: str
+    phone_number: str
+
+VerifyPhoneOut = Union[VerifyPhoneExistingUserOut, VerifyPhoneNewUserOut]
 
 class ProblemReportCreate(BaseModel):
     description: str

@@ -17,6 +17,45 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   const { userData, sessionToken, loading } = useContext(AuthContext); // Get user data from context
   const { t } = useTranslation();
   const toast = useToast();
+  const isActivePro = Boolean(userData?.pro_active);
+
+  const parsedProExpireDate = userData?.pro_expire_date ? new Date(userData.pro_expire_date) : null;
+  const parsedProExpireDateMs = parsedProExpireDate?.getTime?.();
+  const isParsedExpireDateValid = parsedProExpireDateMs !== undefined && Number.isFinite(parsedProExpireDateMs);
+
+  const proDebugReason = !userData
+    ? 'no_user_data'
+    : !userData?.is_pro
+      ? 'is_pro_false'
+      : !userData?.pro_expire_date
+        ? 'missing_pro_expire_date'
+        : !isParsedExpireDateValid
+          ? 'invalid_pro_expire_date'
+          : parsedProExpireDate <= new Date()
+            ? 'subscription_expired'
+            : 'active';
+
+  useEffect(() => {
+    if (!userData) return;
+
+    console.groupCollapsed('[Sidebar Pro Debug]');
+    console.log('user id:', userData.id);
+    console.log('is_pro:', userData.is_pro);
+    console.log('pro_active:', userData.pro_active);
+    console.log('pro_status:', userData.pro_status);
+    console.log('pro_days_remaining:', userData.pro_days_remaining);
+    console.log('pro_start_date(raw):', userData.pro_start_date);
+    console.log('pro_expire_date(raw):', userData.pro_expire_date);
+    console.log('pro_expire_date(parsed):', isParsedExpireDateValid ? parsedProExpireDate.toISOString() : 'invalid date');
+    console.log('now:', new Date().toISOString());
+    console.log('diagnosis:', proDebugReason);
+    console.groupEnd();
+  }, [
+    userData,
+    parsedProExpireDate,
+    isParsedExpireDateValid,
+    proDebugReason,
+  ]);
   
   // Helper function to close sidebar and navigate immediately
   const handleNavigate = (path) => {
@@ -379,7 +418,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       </div>
 
       {/* Pro Upgrade Button */}
-      {userData && (
+      {userData && !userData?.pro_active && (
         <div className="px-1 mb-3" style={{ flexShrink: 0 }}>
           <div
             style={{
@@ -451,9 +490,35 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </AvatarFrame>
-              <span className="flex-grow-1 text-start text-truncate" style={{ color: '#232323', fontWeight: 700, fontSize: '0.8rem' }}>
-                {userData?.name || userData?.email}
-              </span>
+              <div className="flex-grow-1 text-start d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
+                <span
+                  className="text-truncate"
+                  style={{
+                    color: isActivePro ? '#6f42c1' : '#232323',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    minWidth: 0,
+                  }}
+                >
+                  {userData?.name || userData?.email}
+                </span>
+                {isActivePro && (
+                  <span
+                    className="fw-bold"
+                    style={{
+                      fontSize: '0.62rem',
+                      lineHeight: 1,
+                      padding: '0.2rem 0.36rem',
+                      borderRadius: '999px',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: '#fff',
+                      flexShrink: 0,
+                    }}
+                  >
+                    PRO
+                  </span>
+                )}
+              </div>
               <i className={`bi ms-auto ${profileOpen ? 'bi-chevron-down' : 'bi-chevron-up'}`} style={{ fontSize: '0.8rem' }}></i>
             </button>
             <ul

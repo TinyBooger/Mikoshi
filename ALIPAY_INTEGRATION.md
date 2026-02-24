@@ -81,12 +81,16 @@ ALIPAY_APP_ID=你的沙箱APPID
 ALIPAY_APP_PRIVATE_KEY=你的应用私钥（完整的，包括头尾）
 ALIPAY_PUBLIC_KEY=支付宝公钥（完整的，包括头尾）
 ALIPAY_DEBUG=true
+
+# 后端公网地址（用于支付宝异步通知 notify_url）
+BACKEND_BASE_URL=https://api.your-domain.com
 ```
 
 **重要提示**:
 - 私钥和公钥需要包含 `-----BEGIN ... KEY-----` 和 `-----END ... KEY-----`
 - 如果密钥内容很长，请确保没有换行问题
 - 可以将密钥内容转换为单行格式（去掉头尾后，移除所有换行）
+- `BACKEND_BASE_URL` 必须是支付宝可以访问到的公网后端地址，不能是 localhost
 
 **示例格式**:
 ```env

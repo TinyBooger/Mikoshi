@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from database import get_db
 from models import User
-from schemas import UserOut
+from schemas import UserOut, AuthUserOut, VerifyPhoneOut
 from utils.session import create_session_token, verify_session_token
-from utils.user_utils import build_user_response
+from utils.user_utils import build_user_response, check_and_expire_pro
 from utils.validators import validate_account_fields
 from utils.sms_utils import send_verification_code, verify_code, create_verified_phone_token, verify_phone_token
 from utils.captcha_utils import verify_captcha_param, get_captcha_verifier
@@ -32,6 +32,8 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user = check_and_expire_pro(user, db)
     
     return build_user_response(user, db)
 
@@ -84,7 +86,7 @@ def verify_captcha_endpoint(
 
 
 # Registration endpoint
-@router.post("/api/users")
+@router.post("/api/users", response_model=AuthUserOut)
 def register_user(
     request: Request,
     email: str = Form(...),
@@ -170,7 +172,7 @@ def register_user(
     return {"message": "User registered successfully", "token": token, "user": user_response}
 
 # Login endpoint
-@router.post("/api/login")
+@router.post("/api/login", response_model=AuthUserOut)
 def login_user(
     request: Request,
     email: str = Form(...),
@@ -319,7 +321,7 @@ async def send_sms_code(phone_number: str = Form(...)):
 
 
 # Phone number verification - returns token for new users or logs in existing users
-@router.post("/api/verify-phone")
+@router.post("/api/verify-phone", response_model=VerifyPhoneOut)
 def verify_phone(
     phone_number: str = Form(...),
     verification_code: str = Form(...),
@@ -389,7 +391,7 @@ def verify_phone(
 
 
 # Phone number registration endpoint
-@router.post("/api/register-with-phone")
+@router.post("/api/register-with-phone", response_model=AuthUserOut)
 def register_with_phone(
     verified_phone_token: str = Form(...),
     name: str = Form(...),

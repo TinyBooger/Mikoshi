@@ -248,3 +248,18 @@ class ErrorLogModel(Base):
     resolved = Column(Boolean, default=False, nullable=False, index=True)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     resolved_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+
+
+class PaymentOrder(Base):
+    __tablename__ = "payment_orders"
+
+    out_trade_no = Column(String(128), primary_key=True)
+    user_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+    order_type = Column(String(50), nullable=False, default="unknown")
+    trade_no = Column(String(128), nullable=True, index=True)
+    total_amount = Column(String(32), nullable=True)
+    source = Column(String(32), nullable=True)
+    status = Column(String(20), nullable=False, default="processing", index=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
