@@ -503,7 +503,6 @@ export default function ChatPage() {
         }
       } catch (err) {
         if (err.name === 'AbortError') {
-          console.log('Greeting generation cancelled');
         } else {
           console.error('Error generating improvising greeting:', err);
           toast.show(t('chat.error_generating_greeting') || 'Failed to generate greeting.', { type: 'error' });
@@ -646,8 +645,6 @@ export default function ChatPage() {
       }
     } catch (err) {
       if (err.name === 'AbortError') {
-        // Request was cancelled by user
-        console.log('Request cancelled by user');
       } else {
         toast.show('Failed to send message. Please try again.', { type: 'error' });
       }

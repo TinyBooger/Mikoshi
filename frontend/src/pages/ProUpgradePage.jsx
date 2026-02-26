@@ -217,8 +217,6 @@ export default function ProUpgradePage() {
                         user_id: userData.id
                       };
                       
-                      console.log('Creating order with:', requestBody);
-                      
                       const response = await fetch(`${window.API_BASE_URL}/api/alipay/create-order`, {
                         method: 'POST',
                         headers: {

@@ -24,7 +24,7 @@ export default function ProfilePage() {
   const TAB_TYPES = {
     CREATED: 'Created',
     LIKED: 'Liked',
-    PURCHASED: 'Purchased',
+    PURCHASED: '已购买',
   };
   const SUBTAB_TYPES = {
     CHARACTERS: 'characters',
@@ -294,7 +294,7 @@ export default function ProfilePage() {
                   <EntityCard type={type} entity={entity} />
                   {showEdit && (
                     <ButtonRounded
-                      title={`Edit ${type.charAt(0).toUpperCase() + type.slice(1)}`}
+                      title={t('profile.edit')}
                       onClick={() => navigate(`/${editUrlPrefix}/edit/${entity.id}`)}
                       style={{ 
                         width: '100%', 
@@ -401,8 +401,8 @@ export default function ProfilePage() {
       type = 'character';
       showEdit = false;
       editUrlPrefix = 'character';
-      title = t('profile.purchased_characters', 'Purchased Characters');
-      emptyMsg = t('profile.no_purchased_characters', 'No purchased characters yet');
+      title = '已购买角色';
+      emptyMsg = '暂无已购买角色';
       page = purchasedCharactersPage;
       total = purchasedCharactersTotal;
       onPageChange = setPurchasedCharactersPage;
@@ -455,11 +455,11 @@ export default function ProfilePage() {
         }
       } else {
         const error = await res.json();
-        toast.show(error.detail || 'Failed to update badge');
+        toast.show(error.detail || t('profile.update_badge_failed'));
       }
     } catch (err) {
       console.error('Error setting badge:', err);
-      toast.show('Error updating badge');
+      toast.show(t('profile.update_badge_error'));
     }
   };
 
@@ -507,7 +507,6 @@ export default function ProfilePage() {
     // If own profile, wait for userData
     if (isOwnProfile) {
       if (userData) {
-        console.log('[ProfilePage] userData received:', userData);
         setUserLoading(false);
         setUserError(null);
       } else {
@@ -589,13 +588,13 @@ export default function ProfilePage() {
               <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
                 <h2 style={{ color: '#111', margin: 0, fontSize: '1.8rem', fontWeight: 700 }}>
-                  {t('profile.congratulations', 'Congratulations!')}
+                  {t('profile.congratulations')}
                 </h2>
               </div>
               
               <div style={{ marginBottom: '1.5rem' }}>
                 <p style={{ color: '#666', fontSize: '1rem', textAlign: 'center', marginBottom: '1.5rem' }}>
-                  {t('profile.earned_badge', 'You have earned a new achievement!')}
+                  {t('profile.earned_badge')}
                 </p>
                 
                 {/* Display each newly awarded badge */}
@@ -663,7 +662,7 @@ export default function ProfilePage() {
                 onMouseOver={e => e.target.style.background = '#333'}
                 onMouseOut={e => e.target.style.background = '#111'}
               >
-                {t('profile.awesome', 'Awesome!')}
+                {t('profile.awesome')}
               </button>
             </div>
             
@@ -715,7 +714,7 @@ export default function ProfilePage() {
               onClick={e => e.stopPropagation()}
             >
               <h2 style={{ color: '#111', marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 700 }}>
-                {t('profile.select_badge', 'Select Display Badge')}
+                {t('profile.select_badge')}
               </h2>
 
               {/* No badge option */}
@@ -734,10 +733,10 @@ export default function ProfilePage() {
                 onMouseOut={e => e.currentTarget.style.background = selectedBadge === null ? '#f0f0f0' : '#fafafa'}
               >
                 <div style={{ fontSize: '1rem', fontWeight: 600, color: '#111' }}>
-                  {t('profile.no_badge', 'No Badge')}
+                  {t('profile.no_badge')}
                 </div>
                 <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
-                  {t('profile.no_badge_desc', 'Don\'t display any badge')}
+                  {t('profile.no_badge_desc')}
                 </div>
               </div>
 
@@ -812,7 +811,7 @@ export default function ProfilePage() {
                 onMouseOver={e => e.target.style.background = '#333'}
                 onMouseOut={e => e.target.style.background = '#111'}
               >
-                {t('common.done', 'Done')}
+                {t('common.done')}
               </button>
             </div>
           </div>
@@ -833,8 +832,8 @@ export default function ProfilePage() {
         {isOwnProfile && (
           <button
             onClick={() => navigate('/settings')}
-            aria-label="Settings"
-            title={t('profile.settings') || 'Settings'}
+            aria-label={t('profile.settings')}
+            title={t('profile.settings')}
             style={{
               position: 'absolute',
               top: 8,
@@ -912,7 +911,7 @@ export default function ProfilePage() {
                     <i className="bi bi-chat" style={{ fontSize: '1.05rem' }}></i>
                     <div className="d-flex flex-column" style={{ lineHeight: 1.15 }}>
                       <strong style={{ fontSize: '1.05rem' }}>{totalChats.toLocaleString()}</strong>
-                      <span style={{ fontSize: '0.83rem', color: '#555' }}>{t('profile.total_chats') || 'total chats'}</span>
+                      <span style={{ fontSize: '0.83rem', color: '#555' }}>{t('profile.total_chats')}</span>
                     </div>
                   </span>
                   <span
@@ -926,7 +925,7 @@ export default function ProfilePage() {
                     <i className="bi bi-heart" style={{ fontSize: '1.05rem' }}></i>
                     <div className="d-flex flex-column" style={{ lineHeight: 1.15 }}>
                       <strong style={{ fontSize: '1.05rem' }}>{totalLikes.toLocaleString()}</strong>
-                      <span style={{ fontSize: '0.83rem', color: '#555' }}>{t('profile.total_likes') || 'total likes'}</span>
+                      <span style={{ fontSize: '0.83rem', color: '#555' }}>{t('profile.total_likes')}</span>
                     </div>
                   </span>
                 </div>
@@ -945,7 +944,7 @@ export default function ProfilePage() {
           {displayUser?.badges && Object.keys(displayUser.badges).length > 0 && (
             <div className="mt-3">
               <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: '#111' }}>
-                {t('profile.badges', 'Badges')}
+                {t('profile.badges')}
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 {Object.entries(displayUser.badges).map(([badgeKey, badgeData]) => (
@@ -1044,7 +1043,7 @@ export default function ProfilePage() {
                 }}
                 onClick={() => { setActiveTab(TAB_TYPES.PURCHASED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); }}
               >
-                {t('profile.purchased', 'Purchased')}
+                已购买
               </button>
             )}
           </div>
@@ -1145,7 +1144,7 @@ export default function ProfilePage() {
                     <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.profile_picture')}</label>
                     <div className="d-flex align-items-center gap-3">
                       <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', border: '2px solid #e9ecef', background: '#fff' }}>
-                        <img src={editPicPreview || (userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar)} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={editPicPreview || (userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar)} alt={t('profile.preview_image')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <input
@@ -1169,7 +1168,7 @@ export default function ProfilePage() {
                   {userData?.badges && Object.keys(userData.badges).length > 0 && (
                     <div className="mb-3">
                       <label className="form-label fw-bold" style={{ color: '#111' }}>
-                        {t('profile.display_badge', 'Display Badge')}
+                        {t('profile.display_badge')}
                       </label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {/* No badge option */}
@@ -1188,7 +1187,7 @@ export default function ProfilePage() {
                           }}
                         >
                           <span style={{ fontSize: '0.9rem', color: '#111' }}>
-                            {t('profile.no_badge', 'No Badge')}
+                            {t('profile.no_badge')}
                           </span>
                           {selectedBadge === null && <span style={{ color: '#111' }}>✓</span>}
                         </div>

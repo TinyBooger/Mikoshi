@@ -5,7 +5,6 @@
 
 export class ErrorLogger {
   constructor() {
-    console.log('[ErrorLogger] Constructor called');
     this.apiBaseUrl = null;
     this.isInitialized = false;
   }
@@ -77,7 +76,6 @@ export class ErrorLogger {
     };
 
     this.isInitialized = true;
-    console.log('[ErrorLogger] Initialized with global error handlers');
   }
 
   /**
@@ -100,11 +98,6 @@ export class ErrorLogger {
       stack_trace,
       context,
     };
-
-    // Log to browser console in development
-    if (import.meta?.env?.DEV) {
-      console.log('[ErrorLogger]', errorData);
-    }
 
     // Send to backend
     await this.sendToBackend(errorData);

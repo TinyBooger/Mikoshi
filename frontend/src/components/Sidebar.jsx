@@ -18,44 +18,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   const { t } = useTranslation();
   const toast = useToast();
   const isActivePro = Boolean(userData?.pro_active);
-
-  const parsedProExpireDate = userData?.pro_expire_date ? new Date(userData.pro_expire_date) : null;
-  const parsedProExpireDateMs = parsedProExpireDate?.getTime?.();
-  const isParsedExpireDateValid = parsedProExpireDateMs !== undefined && Number.isFinite(parsedProExpireDateMs);
-
-  const proDebugReason = !userData
-    ? 'no_user_data'
-    : !userData?.is_pro
-      ? 'is_pro_false'
-      : !userData?.pro_expire_date
-        ? 'missing_pro_expire_date'
-        : !isParsedExpireDateValid
-          ? 'invalid_pro_expire_date'
-          : parsedProExpireDate <= new Date()
-            ? 'subscription_expired'
-            : 'active';
-
-  useEffect(() => {
-    if (!userData) return;
-
-    console.groupCollapsed('[Sidebar Pro Debug]');
-    console.log('user id:', userData.id);
-    console.log('is_pro:', userData.is_pro);
-    console.log('pro_active:', userData.pro_active);
-    console.log('pro_status:', userData.pro_status);
-    console.log('pro_days_remaining:', userData.pro_days_remaining);
-    console.log('pro_start_date(raw):', userData.pro_start_date);
-    console.log('pro_expire_date(raw):', userData.pro_expire_date);
-    console.log('pro_expire_date(parsed):', isParsedExpireDateValid ? parsedProExpireDate.toISOString() : 'invalid date');
-    console.log('now:', new Date().toISOString());
-    console.log('diagnosis:', proDebugReason);
-    console.groupEnd();
-  }, [
-    userData,
-    parsedProExpireDate,
-    isParsedExpireDateValid,
-    proDebugReason,
-  ]);
   
   // Helper function to close sidebar and navigate immediately
   const handleNavigate = (path) => {

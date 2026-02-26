@@ -47,8 +47,10 @@ def _is_public_base_url(base_url: str) -> bool:
 def _extract_user_id(out_trade_no: Optional[str]) -> Optional[str]:
     if not out_trade_no or "_U" not in out_trade_no:
         return None
-    parts = out_trade_no.split("_U")
-    return parts[-1] or None
+    user_segment = out_trade_no.split("_U", 1)[-1]
+    if "_C" in user_segment:
+        user_segment = user_segment.split("_C", 1)[0]
+    return user_segment or None
 
 
 def _extract_character_id(out_trade_no: Optional[str]) -> Optional[int]:
@@ -366,8 +368,20 @@ def _handle_character_purchase(
     if payment_order is None:
         existing = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
         existing_status = existing.status if existing else "unknown"
-        logger.info(f"角色订单已被处理或处理中，跳过发货: {out_trade_no}, status={existing_status}")
-        return
+        if existing and existing.status in ("failure", "error"):
+            existing.status = "processing"
+            existing.error_message = None
+            if trade_no:
+                existing.trade_no = trade_no
+            if total_amount is not None:
+                existing.total_amount = str(total_amount)
+            if source:
+                existing.source = source
+            db.commit()
+            payment_order = existing
+        else:
+            logger.info(f"角色订单已被处理或处理中，跳过发货: {out_trade_no}, status={existing_status}")
+            return
 
     if not user_id:
         _finalize_payment_order(
@@ -911,7 +925,6 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
                 total_amount=total_amount,
                 source="return_query",
             )
-
         return {
             "success": True,
             "message": "支付结果已接收",

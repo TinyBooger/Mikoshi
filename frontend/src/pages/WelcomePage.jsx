@@ -139,7 +139,6 @@ export default function LoginPage() {
       success: async (captchaVerifyParam) => {
         setCaptchaVerified(true);
         setCaptchaParam(captchaVerifyParam);
-        console.log("验证码验证成功", captchaVerifyParam);
         // 验证成功后自动发送验证码
         const result = await sendVerificationCode(phoneNumberRef.current);
         if (result.success) {
@@ -181,7 +180,6 @@ export default function LoginPage() {
       success: async (captchaVerifyParam) => {
         setPasswordCaptchaVerified(true);
         setPasswordCaptchaParam(captchaVerifyParam);
-        console.log("密码登录验证码成功", captchaVerifyParam);
         await handlePasswordLogin(emailRef.current, passwordRef.current);
       },
       fail: (failParams) => {

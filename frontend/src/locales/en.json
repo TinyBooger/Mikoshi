@@ -148,7 +148,18 @@
     "total_likes": "total likes",
     "tags_suffix": "tags",
     "alt_profile": "Profile",
-    "bio_placeholder": "Tell us a little about yourself (max 500 chars)"
+    "bio_placeholder": "Tell us a little about yourself (max 500 chars)",
+    "congratulations": "Congratulations!",
+    "earned_badge": "You have earned a new achievement!",
+    "awesome": "Awesome!",
+    "select_badge": "Select Display Badge",
+    "no_badge": "No Badge",
+    "no_badge_desc": "Don't display any badge",
+    "badges": "Badges",
+    "display_badge": "Display Badge",
+    "preview_image": "Preview image",
+    "update_badge_failed": "Failed to update badge",
+    "update_badge_error": "Error updating badge"
   },
   "settings": {
     "title": "Settings",
@@ -444,7 +455,8 @@
     "forgot_password": "Forgot password?",
     "logo_alt": "Mikoshi Logo",
     "user_not_found": "User not found.",
-    "and": "and"
+    "and": "and",
+    "done": "Done"
   },
   "topbar": {
     "show_sidebar": "Show sidebar",

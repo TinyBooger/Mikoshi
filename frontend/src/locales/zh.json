@@ -148,7 +148,18 @@
     "total_likes": "总获赞数",
     "tags_suffix": "个标签",
     "alt_profile": "个人头像",
-    "bio_placeholder": "简单介绍一下自己（最多500字）"
+    "bio_placeholder": "简单介绍一下自己（最多500字）",
+    "congratulations": "恭喜！",
+    "earned_badge": "你获得了新的成就！",
+    "awesome": "太棒了！",
+    "select_badge": "选择展示徽章",
+    "no_badge": "不展示徽章",
+    "no_badge_desc": "不显示任何徽章",
+    "badges": "徽章",
+    "display_badge": "展示徽章",
+    "preview_image": "预览图",
+    "update_badge_failed": "更新徽章失败",
+    "update_badge_error": "更新徽章时出错"
   },
   "settings": {
     "title": "设置",
@@ -452,7 +463,8 @@
     "forgot_password": "忘记密码？",
     "logo_alt": "语伴岛 Logo",
     "user_not_found": "未找到该用户。",
-    "and": "和"
+    "and": "和",
+    "done": "完成"
   },
   "topbar": {
     "show_sidebar": "显示侧边栏",

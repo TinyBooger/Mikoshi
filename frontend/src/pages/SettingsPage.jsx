@@ -42,8 +42,6 @@ export default function SettingsPage() {
 
   if (!userData) return null;
 
-  console.log('SettingsPage userData:', userData);
-
   const handleLangToggle = (newLang) => {
     i18n.changeLanguage(newLang);
     setLang(newLang);
