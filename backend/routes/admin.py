@@ -34,6 +34,10 @@ class CharacterUpdate(BaseModel):
     greeting: Optional[str] = None
     example_messages: Optional[str] = None
     tags: Optional[List[str]] = None
+    is_public: Optional[bool] = None
+    is_forkable: Optional[bool] = None
+    is_free: Optional[bool] = None
+    price: Optional[float] = None
 
 
 class TagUpdate(BaseModel):
@@ -63,6 +67,10 @@ def get_all_characters(
             "name": char.name,
             "tagline": char.tagline,
             "creator_name": char.creator_name,
+            "is_public": char.is_public,
+            "is_forkable": char.is_forkable,
+            "is_free": char.is_free,
+            "price": float(char.price or 0),
             "views": char.views,
             "likes": char.likes,
             "created_time": char.created_time,
@@ -280,6 +288,25 @@ def update_character(
         character.example_messages = update_data.example_messages
     if update_data.tags is not None:
         character.tags = update_data.tags
+    if update_data.is_public is not None:
+        character.is_public = update_data.is_public
+    if update_data.is_forkable is not None:
+        character.is_forkable = update_data.is_forkable
+    if update_data.is_free is not None:
+        character.is_free = update_data.is_free
+    if update_data.price is not None:
+        if update_data.price < 0:
+            raise HTTPException(status_code=400, detail="Price cannot be negative")
+        character.price = round(update_data.price, 2)
+
+    # Keep consistency with character schema/business rules
+    if character.is_free:
+        character.price = 0
+    elif character.price < 0.1:
+        raise HTTPException(status_code=400, detail="Paid characters must have a price of at least ¥0.1")
+
+    if character.is_forkable and not character.is_free:
+        raise HTTPException(status_code=400, detail="Paid characters cannot be forkable")
     
     db.commit()
     db.refresh(character)
@@ -292,7 +319,11 @@ def update_character(
             "tagline": character.tagline,
             "persona": character.persona,
             "greeting": character.greeting,
-            "tags": character.tags
+            "tags": character.tags,
+            "is_public": character.is_public,
+            "is_forkable": character.is_forkable,
+            "is_free": character.is_free,
+            "price": float(character.price or 0)
         }
     }
 

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
+import { AuthContext } from './AuthProvider';
 
 /**
  * SceneCard - Horizontal card with image (top) and condensed text (bottom)
@@ -14,6 +15,7 @@ import defaultPicture from '../assets/images/default-picture.png';
 export default function SceneCard({ type, entity, onClick, disableClick = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { sessionToken } = useContext(AuthContext);
 
   // Mobile viewport detection
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 600 : false);
@@ -113,10 +115,35 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
   // Width (slightly larger desktop)
   const CARD_WIDTH = isMobile ? '92vw' : '27rem';
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (disableClick) return;
     if (onClick) return onClick(entity);
-    if (type === 'character') navigate(`/chat?character=${encodeURIComponent(id)}`);
+    if (type === 'character') {
+      if (!sessionToken) {
+        navigate(`/character/${encodeURIComponent(id)}`);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${window.API_BASE_URL}/api/character/${encodeURIComponent(id)}/access`, {
+          headers: { 'Authorization': sessionToken }
+        });
+        if (!res.ok) {
+          navigate(`/character/${encodeURIComponent(id)}`);
+          return;
+        }
+
+        const accessData = await res.json();
+        if (accessData?.has_access) {
+          navigate(`/chat?character=${encodeURIComponent(id)}`);
+        } else {
+          navigate(`/character/${encodeURIComponent(id)}`);
+        }
+      } catch (_error) {
+        navigate(`/character/${encodeURIComponent(id)}`);
+      }
+      return;
+    }
     if (type === 'scene') navigate(`/chat?scene=${encodeURIComponent(id)}`);
     if (type === 'persona') navigate(`/chat?persona=${encodeURIComponent(id)}`);
   };

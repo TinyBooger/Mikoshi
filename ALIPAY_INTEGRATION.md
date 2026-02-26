@@ -1,6 +1,12 @@
 # 支付宝支付接入指南
 
-本项目已集成支付宝支付沙盒环境，可用于开发和测试支付功能。
+本项目已集成两种支付提供方：
+- `alipay`：真实支付宝（沙箱/正式）
+- `mock`：开发环境模拟支付（创建订单后立即视为支付成功）
+
+默认策略：
+- `ENVIRONMENT=production` 时强制使用 `alipay`
+- 非生产环境默认使用 `mock`（可通过 `PAYMENT_PROVIDER` 覆盖为 `alipay`）
 
 ## 目录
 - [快速开始](#快速开始)
@@ -76,6 +82,10 @@ npm install
 在项目的 `secrets/Mikoshi.env` 文件中添加以下配置：
 
 ```env
+# 环境与支付提供方
+ENVIRONMENT=development
+PAYMENT_PROVIDER=mock
+
 # 支付宝支付配置
 ALIPAY_APP_ID=你的沙箱APPID
 ALIPAY_APP_PRIVATE_KEY=你的应用私钥（完整的，包括头尾）
@@ -84,6 +94,12 @@ ALIPAY_DEBUG=true
 
 # 后端公网地址（用于支付宝异步通知 notify_url）
 BACKEND_BASE_URL=https://api.your-domain.com
+```
+
+生产环境示例：
+```env
+ENVIRONMENT=production
+PAYMENT_PROVIDER=alipay
 ```
 
 **重要提示**:
@@ -158,6 +174,10 @@ Content-Type: application/json
 - `payment_type`: 支付类型（page=电脑网站, wap=手机网站）
 - `timeout_express`: 订单超时时间（可选，沙箱环境不超过15小时，格式如: 30m、2h、1d等）
 
+**提供方行为**:
+- `mock`: `payment_url` 会直接跳转到前端 `/alipay/return`，并带上成功参数，订单立即标记为已支付
+- `alipay`: `payment_url` 为支付宝收银台地址，支付结果通过同步返回/异步通知确认
+
 **响应**:
 ```json
 {
@@ -165,7 +185,8 @@ Content-Type: application/json
   "payment_url": "https://openapi-sandbox.dl.alipaydev.com/gateway.do?...",
   "out_trade_no": "MK20260206123456abcd1234",
   "total_amount": 0.01,
-  "subject": "测试商品"
+  "subject": "测试商品",
+  "provider": "alipay"
 }
 ```
 
@@ -213,7 +234,8 @@ backend/
   ├── routes/
   │   └── alipay.py           # 支付宝支付路由
   ├── utils/
-  │   └── alipay_utils.py     # 支付宝工具类
+  │   ├── alipay_utils.py     # 支付宝工具类
+  │   └── payment_provider.py # 支付提供方选择（alipay/mock）
   └── server.py               # 注册支付宝路由
 
 frontend/

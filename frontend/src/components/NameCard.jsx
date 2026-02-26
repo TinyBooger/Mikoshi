@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
+import { AuthContext } from './AuthProvider';
 
 /**
  * NameCard - Same fields as EntityCard but laid out like a compact name card
@@ -14,6 +15,7 @@ import defaultPicture from '../assets/images/default-picture.png';
 export default function NameCard({ type, entity, onClick, disableClick = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { sessionToken } = useContext(AuthContext);
 
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 600 : false);
   const [hovered, setHovered] = useState(false);
@@ -24,7 +26,7 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
   }, []);
 
   // Common fields
-  const { id, name, picture, creator_name, views, likes } = entity;
+  const { id, name, picture, creator_name, views, likes, is_free, price } = entity;
 
   // Type-specific description
   let description = '';
@@ -118,10 +120,35 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
   const suppressPersonaNavigation = type === 'persona' && !onClick;
   const clickSuppressed = disableClick || suppressPersonaNavigation;
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (clickSuppressed) return;
     if (onClick) return onClick(entity);
-    if (type === 'character') navigate(`/chat?character=${encodeURIComponent(id)}`);
+    if (type === 'character') {
+      if (!sessionToken) {
+        navigate(`/character/${encodeURIComponent(id)}`);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${window.API_BASE_URL}/api/character/${encodeURIComponent(id)}/access`, {
+          headers: { 'Authorization': sessionToken }
+        });
+        if (!res.ok) {
+          navigate(`/character/${encodeURIComponent(id)}`);
+          return;
+        }
+
+        const accessData = await res.json();
+        if (accessData?.has_access) {
+          navigate(`/chat?character=${encodeURIComponent(id)}`);
+        } else {
+          navigate(`/character/${encodeURIComponent(id)}`);
+        }
+      } catch (_error) {
+        navigate(`/character/${encodeURIComponent(id)}`);
+      }
+      return;
+    }
     if (type === 'scene') navigate(`/chat?scene=${encodeURIComponent(id)}`);
     if (type === 'persona') return;
   };
@@ -154,6 +181,44 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
       onMouseEnter={clickSuppressed ? undefined : () => setHovered(true)}
       onMouseLeave={clickSuppressed ? undefined : () => setHovered(false)}
     >
+      <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 3, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+        {entity.is_forkable && (
+          <span
+            title={t('entity_card.forkable') || 'Forkable'}
+            style={{
+              background: 'rgba(34, 197, 94, 0.95)',
+              color: '#fff',
+              fontSize: isMobile ? '0.58rem' : '0.62rem',
+              padding: isMobile ? '2px 6px' : '3px 7px',
+              borderRadius: '6px',
+              fontWeight: 700,
+              letterSpacing: '0.2px',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+            }}
+          >
+            <i className="bi bi-diagram-3-fill" style={{ fontSize: '0.55rem' }}></i>
+          </span>
+        )}
+
+        {type === 'character' && is_free === false && Number(price) > 0 && (
+          <span
+            title={t('entity_card.paid') || 'Paid'}
+            style={{
+              background: 'rgba(251, 146, 60, 0.95)',
+              color: '#fff',
+              fontSize: isMobile ? '0.58rem' : '0.62rem',
+              padding: isMobile ? '2px 6px' : '3px 7px',
+              borderRadius: '6px',
+              fontWeight: 700,
+              letterSpacing: '0.2px',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+            }}
+          >
+            ¥{Number(price).toFixed(2)}
+          </span>
+        )}
+      </div>
+
       {/* Upper content (avatar + texts) */}
       <div style={{ flex: '1 1 auto', display: 'flex', alignItems: 'flex-start', gap: isMobile ? '0.3rem' : '0.8rem', padding: isMobile ? '0.3rem 0.3rem 0.15rem' : '0.6rem 0.8rem 0.4rem', position: 'relative' }}>
         {/* Avatar */}
@@ -176,28 +241,6 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           </div>
-          {/* Forkable badge on avatar */}
-          {entity.is_forkable && (
-            <div style={{ position: 'absolute', top: -2, right: -2, zIndex: 2 }}>
-              <span
-                title={t('entity_card.forkable') || 'Forkable'}
-                style={{
-                  background: 'rgba(34, 197, 94, 0.95)',
-                  color: '#fff',
-                  fontSize: '0.5rem',
-                  padding: '2px 4px',
-                  borderRadius: '3px',
-                  fontWeight: 600,
-                  letterSpacing: '0.2px',
-                  textTransform: 'uppercase',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-                  display: 'inline-block',
-                }}
-              >
-                <i className="bi bi-diagram-3-fill" style={{ fontSize: '0.45rem' }}></i>
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Texts */}

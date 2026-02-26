@@ -9,11 +9,12 @@ from datetime import datetime
 import os
 import logging
 import uuid
+from urllib.parse import urlparse, parse_qs
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from utils.alipay_utils import alipay_client
+from utils.payment_provider import get_active_payment_provider
 from utils.session import verify_session_token, get_current_admin_user
 from utils.user_utils import upgrade_to_pro
 from database import get_db
@@ -28,6 +29,10 @@ PRO_UPGRADE_PRICE_CNY = float(os.getenv("PRO_UPGRADE_PRICE_CNY", "29"))
 PRO_UPGRADE_DURATION_DAYS = int(os.getenv("PRO_UPGRADE_DURATION_DAYS", "30"))
 PRO_AMOUNT_TOLERANCE = 0.01
 CHARACTER_AMOUNT_TOLERANCE = 0.01
+
+
+def _get_payment_provider():
+    return get_active_payment_provider()
 
 
 def _is_public_base_url(base_url: str) -> bool:
@@ -89,6 +94,10 @@ def _build_notify_url() -> Optional[str]:
     if _is_public_base_url(backend_base_url):
         return f"{backend_base_url}/api/alipay/notify"
     return None
+
+
+def _is_mock_provider() -> bool:
+    return _get_payment_provider().provider_name == "mock"
 
 
 def _claim_payment_order(
@@ -709,14 +718,16 @@ async def create_order(
         frontend_base_url = os.getenv("FRONTEND_BASE_URL", "").rstrip("/")
         return_url = f"{frontend_base_url}/alipay/return" if frontend_base_url else None
 
+        provider = _get_payment_provider()
+
         # 异步通知地址必须是后端公网地址
-        notify_url = _build_notify_url()
-        if not notify_url:
+        notify_url = _build_notify_url() if provider.provider_name == "alipay" else None
+        if provider.provider_name == "alipay" and not notify_url:
             logger.warning("BACKEND_BASE_URL 未配置为公网地址，支付宝异步通知可能无法到达")
         
         # 根据支付类型创建订单
         if request.payment_type == "wap":
-            payment_url = alipay_client.create_wap_pay(
+            payment_url = provider.create_wap_pay(
                 out_trade_no=out_trade_no,
                 total_amount=request.total_amount,
                 subject=request.subject,
@@ -725,7 +736,7 @@ async def create_order(
                 timeout_express=request.timeout_express
             )
         else:
-            payment_url = alipay_client.create_page_pay(
+            payment_url = provider.create_page_pay(
                 out_trade_no=out_trade_no,
                 total_amount=request.total_amount,
                 subject=request.subject,
@@ -733,8 +744,28 @@ async def create_order(
                 notify_url=notify_url,
                 timeout_express=request.timeout_express
             )
+
+        if provider.provider_name == "mock":
+            parsed_url = urlparse(payment_url)
+            trade_no_values = parse_qs(parsed_url.query).get("trade_no") or []
+            mock_trade_no = trade_no_values[0] if trade_no_values else f"MOCK_{uuid.uuid4().hex[:24]}"
+            total_amount = f"{request.total_amount:.2f}"
+            _handle_pro_upgrade(
+                db=db,
+                out_trade_no=out_trade_no,
+                trade_no=mock_trade_no,
+                total_amount=total_amount,
+                source="mock_create_order",
+            )
+            _handle_character_purchase(
+                db=db,
+                out_trade_no=out_trade_no,
+                trade_no=mock_trade_no,
+                total_amount=total_amount,
+                source="mock_create_order",
+            )
         
-        logger.info(f"创建支付订单: {out_trade_no}, 金额: {request.total_amount}")
+        logger.info(f"创建支付订单: {out_trade_no}, 金额: {request.total_amount}, provider={provider.provider_name}")
         
         return {
             "success": True,
@@ -742,7 +773,8 @@ async def create_order(
             "out_trade_no": out_trade_no,
             "total_amount": request.total_amount,
             "subject": request.subject,
-            "character_id": resolved_character_id
+            "character_id": resolved_character_id,
+            "provider": provider.provider_name,
         }
 
     except HTTPException:
@@ -761,6 +793,12 @@ async def alipay_notify(request: Request, db: Session = Depends(get_db)):
     注意：这个接口需要公网可访问，用于接收支付宝的异步通知
     """
     try:
+        provider = _get_payment_provider()
+
+        if provider.provider_name != "alipay":
+            logger.info("当前支付提供方不是Alipay，忽略notify回调")
+            return "success"
+
         # 获取POST数据
         data = await request.form()
         data_dict = dict(data)
@@ -768,7 +806,7 @@ async def alipay_notify(request: Request, db: Session = Depends(get_db)):
         logger.info(f"收到支付宝异步通知: {data_dict}")
         
         # 验证签名（不要修改原始数据）
-        if not alipay_client.verify_notify(data_dict):
+        if not provider.verify_notify(data_dict):
             logger.warning("支付宝异步通知验签失败")
             return "failure"
         
@@ -813,15 +851,18 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
     支付完成后用户会被重定向到这个页面
     """
     try:
+        provider = _get_payment_provider()
+
         # 获取GET参数
         data = dict(request.query_params)
         
         logger.info(f"收到支付宝同步返回: {data}")
-        
-        # 验证签名（不要修改原始数据）
-        if not alipay_client.verify_notify(data):
-            logger.warning("支付宝同步返回验签失败")
-            raise HTTPException(status_code=400, detail="签名验证失败")
+
+        if provider.provider_name == "alipay":
+            # 验证签名（不要修改原始数据）
+            if not provider.verify_notify(data):
+                logger.warning("支付宝同步返回验签失败")
+                raise HTTPException(status_code=400, detail="签名验证失败")
         
         # 获取订单信息
         out_trade_no = data.get("out_trade_no")
@@ -831,9 +872,26 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
         # 按照沙箱指引：同步返回只做展示，关键结果以主动查询/异步通知为准
         trade_status = None
         query_code = None
-        if out_trade_no or trade_no:
+        if provider.provider_name == "mock":
+            trade_status = data.get("trade_status") or "TRADE_SUCCESS"
+            query_code = "10000"
+            _handle_pro_upgrade(
+                db=db,
+                out_trade_no=out_trade_no or "",
+                trade_no=trade_no,
+                total_amount=total_amount,
+                source="return_query",
+            )
+            _handle_character_purchase(
+                db=db,
+                out_trade_no=out_trade_no or "",
+                trade_no=trade_no,
+                total_amount=total_amount,
+                source="return_query",
+            )
+        elif out_trade_no or trade_no:
             try:
-                query_result = alipay_client.query_order(out_trade_no=out_trade_no, trade_no=trade_no)
+                query_result = provider.query_order(out_trade_no=out_trade_no, trade_no=trade_no)
                 trade_status, query_code = _get_trade_status(query_result)
             except Exception as e:
                 logger.warning(f"查询订单状态失败: {e}")
@@ -873,19 +931,51 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
 @router.post("/query-order")
 async def query_order(
     request: QueryOrderRequest,
+    db: Session = Depends(get_db),
     _current_admin_user: User = Depends(get_current_admin_user),
 ):
     """
     查询订单支付状态
     """
     try:
+        provider = _get_payment_provider()
+
         if not request.out_trade_no and not request.trade_no:
             raise HTTPException(status_code=400, detail="商户订单号和支付宝交易号至少提供一个")
         
-        result = alipay_client.query_order(
-            out_trade_no=request.out_trade_no,
-            trade_no=request.trade_no
-        )
+        if provider.provider_name == "mock":
+            payment_order = None
+            if request.out_trade_no:
+                payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == request.out_trade_no).first()
+            elif request.trade_no:
+                payment_order = db.query(PaymentOrder).filter(PaymentOrder.trade_no == request.trade_no).first()
+
+            if payment_order:
+                result = {
+                    "alipay_trade_query_response": {
+                        "code": "10000",
+                        "msg": "Success",
+                        "out_trade_no": payment_order.out_trade_no,
+                        "trade_no": payment_order.trade_no,
+                        "trade_status": "TRADE_SUCCESS" if payment_order.status == "success" else "WAIT_BUYER_PAY",
+                        "total_amount": payment_order.total_amount,
+                    }
+                }
+            else:
+                result = {
+                    "alipay_trade_query_response": {
+                        "code": "40004",
+                        "msg": "Business Failed",
+                        "sub_msg": "trade not found",
+                        "out_trade_no": request.out_trade_no,
+                        "trade_no": request.trade_no,
+                    }
+                }
+        else:
+            result = provider.query_order(
+                out_trade_no=request.out_trade_no,
+                trade_no=request.trade_no
+            )
         
         logger.info(f"查询订单结果: {result}")
         
@@ -904,19 +994,43 @@ async def query_order(
 @router.post("/close-order")
 async def close_order(
     request: QueryOrderRequest,
+    db: Session = Depends(get_db),
     _current_admin_user: User = Depends(get_current_admin_user),
 ):
     """
     关闭订单
     """
     try:
+        provider = _get_payment_provider()
+
         if not request.out_trade_no and not request.trade_no:
             raise HTTPException(status_code=400, detail="商户订单号和支付宝交易号至少提供一个")
-        
-        result = alipay_client.close_order(
-            out_trade_no=request.out_trade_no,
-            trade_no=request.trade_no
-        )
+
+        if provider.provider_name == "mock":
+            payment_order = None
+            if request.out_trade_no:
+                payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == request.out_trade_no).first()
+            elif request.trade_no:
+                payment_order = db.query(PaymentOrder).filter(PaymentOrder.trade_no == request.trade_no).first()
+
+            if payment_order and payment_order.status != "success":
+                payment_order.status = "closed"
+                payment_order.source = payment_order.source or "mock"
+                db.commit()
+
+            result = {
+                "alipay_trade_close_response": {
+                    "code": "10000",
+                    "msg": "Success",
+                    "out_trade_no": request.out_trade_no,
+                    "trade_no": request.trade_no,
+                }
+            }
+        else:
+            result = provider.close_order(
+                out_trade_no=request.out_trade_no,
+                trade_no=request.trade_no
+            )
         
         logger.info(f"关闭订单结果: {result}")
         
@@ -941,7 +1055,8 @@ async def refund_order(
     申请退款
     """
     try:
-        result = alipay_client.refund(
+        provider = _get_payment_provider()
+        result = provider.refund(
             out_trade_no=request.out_trade_no,
             refund_amount=request.refund_amount,
             refund_reason=request.refund_reason
@@ -967,8 +1082,12 @@ async def get_config(_current_admin_user: User = Depends(get_current_admin_user)
     获取支付宝配置信息（用于前端调试）
     注意：生产环境不应该暴露敏感信息
     """
+    provider = _get_payment_provider()
+
     return {
         "app_id": "",
-        "debug": alipay_client.debug,
-        "is_configured": alipay_client.alipay is not None
+        "debug": provider.debug,
+        "is_configured": provider.is_configured,
+        "provider": provider.provider_name,
+        "environment": os.getenv("ENVIRONMENT", "development"),
     }

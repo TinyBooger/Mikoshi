@@ -185,6 +185,10 @@ export default function EntityDetailPage() {
 
   const handleChat = () => {
     if (type === 'character') {
+      if (entity?.is_free === false && !characterAccess) {
+        toast.show(t('entity_detail.checking_access', 'Checking access, please wait...'), { type: 'info' });
+        return;
+      }
       if (characterAccess && !characterAccess.has_access) {
         toast.show(t('entity_detail.purchase_required', 'Please purchase this character first'), { type: 'info' });
         return;
@@ -275,6 +279,9 @@ export default function EntityDetailPage() {
   }
 
   const isOwner = userData?.id === entity.creator_id;
+  const isPaidCharacter = type === 'character' && entity.is_free === false;
+  const isCharacterAccessLoading = isPaidCharacter && !characterAccess;
+  const isLockedPaidCharacter = isPaidCharacter && characterAccess && !characterAccess.has_access;
   const picture = entity.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(entity.picture).replace(/^\//, '')}` : defaultPicture;
 
   // Get description based on entity type
@@ -386,7 +393,12 @@ export default function EntityDetailPage() {
             {/* Action buttons */}
             <div className="d-flex gap-2 flex-wrap">
               {type === 'character' ? (
-                characterAccess && !characterAccess.has_access ? (
+                isCharacterAccessLoading ? (
+                  <PrimaryButton disabled>
+                    <i className="bi bi-hourglass-split me-2"></i>
+                    {t('entity_detail.checking_access', 'Checking access...')}
+                  </PrimaryButton>
+                ) : characterAccess && !characterAccess.has_access ? (
                   <PrimaryButton onClick={handleBuyCharacter} disabled={purchasing}>
                     <i className="bi bi-currency-yen me-2"></i>
                     {purchasing
@@ -451,7 +463,7 @@ export default function EntityDetailPage() {
         </div>
 
         {/* Description section */}
-        {description && (
+        {!isLockedPaidCharacter && description && (
           <div className="card mb-4">
             <div className="card-body">
               <h3 className="card-title mb-3">
@@ -466,8 +478,21 @@ export default function EntityDetailPage() {
           </div>
         )}
 
+        {isLockedPaidCharacter && (
+          <div className="card mb-4">
+            <div className="card-body">
+              <h3 className="card-title mb-3">
+                {t('entity_detail.paid_content_locked', 'Paid Content')}
+              </h3>
+              <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                {t('entity_detail.paid_content_locked_desc', 'Purchase this character to unlock persona and sample dialogues.')}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Character-specific: Greeting and Sample Dialogue */}
-        {type === 'character' && (
+        {type === 'character' && !isLockedPaidCharacter && (
           <>
             {entity.greeting && entity.greeting !== '[IMPROVISE_GREETING]' && (
               <div className="card mb-4">

@@ -80,7 +80,11 @@ export default function CharactersPage() {
           persona: characterData.persona,
           greeting: characterData.greeting,
           example_messages: characterData.example_messages,
-          tags: characterData.tags
+          tags: characterData.tags,
+          is_public: characterData.is_public,
+          is_forkable: characterData.is_forkable,
+          is_free: characterData.is_free,
+          price: Number(characterData.price || 0)
         })
       });
 
@@ -101,13 +105,17 @@ export default function CharactersPage() {
   const characterFields = [
     { name: 'name', label: 'Name', type: 'text', required: true },
     { name: 'tagline', label: 'Tagline', type: 'text' },
+    { name: 'is_public', label: 'Public', type: 'checkbox', helperText: 'Visible to all users' },
+    { name: 'is_forkable', label: 'Open-source (Forkable)', type: 'checkbox', helperText: 'Allow users to fork this character' },
+    { name: 'is_free', label: 'Free Character', type: 'checkbox', helperText: 'Disable for paid character' },
+    { name: 'price', label: 'Price (CNY)', type: 'number', min: 0, helperText: 'Used when Free Character is unchecked' },
     { name: 'persona', label: 'Persona', type: 'textarea', rows: 5, required: true },
     { name: 'greeting', label: 'Greeting', type: 'textarea', rows: 3 },
     { name: 'example_messages', label: 'Example Messages', type: 'textarea', rows: 4 },
     { name: 'tags', label: 'Tags', type: 'tags', helperText: 'Separate tags with commas' }
   ];
 
-  const columns = ['id', 'name', 'tagline', 'creator_name', 'views', 'likes'];
+  const columns = ['id', 'name', 'is_free', 'price', 'is_forkable', 'is_public', 'creator_name', 'views', 'likes'];
 
   // Paginate characters
   const startIdx = (page - 1) * pageSize;

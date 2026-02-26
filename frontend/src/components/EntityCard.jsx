@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
+import { AuthContext } from './AuthProvider';
 
 /**
  * EntityCard - Unified card for Character, Scene, Persona
@@ -14,6 +15,7 @@ import defaultPicture from '../assets/images/default-picture.png';
  */
 export default function EntityCard({ type, entity, onClick, disableClick = false, compact = false }) {
   const { t } = useTranslation();
+  const { sessionToken } = useContext(AuthContext);
   // Mobile viewport detection
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
   const [hovered, setHovered] = useState(false);
@@ -138,13 +140,36 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
   const clickSuppressed = disableClick || suppressPersonaNavigation;
 
   // Card click logic
-  const handleClick = () => {
+  const handleClick = async () => {
     if (clickSuppressed) return;
     if (onClick) {
       onClick(entity);
     } else if (type === 'character') {
-      // Default: navigate to chat for character
-      navigate(`/chat?character=${encodeURIComponent(id)}`);
+      if (!sessionToken) {
+        navigate(`/character/${encodeURIComponent(id)}`);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${window.API_BASE_URL}/api/character/${encodeURIComponent(id)}/access`, {
+          headers: { 'Authorization': sessionToken }
+        });
+        if (!res.ok) {
+          navigate(`/character/${encodeURIComponent(id)}`);
+          return;
+        }
+
+        const accessData = await res.json();
+        if (accessData?.has_access) {
+          navigate(`/chat?character=${encodeURIComponent(id)}`);
+        } else {
+          navigate(`/character/${encodeURIComponent(id)}`);
+        }
+        return;
+      } catch (_error) {
+        navigate(`/character/${encodeURIComponent(id)}`);
+        return;
+      }
     } else if (type === 'scene') {
       // Navigate to scene page (adjust route as needed)
       navigate(`/chat?scene=${encodeURIComponent(id)}`);

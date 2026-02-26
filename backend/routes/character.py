@@ -261,10 +261,35 @@ def get_character(character_id: int, current_user: User = Depends(get_current_us
     c = db.query(Character).filter(Character.id == character_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Character not found")
+
     if not c.is_public:
         if not current_user or c.creator_id != current_user.id:
             raise HTTPException(status_code=404, detail="Character not found")
-    return c
+
+    if can_access_character(db, current_user.id, c):
+        return c
+
+    return {
+        "id": c.id,
+        "name": c.name,
+        "persona": "",
+        "example_messages": "",
+        "tagline": c.tagline,
+        "tags": c.tags,
+        "views": c.views,
+        "likes": c.likes,
+        "picture": c.picture,
+        "greeting": None,
+        "created_time": c.created_time,
+        "creator_id": c.creator_id,
+        "creator_name": c.creator_name,
+        "is_public": c.is_public,
+        "is_forkable": c.is_forkable,
+        "is_free": c.is_free,
+        "price": float(c.price or 0),
+        "forked_from_id": c.forked_from_id,
+        "forked_from_name": c.forked_from_name,
+    }
 
 
 @router.get("/api/character/{character_id}/access")
@@ -454,17 +479,33 @@ def get_user_purchased_characters(
     if not current_user:
         return CharacterListOut(items=[], total=0, page=1, page_size=0, short=False)
 
-    purchased_query = db.query(CharacterPurchase.character_id).filter(
-        CharacterPurchase.user_id == current_user.id
-    ).order_by(CharacterPurchase.purchased_at.desc())
+    # Include creator's own paid characters as "purchased" visibility in profile
+    own_paid_rows = db.query(Character.id).filter(
+        Character.creator_id == current_user.id,
+        Character.is_free == False
+    ).order_by(Character.created_time.desc()).all()
+    own_paid_ids = [row.id for row in own_paid_rows]
 
-    total = purchased_query.count()
-    purchased_ids = [row.character_id for row in purchased_query.offset((page - 1) * page_size).limit(page_size).all()]
-    if not purchased_ids:
+    purchased_rows = db.query(CharacterPurchase.character_id).filter(
+        CharacterPurchase.user_id == current_user.id
+    ).order_by(CharacterPurchase.purchased_at.desc()).all()
+    purchased_ids = [row.character_id for row in purchased_rows]
+
+    # Merge and dedupe while preserving order: own paid first, then purchased
+    merged_ids = []
+    seen_ids = set()
+    for character_id in own_paid_ids + purchased_ids:
+        if character_id not in seen_ids:
+            seen_ids.add(character_id)
+            merged_ids.append(character_id)
+
+    total = len(merged_ids)
+    page_ids = merged_ids[(page - 1) * page_size: (page - 1) * page_size + page_size]
+    if not page_ids:
         return CharacterListOut(items=[], total=total, page=page, page_size=page_size, short=False)
 
-    characters = db.query(Character).filter(Character.id.in_(purchased_ids)).all()
-    ordered_characters = sorted(characters, key=lambda character: purchased_ids.index(character.id))
+    characters = db.query(Character).filter(Character.id.in_(page_ids)).all()
+    ordered_characters = sorted(characters, key=lambda character: page_ids.index(character.id))
 
     return CharacterListOut(items=ordered_characters, total=total, page=page, page_size=page_size, short=False)
 
