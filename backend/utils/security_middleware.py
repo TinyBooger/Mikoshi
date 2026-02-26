@@ -4,6 +4,7 @@ Security middleware for rate limiting and other security measures.
 from fastapi import Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
+from starlette.requests import ClientDisconnect
 import time
 from typing import Dict, Tuple
 import logging
@@ -304,6 +305,10 @@ class ErrorLoggingMiddleware(BaseHTTPMiddleware):
             
             return response
         except Exception as e:
+            if isinstance(e, ClientDisconnect):
+                logger.info("Client disconnected before request completed: %s %s", request.method, request.url.path)
+                return Response(status_code=499)
+
             # Log the unhandled exception
             from utils.error_logger import get_error_logger
             error_logger = get_error_logger()

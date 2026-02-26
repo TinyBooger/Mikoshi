@@ -3,6 +3,22 @@ import { useSearchParams, useNavigate } from 'react-router';
 import { useToast } from '../components/ToastProvider';
 import { AuthContext } from '../components/AuthProvider';
 
+function extractCharacterIdFromOutTradeNo(outTradeNo) {
+  if (!outTradeNo || !outTradeNo.startsWith('CHAR_')) {
+    return null;
+  }
+  const match = outTradeNo.match(/_C(\d+)$/);
+  if (!match) {
+    return null;
+  }
+  const characterId = Number(match[1]);
+  return Number.isFinite(characterId) ? characterId : null;
+}
+
+function isPaymentSuccessStatus(status) {
+  return status === 'TRADE_SUCCESS' || status === 'TRADE_FINISHED';
+}
+
 function AlipayReturnPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -47,17 +63,26 @@ function AlipayReturnPage() {
       }
     };
 
-    if (outTradeNo && tradeNo) {
+    if (outTradeNo) {
       // 检查是否是Pro升级订单
       const isProUpgrade = outTradeNo.startsWith('PRO_');
+      const isCharacterPurchase = outTradeNo.startsWith('CHAR_');
+      const characterId = extractCharacterIdFromOutTradeNo(outTradeNo);
       
       if (isProUpgrade) {
         toast.show(`恭喜！您已成功升级为Pro会员！订单号：${outTradeNo}`, { type: 'success' });
         verifyReturn().then((result) => {
-          if (result?.trade_status === 'TRADE_SUCCESS' || result?.trade_status === 'TRADE_FINISHED') {
+          if (isPaymentSuccessStatus(result?.trade_status)) {
             if (refreshUserData) {
               refreshUserData({ silent: true });
             }
+          }
+        });
+      } else if (isCharacterPurchase) {
+        toast.show(`支付成功！订单号：${outTradeNo}，金额：¥${totalAmount}`, { type: 'success' });
+        verifyReturn().then((result) => {
+          if (isPaymentSuccessStatus(result?.trade_status) && characterId) {
+            navigate(`/chat?character=${characterId}`, { replace: true });
           }
         });
       } else {

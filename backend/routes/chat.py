@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, Response
 from sqlalchemy.orm import Session
+from starlette.requests import ClientDisconnect
 from database import get_db
 from utils.session import get_current_user
 from utils.llm_client import client, stream_chat_completion
@@ -26,7 +27,10 @@ def generate_chat_title(messages, existing_title=None):
 
 @router.post("/api/chat")
 async def chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    data = await request.json()
+    try:
+        data = await request.json()
+    except ClientDisconnect:
+        return Response(status_code=499)
     messages = data.get("messages")
     character_id = data.get("character_id")
     chat_id = data.get("chat_id")
@@ -110,6 +114,8 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 # Send final metadata
                 yield f"data: {json.dumps({'done': True, 'chat_id': chat_id, 'chat_title': generate_chat_title(messages, existing_entry.title if existing_entry else None)})}\n\n"
             
+            except ClientDisconnect:
+                return
             except Exception as e:
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
@@ -173,7 +179,10 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
 @router.post("/api/chat/rename")
 async def rename_chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    data = await request.json()
+    try:
+        data = await request.json()
+    except ClientDisconnect:
+        return Response(status_code=499)
     chat_id = data.get("chat_id")
     new_title = data.get("new_title")
 
@@ -191,7 +200,10 @@ async def rename_chat(request: Request, current_user: User = Depends(get_current
 
 @router.post("/api/chat/delete")
 async def delete_chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    data = await request.json()
+    try:
+        data = await request.json()
+    except ClientDisconnect:
+        return Response(status_code=499)
     chat_id = data.get("chat_id")
 
     if not chat_id:

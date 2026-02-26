@@ -4828,3 +4828,69 @@ timestamp
     For further information visit https://errors.pydantic.dev/2.11/v/string_type
 
 2026-02-09 16:18:50 - utils.error_logger - ERROR - [Error] Uncaught Error: Objects are not valid as a React child (found: object with keys {type, loc, msg, input}). If you meant to render a collection of children, use an array instead. | Endpoint: None http://localhost:3000/pro-upgrade | User: HAeAnts3IJW6bfPHgyjKfcurWfE2
+2026-02-26 11:32:57 - utils.error_logger - CRITICAL - [ClientDisconnect] Unhandled exception:  | Endpoint: POST /api/chat
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 151, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\streams\memory.py", line 126, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 293, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 302, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 213, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\routes\chat.py", line 29, in chat
+    data = await request.json()
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\requests.py", line 249, in json
+    body = await self.body()
+           ^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\requests.py", line 242, in body
+    async for chunk in self.stream():
+        chunks.append(chunk)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\requests.py", line 236, in stream
+    raise ClientDisconnect()
+starlette.requests.ClientDisconnect
+
