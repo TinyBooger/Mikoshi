@@ -1,0 +1,7 @@
+# One regex pattern per line. Lines starting with # are comments.
+\b1[3-9]\d{9}\b
+[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}
+https?://[^\s]+
+\b(?:t\.me|telegram\.me|discord\.gg)/[^\s]+
+\b(?:wx|vx|wechat|qq)[:：\s]*[A-Za-z0-9_-]{5,}\b
+(?:QQ群|Q群|群号)[:：\s]*\d{5,}

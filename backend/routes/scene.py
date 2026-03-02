@@ -11,6 +11,7 @@ from datetime import datetime, UTC
 from schemas import SceneOut, SceneListOut
 from sqlalchemy.dialects.postgresql import array, TEXT
 from utils.level_system import award_exp_with_limits
+from utils.content_censor import censor_form_payload
 
 
 router = APIRouter()
@@ -32,6 +33,19 @@ async def create_scene(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    censored_payload, content_censored = censor_form_payload({
+        "name": name,
+        "description": description,
+        "intro": intro,
+        "tags": tags,
+        "forked_from_name": forked_from_name,
+    })
+    name = (censored_payload.get("name") or "").strip()
+    description = (censored_payload.get("description") or "").strip()
+    intro = censored_payload.get("intro")
+    tags = censored_payload.get("tags") or []
+    forked_from_name = censored_payload.get("forked_from_name")
+
     # Enforce: forking requires level 2 or higher
     if forked_from_id and current_user.level < 2:
         raise HTTPException(status_code=403, detail="Forking requires level 2 or higher")
@@ -78,7 +92,8 @@ async def create_scene(
         "message": "Scene created",
         "exp": current_user.exp,
         "level": current_user.level,
-        "exp_result": exp_result
+        "exp_result": exp_result,
+        "content_censored": content_censored
     })
 
 
@@ -206,6 +221,17 @@ async def update_scene(
         raise HTTPException(status_code=404, detail="Scene not found")
     if scene.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
+
+    censored_payload, content_censored = censor_form_payload({
+        "name": name,
+        "description": description,
+        "intro": intro,
+        "tags": tags,
+    })
+    name = censored_payload.get("name")
+    description = censored_payload.get("description")
+    intro = censored_payload.get("intro")
+    tags = censored_payload.get("tags")
     
     # Enforce level-based private scene access (L2+)
     final_is_public = is_public if is_public is not None else scene.is_public
@@ -228,7 +254,11 @@ async def update_scene(
         scene.picture = save_image(picture.file, 'scene', scene.id, picture.filename)
     db.commit()
     db.refresh(scene)
-    return JSONResponse(content={"id": scene.id, "message": "Scene updated"})
+    return JSONResponse(content={
+        "id": scene.id,
+        "message": "Scene updated",
+        "content_censored": content_censored
+    })
 
 # Delete Scene
 @router.delete("/api/scenes/{scene_id}", response_model=None)

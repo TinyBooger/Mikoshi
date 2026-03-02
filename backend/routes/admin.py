@@ -1,15 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, or_, and_
 from datetime import datetime, timedelta, UTC
 from database import get_db
-from models import User, Character, Tag, SearchTerm
+from models import User, Character, Tag, SearchTerm, ChatHistory
 from utils.session import get_current_admin_user
 from utils.security_middleware import get_rate_limit_status
 from utils.user_utils import enrich_user_with_character_count, build_user_response
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel
 from schemas import UserOut, UserMessageOut
+from utils.audit_logger import AuditLog
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -42,6 +43,253 @@ class CharacterUpdate(BaseModel):
 
 class TagUpdate(BaseModel):
     name: Optional[str] = None
+
+
+def _normalize_content_to_text(content) -> str:
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+            elif isinstance(item, str):
+                parts.append(item)
+        return " ".join(parts)
+    return str(content)
+
+
+def _estimate_tokens_from_messages(messages) -> int:
+    if not isinstance(messages, list):
+        return 0
+
+    total_chars = 0
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        content = _normalize_content_to_text(message.get("content"))
+        total_chars += len(content)
+
+    # Rough conversion for mixed EN/ZH content in app usage.
+    return max(0, round(total_chars / 4))
+
+
+@router.get("/user-stats")
+def get_user_data_stats(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Get user-centric platform statistics for admin analytics."""
+    now = datetime.now(UTC)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_start = today_start - timedelta(days=1)
+    seven_days_ago = today_start - timedelta(days=7)
+    thirty_days_ago = today_start - timedelta(days=30)
+    eight_days_ago = today_start - timedelta(days=8)
+
+    total_users = db.query(func.count(User.id)).scalar() or 0
+
+    active_pro_users = db.query(func.count(User.id)).filter(
+        User.is_pro.is_(True),
+        and_(
+            or_(User.pro_start_date.is_(None), User.pro_start_date <= now),
+            or_(User.pro_expire_date.is_(None), User.pro_expire_date >= now),
+        )
+    ).scalar() or 0
+
+    registered_today = db.query(func.count(func.distinct(AuditLog.user_id))).filter(
+        AuditLog.action == "register",
+        AuditLog.user_id.isnot(None),
+        AuditLog.timestamp >= today_start
+    ).scalar() or 0
+
+    registered_yesterday = db.query(func.count(func.distinct(AuditLog.user_id))).filter(
+        AuditLog.action == "register",
+        AuditLog.user_id.isnot(None),
+        AuditLog.timestamp >= yesterday_start,
+        AuditLog.timestamp < today_start,
+    ).scalar() or 0
+
+    activity_user_ids = set()
+
+    today_login_users = db.query(AuditLog.user_id).filter(
+        AuditLog.action == "login",
+        AuditLog.user_id.isnot(None),
+        AuditLog.timestamp >= today_start
+    ).distinct().all()
+    activity_user_ids.update(user_id for (user_id,) in today_login_users)
+
+    today_chat_users = db.query(ChatHistory.user_id).filter(
+        ChatHistory.last_updated >= today_start
+    ).distinct().all()
+    activity_user_ids.update(user_id for (user_id,) in today_chat_users)
+
+    dau = len(activity_user_ids)
+
+    weekly_activity_user_ids = set()
+    weekly_login_users = db.query(AuditLog.user_id).filter(
+        AuditLog.action == "login",
+        AuditLog.user_id.isnot(None),
+        AuditLog.timestamp >= seven_days_ago
+    ).distinct().all()
+    weekly_activity_user_ids.update(user_id for (user_id,) in weekly_login_users)
+
+    weekly_chat_users = db.query(ChatHistory.user_id).filter(
+        ChatHistory.last_updated >= seven_days_ago
+    ).distinct().all()
+    weekly_activity_user_ids.update(user_id for (user_id,) in weekly_chat_users)
+
+    monthly_activity_user_ids = set(weekly_activity_user_ids)
+    monthly_login_users = db.query(AuditLog.user_id).filter(
+        AuditLog.action == "login",
+        AuditLog.user_id.isnot(None),
+        AuditLog.timestamp >= thirty_days_ago
+    ).distinct().all()
+    monthly_activity_user_ids.update(user_id for (user_id,) in monthly_login_users)
+
+    monthly_chat_users = db.query(ChatHistory.user_id).filter(
+        ChatHistory.last_updated >= thirty_days_ago
+    ).distinct().all()
+    monthly_activity_user_ids.update(user_id for (user_id,) in monthly_chat_users)
+
+    wau = len(weekly_activity_user_ids)
+    mau = len(monthly_activity_user_ids)
+
+    avg_chat_length = db.query(
+        func.avg(func.jsonb_array_length(ChatHistory.messages))
+    ).scalar() or 0
+
+    total_chat_sessions = db.query(func.count(ChatHistory.id)).scalar() or 0
+
+    registrations = db.query(
+        AuditLog.user_id,
+        func.date(AuditLog.timestamp)
+    ).filter(
+        AuditLog.action == "register",
+        AuditLog.user_id.isnot(None),
+        AuditLog.timestamp >= eight_days_ago
+    ).all()
+
+    activity_dates: Dict[str, set] = {}
+
+    login_activity = db.query(
+        AuditLog.user_id,
+        func.date(AuditLog.timestamp)
+    ).filter(
+        AuditLog.action == "login",
+        AuditLog.user_id.isnot(None),
+        AuditLog.timestamp >= eight_days_ago
+    ).all()
+
+    chat_activity = db.query(
+        ChatHistory.user_id,
+        func.date(ChatHistory.last_updated)
+    ).filter(
+        ChatHistory.last_updated >= eight_days_ago
+    ).all()
+
+    for user_id, activity_date in login_activity + chat_activity:
+        if not user_id or activity_date is None:
+            continue
+        if user_id not in activity_dates:
+            activity_dates[user_id] = set()
+        activity_dates[user_id].add(activity_date)
+
+    today_date = today_start.date()
+    d1_eligible = 0
+    d1_retained = 0
+    d7_eligible = 0
+    d7_retained = 0
+
+    for user_id, register_date in registrations:
+        if not user_id or register_date is None:
+            continue
+
+        user_activity_dates = activity_dates.get(user_id, set())
+
+        d1_date = register_date + timedelta(days=1)
+        if d1_date <= today_date:
+            d1_eligible += 1
+            if d1_date in user_activity_dates:
+                d1_retained += 1
+
+        d7_date = register_date + timedelta(days=7)
+        if d7_date <= today_date:
+            d7_eligible += 1
+            if d7_date in user_activity_dates:
+                d7_retained += 1
+
+    d1_retention = (d1_retained / d1_eligible * 100) if d1_eligible else 0
+    d7_retention = (d7_retained / d7_eligible * 100) if d7_eligible else 0
+
+    today_chats = db.query(ChatHistory.user_id, ChatHistory.messages).filter(
+        ChatHistory.last_updated >= today_start
+    ).all()
+
+    user_token_usage = {}
+    for user_id, messages in today_chats:
+        if not user_id:
+            continue
+        estimated_tokens = _estimate_tokens_from_messages(messages)
+        user_token_usage[user_id] = user_token_usage.get(user_id, 0) + estimated_tokens
+
+    top_daily_token_users = sorted(
+        user_token_usage.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )[:10]
+
+    avg_daily_tokens_per_active_user = (
+        sum(user_token_usage.values()) / len(user_token_usage)
+        if user_token_usage else 0
+    )
+
+    daily_message_counts = db.query(User.id, User.daily_action_counts).all()
+    top_daily_message_users = []
+    for user_id, counts in daily_message_counts:
+        chat_message_count = int((counts or {}).get("chat_messages", 0) or 0)
+        if chat_message_count > 0:
+            top_daily_message_users.append({
+                "user_id": user_id,
+                "daily_messages": chat_message_count,
+            })
+
+    top_daily_message_users.sort(key=lambda item: item["daily_messages"], reverse=True)
+
+    return {
+        "snapshot_at": now.isoformat(),
+        "metrics": {
+            "user_count": total_users,
+            "user_increase_today": registered_today,
+            "user_increase_yesterday": registered_yesterday,
+            "dau": dau,
+            "wau": wau,
+            "mau": mau,
+            "d1_retention": round(d1_retention, 2),
+            "d7_retention": round(d7_retention, 2),
+            "avg_chat_length": round(float(avg_chat_length), 2),
+            "total_chat_sessions": total_chat_sessions,
+            "active_pro_user_rate": round((active_pro_users / total_users * 100), 2) if total_users else 0,
+            "active_pro_user_count": active_pro_users,
+            "avg_daily_tokens_per_active_user": round(avg_daily_tokens_per_active_user, 2),
+        },
+        "single_user_daily_token_usage": [
+            {
+                "user_id": user_id,
+                "estimated_tokens": estimated_tokens,
+            }
+            for user_id, estimated_tokens in top_daily_token_users
+        ],
+        "top_daily_message_users": top_daily_message_users[:10],
+        "notes": {
+            "token_usage": "Estimated from message text length in chats updated today (roughly 1 token ~= 4 chars).",
+            "retention": "D1/D7 are cohort-based using register audit logs and login/chat activity dates.",
+        }
+    }
 
 
 @router.get("/users", response_model=List[UserOut])

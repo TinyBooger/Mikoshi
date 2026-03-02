@@ -101,6 +101,15 @@ The Pro user fields are automatically included in the `UserOut` schema, so they 
 }
 ```
 
+## Daily Message Cap Configuration
+
+Non-Pro users can be limited by a daily message cap using environment variables:
+
+- `NON_PRO_DAILY_MESSAGE_CAP` (default: `100`)
+- `NON_PRO_DAILY_MESSAGE_WARNING_REMAINING` (default: `10`)
+
+When users approach the cap, the chat API includes `limits` metadata in responses so the frontend can show reminder warnings before the cap is reached.
+
 ## Implementation Checklist
 
 - [x] Update User model with Pro fields

@@ -15,6 +15,13 @@ export default function ChatPage() {
   const { t } = useTranslation();
   // Sentinel used to indicate a character should have an improvising greeting
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
+  const SUMMARY_PREFIX = 'Summary of previous conversation:';
+  const envSoftTokenLimit = Number(import.meta.env.VITE_CHAT_CONTEXT_SOFT_TOKEN_LIMIT);
+  const envTargetTokenLimit = Number(import.meta.env.VITE_CHAT_CONTEXT_TARGET_TOKEN_LIMIT);
+  const envProSoftMultiplier = Number(import.meta.env.VITE_CHAT_CONTEXT_PRO_SOFT_LIMIT_MULTIPLIER);
+  const CLIENT_SOFT_TOKEN_LIMIT = Number.isFinite(envSoftTokenLimit) && envSoftTokenLimit > 0 ? envSoftTokenLimit : 8000;
+  const CLIENT_TARGET_TOKEN_LIMIT = Number.isFinite(envTargetTokenLimit) && envTargetTokenLimit > 0 ? envTargetTokenLimit : 800;
+  const CLIENT_PRO_SOFT_MULTIPLIER = Number.isFinite(envProSoftMultiplier) && envProSoftMultiplier > 1 ? envProSoftMultiplier : 2;
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
   const { userData, setUserData, sessionToken, refreshUserData, loading } = useContext(AuthContext);
   const toast = useToast();
@@ -25,6 +32,8 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [abortController, setAbortController] = useState(null);
+  const [chatLimits, setChatLimits] = useState(null);
+  const [showContextDetails, setShowContextDetails] = useState(false);
   const [hasLiked, setHasLiked] = useState({ character: false, scene: false, persona: false });
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -131,6 +140,115 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const initialized = useRef(false);
   const isNewChat = useRef(true);
+  const lastLimitReminderCountRef = useRef(null);
+
+  const maybeShowMessageLimitReminder = (limits) => {
+    if (!limits || !limits.is_limited || !limits.approaching_limit || limits.limit_reached) return;
+
+    const currentCount = Number(limits.daily_message_count ?? 0);
+    if (lastLimitReminderCountRef.current === currentCount) return;
+
+    lastLimitReminderCountRef.current = currentCount;
+    const remaining = Number(limits.remaining_messages ?? 0);
+    const cap = Number(limits.daily_message_cap ?? 0);
+
+    toast.show(
+      `今日还可发送 ${remaining} 条消息（${currentCount}/${cap}）。升级 Pro 可解锁无限消息。`,
+      { type: 'warning' }
+    );
+  };
+
+  const applyChatLimits = (limits) => {
+    if (!limits) return;
+    setChatLimits(limits);
+    maybeShowMessageLimitReminder(limits);
+  };
+
+  const getChatErrorMessage = (errorPayload) => {
+    if (errorPayload?.error === 'DAILY_MESSAGE_CAP_REACHED') {
+      const remaining = Number(errorPayload?.limits?.remaining_messages ?? 0);
+      if (remaining <= 0) {
+        return '已达到今日消息上限，请明天再试，或升级 Pro 解锁无限消息。';
+      }
+      return errorPayload?.message || '已达到今日消息上限。';
+    }
+    if (typeof errorPayload?.error === 'string') {
+      return errorPayload.error;
+    }
+    return 'Failed to send message. Please try again.';
+  };
+
+  const compactMessagesForRequest = (allMessages) => {
+    if (!Array.isArray(allMessages)) return [];
+
+    const validMessages = allMessages.filter(
+      (message) => message && typeof message === 'object' && message.role && typeof message.content === 'string'
+    );
+
+    const systemMessages = validMessages.filter((message) => message.role === 'system');
+    const dialogueMessages = validMessages.filter((message) => message.role !== 'system');
+
+    const baseSystem = [...systemMessages]
+      .reverse()
+      .find((message) => !message.content.trim().startsWith(SUMMARY_PREFIX));
+
+    const summarySystemMessages = systemMessages.filter((message) =>
+      message.content.trim().startsWith(SUMMARY_PREFIX)
+    );
+
+    const estimateTokens = (msgList) => {
+      const totalChars = msgList.reduce((sum, message) => sum + (message.role?.length || 0) + (message.content?.length || 0) + 10, 0);
+      return Math.max(1, Math.floor(totalChars / 4));
+    };
+
+    const basePayload = [
+      ...(baseSystem ? [baseSystem] : []),
+      ...summarySystemMessages,
+    ];
+
+    const isProUser = !!userData?.is_pro;
+    const effectiveSoftTokenLimit = Math.floor(CLIENT_SOFT_TOKEN_LIMIT * (isProUser ? CLIENT_PRO_SOFT_MULTIPLIER : 1));
+
+    const fullPayload = [...basePayload, ...dialogueMessages];
+    if (estimateTokens(fullPayload) <= effectiveSoftTokenLimit) {
+      return fullPayload;
+    }
+
+    const trimmedDialogue = [...dialogueMessages];
+    let payload = [...basePayload, ...trimmedDialogue];
+    while (estimateTokens(payload) > CLIENT_TARGET_TOKEN_LIMIT && trimmedDialogue.length > 1) {
+      trimmedDialogue.shift();
+      payload = [...basePayload, ...trimmedDialogue];
+    }
+
+    return payload;
+  };
+
+  const getContextWindowUsage = (allMessages) => {
+    const isProUser = !!userData?.is_pro;
+    const effectiveSoftTokenLimit = Math.floor(CLIENT_SOFT_TOKEN_LIMIT * (isProUser ? CLIENT_PRO_SOFT_MULTIPLIER : 1));
+
+    if (!Array.isArray(allMessages)) {
+      return { currentTokens: 0, softLimit: effectiveSoftTokenLimit, sentTokens: 0, compacted: false };
+    }
+
+    const validMessages = allMessages.filter(
+      (message) => message && typeof message === 'object' && message.role && typeof message.content === 'string'
+    );
+    const estimateTokens = (msgList) => {
+      const totalChars = msgList.reduce((sum, message) => sum + (message.role?.length || 0) + (message.content?.length || 0) + 10, 0);
+      return Math.max(1, Math.floor(totalChars / 4));
+    };
+
+    const requestMessages = compactMessagesForRequest(validMessages);
+
+    return {
+      currentTokens: estimateTokens(validMessages),
+      softLimit: effectiveSoftTokenLimit,
+      sentTokens: estimateTokens(requestMessages),
+      compacted: requestMessages.length < validMessages.length,
+    };
+  };
 
   // Fetch initial entity data when modal opens and IDs are present
   useEffect(() => {
@@ -446,7 +564,11 @@ export default function ChatPage() {
         });
         
         if (!res.ok) {
-          throw new Error('Failed to generate greeting');
+          const errorPayload = await res.json().catch(() => null);
+          if (errorPayload?.limits) {
+            applyChatLimits(errorPayload.limits);
+          }
+          throw new Error(getChatErrorMessage(errorPayload));
         }
 
         const reader = res.body.getReader();
@@ -480,6 +602,7 @@ export default function ChatPage() {
               }
               
               if (data.done && data.chat_id) {
+                applyChatLimits(data.limits);
                 const newChat = {
                   chat_id: data.chat_id,
                   title: data.chat_title || (accumulatedReply ? accumulatedReply.slice(0, 30) + (accumulatedReply.length > 30 ? '...' : '') : 'New Chat'),
@@ -505,7 +628,7 @@ export default function ChatPage() {
         if (err.name === 'AbortError') {
         } else {
           console.error('Error generating improvising greeting:', err);
-          toast.show(t('chat.error_generating_greeting') || 'Failed to generate greeting.', { type: 'error' });
+          toast.show(err.message || t('chat.error_generating_greeting') || 'Failed to generate greeting.', { type: 'error' });
         }
       } finally {
         setSending(false);
@@ -539,6 +662,7 @@ export default function ChatPage() {
     }
     
     const updatedMessages = [...messages, { role: 'user', content: input.trim() }];
+    const requestMessages = compactMessagesForRequest(updatedMessages);
     setMessages(updatedMessages);
     setInput('');
     
@@ -563,14 +687,19 @@ export default function ChatPage() {
           chat_id: selectedChat?.chat_id,
           scene_id: selectedScene?.id || null,
           persona_id: selectedPersona?.id || null,
-          messages: updatedMessages,
+          messages: requestMessages,
+          full_messages: updatedMessages,
           stream: true
         }),
         signal: controller.signal
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        const errorPayload = await response.json().catch(() => null);
+        if (errorPayload?.limits) {
+          applyChatLimits(errorPayload.limits);
+        }
+        throw new Error(getChatErrorMessage(errorPayload));
       }
 
       const reader = response.body.getReader();
@@ -612,6 +741,7 @@ export default function ChatPage() {
             }
             
             if (data.done) {
+              applyChatLimits(data.limits);
               // Stream completed, update chat history
               if (data.chat_id) {
                 // Preserve existing chat data or create new
@@ -646,7 +776,7 @@ export default function ChatPage() {
     } catch (err) {
       if (err.name === 'AbortError') {
       } else {
-        toast.show('Failed to send message. Please try again.', { type: 'error' });
+        toast.show(err.message || 'Failed to send message. Please try again.', { type: 'error' });
       }
       // Remove the incomplete assistant message if there's an error
       setMessages(prev => {
@@ -821,8 +951,14 @@ export default function ChatPage() {
         )
       };
       
-      // Set messages with proper system message
-      setMessages([sys, ...chat.messages]);
+      const historyMessages = Array.isArray(chat.messages) ? chat.messages : [];
+      const summarySystemMessages = historyMessages.filter(
+        (m) => m?.role === 'system' && typeof m?.content === 'string' && m.content.trim().startsWith(SUMMARY_PREFIX)
+      );
+      const nonSystemMessages = historyMessages.filter((m) => m?.role !== 'system');
+
+      // Keep exactly one live system prompt + compacted summary blocks + normal dialogue
+      setMessages([sys, ...summarySystemMessages, ...nonSystemMessages]);
       
       // Set selected chat and mark as existing chat (not new)
       setSelectedChat({
@@ -972,6 +1108,15 @@ export default function ChatPage() {
       ))}</span>;
     });
   };
+
+  const contextWindowUsage = getContextWindowUsage(messages);
+  const contextUsageRatio = Math.min(1, contextWindowUsage.currentTokens / Math.max(1, contextWindowUsage.softLimit));
+  const contextUsagePercent = Math.round(contextUsageRatio * 100);
+  const sentUsageRatio = Math.min(1, contextWindowUsage.sentTokens / Math.max(1, contextWindowUsage.softLimit));
+  const sentUsagePercent = Math.round(sentUsageRatio * 100);
+  const pieRadius = 7;
+  const pieCircumference = 2 * Math.PI * pieRadius;
+  const pieStrokeOffset = pieCircumference * (1 - contextUsageRatio);
 
   return (
     <div style={{ 
@@ -1267,8 +1412,102 @@ export default function ChatPage() {
               )}
             </div>
             {/* Small helper line explaining notation (centered, single line) */}
-            <div style={{ width: '100%', marginTop: 6, fontSize: '0.72rem', color: '#6b7280', textAlign: 'center' }}>
-              {t('chat.input_notation_hint')} • {t('chat.input_shortcut_hint')}
+            <div style={{ width: '100%', marginTop: 6, fontSize: '0.72rem', color: '#6b7280', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {chatLimits?.is_limited && (
+                chatLimits.limit_reached
+                  ? `已达到每日上限（${chatLimits.daily_message_count}/${chatLimits.daily_message_cap}）。 • `
+                  : `今日剩余 ${chatLimits.remaining_messages} 条（${chatLimits.daily_message_count}/${chatLimits.daily_message_cap}）。 • `
+              )}
+
+              <div
+                style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
+                onMouseEnter={() => setShowContextDetails(true)}
+                onMouseLeave={() => setShowContextDetails(false)}
+              >
+                <button
+                  type="button"
+                  onFocus={() => setShowContextDetails(true)}
+                  onBlur={() => setShowContextDetails(false)}
+                  onClick={() => setShowContextDetails((prev) => !prev)}
+                  aria-label="上下文窗口使用情况"
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    padding: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    color: '#6b7280',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                    <circle cx="9" cy="9" r={pieRadius} fill="none" stroke="#e5e7eb" strokeWidth="2" />
+                    <circle
+                      cx="9"
+                      cy="9"
+                      r={pieRadius}
+                      fill="none"
+                      stroke={contextUsagePercent >= 90 ? '#dc3545' : '#18191a'}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeDasharray={pieCircumference}
+                      strokeDashoffset={pieStrokeOffset}
+                      transform="rotate(-90 9 9)"
+                    />
+                  </svg>
+                  <span>{contextUsagePercent}%</span>
+                </button>
+
+                {showContextDetails && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '140%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      minWidth: 220,
+                      background: '#111827',
+                      color: '#f9fafb',
+                      borderRadius: 10,
+                      padding: '10px 12px',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                      zIndex: 20,
+                      textAlign: 'left'
+                    }}
+                  >
+                    <div style={{ fontSize: '0.74rem', fontWeight: 600, marginBottom: 6 }}>上下文使用情况</div>
+                    <div style={{ fontSize: '0.7rem', opacity: 0.9, marginBottom: 8 }}>
+                      {`当前 ${contextWindowUsage.currentTokens}/${contextWindowUsage.softLimit} tokens`}
+                    </div>
+
+                    <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.2)', overflow: 'hidden', marginBottom: 8 }}>
+                      <div
+                        style={{
+                          width: `${contextUsagePercent}%`,
+                          height: '100%',
+                          background: contextUsagePercent >= 90 ? '#ef4444' : '#60a5fa',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ fontSize: '0.7rem', opacity: 0.9, marginBottom: 6 }}>
+                      {`发送到模型：${contextWindowUsage.sentTokens} tokens${contextWindowUsage.compacted ? '（已压缩）' : ''}`}
+                    </div>
+                    <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.2)', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: `${sentUsagePercent}%`,
+                          height: '100%',
+                          background: '#34d399',
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <span>{t('chat.input_notation_hint')} • {t('chat.input_shortcut_hint')}</span>
             </div>
           </div>
         </form>

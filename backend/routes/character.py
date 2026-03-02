@@ -11,6 +11,7 @@ from utils.session import get_current_user
 from utils.local_storage_utils import save_image
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.validators import validate_character_fields
+from utils.content_censor import censor_form_payload
 from schemas import CharacterOut, CharacterListOut
 from utils.level_system import award_exp_with_limits
 from utils.character_purchase_utils import can_access_character, has_character_purchase
@@ -37,6 +38,23 @@ async def create_character(
 ):
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    censored_payload, content_censored = censor_form_payload({
+        "name": name,
+        "persona": persona,
+        "tagline": tagline,
+        "tags": tags,
+        "greeting": greeting,
+        "sample_dialogue": sample_dialogue,
+        "forked_from_name": forked_from_name,
+    })
+    name = (censored_payload.get("name") or "").strip()
+    persona = (censored_payload.get("persona") or "").strip()
+    tagline = (censored_payload.get("tagline") or "")
+    tags = censored_payload.get("tags") or []
+    greeting = (censored_payload.get("greeting") or "")
+    sample_dialogue = (censored_payload.get("sample_dialogue") or "")
+    forked_from_name = censored_payload.get("forked_from_name")
 
     existing = db.query(Character).filter(Character.name == name).first()
     if existing:
@@ -144,7 +162,8 @@ async def create_character(
         "message": f"Character '{name}' created.",
         "exp": current_user.exp,
         "level": current_user.level,
-        "exp_result": exp_result
+        "exp_result": exp_result,
+        "content_censored": content_censored
     }
 
 @router.post("/api/update-character")
@@ -168,6 +187,21 @@ async def update_character(
     char = db.query(Character).filter(Character.id == id).first()
     if not char or char.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not allowed")
+
+    censored_payload, content_censored = censor_form_payload({
+        "name": name,
+        "persona": persona,
+        "tagline": tagline,
+        "tags": tags,
+        "greeting": greeting,
+        "sample_dialogue": sample_dialogue,
+    })
+    name = (censored_payload.get("name") or "").strip()
+    persona = (censored_payload.get("persona") or "").strip()
+    tagline = (censored_payload.get("tagline") or "")
+    tags = censored_payload.get("tags") or []
+    greeting = (censored_payload.get("greeting") or "")
+    sample_dialogue = (censored_payload.get("sample_dialogue") or "")
     
     error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags)
     if error:
@@ -244,7 +278,10 @@ async def update_character(
         char.picture = save_image(picture.file, 'character', char.id, picture.filename)
 
     db.commit()
-    return {"message": "Character updated successfully"}
+    return {
+        "message": "Character updated successfully",
+        "content_censored": content_censored
+    }
 
 @router.get("/api/characters", response_model=List[CharacterOut])
 def get_characters(search: str = None, db: Session = Depends(get_db)):

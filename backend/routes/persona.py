@@ -10,6 +10,7 @@ from utils.session import get_current_user
 from datetime import datetime, UTC
 from schemas import PersonaOut, PersonaListOut
 from utils.level_system import award_exp_with_limits
+from utils.content_censor import censor_form_payload
 
 router = APIRouter()
 
@@ -79,6 +80,19 @@ async def create_persona(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    censored_payload, content_censored = censor_form_payload({
+        "name": name,
+        "description": description,
+        "intro": intro,
+        "tags": tags,
+        "forked_from_name": forked_from_name,
+    })
+    name = (censored_payload.get("name") or "").strip()
+    description = censored_payload.get("description")
+    intro = censored_payload.get("intro")
+    tags = censored_payload.get("tags") or []
+    forked_from_name = censored_payload.get("forked_from_name")
+
     # Enforce: forking requires level 2 or higher
     if forked_from_id and current_user.level < 2:
         raise HTTPException(status_code=403, detail="Forking requires level 2 or higher")
@@ -125,7 +139,8 @@ async def create_persona(
         "message": "Persona created",
         "exp": current_user.exp,
         "level": current_user.level,
-        "exp_result": exp_result
+        "exp_result": exp_result,
+        "content_censored": content_censored
     })
 
 
@@ -170,6 +185,17 @@ async def update_persona(
         raise HTTPException(status_code=404, detail="Persona not found")
     if persona.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
+
+    censored_payload, content_censored = censor_form_payload({
+        "name": name,
+        "description": description,
+        "intro": intro,
+        "tags": tags,
+    })
+    name = censored_payload.get("name")
+    description = censored_payload.get("description")
+    intro = censored_payload.get("intro")
+    tags = censored_payload.get("tags")
     
     # Enforce level-based private persona access (L2+)
     final_is_public = is_public if is_public is not None else persona.is_public
@@ -192,7 +218,11 @@ async def update_persona(
         persona.picture = save_image(picture.file, 'persona', persona.id, picture.filename)
     db.commit()
     db.refresh(persona)
-    return JSONResponse(content={"id": persona.id, "message": "Persona updated"})
+    return JSONResponse(content={
+        "id": persona.id,
+        "message": "Persona updated",
+        "content_censored": content_censored
+    })
 
 # Delete Persona
 @router.delete("/api/personas/{persona_id}", response_model=None)

@@ -11,6 +11,7 @@ export default function AdminSidebar() {
         <li><Link className="nav-link text-white" to="/admin/characters">Characters</Link></li>
         <li><Link className="nav-link text-white" to="/admin/tags">Tags</Link></li>
         <li><Link className="nav-link text-white" to="/admin/search-terms">Search Keywords</Link></li>
+        <li><Link className="nav-link text-white" to="/admin/user-stats">User Statistics</Link></li>
         <li><Link className="nav-link text-white" to="/admin/invitations">Invitation Codes</Link></li>
         <li><Link className="nav-link text-white" to="/admin/problem-reports">Problem Reports</Link></li>
         <li><Link className="nav-link text-white" to="/admin/notifications">Notifications</Link></li>

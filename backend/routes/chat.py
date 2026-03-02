@@ -12,6 +12,9 @@ from datetime import datetime, UTC
 from models import User, Character, Scene, ChatHistory
 from utils.level_system import award_exp_with_limits
 from utils.character_purchase_utils import can_access_character
+from utils.message_limit import can_send_user_message, increment_user_message_count
+from utils.context_window import compact_conversation_messages
+from utils.user_utils import is_pro_active
 
 router = APIRouter()
 
@@ -32,6 +35,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     except ClientDisconnect:
         return Response(status_code=499)
     messages = data.get("messages")
+    full_messages = data.get("full_messages")
     character_id = data.get("character_id")
     chat_id = data.get("chat_id")
     scene_id = data.get("scene_id")
@@ -40,6 +44,30 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
     if not messages or not isinstance(messages, list):
         return JSONResponse(content={"error": "Invalid or missing messages"}, status_code=400)
+
+    if not isinstance(full_messages, list) or not full_messages:
+        full_messages = messages
+
+    is_pro_user = is_pro_active(current_user)
+
+    prepared_messages, _ = compact_conversation_messages(
+        messages,
+        is_pro_user=is_pro_user,
+    )
+    if not prepared_messages:
+        return JSONResponse(content={"error": "Invalid messages after normalization"}, status_code=400)
+
+    limit_check = can_send_user_message(current_user, full_messages)
+    limit_info = limit_check.get("limit") or {}
+    if limit_check["blocked"]:
+        return JSONResponse(
+            content={
+                "error": "DAILY_MESSAGE_CAP_REACHED",
+                "message": "You have reached your daily message limit. Upgrade to Pro for unlimited messages.",
+                "limits": limit_info,
+            },
+            status_code=429,
+        )
 
     # Award daily chat EXP (handled by centralized function with limits)
     exp_result = award_exp_with_limits(current_user, "daily_chat", db)
@@ -66,7 +94,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         async def generate():
             accumulated_reply = ""
             try:
-                for chunk in stream_chat_completion(messages):
+                for chunk in stream_chat_completion(prepared_messages):
                     accumulated_reply += chunk
                     # Send each chunk as SSE
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
@@ -77,8 +105,16 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     from database import SessionLocal
                     db_session = SessionLocal()
                     try:
-                        updated_messages = messages + [{"role": "assistant", "content": accumulated_reply}]
-                        updated_messages = updated_messages[-50:]
+                        stream_user = db_session.query(User).filter(User.id == current_user.id).first()
+                        if not stream_user:
+                            raise HTTPException(status_code=404, detail="User not found")
+                        limit_info = increment_user_message_count(
+                            stream_user,
+                            db_session,
+                            limit_check["is_user_request"],
+                        ) or (limit_check.get("limit") or {})
+
+                        updated_messages = full_messages + [{"role": "assistant", "content": accumulated_reply}]
 
                         # Fetch character details for sidebar display
                         character = db_session.query(Character).filter(Character.id == character_id).first()
@@ -87,7 +123,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             "character_id": character_id,
                             "character_name": character.name if character else None,
                             "character_picture": character.picture if character else None,
-                            "title": generate_chat_title(messages, existing_entry.title if existing_entry else None),
+                            "title": generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
                             "messages": updated_messages,
                             "last_updated": datetime.now(UTC),
                             "created_at": existing_entry.created_at if existing_entry else datetime.now(UTC),
@@ -110,9 +146,15 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         )
                     finally:
                         db_session.close()
+                else:
+                    limit_info = increment_user_message_count(
+                        current_user,
+                        db,
+                        limit_check["is_user_request"],
+                    ) or (limit_check.get("limit") or {})
 
                 # Send final metadata
-                yield f"data: {json.dumps({'done': True, 'chat_id': chat_id, 'chat_title': generate_chat_title(messages, existing_entry.title if existing_entry else None)})}\n\n"
+                yield f"data: {json.dumps({'done': True, 'chat_id': chat_id, 'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None), 'limits': limit_info})}\n\n"
             
             except ClientDisconnect:
                 return
@@ -126,7 +168,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         try:
             response = client.chat.completions.create(
                 model="deepseek-chat",
-                messages=messages,
+                messages=prepared_messages,
                 max_tokens=250,
                 temperature=1.3,
                 top_p=0.9
@@ -135,10 +177,15 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         except Exception:
             return JSONResponse(content={"error": "Server busy, please try again later."}, status_code=503)
 
+        limit_info = increment_user_message_count(
+            current_user,
+            db,
+            limit_check["is_user_request"],
+        ) or (limit_check.get("limit") or {})
+
         # Update chat history
         if character_id:
-            updated_messages = messages + [{"role": "assistant", "content": reply}]
-            updated_messages = updated_messages[-50:]
+            updated_messages = full_messages + [{"role": "assistant", "content": reply}]
 
             # Fetch character details for sidebar display
             character = db.query(Character).filter(Character.id == character_id).first()
@@ -147,7 +194,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 "character_id": character_id,
                 "character_name": character.name if character else None,
                 "character_picture": character.picture if character else None,
-                "title": generate_chat_title(messages, existing_entry.title if existing_entry else None),
+                "title": generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
                 "messages": updated_messages,
                 "last_updated": datetime.now(UTC),
                 "created_at": existing_entry.created_at if existing_entry else datetime.now(UTC),
@@ -172,10 +219,14 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             return {
                 "response": reply,
                 "chat_id": entry.chat_id,
-                "chat_title": entry.title
+                "chat_title": entry.title,
+                "limits": limit_info,
             }
 
-        return {"response": reply}
+        return {
+            "response": reply,
+            "limits": limit_info,
+        }
 
 @router.post("/api/chat/rename")
 async def rename_chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
