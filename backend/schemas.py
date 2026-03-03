@@ -58,8 +58,6 @@ class CharacterOut(BaseModel):
     creator_name: Optional[str] = None
     is_public: bool = False
     is_forkable: bool = False
-    is_free: bool = True
-    price: float = 0
     forked_from_id: Optional[int] = None
     forked_from_name: Optional[str] = None
 

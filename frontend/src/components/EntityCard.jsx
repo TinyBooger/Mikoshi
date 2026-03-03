@@ -1,8 +1,7 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
-import { AuthContext } from './AuthProvider';
 
 /**
  * EntityCard - Unified card for Character, Scene, Persona
@@ -15,7 +14,6 @@ import { AuthContext } from './AuthProvider';
  */
 export default function EntityCard({ type, entity, onClick, disableClick = false, compact = false }) {
   const { t } = useTranslation();
-  const { sessionToken } = useContext(AuthContext);
   // Mobile viewport detection
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
   const [hovered, setHovered] = useState(false);
@@ -35,8 +33,6 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
     likes,
     is_public,
     is_forkable,
-    is_free,
-    price,
   } = entity;
 
   // Type-specific fields
@@ -145,31 +141,8 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
     if (onClick) {
       onClick(entity);
     } else if (type === 'character') {
-      if (!sessionToken) {
-        navigate(`/character/${encodeURIComponent(id)}`);
-        return;
-      }
-
-      try {
-        const res = await fetch(`${window.API_BASE_URL}/api/character/${encodeURIComponent(id)}/access`, {
-          headers: { 'Authorization': sessionToken }
-        });
-        if (!res.ok) {
-          navigate(`/character/${encodeURIComponent(id)}`);
-          return;
-        }
-
-        const accessData = await res.json();
-        if (accessData?.has_access) {
-          navigate(`/chat?character=${encodeURIComponent(id)}`);
-        } else {
-          navigate(`/character/${encodeURIComponent(id)}`);
-        }
-        return;
-      } catch (_error) {
-        navigate(`/character/${encodeURIComponent(id)}`);
-        return;
-      }
+      navigate(`/chat?character=${encodeURIComponent(id)}`);
+      return;
     } else if (type === 'scene') {
       // Navigate to scene page (adjust route as needed)
       navigate(`/chat?scene=${encodeURIComponent(id)}`);
@@ -262,24 +235,6 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
               }}
             >
               <i className="bi bi-diagram-3-fill" style={{ fontSize: '0.5rem' }}></i>
-            </span>
-          )}
-          {type === 'character' && is_free === false && price > 0 && (
-            <span
-              title={t('entity_card.paid') || 'Paid'}
-              style={{
-                background: 'rgba(251, 146, 60, 0.9)',
-                color: '#fff',
-                fontSize: '0.55rem',
-                padding: '2px 5px',
-                borderRadius: '4px',
-                fontWeight: 600,
-                letterSpacing: '0.3px',
-                textTransform: 'uppercase',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              }}
-            >
-              ¥{price}
             </span>
           )}
         </div>

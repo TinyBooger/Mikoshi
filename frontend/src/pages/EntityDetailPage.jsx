@@ -21,8 +21,6 @@ export default function EntityDetailPage() {
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
-  const [characterAccess, setCharacterAccess] = useState(null);
-  const [purchasing, setPurchasing] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
@@ -73,25 +71,6 @@ export default function EntityDetailPage() {
         navigate('/');
       });
   }, [type, id, sessionToken, navigate]);
-
-  useEffect(() => {
-    if (!entity || !sessionToken || type !== 'character') {
-      setCharacterAccess(null);
-      return;
-    }
-
-    fetch(`${window.API_BASE_URL}/api/character/${entity.id}/access`, {
-      headers: { 'Authorization': sessionToken }
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error('Failed to fetch character access');
-        }
-        return res.json();
-      })
-      .then(data => setCharacterAccess(data))
-      .catch(() => setCharacterAccess(null));
-  }, [entity, sessionToken, type]);
 
   // Check if user has liked this entity
   useEffect(() => {
@@ -185,65 +164,9 @@ export default function EntityDetailPage() {
 
   const handleChat = () => {
     if (type === 'character') {
-      if (entity?.is_free === false && !characterAccess) {
-        toast.show(t('entity_detail.checking_access', 'Checking access, please wait...'), { type: 'info' });
-        return;
-      }
-      if (characterAccess && !characterAccess.has_access) {
-        toast.show(t('entity_detail.purchase_required', 'Please purchase this character first'), { type: 'info' });
-        return;
-      }
       navigate(`/chat?character=${id}`);
     } else if (type === 'scene') {
       navigate(`/chat?scene=${id}`);
-    }
-  };
-
-  const handleBuyCharacter = async () => {
-    if (type !== 'character' || !entity || !sessionToken) {
-      return;
-    }
-
-    setPurchasing(true);
-    try {
-      const response = await fetch(`${window.API_BASE_URL}/api/alipay/create-order`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': sessionToken
-        },
-        body: JSON.stringify({
-          total_amount: Number(entity.price || 0),
-          subject: `购买角色：${entity.name}`,
-          body: `购买付费角色 ${entity.name}`,
-          payment_type: 'page',
-          order_type: 'character_purchase',
-          character_id: entity.id
-        })
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        let errorMessage = t('entity_detail.purchase_failed', 'Failed to create purchase order');
-        if (data?.detail) {
-          errorMessage = typeof data.detail === 'string' ? data.detail : errorMessage;
-        }
-        toast.show(errorMessage, { type: 'error' });
-        return;
-      }
-
-      if (data?.success && data?.payment_url) {
-        toast.show(t('entity_detail.redirecting_payment', 'Redirecting to payment...'), { type: 'success' });
-        setTimeout(() => {
-          window.location.href = data.payment_url;
-        }, 600);
-      } else {
-        toast.show(t('entity_detail.purchase_failed', 'Failed to create purchase order'), { type: 'error' });
-      }
-    } catch (error) {
-      toast.show(t('entity_detail.purchase_failed', 'Failed to create purchase order'), { type: 'error' });
-    } finally {
-      setPurchasing(false);
     }
   };
 
@@ -279,9 +202,6 @@ export default function EntityDetailPage() {
   }
 
   const isOwner = userData?.id === entity.creator_id;
-  const isPaidCharacter = type === 'character' && entity.is_free === false;
-  const isCharacterAccessLoading = isPaidCharacter && !characterAccess;
-  const isLockedPaidCharacter = isPaidCharacter && characterAccess && !characterAccess.has_access;
   const picture = entity.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(entity.picture).replace(/^\//, '')}` : defaultPicture;
 
   // Get description based on entity type
@@ -393,24 +313,10 @@ export default function EntityDetailPage() {
             {/* Action buttons */}
             <div className="d-flex gap-2 flex-wrap">
               {type === 'character' ? (
-                isCharacterAccessLoading ? (
-                  <PrimaryButton disabled>
-                    <i className="bi bi-hourglass-split me-2"></i>
-                    {t('entity_detail.checking_access', 'Checking access...')}
-                  </PrimaryButton>
-                ) : characterAccess && !characterAccess.has_access ? (
-                  <PrimaryButton onClick={handleBuyCharacter} disabled={purchasing}>
-                    <i className="bi bi-currency-yen me-2"></i>
-                    {purchasing
-                      ? t('common.loading', '加载中...')
-                      : t('entity_detail.buy_character', 'Buy Character')}
-                  </PrimaryButton>
-                ) : (
-                  <PrimaryButton onClick={handleChat}>
-                    <i className="bi bi-chat-dots me-2"></i>
-                    {t('entity_detail.start_chat', 'Start Chat')}
-                  </PrimaryButton>
-                )
+                <PrimaryButton onClick={handleChat}>
+                  <i className="bi bi-chat-dots me-2"></i>
+                  {t('entity_detail.start_chat', 'Start Chat')}
+                </PrimaryButton>
               ) : type === 'scene' ? (
                 <PrimaryButton onClick={handleChat}>
                   <i className="bi bi-chat-dots me-2"></i>
@@ -452,18 +358,12 @@ export default function EntityDetailPage() {
                   {t('entity_detail.forkable', 'Forkable')}
                 </span>
               )}
-              {type === 'character' && !entity.is_free && (
-                <span className="badge bg-warning text-dark">
-                  <i className="bi bi-currency-yen me-1"></i>
-                  ¥{entity.price}
-                </span>
-              )}
             </div>
           </div>
         </div>
 
         {/* Description section */}
-        {!isLockedPaidCharacter && description && (
+        {description && (
           <div className="card mb-4">
             <div className="card-body">
               <h3 className="card-title mb-3">
@@ -478,21 +378,8 @@ export default function EntityDetailPage() {
           </div>
         )}
 
-        {isLockedPaidCharacter && (
-          <div className="card mb-4">
-            <div className="card-body">
-              <h3 className="card-title mb-3">
-                {t('entity_detail.paid_content_locked', 'Paid Content')}
-              </h3>
-              <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
-                {t('entity_detail.paid_content_locked_desc', 'Purchase this character to unlock persona and sample dialogues.')}
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Character-specific: Greeting and Sample Dialogue */}
-        {type === 'character' && !isLockedPaidCharacter && (
+        {type === 'character' && (
           <>
             {entity.greeting && entity.greeting !== '[IMPROVISE_GREETING]' && (
               <div className="card mb-4">

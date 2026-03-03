@@ -6,7 +6,7 @@ from typing import List, Optional
 from datetime import datetime, UTC
 
 from database import get_db
-from models import Character, User, Tag, UserLikedCharacter, CharacterPurchase
+from models import Character, User, Tag, UserLikedCharacter
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
 from utils.chat_history_utils import fetch_user_chat_history
@@ -14,7 +14,6 @@ from utils.validators import validate_character_fields
 from utils.content_censor import censor_form_payload
 from schemas import CharacterOut, CharacterListOut
 from utils.level_system import award_exp_with_limits
-from utils.character_purchase_utils import can_access_character, has_character_purchase
 
 router = APIRouter()
 
@@ -28,8 +27,6 @@ async def create_character(
     sample_dialogue: str = Form(""),
     is_public: bool = Form(False),
     is_forkable: bool = Form(False),
-    is_free: bool = Form(True),
-    price: float = Form(0),
     forked_from_id: Optional[int] = Form(None),
     forked_from_name: Optional[str] = Form(None),
     picture: UploadFile = File(None),
@@ -67,7 +64,6 @@ async def create_character(
     is_pro_user = bool(current_user.is_pro)
     can_create_private = is_pro_user or (current_user.level or 1) >= 2
     can_use_fork_features = is_pro_user or (current_user.level or 1) >= 2
-    can_create_paid = is_pro_user or (current_user.level or 1) >= 3
 
     # Enforce private character capability by level or Pro
     if not is_public and not can_create_private:
@@ -80,36 +76,6 @@ async def create_character(
     # Enforce: open-source/forkable characters require level 2+ or Pro
     if is_forkable and not can_use_fork_features:
         raise HTTPException(status_code=403, detail="Forkable characters require level 2 or higher")
-    
-    # Enforce: paid characters cannot be forkable
-    if not is_free and is_forkable:
-        raise HTTPException(status_code=400, detail="Paid characters cannot be forkable")
-    
-    # Validate price consistency
-    if is_free and price > 0:
-        price = 0
-    elif not is_free:
-        if not can_create_paid:
-            raise HTTPException(status_code=403, detail="Paid characters require level 3 or higher")
-
-        # Non-Pro users keep level-based paid character quantity limits
-        if not is_pro_user:
-            paid_count = db.query(Character).filter(
-                Character.creator_id == current_user.id,
-                Character.is_free == False
-            ).count()
-            user_level = current_user.level or 1
-            if user_level == 3 and paid_count >= 1:
-                raise HTTPException(status_code=403, detail="Level 3 allows 1 paid character. Reach level 4 for more.")
-            elif user_level == 4 and paid_count >= 2:
-                raise HTTPException(status_code=403, detail="Level 4 allows 2 paid characters. Reach level 5 for unlimited.")
-
-        if price < 0.1:
-            raise HTTPException(status_code=400, detail="Paid characters must have a price of at least ¥0.1")
-        if price > 100:
-            raise HTTPException(status_code=400, detail="Price cannot exceed ¥100")
-        # Round to 2 decimals
-        price = round(price, 2)
 
     for tag_name in tags:  # update tags
         tag = db.query(Tag).filter(Tag.name == tag_name).first()
@@ -129,8 +95,6 @@ async def create_character(
         creator_name=current_user.name,
         is_public=is_public,
         is_forkable=is_forkable,
-        is_free=is_free,
-        price=price,
         views=0,
         picture=None,
         forked_from_id=forked_from_id,
@@ -177,8 +141,6 @@ async def update_character(
     sample_dialogue: str = Form(""),
     is_public: Optional[bool] = Form(None),
     is_forkable: Optional[bool] = Form(None),
-    is_free: Optional[bool] = Form(None),
-    price: Optional[float] = Form(None),
     picture: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -210,53 +172,17 @@ async def update_character(
     is_pro_user = bool(current_user.is_pro)
     can_create_private = is_pro_user or (current_user.level or 1) >= 2
     can_use_fork_features = is_pro_user or (current_user.level or 1) >= 2
-    can_create_paid = is_pro_user or (current_user.level or 1) >= 3
 
     # Enforce level-based private character access (L2+)
     final_is_public = is_public if is_public is not None else char.is_public
     if not final_is_public and not can_create_private:
         raise HTTPException(status_code=403, detail="Private characters require level 2 or higher")
-    
-    # Enforce: paid characters cannot be forkable
-    final_is_free = is_free if is_free is not None else char.is_free
+
     final_is_forkable = is_forkable if is_forkable is not None else char.is_forkable
-    final_price = price if price is not None else char.price
-    
+
     # Enforce open-source/forkable character capability by level or Pro
     if final_is_forkable and not can_use_fork_features:
         raise HTTPException(status_code=403, detail="Forkable characters require level 2 or higher")
-
-    # Enforce paid character limits by level
-    if not final_is_free:
-        user_level = current_user.level or 1
-        if not can_create_paid:
-            raise HTTPException(status_code=403, detail="Paid characters require level 3 or higher")
-
-        # Only non-Pro users have paid quantity limits
-        if (not is_pro_user) and char.is_free:
-            paid_count = db.query(Character).filter(
-                Character.creator_id == current_user.id,
-                Character.is_free == False
-            ).count()
-            
-            if user_level == 3 and paid_count >= 1:
-                raise HTTPException(status_code=403, detail="Level 3 allows 1 paid character. Reach level 4 for more.")
-            elif user_level == 4 and paid_count >= 2:
-                raise HTTPException(status_code=403, detail="Level 4 allows 2 paid characters. Reach level 5 for unlimited.")
-    
-    if not final_is_free and final_is_forkable:
-        raise HTTPException(status_code=400, detail="Paid characters cannot be forkable")
-    
-    # Validate price consistency
-    if final_is_free and final_price > 0:
-        final_price = 0
-    elif not final_is_free:
-        if final_price < 0.1:
-            raise HTTPException(status_code=400, detail="Paid characters must have a price of at least ¥0.1")
-        if final_price > 100:
-            raise HTTPException(status_code=400, detail="Price cannot exceed ¥100")
-        # Round to 2 decimals
-        final_price = round(final_price, 2)
 
     char.name = name
     char.persona = persona
@@ -269,10 +195,6 @@ async def update_character(
         char.is_public = is_public
     if is_forkable is not None:
         char.is_forkable = is_forkable
-    if is_free is not None:
-        char.is_free = is_free
-    if price is not None:
-        char.price = final_price
 
     if picture:
         char.picture = save_image(picture.file, 'character', char.id, picture.filename)
@@ -302,60 +224,7 @@ def get_character(character_id: int, current_user: User = Depends(get_current_us
     if not c.is_public:
         if not current_user or c.creator_id != current_user.id:
             raise HTTPException(status_code=404, detail="Character not found")
-
-    if can_access_character(db, current_user.id, c):
-        return c
-
-    return {
-        "id": c.id,
-        "name": c.name,
-        "persona": "",
-        "example_messages": "",
-        "tagline": c.tagline,
-        "tags": c.tags,
-        "views": c.views,
-        "likes": c.likes,
-        "picture": c.picture,
-        "greeting": None,
-        "created_time": c.created_time,
-        "creator_id": c.creator_id,
-        "creator_name": c.creator_name,
-        "is_public": c.is_public,
-        "is_forkable": c.is_forkable,
-        "is_free": c.is_free,
-        "price": float(c.price or 0),
-        "forked_from_id": c.forked_from_id,
-        "forked_from_name": c.forked_from_name,
-    }
-
-
-@router.get("/api/character/{character_id}/access")
-def get_character_access(
-    character_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    character = db.query(Character).filter(Character.id == character_id).first()
-    if not character:
-        raise HTTPException(status_code=404, detail="Character not found")
-
-    if not character.is_public and character.creator_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Character not found")
-
-    is_owner = character.creator_id == current_user.id
-    is_free = bool(character.is_free)
-    is_purchased = has_character_purchase(db, current_user.id, character.id)
-    has_access = can_access_character(db, current_user.id, character)
-
-    return {
-        "character_id": character.id,
-        "is_owner": is_owner,
-        "is_free": is_free,
-        "is_purchased": is_purchased,
-        "has_access": has_access,
-        "requires_purchase": (not has_access and not is_free and not is_owner),
-        "price": float(character.price or 0)
-    }
+    return c
 
 @router.delete("/api/character/{character_id}/delete")
 async def delete_character(
@@ -506,46 +375,6 @@ def get_user_liked_characters(
     return CharacterListOut(items=characters, total=total, page=page, page_size=page_size, short=False)
 
 
-@router.get("/api/characters-purchased", response_model=CharacterListOut)
-def get_user_purchased_characters(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    if not current_user:
-        return CharacterListOut(items=[], total=0, page=1, page_size=0, short=False)
-
-    # Include creator's own paid characters as "purchased" visibility in profile
-    own_paid_rows = db.query(Character.id).filter(
-        Character.creator_id == current_user.id,
-        Character.is_free == False
-    ).order_by(Character.created_time.desc()).all()
-    own_paid_ids = [row.id for row in own_paid_rows]
-
-    purchased_rows = db.query(CharacterPurchase.character_id).filter(
-        CharacterPurchase.user_id == current_user.id
-    ).order_by(CharacterPurchase.purchased_at.desc()).all()
-    purchased_ids = [row.character_id for row in purchased_rows]
-
-    # Merge and dedupe while preserving order: own paid first, then purchased
-    merged_ids = []
-    seen_ids = set()
-    for character_id in own_paid_ids + purchased_ids:
-        if character_id not in seen_ids:
-            seen_ids.add(character_id)
-            merged_ids.append(character_id)
-
-    total = len(merged_ids)
-    page_ids = merged_ids[(page - 1) * page_size: (page - 1) * page_size + page_size]
-    if not page_ids:
-        return CharacterListOut(items=[], total=total, page=page, page_size=page_size, short=False)
-
-    characters = db.query(Character).filter(Character.id.in_(page_ids)).all()
-    ordered_characters = sorted(characters, key=lambda character: page_ids.index(character.id))
-
-    return CharacterListOut(items=ordered_characters, total=total, page=page, page_size=page_size, short=False)
-
 @router.get("/api/user/{user_id}/characters", response_model=List[CharacterOut])
 def get_user_characters(user_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     query = db.query(Character).filter(Character.creator_id == user_id)
@@ -553,14 +382,3 @@ def get_user_characters(user_id: str, current_user: User = Depends(get_current_u
         query = query.filter(Character.is_public == True)
     characters = query.all()
     return characters
-
-
-@router.get("/api/user/purchased-characters")
-def get_purchased_characters(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    purchases = db.query(CharacterPurchase.character_id).filter(
-        CharacterPurchase.user_id == current_user.id
-    ).all()
-    return {"character_ids": [row.character_id for row in purchases]}

@@ -19,12 +19,12 @@ LEVELS = {
     },
     3: {
         "name": "Advanced",
-        "unlock": "1 paid char, basic analytics",
+        "unlock": "Basic analytics",
         "exp_required": 300
     },
     4: {
         "name": "Pro",
-        "unlock": "2 paid chars, prompt controls",
+        "unlock": "Prompt controls",
         "exp_required": 700
     },
     5: {
@@ -47,7 +47,6 @@ EXP_REWARDS = {
     "character_liked": 5,
     "forked": 10,
     "chat_used_50": 10,  # Removed - replaced by daily_chat
-    "paid_char_sold": 50,
     "daily_chat": 20  # Updated from 10 to 20
 }
 
@@ -59,7 +58,6 @@ DAILY_ACTION_LIMITS = {
     "create_persona": 2,
     "character_liked": 20,
     "forked": None,  # No hard cap
-    "paid_char_sold": None,  # No cap
     "chat_used_50": None,  # Removed action
 }
 
@@ -203,7 +201,7 @@ def can_perform_action(level: int, action: str) -> bool:
     
     Args:
         level: User's current level
-        action: Action to check (e.g., 'fork', 'private_chars', 'paid_char')
+        action: Action to check (e.g., 'fork', 'private_chars', 'basic_analytics')
         
     Returns:
         Boolean indicating if action is allowed
@@ -214,9 +212,7 @@ def can_perform_action(level: int, action: str) -> bool:
         "create_persona": 1,
         "fork": 2,
         "private_chars": 2,
-        "paid_char_1": 3,
         "basic_analytics": 3,
-        "paid_char_2": 4,
         "prompt_controls": 4,
         "featured_chance": 5,
         "beta_tools": 5,

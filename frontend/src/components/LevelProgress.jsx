@@ -23,12 +23,12 @@ export default function LevelProgress({ level = 1, exp = 0 }) {
     },
     3: {
       name: t('level_progress.level_names.L3', 'Advanced'),
-      unlock: t('level_progress.unlocks.L3', '1 paid char, basic analytics'),
+      unlock: t('level_progress.unlocks.L3', 'Basic analytics'),
       exp_required: 300,
     },
     4: {
       name: t('level_progress.level_names.L4', 'Pro'),
-      unlock: t('level_progress.unlocks.L4', '2 paid chars, prompt controls'),
+      unlock: t('level_progress.unlocks.L4', 'Prompt controls'),
       exp_required: 700,
     },
     5: {
@@ -49,7 +49,6 @@ export default function LevelProgress({ level = 1, exp = 0 }) {
     { label: t('level_progress.rewards.create_persona', 'Create persona (+15)'), value: 15, limit: t('level_progress.daily_limits.create_persona', '2/day') },
     { label: t('level_progress.rewards.character_liked', 'Character liked (+5)'), value: 5, limit: t('level_progress.daily_limits.character_liked', '20/day') },
     { label: t('level_progress.rewards.forked', 'Forked (+10)'), value: 10, limit: null },
-    { label: t('level_progress.rewards.paid_char_sold', 'Paid char sold (+50)'), value: 50, limit: null },
     { label: t('level_progress.rewards.daily_chat', 'Daily chat (+20)'), value: 20, limit: t('level_progress.daily_limits.daily_chat', '1/day') },
   ]), [t]);
 

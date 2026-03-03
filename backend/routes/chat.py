@@ -11,7 +11,6 @@ import json
 from datetime import datetime, UTC
 from models import User, Character, Scene, ChatHistory
 from utils.level_system import award_exp_with_limits
-from utils.character_purchase_utils import can_access_character
 from utils.message_limit import can_send_user_message, increment_user_message_count
 from utils.context_window import compact_conversation_messages
 from utils.user_utils import is_pro_active
@@ -86,8 +85,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         character = db.query(Character).filter(Character.id == effective_character_id).first()
         if not character:
             raise HTTPException(status_code=404, detail="Character not found")
-        if not can_access_character(db, current_user.id, character):
-            raise HTTPException(status_code=403, detail="CHARACTER_NOT_PURCHASED: This paid character requires purchase")
 
     if stream:
         # Return streaming response

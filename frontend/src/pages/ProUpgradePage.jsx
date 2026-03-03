@@ -122,18 +122,6 @@ export default function ProUpgradePage() {
                           label: t('pro_upgrade.compare_daily_create', '每日可创作角色数量'),
                           regular: t('pro_upgrade.compare_daily_create_regular', '待公布'),
                           pro: t('pro_upgrade.compare_daily_create_pro', '待公布')
-                        },
-                        {
-                          key: 'paid_characters',
-                          label: t('pro_upgrade.compare_paid_characters', '付费角色数量'),
-                          regular: t('pro_upgrade.compare_paid_characters_regular', '待公布'),
-                          pro: t('pro_upgrade.compare_paid_characters_pro', '待公布')
-                        },
-                        {
-                          key: 'monthly_tokens',
-                          label: t('pro_upgrade.compare_monthly_tokens', '每月可获得免费代币用来购买角色'),
-                          regular: t('pro_upgrade.compare_monthly_tokens_regular', '待公布'),
-                          pro: t('pro_upgrade.compare_monthly_tokens_pro', '待公布')
                         }
                       ].map((row, idx) => (
                         <tr key={row.key} style={{ borderTop: idx === 0 ? '1px solid #e9ecef' : '1px solid #f1f3f5' }}>

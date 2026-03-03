@@ -67,7 +67,6 @@ export const EXP_REWARDS = {
   create_persona: 15,
   character_liked: 5,
   forked: 10,
-  paid_char_sold: 50,
   daily_chat: 20,  // Updated from 10 to 20
 };
 
@@ -81,7 +80,6 @@ export const DAILY_ACTION_LIMITS = {
   create_persona: 2,
   character_liked: 20,
   forked: null,  // No hard cap
-  paid_char_sold: null,  // No cap
 };
 
 export default {

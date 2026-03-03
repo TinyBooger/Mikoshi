@@ -34,7 +34,6 @@ export default function CharacterFormPage() {
   const isProUser = !!userData?.is_pro;
   const canPrivate = userLevel >= 2 || isProUser;
   const canFork = userLevel >= 2 || isProUser;
-  const canPaid = userLevel >= 3 || isProUser;
   const navigate = useNavigate();
   const toast = useToast();
   const [charData, setCharData] = useState({
@@ -71,16 +70,13 @@ export default function CharacterFormPage() {
       if (!canFork && prev.is_forkable) {
         next = { ...next, is_forkable: false };
       }
-      if (!canPaid && !prev.is_free) {
-        next = { ...next, is_free: true, price: 0 };
-      }
       // In fork mode, must be free and forkable
       if (mode === 'fork') {
         next = { ...next, is_free: true, price: 0, is_forkable: true };
       }
       return next;
     });
-  }, [canPrivate, canFork, canPaid, mode]);
+  }, [canPrivate, canFork, mode]);
 
   useEffect(() => {
     if (mode === 'edit' || mode === 'fork') {
@@ -137,8 +133,8 @@ export default function CharacterFormPage() {
               greeting: isImprov ? '' : loadedGreeting,
               is_public: !!data.is_public,
               is_forkable: !!data.is_forkable,
-              is_free: data.is_free !== false,
-              price: data.price || 0,
+              is_free: true,
+              price: 0,
               forked_from_id: data.forked_from_id || null,
               forked_from_name: data.forked_from_name || null,
             });
@@ -168,39 +164,6 @@ export default function CharacterFormPage() {
       return;
     }
 
-    // Check paid character limit for new characters
-    if (mode === 'create' && !charData.is_free && !isProUser) {
-      try {
-        // Fetch user's created characters to count paid ones
-        const res = await fetch(`${window.API_BASE_URL}/api/user/characters`, {
-          headers: { 'Authorization': sessionToken }
-        });
-        const characters = await res.json();
-        
-        // Count paid characters
-        const paidCharacterCount = (characters || []).filter(char => !char.is_free).length;
-        
-        // Level-based limits: L3=1, L4=2, L5+=unlimited
-        let maxPaidCharacters = Infinity;
-        if (userLevel === 3) {
-          maxPaidCharacters = 1;
-        } else if (userLevel === 4) {
-          maxPaidCharacters = 2;
-        }
-        
-        if (paidCharacterCount >= maxPaidCharacters) {
-          const maxMsg = userLevel === 3 
-            ? t('character_form.paid_limit_l3') || 'Level 3 allows 1 paid character. Reach level 4 for more.'
-            : t('character_form.paid_limit_l4') || 'Level 4 allows 2 paid characters. Reach level 5 for unlimited.';
-          toast.show(maxMsg, { type: 'error' });
-          return;
-        }
-      } catch (error) {
-        console.error('Error checking paid character limit:', error);
-        // Continue anyway if check fails
-      }
-    }
-
     const formData = new FormData();
     if (mode === 'edit') formData.append("id", id);
     // In fork mode, don't append id - create a new entity
@@ -218,8 +181,6 @@ export default function CharacterFormPage() {
     formData.append("sample_dialogue", charData.sample.trim());
     formData.append("is_public", String(!!charData.is_public));
     formData.append("is_forkable", String(!!charData.is_forkable));
-    formData.append("is_free", String(!!charData.is_free));
-    formData.append("price", String(charData.price || 0));
     if (picture) formData.append("picture", picture);
     try {
       const res = await fetch(mode === 'edit' ? `${window.API_BASE_URL}/api/update-character` : `${window.API_BASE_URL}/api/create-character`, {
@@ -531,14 +492,13 @@ export default function CharacterFormPage() {
             </div>
 
             {/* Forkable Toggle */}
-            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !charData.is_free || !canFork ? 0.5 : 1 }}>
+            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canFork ? 0.5 : 1 }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.2rem', color: '#22c55e' }}></i>
                   <div>
                     <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
                       {t('character_form.forkable') || 'Allow Forking'}
-                      {!charData.is_free && <span className="badge bg-warning text-dark ms-2" style={{ fontSize: '0.65rem' }}>{t('character_form.free_only') || 'Free Only'}</span>}
                     </div>
                     <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                       {t('character_form.forkable_desc') || 'Users can create their own versions'}
@@ -556,146 +516,13 @@ export default function CharacterFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!!charData.is_forkable}
-                    disabled={!charData.is_free || !canFork || mode === 'fork'}
+                    disabled={!canFork || mode === 'fork'}
                     onChange={e => handleChange('is_forkable', e.target.checked)}
-                    style={{ width: '3rem', height: '1.5rem', cursor: (charData.is_free && canFork && mode !== 'fork') ? 'pointer' : 'not-allowed' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: (canFork && mode !== 'fork') ? 'pointer' : 'not-allowed' }}
                   />
                 </div>
               </div>
             </div>
-
-            {/* Paid Character Toggle */}
-            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: (!canPaid || mode === 'fork') ? 0.55 : 1 }}>
-              <div className="d-flex align-items-center justify-content-between">
-                <div className="d-flex align-items-center gap-2">
-                  <i className="bi bi-currency-dollar" style={{ fontSize: '1.2rem', color: '#f59e0b' }}></i>
-                  <div>
-                    <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
-                      {t('character_form.paid_character') || 'Paid Character?'}
-                    </div>
-                    <div className="text-muted" style={{ fontSize: '0.7rem', lineHeight: '1.3' }}>
-                      {mode === 'fork' 
-                        ? t('character_form.fork_must_be_free', 'Forked characters must be free') 
-                        : (t('character_form.paid_character_desc') || 'Free users can create 2 paid characters, Pro users unlimited')}
-                    </div>
-                    {!canPaid && (
-                      <div className="text-danger" style={{ fontSize: '0.75rem' }}>
-                        {t('character_form.level_lock_notice', { level: 3 }) || 'This function will be available at level 3'}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="form-check form-switch">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    role="switch"
-                    checked={!charData.is_free}
-                    disabled={!canPaid || mode === 'fork'}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        // Switching to paid
-                        handleChange('is_free', false);
-                        if (charData.price === 0) {
-                          handleChange('price', 1); // Set default paid price
-                        }
-                        handleChange('is_forkable', false);
-                      } else {
-                        // Switching to free
-                        handleChange('is_free', true);
-                        handleChange('price', 0);
-                      }
-                    }}
-                    style={{ width: '3rem', height: '1.5rem', cursor: (canPaid && mode !== 'fork') ? 'pointer' : 'not-allowed' }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Pricing Tiers - Show only when Paid is selected */}
-            {!charData.is_free && canPaid && (
-              <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
-                <div className="mb-3">
-                  <div className="fw-semibold" style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-                    {t('character_form.pricing') || 'Select Price'}
-                  </div>
-                  
-                  <div className="d-flex flex-wrap gap-2 mb-3">
-                    {[1, 5, 10, 50].map(price => (
-                      <button
-                        key={price}
-                        type="button"
-                        onClick={() => {
-                          handleChange('price', price);
-                        }}
-                        style={{
-                          flex: '1 1 calc(25% - 0.5rem)',
-                          minWidth: '70px',
-                          padding: '0.75rem 0.5rem',
-                          borderRadius: '8px',
-                          border: charData.price === price ? '2px solid #3b82f6' : '1px solid #d1d5db',
-                          background: charData.price === price ? '#eff6ff' : '#fff',
-                          color: charData.price === price ? '#3b82f6' : '#6b7280',
-                          fontWeight: charData.price === price ? '600' : '500',
-                          fontSize: '0.9rem',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={e => {
-                          if (charData.price !== price) {
-                            e.currentTarget.style.borderColor = '#9ca3af';
-                            e.currentTarget.style.background = '#f9fafb';
-                          }
-                        }}
-                        onMouseLeave={e => {
-                          if (charData.price !== price) {
-                            e.currentTarget.style.borderColor = '#d1d5db';
-                            e.currentTarget.style.background = '#fff';
-                          }
-                        }}
-                      >
-                        <div style={{ fontSize: '1.1rem', fontWeight: '600' }}>¥{price}</div>
-                        <div style={{ fontSize: '0.7rem', marginTop: '0.25rem', opacity: 0.7 }}>CNY</div>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Custom Price Input */}
-                  <div className="d-flex align-items-center gap-2">
-                    <label className="text-muted" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-                      {t('character_form.custom_price') || 'Custom:'}
-                    </label>
-                    <div className="input-group" style={{ maxWidth: '200px' }}>
-                      <span className="input-group-text" style={{ background: '#fff', borderRadius: '8px 0 0 8px', fontSize: '0.9rem' }}>¥</span>
-                      <input
-                        type="number"
-                        min="0.1"
-                        max="100"
-                        step="0.01"
-                        value={[1, 5, 10, 50].includes(charData.price) ? '' : charData.price || ''}
-                        onChange={e => {
-                          let val = parseFloat(e.target.value) || 0;
-                          // Enforce range
-                          if (val > 0 && val < 0.1) val = 0.1;
-                          if (val > 100) val = 100;
-                          // Round to 2 decimals
-                          val = Math.round(val * 100) / 100;
-                          handleChange('price', val);
-                        }}
-                        placeholder="0.10 - 100.00"
-                        style={{
-                          borderRadius: '0 8px 8px 0',
-                          border: '1px solid #d1d5db',
-                          padding: '0.5rem',
-                          fontSize: '0.9rem',
-                        }}
-                      />
-                    </div>
-                    <span className="text-muted" style={{ fontSize: '0.75rem' }}>{t('character_form.price_range') || '¥0.1 - ¥100'}</span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Profile Picture */}

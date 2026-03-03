@@ -24,7 +24,6 @@ export default function ProfilePage() {
   const TAB_TYPES = {
     CREATED: 'Created',
     LIKED: 'Liked',
-    PURCHASED: '已购买',
   };
   const SUBTAB_TYPES = {
     CHARACTERS: 'characters',
@@ -42,7 +41,6 @@ export default function ProfilePage() {
   const [publicUserData, setPublicUserData] = useState(null);
   const [createdCharacters, setCreatedCharacters] = useState([]);
   const [likedCharacters, setLikedCharacters] = useState([]);
-  const [purchasedCharacters, setPurchasedCharacters] = useState([]);
   const [personas, setPersonas] = useState([]);
   const [likedPersonas, setLikedPersonas] = useState([]);
   const [activeTab, setActiveTab] = useState(TAB_TYPES.CREATED);
@@ -55,8 +53,6 @@ export default function ProfilePage() {
   const [createdCharactersTotal, setCreatedCharactersTotal] = useState(0);
   const [likedCharactersPage, setLikedCharactersPage] = useState(1);
   const [likedCharactersTotal, setLikedCharactersTotal] = useState(0);
-  const [purchasedCharactersPage, setPurchasedCharactersPage] = useState(1);
-  const [purchasedCharactersTotal, setPurchasedCharactersTotal] = useState(0);
   const [scenesPage, setScenesPage] = useState(1);
   const [scenesTotal, setScenesTotal] = useState(0);
   const [likedScenesPage, setLikedScenesPage] = useState(1);
@@ -190,25 +186,6 @@ export default function ProfilePage() {
       setLikedCharacters([]);
     }
 
-    // Purchased Characters (only for own profile)
-    if (isOwnProfile) {
-      fetch(`${window.API_BASE_URL}/api/characters-purchased?page=${purchasedCharactersPage}&page_size=${pageSize}`, {
-        headers: { 'Authorization': sessionToken }
-      })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data && data.items) {
-            setPurchasedCharacters(data.items);
-            setPurchasedCharactersTotal(data.total || 0);
-          } else if (Array.isArray(data)) {
-            setPurchasedCharacters(data);
-            setPurchasedCharactersTotal(data.length);
-          }
-        });
-    } else {
-      setPurchasedCharacters([]);
-    }
-
     // Liked Scenes (only for own profile)
     if (isOwnProfile) {
       fetch(`${window.API_BASE_URL}/api/scenes-liked?page=${likedScenesPage}&page_size=${pageSize}`, {
@@ -247,7 +224,7 @@ export default function ProfilePage() {
       setLikedPersonas([]);
     }
     setLoading(false);
-  }, [navigate, sessionToken, userData, profileUserId, isOwnProfile, createdCharactersPage, likedCharactersPage, purchasedCharactersPage, scenesPage, likedScenesPage, personasPage, likedPersonasPage]);
+  }, [navigate, sessionToken, userData, profileUserId, isOwnProfile, createdCharactersPage, likedCharactersPage, scenesPage, likedScenesPage, personasPage, likedPersonasPage]);
 
   // Calculate total chats and likes from all created characters
   useEffect(() => {
@@ -396,16 +373,6 @@ export default function ProfilePage() {
         total = likedPersonasTotal;
         onPageChange = setLikedPersonasPage;
       }
-    } else if (activeTab === TAB_TYPES.PURCHASED) {
-      entities = purchasedCharacters;
-      type = 'character';
-      showEdit = false;
-      editUrlPrefix = 'character';
-      title = '已购买角色';
-      emptyMsg = '暂无已购买角色';
-      page = purchasedCharactersPage;
-      total = purchasedCharactersTotal;
-      onPageChange = setPurchasedCharactersPage;
     }
     return renderEntityCardSection(entities, type, showEdit, editUrlPrefix, title, emptyMsg, page, total, onPageChange);
   };
@@ -1029,26 +996,9 @@ export default function ProfilePage() {
                 {t('profile.liked')}
               </button>
             )}
-            {isOwnProfile && (
-              <button
-                className={`flex-fill fw-bold py-2 border-0 ${activeTab === TAB_TYPES.PURCHASED ? '' : ''}`}
-                style={{
-                  background: activeTab === TAB_TYPES.PURCHASED ? '#111' : '#fff',
-                  color: activeTab === TAB_TYPES.PURCHASED ? '#fff' : '#111',
-                  borderTopLeftRadius: 0,
-                  borderTopRightRadius: 12,
-                  border: '1.5px solid #111',
-                  borderBottom: activeTab === TAB_TYPES.PURCHASED ? 'none' : '1.5px solid #111',
-                  transition: 'background 0.2s, color 0.2s',
-                }}
-                onClick={() => { setActiveTab(TAB_TYPES.PURCHASED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); }}
-              >
-                已购买
-              </button>
-            )}
           </div>
           {/* Subtabs for Created/Liked */}
-          {activeTab !== TAB_TYPES.PURCHASED && (
+          {(
           <div className="d-flex w-100" style={{ borderBottom: '1.5px solid #aaa', paddingBottom: 4, marginTop: 8, gap: 8 }}>
             <button
               className={`fw-bold py-1 px-3 border-0 ${activeSubtab === SUBTAB_TYPES.CHARACTERS ? '' : ''}`}

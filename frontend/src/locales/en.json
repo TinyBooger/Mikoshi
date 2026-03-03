@@ -318,22 +318,10 @@
     "public_desc": "Visible to everyone",
     "private_desc": "Only visible to you",
     "forkable": "Allow Forking",
-    "free_only": "Free Only",
     "forkable_desc": "Users can create their own versions",
     "forked_from": "This is a fork based on",
     "fork_must_be_free": "Forked characters must be free",
-    "level_lock_notice": "This function will be available at level {{level}}",
-    "pricing": "Pricing",
-    "free": "Free",
-    "paid_character": "Paid Character?",
-    "paid_character_desc": "Free users can create 2 paid characters, Pro users unlimited",
-    "paid_limit_free": "Free users can create a maximum of 2 paid characters. Upgrade to Pro for unlimited.",
-    "paid_limit_pro": "You've reached the paid character limit",
-    "paid_limit_l3": "Level 3 allows 1 paid character. Reach level 4 for more.",
-    "paid_limit_l4": "Level 4 allows 2 paid characters. Reach level 5 for unlimited.",
-    "custom_price": "Custom:",
-    "price_range": "¥0.1 - ¥100",
-    "cny": "Chinese Yuan"
+    "level_lock_notice": "This function will be available at level {{level}}"
   },
   "character_assistant": {
     "title": "AI Assistant",
@@ -486,12 +474,6 @@
     "compare_daily_create": "Daily character creation",
     "compare_daily_create_regular": "TBD",
     "compare_daily_create_pro": "TBD",
-    "compare_paid_characters": "Paid characters allowance",
-    "compare_paid_characters_regular": "TBD",
-    "compare_paid_characters_pro": "TBD",
-    "compare_monthly_tokens": "Monthly free tokens for character purchase",
-    "compare_monthly_tokens_regular": "TBD",
-    "compare_monthly_tokens_pro": "TBD",
     "feature_0_title": "Faster Response",
     "feature_0_desc": "Priority processing for your requests",
     "feature_1_title": "Exclusive Features",
@@ -848,8 +830,8 @@
     "unlocks": {
       "L1": "Create chars, scenes, personas",
       "L2": "Fork, private chars",
-      "L3": "1 paid char, basic analytics",
-      "L4": "2 paid chars, prompt controls",
+      "L3": "Advanced creation tools, basic analytics",
+      "L4": "Prompt controls, creator insights",
       "L5": "Featured chance, beta tools",
       "L6": "Creator badge, early revenue tools"
     },
@@ -871,7 +853,6 @@
       "create_persona": "Create persona (+15)",
       "character_liked": "Character liked (+5)",
       "forked": "Forked (+10)",
-      "paid_char_sold": "Paid char sold (+50)",
       "daily_chat": "Daily chat (+20)"
     },
     "daily_limits": {

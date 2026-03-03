@@ -5,18 +5,6 @@ import { AuthContext } from '../components/AuthProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 
-function extractCharacterIdFromOutTradeNo(outTradeNo) {
-  if (!outTradeNo || !outTradeNo.startsWith('CHAR_')) {
-    return null;
-  }
-  const match = outTradeNo.match(/_C(\d+)$/);
-  if (!match) {
-    return null;
-  }
-  const characterId = Number(match[1]);
-  return Number.isFinite(characterId) ? characterId : null;
-}
-
 function isPaymentSuccessStatus(status) {
   return status === 'TRADE_SUCCESS' || status === 'TRADE_FINISHED';
 }
@@ -30,8 +18,6 @@ function AlipayReturnPage() {
   const queryKey = useMemo(() => searchParams.toString(), [searchParams]);
   const outTradeNoForView = searchParams.get('out_trade_no');
   const isProUpgradeForView = outTradeNoForView?.startsWith('PRO_');
-  const isCharacterPurchaseForView = outTradeNoForView?.startsWith('CHAR_');
-  const characterIdForView = extractCharacterIdFromOutTradeNo(outTradeNoForView || '');
 
   useEffect(() => {
     if (handledRef.current) {
@@ -73,8 +59,6 @@ function AlipayReturnPage() {
     if (outTradeNo) {
       // 检查是否是Pro升级订单
       const isProUpgrade = outTradeNo.startsWith('PRO_');
-      const isCharacterPurchase = outTradeNo.startsWith('CHAR_');
-      const characterId = extractCharacterIdFromOutTradeNo(outTradeNo);
       
       if (isProUpgrade) {
         if (!wasHandled) {
@@ -85,16 +69,6 @@ function AlipayReturnPage() {
             if (refreshUserData) {
               refreshUserData({ silent: true });
             }
-          }
-        });
-      } else if (isCharacterPurchase) {
-        if (!wasHandled) {
-          toast.show(`支付成功！订单号：${outTradeNo}，金额：¥${totalAmount}`, { type: 'success' });
-        }
-        verifyReturn().then((result) => {
-          const isSuccess = isPaymentSuccessStatus(result?.trade_status);
-          if (!isSuccess || !characterId) {
-            toast.show('支付结果确认中，请稍后重试', { type: 'info' });
           }
         });
       } else {
@@ -141,14 +115,6 @@ function AlipayReturnPage() {
               支付已完成，请点击下方按钮继续。
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              {isCharacterPurchaseForView && characterIdForView ? (
-                <PrimaryButton
-                  onClick={() => navigate(`/chat?character=${characterIdForView}`)}
-                  style={{ minWidth: 132 }}
-                >
-                  立刻开始聊天
-                </PrimaryButton>
-              ) : null}
               <SecondaryButton
                 onClick={() => navigate('/')}
                 style={{ minWidth: 132 }}

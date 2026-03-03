@@ -67,7 +67,7 @@ def gain_exp(
     recipient: User = current_user
 
     # Actions that award the creator of a target entity
-    creator_targeted_actions = {"character_liked", "forked", "paid_char_sold"}
+    creator_targeted_actions = {"character_liked", "forked"}
     if action in creator_targeted_actions:
         if target_type != "character" or not target_id:
             raise HTTPException(status_code=400, detail="Missing character target for creator award")

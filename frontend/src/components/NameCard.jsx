@@ -1,8 +1,7 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
-import { AuthContext } from './AuthProvider';
 
 /**
  * NameCard - Same fields as EntityCard but laid out like a compact name card
@@ -15,7 +14,6 @@ import { AuthContext } from './AuthProvider';
 export default function NameCard({ type, entity, onClick, disableClick = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { sessionToken } = useContext(AuthContext);
 
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 600 : false);
   const [hovered, setHovered] = useState(false);
@@ -26,7 +24,7 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
   }, []);
 
   // Common fields
-  const { id, name, picture, creator_name, views, likes, is_free, price } = entity;
+  const { id, name, picture, creator_name, views, likes } = entity;
 
   // Type-specific description
   let description = '';
@@ -124,29 +122,7 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
     if (clickSuppressed) return;
     if (onClick) return onClick(entity);
     if (type === 'character') {
-      if (!sessionToken) {
-        navigate(`/character/${encodeURIComponent(id)}`);
-        return;
-      }
-
-      try {
-        const res = await fetch(`${window.API_BASE_URL}/api/character/${encodeURIComponent(id)}/access`, {
-          headers: { 'Authorization': sessionToken }
-        });
-        if (!res.ok) {
-          navigate(`/character/${encodeURIComponent(id)}`);
-          return;
-        }
-
-        const accessData = await res.json();
-        if (accessData?.has_access) {
-          navigate(`/chat?character=${encodeURIComponent(id)}`);
-        } else {
-          navigate(`/character/${encodeURIComponent(id)}`);
-        }
-      } catch (_error) {
-        navigate(`/character/${encodeURIComponent(id)}`);
-      }
+      navigate(`/chat?character=${encodeURIComponent(id)}`);
       return;
     }
     if (type === 'scene') navigate(`/chat?scene=${encodeURIComponent(id)}`);
@@ -200,23 +176,6 @@ export default function NameCard({ type, entity, onClick, disableClick = false }
           </span>
         )}
 
-        {type === 'character' && is_free === false && Number(price) > 0 && (
-          <span
-            title={t('entity_card.paid') || 'Paid'}
-            style={{
-              background: 'rgba(251, 146, 60, 0.95)',
-              color: '#fff',
-              fontSize: isMobile ? '0.58rem' : '0.62rem',
-              padding: isMobile ? '2px 6px' : '3px 7px',
-              borderRadius: '6px',
-              fontWeight: 700,
-              letterSpacing: '0.2px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
-            }}
-          >
-            ¥{Number(price).toFixed(2)}
-          </span>
-        )}
       </div>
 
       {/* Upper content (avatar + texts) */}
