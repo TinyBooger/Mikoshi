@@ -101,9 +101,21 @@
     "tab_character": "角色",
     "tab_scene": "场景",
     "tab_persona": "自我形象",
+    "tab_chat": "聊天",
+    "tab_advanced": "高级",
     "selected_character": "已选择角色",
     "persona": "自我形象",
-    "add_persona": "添加自我形象"
+    "add_persona": "添加自我形象",
+    "advanced_title": "模型配置",
+    "advanced_model": "模型",
+    "advanced_temperature": "温度",
+    "advanced_top_p": "Top P",
+    "advanced_max_tokens": "最大输出 Token",
+    "advanced_presence_penalty": "存在惩罚",
+    "advanced_frequency_penalty": "频率惩罚",
+    "advanced_hint": "修改后会立即用于当前聊天请求。",
+    "advanced_reset": "恢复角色默认配置",
+    "advanced_locked_notice": "升级到 Lv 3 或成为 Pro 用户以解锁高级设置。"
   },
   "profile": {
     "created": "已创建",
@@ -159,7 +171,9 @@
     "display_badge": "展示徽章",
     "preview_image": "预览图",
     "update_badge_failed": "更新徽章失败",
-    "update_badge_error": "更新徽章时出错"
+    "update_badge_error": "更新徽章时出错",
+    "pro_remaining_date": "Pro到期时间",
+    "pro_no_expire_date": "未设置"
   },
   "settings": {
     "title": "设置",
@@ -294,6 +308,16 @@
       "tagline": "将展示在角色封面上。",
       "greeting": "角色会说的第一句话。",
       "tags": "第一个标签会显示在封面上。"
+    },
+    "advanced": {
+      "title": "高级聊天配置",
+      "model": "模型",
+      "temperature": "温度",
+      "top_p": "Top P",
+      "max_tokens": "最大输出 Token",
+      "presence_penalty": "存在惩罚",
+      "frequency_penalty": "频率惩罚",
+      "locked_notice": "升级到 Lv 3 或成为 Pro 用户以解锁高级设置。"
     },
     "sample_dialogue": "示例对话",
     "picture": "角色图片",
@@ -846,7 +870,7 @@
     "unlocks": {
       "L1": "创建角色、场景、自我形象",
       "L2": "参考、私密角色",
-      "L3": "高级创作工具、基础数据",
+      "L3": "解锁模型参数高级设置",
       "L4": "提示词控制、创作者数据",
       "L5": "精选推荐、测试功能",
       "L6": "创作者徽章、收益工具"

@@ -18,7 +18,7 @@ import LevelProgress from '../components/LevelProgress';
 import AvatarFrame from '../components/AvatarFrame';
 
 export default function ProfilePage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const MAX_NAME_LENGTH = 50;
   const TAB_TYPES = {
@@ -496,6 +496,11 @@ export default function ProfilePage() {
   }, [isOwnProfile, userData, publicUserData, profileUserId]);
 
   const displayUser = isOwnProfile ? userData : publicUserData;
+  const isActivePro = Boolean(displayUser?.pro_active);
+  const activeLocale = i18n?.resolvedLanguage || i18n?.language;
+  const formattedProExpireDate = displayUser?.pro_expire_date
+    ? new Date(displayUser.pro_expire_date).toLocaleDateString(activeLocale)
+    : null;
 
   if (userLoading) {
     return (
@@ -843,8 +848,38 @@ export default function ProfilePage() {
 
             <div style={{ flex: '1 1 340px', minWidth: 260, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div className="d-flex align-items-center flex-wrap" style={{ gap: 10 }}>
-                <h2 style={{ color: '#111', fontWeight: 800, fontSize: '1.5rem', marginBottom: 0 }}>{displayUser.name}</h2>
+                <h2
+                  style={{
+                    color: isActivePro ? '#6f42c1' : '#111',
+                    fontWeight: 800,
+                    fontSize: '1.5rem',
+                    marginBottom: 0,
+                  }}
+                >
+                  {displayUser.name}
+                </h2>
+                {isActivePro && (
+                  <span
+                    className="fw-bold"
+                    style={{
+                      fontSize: '0.62rem',
+                      lineHeight: 1,
+                      padding: '0.2rem 0.36rem',
+                      borderRadius: '999px',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: '#fff',
+                      flexShrink: 0,
+                    }}
+                  >
+                    PRO
+                  </span>
+                )}
               </div>
+              {isActivePro && (
+                <div style={{ fontSize: '0.86rem', color: '#555' }}>
+                  {t('profile.pro_remaining_date')}: {formattedProExpireDate || t('profile.pro_no_expire_date')}
+                </div>
+              )}
               <p className="mb-0" style={{ fontSize: '1.02rem', lineHeight: 1.5, maxWidth: 640, whiteSpace: 'pre-line', color: '#3a3a3a' }}>
                 {displayUser.bio && displayUser.bio.trim()
                   ? displayUser.bio

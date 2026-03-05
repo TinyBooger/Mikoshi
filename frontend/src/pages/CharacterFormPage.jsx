@@ -14,6 +14,14 @@ import { silentExpGain } from '../utils/expUtils';
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
+  const DEFAULT_CHAT_CONFIG = {
+    model: 'deepseek-chat',
+    temperature: 1.3,
+    top_p: 0.9,
+    max_tokens: 250,
+    presence_penalty: 0,
+    frequency_penalty: 0,
+  };
   const MAX_NAME_LENGTH = 50;
   const MAX_PERSONA_LENGTH = 1000;
   const MAX_TAGLINE_LENGTH = 100;
@@ -32,6 +40,7 @@ export default function CharacterFormPage() {
   const { sessionToken, userData } = useContext(AuthContext);
   const userLevel = Number(userData?.level || 1);
   const isProUser = !!userData?.is_pro;
+  const canUseAdvancedConfig = userLevel >= 3 || isProUser;
   const canPrivate = userLevel >= 2 || isProUser;
   const canFork = userLevel >= 2 || isProUser;
   const navigate = useNavigate();
@@ -49,9 +58,17 @@ export default function CharacterFormPage() {
     price: 0,
     forked_from_id: null,
     forked_from_name: null,
+    model: DEFAULT_CHAT_CONFIG.model,
+    temperature: DEFAULT_CHAT_CONFIG.temperature,
+    top_p: DEFAULT_CHAT_CONFIG.top_p,
+    max_tokens: DEFAULT_CHAT_CONFIG.max_tokens,
+    presence_penalty: DEFAULT_CHAT_CONFIG.presence_penalty,
+    frequency_penalty: DEFAULT_CHAT_CONFIG.frequency_penalty,
   });
   const [picture, setPicture] = useState(null);
   const [picturePreview, setPicturePreview] = useState(null);
+  const [avatarPicture, setAvatarPicture] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const [isImprovisingGreeting, setIsImprovisingGreeting] = useState(false);
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
@@ -121,6 +138,12 @@ export default function CharacterFormPage() {
               price: 0,
               forked_from_id: data.id,
               forked_from_name: data.name,
+              model: data.model || DEFAULT_CHAT_CONFIG.model,
+              temperature: Number.isFinite(Number(data.temperature)) ? Number(data.temperature) : DEFAULT_CHAT_CONFIG.temperature,
+              top_p: Number.isFinite(Number(data.top_p)) ? Number(data.top_p) : DEFAULT_CHAT_CONFIG.top_p,
+              max_tokens: Number.isFinite(Number(data.max_tokens)) ? Number(data.max_tokens) : DEFAULT_CHAT_CONFIG.max_tokens,
+              presence_penalty: Number.isFinite(Number(data.presence_penalty)) ? Number(data.presence_penalty) : DEFAULT_CHAT_CONFIG.presence_penalty,
+              frequency_penalty: Number.isFinite(Number(data.frequency_penalty)) ? Number(data.frequency_penalty) : DEFAULT_CHAT_CONFIG.frequency_penalty,
             });
           } else {
             // Edit mode
@@ -137,15 +160,39 @@ export default function CharacterFormPage() {
               price: 0,
               forked_from_id: data.forked_from_id || null,
               forked_from_name: data.forked_from_name || null,
+              model: data.model || DEFAULT_CHAT_CONFIG.model,
+              temperature: Number.isFinite(Number(data.temperature)) ? Number(data.temperature) : DEFAULT_CHAT_CONFIG.temperature,
+              top_p: Number.isFinite(Number(data.top_p)) ? Number(data.top_p) : DEFAULT_CHAT_CONFIG.top_p,
+              max_tokens: Number.isFinite(Number(data.max_tokens)) ? Number(data.max_tokens) : DEFAULT_CHAT_CONFIG.max_tokens,
+              presence_penalty: Number.isFinite(Number(data.presence_penalty)) ? Number(data.presence_penalty) : DEFAULT_CHAT_CONFIG.presence_penalty,
+              frequency_penalty: Number.isFinite(Number(data.frequency_penalty)) ? Number(data.frequency_penalty) : DEFAULT_CHAT_CONFIG.frequency_penalty,
             });
           }
           setLoading(false);
+          if (data.picture) {
+            setPicturePreview(`${window.API_BASE_URL.replace(/\/$/, '')}/${String(data.picture).replace(/^\//, '')}`);
+          } else {
+            setPicturePreview(null);
+          }
+          if (data.avatar_picture) {
+            setAvatarPreview(`${window.API_BASE_URL.replace(/\/$/, '')}/${String(data.avatar_picture).replace(/^\//, '')}`);
+          } else if (data.picture) {
+            setAvatarPreview(`${window.API_BASE_URL.replace(/\/$/, '')}/${String(data.picture).replace(/^\//, '')}`);
+          } else {
+            setAvatarPreview(null);
+          }
         });
     }
   }, [mode, id, navigate, sessionToken]);
 
   const handleChange = (field, value) => {
     setCharData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updateConfig = (key, value, min, max, fallback) => {
+    const parsed = Number(value);
+    const nextValue = Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+    handleChange(key, nextValue);
   };
 
   const handleSubmit = async e => {
@@ -179,9 +226,19 @@ export default function CharacterFormPage() {
   const finalGreeting = isImprovisingGreeting ? SPECIAL_IMPROVISING_GREETING : charData.greeting.trim();
   formData.append("greeting", finalGreeting);
     formData.append("sample_dialogue", charData.sample.trim());
+  formData.append("model", charData.model || DEFAULT_CHAT_CONFIG.model);
+    formData.append("temperature", String(canUseAdvancedConfig ? (charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature) : DEFAULT_CHAT_CONFIG.temperature));
+    formData.append("top_p", String(canUseAdvancedConfig ? (charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p) : DEFAULT_CHAT_CONFIG.top_p));
+    formData.append("max_tokens", String(canUseAdvancedConfig ? (charData.max_tokens ?? DEFAULT_CHAT_CONFIG.max_tokens) : DEFAULT_CHAT_CONFIG.max_tokens));
+    formData.append("presence_penalty", String(canUseAdvancedConfig ? (charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty) : DEFAULT_CHAT_CONFIG.presence_penalty));
+    formData.append("frequency_penalty", String(canUseAdvancedConfig ? (charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty) : DEFAULT_CHAT_CONFIG.frequency_penalty));
+    if (!canUseAdvancedConfig) {
+      formData.set("model", DEFAULT_CHAT_CONFIG.model);
+    }
     formData.append("is_public", String(!!charData.is_public));
     formData.append("is_forkable", String(!!charData.is_forkable));
     if (picture) formData.append("picture", picture);
+    if (avatarPicture) formData.append("avatar_picture", avatarPicture);
     try {
       const res = await fetch(mode === 'edit' ? `${window.API_BASE_URL}/api/update-character` : `${window.API_BASE_URL}/api/create-character`, {
         method: "POST",
@@ -450,6 +507,109 @@ export default function CharacterFormPage() {
             </small>
           </div>
 
+          {/* Advanced Chat Config */}
+          <div className="mb-4">
+            <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.75rem' }}>
+              {t('character_form.advanced.title')}
+            </label>
+            <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+              <div className="mb-3">
+                <label className="form-label" style={{ fontSize: '0.9rem' }}>{t('character_form.advanced.model')}</label>
+                <select
+                  className="form-select"
+                  value={charData.model || DEFAULT_CHAT_CONFIG.model}
+                  onChange={e => handleChange('model', e.target.value)}
+                  disabled={!canUseAdvancedConfig}
+                  style={{ borderRadius: 12 }}
+                >
+                  <option value="deepseek-chat">deepseek-chat</option>
+                  <option value="deepseek-reasoner">deepseek-reasoner</option>
+                </select>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                  {t('character_form.advanced.temperature')}: {charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  className="form-range"
+                  value={charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature}
+                  onChange={e => updateConfig('temperature', e.target.value, 0, 2, DEFAULT_CHAT_CONFIG.temperature)}
+                  disabled={!canUseAdvancedConfig}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                  {t('character_form.advanced.top_p')}: {charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  className="form-range"
+                  value={charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p}
+                  onChange={e => updateConfig('top_p', e.target.value, 0, 1, DEFAULT_CHAT_CONFIG.top_p)}
+                  disabled={!canUseAdvancedConfig}
+                />
+              </div>
+
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <label className="form-label" style={{ fontSize: '0.9rem' }}>{t('character_form.advanced.max_tokens')}</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    min="1"
+                    max="8192"
+                    value={charData.max_tokens ?? DEFAULT_CHAT_CONFIG.max_tokens}
+                    onChange={e => updateConfig('max_tokens', e.target.value, 1, 8192, DEFAULT_CHAT_CONFIG.max_tokens)}
+                    disabled={!canUseAdvancedConfig}
+                    style={{ borderRadius: 12 }}
+                  />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label" style={{ fontSize: '0.9rem' }}>{t('character_form.advanced.presence_penalty')}</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    min="-2"
+                    max="2"
+                    step="0.1"
+                    value={charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty}
+                    onChange={e => updateConfig('presence_penalty', e.target.value, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty)}
+                    disabled={!canUseAdvancedConfig}
+                    style={{ borderRadius: 12 }}
+                  />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label" style={{ fontSize: '0.9rem' }}>{t('character_form.advanced.frequency_penalty')}</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    min="-2"
+                    max="2"
+                    step="0.1"
+                    value={charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty}
+                    onChange={e => updateConfig('frequency_penalty', e.target.value, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty)}
+                    disabled={!canUseAdvancedConfig}
+                    style={{ borderRadius: 12 }}
+                  />
+                </div>
+              </div>
+              {!canUseAdvancedConfig && (
+                <div className="mt-2" style={{ fontSize: '0.82rem', color: '#b45309' }}>
+                  {t('character_form.advanced.locked_notice')}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Visibility & Options */}
           <div className="mb-4">
             <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '1rem' }}>
@@ -525,15 +685,22 @@ export default function CharacterFormPage() {
             </div>
           </div>
 
-          {/* Profile Picture */}
+          {/* Cover + Avatar Pictures */}
           <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.picture')}</label>
-            <div className="d-flex align-items-center gap-3">
-              <div style={{ width: 96, height: 96, overflow: 'hidden', borderRadius: 8, background: '#fff', border: '1px solid #e9ecef' }}>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.picture', 'Character Images')}</label>
+            <div className="d-flex align-items-center gap-3" style={{ flexWrap: 'wrap' }}>
+              <div style={{ width: 148, height: 96, overflow: 'hidden', borderRadius: 8, background: '#fff', border: '1px solid #e9ecef' }}>
                 {picturePreview ? (
                   <img src={picturePreview} alt={t('character_form.alt_preview')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>{t('character_form.no_picture')}</div>
+                )}
+              </div>
+              <div style={{ width: 72, height: 72, overflow: 'hidden', borderRadius: '50%', background: '#fff', border: '1px solid #e9ecef' }}>
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt={t('character_form.alt_preview')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.75rem' }}>Avatar</div>
                 )}
               </div>
               <div style={{ flex: 1 }}>
@@ -543,7 +710,15 @@ export default function CharacterFormPage() {
                   className="form-control"
                   onChange={e => {
                     const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                    if (f) { setRawSelectedFile(f); setShowCrop(true); }
+                    if (!f) return;
+                    setPicture(f);
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      setPicturePreview(reader.result);
+                    };
+                    reader.readAsDataURL(f);
+                    setRawSelectedFile(f);
+                    setShowCrop(true);
                   }}
                   style={{
                     background: '#f5f6fa',
@@ -557,6 +732,9 @@ export default function CharacterFormPage() {
                   }}
                 />
               </div>
+            </div>
+            <div className="text-muted mt-2" style={{ fontSize: '0.78rem' }}>
+              {t('character_form.cover_avatar_hint', 'Upload a cover image in original ratio, then choose a circular avatar from it.')}
             </div>
           </div>
 
@@ -740,9 +918,14 @@ export default function CharacterFormPage() {
         <ImageCropModal
           srcFile={rawSelectedFile}
           onCancel={() => { setShowCrop(false); setRawSelectedFile(null); }}
-          onSave={({ file, dataUrl }) => { setPicture(file); setPicturePreview(dataUrl); setShowCrop(false); setRawSelectedFile(null); }}
-          size={220}
-          mode="square"
+          onSave={({ file, dataUrl }) => {
+            setAvatarPicture(file);
+            setAvatarPreview(dataUrl);
+            setShowCrop(false);
+            setRawSelectedFile(null);
+          }}
+          size={160}
+          mode="avatar"
         />, document.body)
       }
       <ConfirmModal

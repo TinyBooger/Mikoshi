@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import EntityCard from '../components/EntityCard';
+import DiscoverMasonryCard from '../components/DiscoverMasonryCard';
 import UserCard from '../components/UserCard';
-import CardSection from '../components/CardSection';
-import HorizontalCardSection from '../components/HorizontalCardSection';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
 import PaginationBar from '../components/PaginationBar';
@@ -16,8 +14,6 @@ function BrowsePage() {
   const { sessionToken } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
-  const { category, entityType } = useParams();
-
   // Tabs
   const MAIN_TABS = [
     { key: 'characters', label: t('browse.characters', 'Characters') },
@@ -39,6 +35,15 @@ function BrowsePage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(20);
+  const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const masonryColumnCount = viewportWidth < 768 ? 2 : 4;
 
   // Helper: update `page` in the URL query string
   const updatePageInUrl = (nextPage, replace = false) => {
@@ -259,7 +264,10 @@ function BrowsePage() {
             </div>
           )
         ) : (
-          <CardSection title={getSectionTitle()}>
+          <section>
+            <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>
+              {getSectionTitle()}
+            </h2>
             {isLoading ? (
               <div className="text-center my-5">
                 <div className="spinner-border text-primary" role="status">
@@ -292,13 +300,21 @@ function BrowsePage() {
                 )}
               </div>
             ) : (
-              <>
+              <div
+                style={{
+                  columnCount: masonryColumnCount,
+                  columnGap: '16px',
+                  width: '100%',
+                }}
+              >
                 {entities.map(entity => (
-                  <EntityCard key={entity.id} type={activeMainTab.slice(0, -1)} entity={entity} />
+                  <div key={entity.id} style={{ breakInside: 'avoid', marginBottom: '16px' }}>
+                    <DiscoverMasonryCard type={activeMainTab.slice(0, -1)} entity={entity} />
+                  </div>
                 ))}
-              </>
+              </div>
             )}
-          </CardSection>
+          </section>
         )}
       </div>
       {/* Bottom Pagination */}

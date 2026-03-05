@@ -23,7 +23,7 @@ export default function LevelProgress({ level = 1, exp = 0 }) {
     },
     3: {
       name: t('level_progress.level_names.L3', 'Advanced'),
-      unlock: t('level_progress.unlocks.L3', 'Basic analytics'),
+      unlock: t('level_progress.unlocks.L3', 'Unlock advanced configurations in character create/edit and chat'),
       exp_required: 300,
     },
     4: {

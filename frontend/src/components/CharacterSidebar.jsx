@@ -39,13 +39,23 @@ export default function CharacterSidebar({
   setSelectedCharacter,
   navigate,
   hasLiked,
+  advancedChatConfig,
+  setAdvancedChatConfig,
+  onResetAdvancedChatConfig,
+  canUseAdvancedChatConfig,
   isMobile = false, // allow parent to pass isMobile, default false
   setPersonaModalShow // <-- new prop to open PersonaModal
 }) {
   const [creatorHover, setCreatorHover] = React.useState(false);
   const [showFullTagline, setShowFullTagline] = React.useState(false);
   const [showProblemReport, setShowProblemReport] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState('chat');
   const { t } = useTranslation();
+  const updateConfig = (key, value, min, max, fallback) => {
+    const parsed = Number(value);
+    const nextValue = Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+    setAdvancedChatConfig((prev) => ({ ...prev, [key]: nextValue }));
+  };
   // Fix: Toggle menu for chat history dropdown, prevent event bubbling
   const toggleMenu = (chatId, e) => {
     e.stopPropagation();
@@ -174,6 +184,27 @@ export default function CharacterSidebar({
             )}
           </div>
 
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <button
+              type="button"
+              className={`btn btn-sm ${activeTab === 'chat' ? 'btn-dark' : 'btn-outline-secondary'}`}
+              onClick={() => setActiveTab('chat')}
+              style={{ flex: 1, borderRadius: 10 }}
+            >
+              {t('chat.tab_chat')}
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${activeTab === 'advanced' ? 'btn-dark' : 'btn-outline-secondary'}`}
+              onClick={() => setActiveTab('advanced')}
+              style={{ flex: 1, borderRadius: 10 }}
+            >
+              {t('chat.tab_advanced')}
+            </button>
+          </div>
+
+          {activeTab === 'chat' && (
+            <>
           {/* Character Selection Box (only in Scene Mode) */}
           {isSceneMode && selectedCharacter && (
             <div style={{
@@ -188,8 +219,8 @@ export default function CharacterSidebar({
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <img
-                  src={selectedCharacter.picture
-                    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${selectedCharacter.picture.replace(/^\//, '')}`
+                  src={(selectedCharacter.avatar_picture || selectedCharacter.picture)
+                    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(selectedCharacter.avatar_picture || selectedCharacter.picture).replace(/^\//, '')}`
                     : `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect fill='%236b8cff' width='40' height='40'/%3E%3C/svg%3E`
                   }
                   alt={selectedCharacter.name}
@@ -410,6 +441,129 @@ export default function CharacterSidebar({
                   ))}
               </div>
             )}
+          </div>
+        )}
+            </>
+          )}
+
+        {activeTab === 'advanced' && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{
+              background: '#f5f6fa',
+              borderRadius: '0.9rem',
+              padding: '0.9rem',
+              border: '1px solid rgba(24, 25, 26, 0.08)',
+            }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#444', marginBottom: 10 }}>
+                {t('chat.advanced_title')}
+              </div>
+
+              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                {t('chat.advanced_model')}
+              </label>
+              <select
+                className="form-select form-select-sm"
+                value={advancedChatConfig?.model || 'deepseek-chat'}
+                onChange={(e) => setAdvancedChatConfig((prev) => ({ ...prev, model: e.target.value }))}
+                disabled={!canUseAdvancedChatConfig}
+                style={{ marginBottom: 10, borderRadius: 8 }}
+              >
+                <option value="deepseek-chat">deepseek-chat</option>
+                <option value="deepseek-reasoner">deepseek-reasoner</option>
+              </select>
+
+              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                {t('chat.advanced_temperature')}: {advancedChatConfig?.temperature ?? 1.3}
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={advancedChatConfig?.temperature ?? 1.3}
+                onChange={(e) => updateConfig('temperature', e.target.value, 0, 2, 1.3)}
+                disabled={!canUseAdvancedChatConfig}
+                style={{ width: '100%', marginBottom: 10 }}
+              />
+
+              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                {t('chat.advanced_top_p')}: {advancedChatConfig?.top_p ?? 0.9}
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={advancedChatConfig?.top_p ?? 0.9}
+                onChange={(e) => updateConfig('top_p', e.target.value, 0, 1, 0.9)}
+                disabled={!canUseAdvancedChatConfig}
+                style={{ width: '100%', marginBottom: 10 }}
+              />
+
+              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                {t('chat.advanced_max_tokens')}
+              </label>
+              <input
+                type="number"
+                className="form-control form-control-sm"
+                min="1"
+                max="8192"
+                value={advancedChatConfig?.max_tokens ?? 250}
+                onChange={(e) => updateConfig('max_tokens', e.target.value, 1, 8192, 250)}
+                disabled={!canUseAdvancedChatConfig}
+                style={{ marginBottom: 10, borderRadius: 8 }}
+              />
+
+              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                {t('chat.advanced_presence_penalty')}
+              </label>
+              <input
+                type="number"
+                className="form-control form-control-sm"
+                min="-2"
+                max="2"
+                step="0.1"
+                value={advancedChatConfig?.presence_penalty ?? 0}
+                onChange={(e) => updateConfig('presence_penalty', e.target.value, -2, 2, 0)}
+                disabled={!canUseAdvancedChatConfig}
+                style={{ marginBottom: 10, borderRadius: 8 }}
+              />
+
+              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                {t('chat.advanced_frequency_penalty')}
+              </label>
+              <input
+                type="number"
+                className="form-control form-control-sm"
+                min="-2"
+                max="2"
+                step="0.1"
+                value={advancedChatConfig?.frequency_penalty ?? 0}
+                onChange={(e) => updateConfig('frequency_penalty', e.target.value, -2, 2, 0)}
+                disabled={!canUseAdvancedChatConfig}
+                style={{ marginBottom: 8, borderRadius: 8 }}
+              />
+
+              <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4 }}>
+                {t('chat.advanced_hint')}
+              </div>
+              {!canUseAdvancedChatConfig && (
+                <div style={{ marginTop: 8, fontSize: '0.76rem', color: '#b45309', lineHeight: 1.4 }}>
+                  {t('chat.advanced_locked_notice')}
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={onResetAdvancedChatConfig}
+                  disabled={!selectedCharacter || !canUseAdvancedChatConfig}
+                  style={{ borderRadius: 8 }}
+                >
+                  {t('chat.advanced_reset')}
+                </button>
+              </div>
+            </div>
           </div>
         )}
         </aside>

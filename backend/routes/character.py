@@ -17,6 +17,42 @@ from utils.level_system import award_exp_with_limits
 
 router = APIRouter()
 
+
+def parse_character_chat_config(
+    model: str,
+    temperature: float,
+    top_p: float,
+    max_tokens: int,
+    presence_penalty: float,
+    frequency_penalty: float,
+):
+    allowed_models = {"deepseek-chat", "deepseek-reasoner"}
+    safe_model = model if model in allowed_models else "deepseek-chat"
+    safe_temperature = max(0.0, min(2.0, float(temperature)))
+    safe_top_p = max(0.0, min(1.0, float(top_p)))
+    safe_max_tokens = max(1, min(8192, int(max_tokens)))
+    safe_presence_penalty = max(-2.0, min(2.0, float(presence_penalty)))
+    safe_frequency_penalty = max(-2.0, min(2.0, float(frequency_penalty)))
+    return {
+        "model": safe_model,
+        "temperature": safe_temperature,
+        "top_p": safe_top_p,
+        "max_tokens": safe_max_tokens,
+        "presence_penalty": safe_presence_penalty,
+        "frequency_penalty": safe_frequency_penalty,
+    }
+
+
+def default_character_chat_config():
+    return {
+        "model": "deepseek-chat",
+        "temperature": 1.3,
+        "top_p": 0.9,
+        "max_tokens": 250,
+        "presence_penalty": 0.0,
+        "frequency_penalty": 0.0,
+    }
+
 @router.post("/api/create-character")
 async def create_character(
     name: str = Form(...),
@@ -25,11 +61,18 @@ async def create_character(
     tags: List[str] = Form([]),
     greeting: str = Form(""),
     sample_dialogue: str = Form(""),
+    model: str = Form("deepseek-chat"),
+    temperature: float = Form(1.3),
+    top_p: float = Form(0.9),
+    max_tokens: int = Form(250),
+    presence_penalty: float = Form(0),
+    frequency_penalty: float = Form(0),
     is_public: bool = Form(False),
     is_forkable: bool = Form(False),
     forked_from_id: Optional[int] = Form(None),
     forked_from_name: Optional[str] = Form(None),
     picture: UploadFile = File(None),
+    avatar_picture: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -84,6 +127,16 @@ async def create_character(
         else:
             db.add(Tag(name=tag_name, count=1))
 
+    can_use_advanced_config = is_pro_user or (current_user.level or 1) >= 3
+    chat_config = parse_character_chat_config(
+        model=model,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+        presence_penalty=presence_penalty,
+        frequency_penalty=frequency_penalty,
+    ) if can_use_advanced_config else default_character_chat_config()
+
     char = Character(
         name=name,
         persona=persona,
@@ -91,12 +144,19 @@ async def create_character(
         tags=tags,
         greeting=greeting.strip(),
         example_messages=sample_dialogue.strip(),
+        model=chat_config["model"],
+        temperature=chat_config["temperature"],
+        top_p=chat_config["top_p"],
+        max_tokens=chat_config["max_tokens"],
+        presence_penalty=chat_config["presence_penalty"],
+        frequency_penalty=chat_config["frequency_penalty"],
         creator_id=current_user.id,
         creator_name=current_user.name,
         is_public=is_public,
         is_forkable=is_forkable,
         views=0,
         picture=None,
+        avatar_picture=None,
         forked_from_id=forked_from_id,
         forked_from_name=forked_from_name,
     )
@@ -106,6 +166,14 @@ async def create_character(
 
     if picture:
         char.picture = save_image(picture.file, 'character', char.id, picture.filename)
+    if avatar_picture:
+        char.avatar_picture = save_image(
+            avatar_picture.file,
+            'character',
+            char.id,
+            avatar_picture.filename,
+            filename_prefix=f"character_avatar_{char.id}",
+        )
 
     db.commit()
     db.refresh(char)
@@ -139,9 +207,16 @@ async def update_character(
     tags: List[str] = Form([]),
     greeting: str = Form(""),
     sample_dialogue: str = Form(""),
+    model: str = Form("deepseek-chat"),
+    temperature: float = Form(1.3),
+    top_p: float = Form(0.9),
+    max_tokens: int = Form(250),
+    presence_penalty: float = Form(0),
+    frequency_penalty: float = Form(0),
     is_public: Optional[bool] = Form(None),
     is_forkable: Optional[bool] = Form(None),
     picture: UploadFile = File(None),
+    avatar_picture: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -190,6 +265,21 @@ async def update_character(
     char.tags = tags
     char.greeting = greeting.strip()
     char.example_messages = sample_dialogue.strip()
+    can_use_advanced_config = is_pro_user or (current_user.level or 1) >= 3
+    chat_config = parse_character_chat_config(
+        model=model,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+        presence_penalty=presence_penalty,
+        frequency_penalty=frequency_penalty,
+    ) if can_use_advanced_config else default_character_chat_config()
+    char.model = chat_config["model"]
+    char.temperature = chat_config["temperature"]
+    char.top_p = chat_config["top_p"]
+    char.max_tokens = chat_config["max_tokens"]
+    char.presence_penalty = chat_config["presence_penalty"]
+    char.frequency_penalty = chat_config["frequency_penalty"]
 
     if is_public is not None:
         char.is_public = is_public
@@ -198,6 +288,14 @@ async def update_character(
 
     if picture:
         char.picture = save_image(picture.file, 'character', char.id, picture.filename)
+    if avatar_picture:
+        char.avatar_picture = save_image(
+            avatar_picture.file,
+            'character',
+            char.id,
+            avatar_picture.filename,
+            filename_prefix=f"character_avatar_{char.id}",
+        )
 
     db.commit()
     return {

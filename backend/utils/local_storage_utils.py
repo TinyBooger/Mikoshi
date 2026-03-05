@@ -18,7 +18,7 @@ def _get_category_folder(category: str) -> str:
 
 
 
-def save_image(file: BinaryIO, category: str, id_value, original_filename: str) -> str:
+def save_image(file: BinaryIO, category: str, id_value, original_filename: str, filename_prefix: Optional[str] = None) -> str:
     """
     Save an uploaded image file to the local storage under the appropriate category and id.
     category: 'user', 'character', 'scene', or 'persona'
@@ -33,10 +33,11 @@ def save_image(file: BinaryIO, category: str, id_value, original_filename: str) 
     if not ext:
         ext = ".img"  # fallback if no extension
 
-    # Remove any existing files for this id (to avoid orphaned files and stale cache)
+    # Remove any existing files for this prefix (to avoid orphaned files and stale cache)
+    prefix = filename_prefix or f"{category}_{id_str}"
     try:
         for fname in os.listdir(folder):
-            if fname.startswith(f"{category}_{id_str}"):
+            if fname.startswith(prefix):
                 try:
                     os.remove(os.path.join(folder, fname))
                 except Exception:
@@ -48,7 +49,7 @@ def save_image(file: BinaryIO, category: str, id_value, original_filename: str) 
     # Use a timestamp suffix to ensure the filename is unique so browsers won't cache the old image
     import time
     ts = int(time.time())
-    file_path = os.path.join(folder, f"{category}_{id_str}_{ts}{ext}")
+    file_path = os.path.join(folder, f"{prefix}_{ts}{ext}")
     with open(file_path, 'wb') as out_file:
         shutil.copyfileobj(file, out_file)
     return os.path.relpath(file_path, os.path.dirname(os.path.dirname(__file__)))

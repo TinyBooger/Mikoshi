@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey, UniqueConstraint, Boolean
+from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey, UniqueConstraint, Boolean, Float
 from sqlalchemy.orm import relationship
 from database import Base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -18,7 +18,14 @@ class Character(Base):
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
     picture = Column(String, nullable=True)  # path or URL to the picture
+    avatar_picture = Column(String, nullable=True)  # separate head/avatar image
     greeting = Column(String, nullable=True)
+    model = Column(String, nullable=False, default="deepseek-chat")
+    temperature = Column(Float, nullable=False, default=1.3)
+    top_p = Column(Float, nullable=False, default=0.9)
+    max_tokens = Column(Integer, nullable=False, default=250)
+    presence_penalty = Column(Float, nullable=False, default=0)
+    frequency_penalty = Column(Float, nullable=False, default=0)
 
     created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     creator_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)

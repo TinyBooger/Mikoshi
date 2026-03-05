@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from starlette.requests import ClientDisconnect
 from database import get_db
 from utils.session import get_current_user
-from utils.llm_client import client, stream_chat_completion
+from utils.llm_client import client, stream_chat_completion_with_config
 from utils.chat_history_utils import fetch_chat_history_entry, upsert_chat_history_entry, serialize_chat_history_entry
 import uuid
 import json
@@ -27,6 +27,57 @@ def generate_chat_title(messages, existing_title=None):
         return first_msg[:30] + ("..." if len(first_msg) > 30 else "")
     return "New Chat"
 
+
+def parse_chat_config(chat_config):
+    defaults = {
+        "model": "deepseek-chat",
+        "max_tokens": 250,
+        "temperature": 1.3,
+        "top_p": 0.9,
+        "presence_penalty": 0.0,
+        "frequency_penalty": 0.0,
+    }
+
+    if not isinstance(chat_config, dict):
+        return defaults
+
+    config = dict(defaults)
+    allowed_models = {"deepseek-chat", "deepseek-reasoner"}
+    model = chat_config.get("model")
+    if isinstance(model, str) and model in allowed_models:
+        config["model"] = model
+
+    try:
+        config["max_tokens"] = int(chat_config.get("max_tokens", defaults["max_tokens"]))
+    except (TypeError, ValueError):
+        config["max_tokens"] = defaults["max_tokens"]
+    config["max_tokens"] = max(1, min(8192, config["max_tokens"]))
+
+    def clamp_float(key, min_value, max_value):
+        try:
+            value = float(chat_config.get(key, defaults[key]))
+        except (TypeError, ValueError):
+            value = defaults[key]
+        return max(min_value, min(max_value, value))
+
+    config["temperature"] = clamp_float("temperature", 0.0, 2.0)
+    config["top_p"] = clamp_float("top_p", 0.0, 1.0)
+    config["presence_penalty"] = clamp_float("presence_penalty", -2.0, 2.0)
+    config["frequency_penalty"] = clamp_float("frequency_penalty", -2.0, 2.0)
+
+    return config
+
+
+def default_chat_config():
+    return {
+        "model": "deepseek-chat",
+        "max_tokens": 250,
+        "temperature": 1.3,
+        "top_p": 0.9,
+        "presence_penalty": 0.0,
+        "frequency_penalty": 0.0,
+    }
+
 @router.post("/api/chat")
 async def chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
@@ -39,6 +90,8 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     chat_id = data.get("chat_id")
     scene_id = data.get("scene_id")
     persona_id = data.get("persona_id")
+    can_use_advanced_config = bool(current_user.is_pro) or (current_user.level or 1) >= 3
+    chat_config = parse_chat_config(data.get("chat_config")) if can_use_advanced_config else default_chat_config()
     stream = data.get("stream", True)  # Default to streaming
 
     if not messages or not isinstance(messages, list):
@@ -91,7 +144,15 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         async def generate():
             accumulated_reply = ""
             try:
-                for chunk in stream_chat_completion(prepared_messages):
+                for chunk in stream_chat_completion_with_config(
+                    prepared_messages,
+                    model=chat_config["model"],
+                    max_tokens=chat_config["max_tokens"],
+                    temperature=chat_config["temperature"],
+                    top_p=chat_config["top_p"],
+                    presence_penalty=chat_config["presence_penalty"],
+                    frequency_penalty=chat_config["frequency_penalty"],
+                ):
                     accumulated_reply += chunk
                     # Send each chunk as SSE
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
@@ -164,11 +225,13 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         # Non-streaming fallback (original logic)
         try:
             response = client.chat.completions.create(
-                model="deepseek-chat",
+                model=chat_config["model"],
                 messages=prepared_messages,
-                max_tokens=250,
-                temperature=1.3,
-                top_p=0.9
+                max_tokens=chat_config["max_tokens"],
+                temperature=chat_config["temperature"],
+                top_p=chat_config["top_p"],
+                presence_penalty=chat_config["presence_penalty"],
+                frequency_penalty=chat_config["frequency_penalty"],
             )
             reply = response.choices[0].message.content.strip()
         except Exception:

@@ -22,3 +22,28 @@ def stream_chat_completion(messages, max_tokens=250, temperature=1.3, top_p=0.9)
     for chunk in stream:
         if chunk.choices[0].delta.content is not None:
             yield chunk.choices[0].delta.content
+
+
+def stream_chat_completion_with_config(
+    messages,
+    model="deepseek-chat",
+    max_tokens=250,
+    temperature=1.3,
+    top_p=0.9,
+    presence_penalty=0,
+    frequency_penalty=0,
+):
+    stream = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        presence_penalty=presence_penalty,
+        frequency_penalty=frequency_penalty,
+        stream=True,
+    )
+
+    for chunk in stream:
+        if chunk.choices[0].delta.content is not None:
+            yield chunk.choices[0].delta.content

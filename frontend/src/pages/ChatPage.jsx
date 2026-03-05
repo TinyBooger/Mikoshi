@@ -24,6 +24,7 @@ export default function ChatPage() {
   const CLIENT_PRO_SOFT_MULTIPLIER = Number.isFinite(envProSoftMultiplier) && envProSoftMultiplier > 1 ? envProSoftMultiplier : 2;
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
   const { userData, setUserData, sessionToken, refreshUserData, loading } = useContext(AuthContext);
+  const canUseAdvancedChatConfig = !!userData?.is_pro || Number(userData?.level || 1) >= 3;
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const [likes, setLikes] = useState(0);
@@ -52,6 +53,35 @@ export default function ChatPage() {
   const [selectedPersona, setSelectedPersona] = useState(null);
   const [selectedScene, setSelectedScene] = useState(null);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
+  const DEFAULT_ADVANCED_CHAT_CONFIG = {
+    model: 'deepseek-chat',
+    temperature: 1.3,
+    top_p: 0.9,
+    max_tokens: 250,
+    presence_penalty: 0,
+    frequency_penalty: 0,
+  };
+  const normalizeAdvancedChatConfig = (character) => {
+    if (!canUseAdvancedChatConfig) {
+      return DEFAULT_ADVANCED_CHAT_CONFIG;
+    }
+    if (!character) return DEFAULT_ADVANCED_CHAT_CONFIG;
+    const clamp = (value, min, max, fallback) => {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) return fallback;
+      return Math.min(max, Math.max(min, parsed));
+    };
+    const model = character.model === 'deepseek-reasoner' ? 'deepseek-reasoner' : 'deepseek-chat';
+    return {
+      model,
+      temperature: clamp(character.temperature, 0, 2, DEFAULT_ADVANCED_CHAT_CONFIG.temperature),
+      top_p: clamp(character.top_p, 0, 1, DEFAULT_ADVANCED_CHAT_CONFIG.top_p),
+      max_tokens: Math.round(clamp(character.max_tokens, 1, 8192, DEFAULT_ADVANCED_CHAT_CONFIG.max_tokens)),
+      presence_penalty: clamp(character.presence_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty),
+      frequency_penalty: clamp(character.frequency_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty),
+    };
+  };
+  const [advancedChatConfig, setAdvancedChatConfig] = useState(DEFAULT_ADVANCED_CHAT_CONFIG);
 
   const [characterModal, setCharacterModal] = useState({ show: false });
   const [personaModal, setPersonaModal] = useState({ show: false });
@@ -401,6 +431,7 @@ export default function ChatPage() {
             .then(data => {
               character = data;
               setSelectedCharacter(data);
+              setAdvancedChatConfig(normalizeAdvancedChatConfig(data));
               setLikes(data.likes || 0);
               return data;
             })
@@ -412,7 +443,13 @@ export default function ChatPage() {
             })
         );
       } else {
-        setSelectedCharacter(null);
+        if (selectedCharacter?.id) {
+          character = selectedCharacter;
+          setAdvancedChatConfig(normalizeAdvancedChatConfig(selectedCharacter));
+        } else {
+          setSelectedCharacter(null);
+          setAdvancedChatConfig(DEFAULT_ADVANCED_CHAT_CONFIG);
+        }
       }
       
       if (sceneId) {
@@ -558,6 +595,7 @@ export default function ChatPage() {
             scene_id: (scene?.id || selectedScene?.id) || null,
             persona_id: (persona?.id || selectedPersona?.id) || null,
             messages: [sys],
+            chat_config: advancedChatConfig,
             stream: true
           }),
           signal: controller.signal
@@ -689,6 +727,7 @@ export default function ChatPage() {
           persona_id: selectedPersona?.id || null,
           messages: requestMessages,
           full_messages: updatedMessages,
+          chat_config: advancedChatConfig,
           stream: true
         }),
         signal: controller.signal
@@ -881,9 +920,17 @@ export default function ChatPage() {
             headers: { 'Authorization': sessionToken }
           })
             .then(res => res.ok ? res.json() : null)
-            .then(data => { character = data; setSelectedCharacter(data); })
+            .then(data => {
+              character = data;
+              setSelectedCharacter(data);
+              if (data) {
+                setAdvancedChatConfig(normalizeAdvancedChatConfig(data));
+              }
+            })
             .catch(err => console.error('Error loading character:', err))
         );
+      } else {
+        setAdvancedChatConfig(normalizeAdvancedChatConfig(character));
       }
       
       if (chat.scene_id) {
@@ -1182,9 +1229,9 @@ export default function ChatPage() {
                       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.2rem' }}>
                         <div style={{ maxWidth: 720, width: '100%', textAlign: 'center', padding: '0 0.6rem' }}>
                           {/* Picture above, centered */}
-                          {selectedCharacter?.picture ? (
+                          {(selectedCharacter?.avatar_picture || selectedCharacter?.picture) ? (
                             <img
-                              src={`${window.API_BASE_URL.replace(/\/$/, '')}/${selectedCharacter.picture.replace(/^\//, '')}`}
+                              src={`${window.API_BASE_URL.replace(/\/$/, '')}/${String(selectedCharacter.avatar_picture || selectedCharacter.picture).replace(/^\//, '')}`}
                               alt={charName || 'Character'}
                               style={{
                                 width: 96,
@@ -1268,8 +1315,8 @@ export default function ChatPage() {
                               ? (userData?.profile_pic
                                   ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}`
                                   : defaultPic)
-                              : (selectedCharacter?.picture
-                                  ? `${window.API_BASE_URL.replace(/\/$/, '')}/${selectedCharacter.picture.replace(/^\//, '')}`
+                                : ((selectedCharacter?.avatar_picture || selectedCharacter?.picture)
+                                  ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(selectedCharacter.avatar_picture || selectedCharacter.picture).replace(/^\//, '')}`
                                   : defaultPic)
                           }
                           alt={m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
@@ -1561,6 +1608,10 @@ export default function ChatPage() {
         setSelectedScene={setSelectedScene}
         setSelectedCharacter={setSelectedCharacter}
         navigate={navigate}
+        advancedChatConfig={advancedChatConfig}
+        setAdvancedChatConfig={setAdvancedChatConfig}
+        onResetAdvancedChatConfig={() => setAdvancedChatConfig(normalizeAdvancedChatConfig(selectedCharacter))}
+        canUseAdvancedChatConfig={canUseAdvancedChatConfig}
         isMobile={isMobile}
         setPersonaModalShow={() => setPersonaModal({ show: true })}
       />

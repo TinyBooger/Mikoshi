@@ -101,9 +101,21 @@
     "tab_character": "Character",
     "tab_scene": "Scene",
     "tab_persona": "Persona",
+    "tab_chat": "Chat",
+    "tab_advanced": "Advanced",
     "selected_character": "Selected Character",
     "persona": "Persona",
-    "add_persona": "Add Persona"
+    "add_persona": "Add Persona",
+    "advanced_title": "Model Configuration",
+    "advanced_model": "Model",
+    "advanced_temperature": "Temperature",
+    "advanced_top_p": "Top P",
+    "advanced_max_tokens": "Max Tokens",
+    "advanced_presence_penalty": "Presence Penalty",
+    "advanced_frequency_penalty": "Frequency Penalty",
+    "advanced_hint": "Changes apply to the current chat requests immediately.",
+    "advanced_reset": "Reset to character defaults",
+    "advanced_locked_notice": "Upgrade to level 3 or become a Pro user to unlock advanced settings."
   },
   "profile": {
     "created": "Created",
@@ -159,7 +171,9 @@
     "display_badge": "Display Badge",
     "preview_image": "Preview image",
     "update_badge_failed": "Failed to update badge",
-    "update_badge_error": "Error updating badge"
+    "update_badge_error": "Error updating badge",
+    "pro_remaining_date": "Pro expires on",
+    "pro_no_expire_date": "Not set"
   },
   "settings": {
     "title": "Settings",
@@ -286,6 +300,16 @@
       "tagline": "Shown on the character cover.",
       "greeting": "The first line they would say.",
       "tags": "The first tag appears on the cover."
+    },
+    "advanced": {
+      "title": "Advanced Chat Configuration",
+      "model": "Model",
+      "temperature": "Temperature",
+      "top_p": "Top P",
+      "max_tokens": "Max Tokens",
+      "presence_penalty": "Presence Penalty",
+      "frequency_penalty": "Frequency Penalty",
+      "locked_notice": "Upgrade to level 3 or become a Pro user to unlock advanced settings."
     },
     "sample_dialogue": "Sample Dialogue",
     "picture": "Character Picture",
@@ -830,7 +854,7 @@
     "unlocks": {
       "L1": "Create chars, scenes, personas",
       "L2": "Fork, private chars",
-      "L3": "Advanced creation tools, basic analytics",
+      "L3": "Unlock advanced configurations in character create/edit and chat",
       "L4": "Prompt controls, creator insights",
       "L5": "Featured chance, beta tools",
       "L6": "Creator badge, early revenue tools"

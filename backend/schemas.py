@@ -52,7 +52,14 @@ class CharacterOut(BaseModel):
     views: int = 0
     likes: int = 0
     picture: Optional[str] = None
+    avatar_picture: Optional[str] = None
     greeting: Optional[str] = None
+    model: str = "deepseek-chat"
+    temperature: float = 1.3
+    top_p: float = 0.9
+    max_tokens: int = 250
+    presence_penalty: float = 0.0
+    frequency_penalty: float = 0.0
     created_time: Any
     creator_id: str
     creator_name: Optional[str] = None
