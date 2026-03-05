@@ -10,6 +10,7 @@ class SceneOut(BaseModel):
     tags: List[str] = []
     creator_id: str
     creator_name: str
+    creator_profile_pic: Optional[str] = None
     created_time: Any
     likes: int = 0
     views: int = 0
@@ -30,6 +31,7 @@ class PersonaOut(BaseModel):
     tags: list[str] = []
     creator_id: str
     creator_name: str
+    creator_profile_pic: Optional[str] = None
     created_time: Any
     picture: Optional[str] = None
     likes: int = 0
@@ -63,6 +65,7 @@ class CharacterOut(BaseModel):
     created_time: Any
     creator_id: str
     creator_name: Optional[str] = None
+    creator_profile_pic: Optional[str] = None
     is_public: bool = False
     is_forkable: bool = False
     forked_from_id: Optional[int] = None

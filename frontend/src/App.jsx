@@ -1,5 +1,5 @@
 import React, { useContext, useEffect } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
 import AuthLayout from './components/AuthLayout';
 import AdminApp from './admin/AdminApp.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
@@ -49,10 +49,12 @@ export default function App() {
           path: '/',
           element: <Layout />,
           children: [
-            { index: true, element: <HomePage /> },
+            { index: true, element: <Navigate to="/browse" replace /> },
             { path: 'test', element: <TestPage /> },
+            { path: 'browse', element: <BrowsePage /> },
             { path: 'browse/:mainTab/:subTab', element: <BrowsePage /> },
             { path: 'browse/:mainTab', element: <BrowsePage /> },
+            { path: 'HomePage', element: <HomePage /> },
             { path: 'character/create', element: <CharacterFormPage /> },
             { path: 'character/edit/:id', element: <CharacterFormPage /> },
             { path: 'character/fork/:id', element: <CharacterFormPage /> },

@@ -1,16 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
+import defaultAvatar from '../assets/images/default-avatar.png';
 
 export default function DiscoverMasonryCard({ type, entity, onClick, disableClick = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [isCreatorHovered, setIsCreatorHovered] = useState(false);
 
   const {
     id,
     name,
     picture,
+    creator_id,
     creator_name,
     views,
     likes,
@@ -126,6 +129,18 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
     creatorDisplay = entity.creator_name || t('entity_card.unknown');
   }
 
+  const creatorAvatarRaw =
+    entity.creator_profile_pic ||
+    entity.creator_avatar ||
+    entity.creator_avatar_picture ||
+    (typeof creator_name === 'object'
+      ? creator_name.profile_pic || creator_name.avatar || creator_name.avatar_picture
+      : null);
+
+  const creatorAvatar = creatorAvatarRaw
+    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(creatorAvatarRaw).replace(/^\//, '')}`
+    : defaultAvatar;
+
   const suppressPersonaNavigation = type === 'persona' && !onClick;
   const clickSuppressed = disableClick || suppressPersonaNavigation;
 
@@ -149,11 +164,16 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
     navigate(`/${type}/${id}`);
   };
 
+  const handleCreatorClick = (e) => {
+    e.stopPropagation();
+    if (!creator_id) return;
+    navigate(`/profile/${encodeURIComponent(creator_id)}`);
+  };
+
   return (
     <article
       style={{
         width: '100%',
-        maxHeight: 520,
         borderRadius: '12px',
         border: '1px solid #e9ecef',
         background: '#f9fafb',
@@ -169,6 +189,9 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
           position: 'relative',
           width: '100%',
           background: '#e9ecef',
+          borderTopLeftRadius: '12px',
+          borderTopRightRadius: '12px',
+          overflow: 'hidden',
         }}
       >
         <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4, zIndex: 2 }}>
@@ -222,13 +245,12 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
             className="fw-bold mb-0"
             style={{
               fontSize: '0.95rem',
-              lineHeight: 1.25,
+              lineHeight: 1.15,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
-              minHeight: '2.35rem',
             }}
             title={name}
           >
@@ -258,47 +280,80 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
           )}
         </div>
 
-        <div
-          className="text-muted"
-          style={{
-            fontSize: '0.76rem',
-            lineHeight: 1.3,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-          title={creatorDisplay}
-        >
-          <i className="bi bi-person-circle me-1"></i>
-          {creatorDisplay}
-        </div>
-
         <p
           className="mb-0 text-secondary"
           style={{
             fontSize: '0.76rem',
-            lineHeight: 1.28,
+            lineHeight: 1.18,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             display: '-webkit-box',
             WebkitLineClamp: 4,
             WebkitBoxOrient: 'vertical',
-            minHeight: '3.9rem',
-            maxHeight: '3.9rem',
+            maxHeight: '3.6rem',
           }}
         >
           {description || t('entity_card.no_description')}
         </p>
 
-        <div className="d-flex align-items-center justify-content-between" style={{ fontSize: '0.68rem', color: '#6c757d' }}>
-          <div className="d-flex align-items-center" style={{ gap: '0.7rem' }}>
-            <span className="d-flex align-items-center" style={{ gap: '0.25rem' }}>
-              <i className="bi bi-chat"></i>
-              {typeof views === 'number' ? views.toLocaleString() : 0}
+        <div className="d-flex align-items-center justify-content-between" style={{ fontSize: '0.68rem', color: '#6c757d', gap: '0.5rem' }}>
+          <div
+            className="d-flex align-items-center"
+            style={{
+              gap: '0.35rem',
+              minWidth: 0,
+              cursor: creator_id ? 'pointer' : 'default',
+              padding: '0.12rem 0.3rem',
+              borderRadius: '999px',
+              color: creator_id && isCreatorHovered ? '#5f4f8a' : '#6c757d',
+              background: creator_id && isCreatorHovered ? 'rgba(115, 107, 146, 0.12)' : 'transparent',
+              transition: 'background-color 0.16s ease, color 0.16s ease',
+            }}
+            title={creatorDisplay}
+            onClick={creator_id ? handleCreatorClick : undefined}
+            onMouseEnter={() => creator_id && setIsCreatorHovered(true)}
+            onMouseLeave={() => setIsCreatorHovered(false)}
+          >
+            <img
+              src={creatorAvatar}
+              alt={creatorDisplay}
+              style={{
+                width: '18px',
+                height: '18px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                flexShrink: 0,
+                border: '1px solid #e5e7eb',
+              }}
+            />
+            <span
+              style={{
+                fontSize: '0.74rem',
+                lineHeight: 1.2,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                textDecoration: creator_id && isCreatorHovered ? 'underline' : 'none',
+              }}
+            >
+              {creatorDisplay}
             </span>
+          </div>
+
+          <div className="d-flex align-items-center ms-auto" style={{ gap: '0.7rem', flexShrink: 0 }}>
             <span className="d-flex align-items-center" style={{ gap: '0.25rem' }}>
               <i className="bi bi-heart"></i>
               {typeof likes === 'number' ? likes.toLocaleString() : 0}
+            </span>
+            <span className="d-flex align-items-center" style={{ gap: '0.25rem' }}>
+              <i
+                className={
+                  type === 'character' && typeof views === 'number' && views > 100
+                    ? 'bi bi-fire text-danger'
+                    : 'bi bi-chat'
+                }
+              ></i>
+              {typeof views === 'number' ? views.toLocaleString() : 0}
             </span>
           </div>
         </div>

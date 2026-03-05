@@ -17,12 +17,12 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0, sidebarVisible, setSid
 
   useEffect(() => {
     if (isOpen && mounted) {
-      // Show sidebar when tour reaches the create button step (step 2)
-      // Hide sidebar when going back to earlier steps (0 or 1)
+      // Show sidebar when tour reaches the create button step (step 1)
+      // Hide sidebar when going back to earlier step (0)
       if (setSidebarVisible) {
-        if (currentStep === 2) {
+        if (currentStep === 1) {
           setSidebarVisible(true);
-        } else if (currentStep < 2) {
+        } else if (currentStep < 1) {
           setSidebarVisible(false);
         }
       }
@@ -53,14 +53,7 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0, sidebarVisible, setSid
 
   const steps = [
     {
-      target: '.popular-characters-section', // Popular characters section
-      title: t('onboarding.step1_title'),
-      description: t('onboarding.step1_description'),
-      position: 'top',
-      highlightPadding: 12
-    },
-    {
-      target: '.popular-characters-section .list-group-item:first-child, .popular-characters-section [class*="card"]:first-child', // First character card
+      target: '.popular-characters-section .browse-entity-card:first-child', // First character card
       title: t('onboarding.step2_title'),
       description: t('onboarding.step2_description'),
       position: 'bottom',

@@ -350,12 +350,25 @@ def get_popular_characters(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Character).filter(Character.is_public == True).order_by(Character.views.desc())
-    total = base_query.count()
+    total = db.query(Character).filter(Character.is_public == True).count()
+    base_query = (
+        db.query(Character, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Character.creator_id == User.id)
+        .filter(Character.is_public == True)
+        .order_by(Character.views.desc())
+    )
     if short:
-        items = base_query.limit(10).all()
+        rows = base_query.limit(10).all()
+        items = []
+        for char, creator_profile_pic in rows:
+            char.creator_profile_pic = creator_profile_pic
+            items.append(char)
         return CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for char, creator_profile_pic in rows:
+        char.creator_profile_pic = creator_profile_pic
+        items.append(char)
     return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 @router.get("/api/characters/recommended", response_model=CharacterListOut)
@@ -382,7 +395,12 @@ def get_recommended_characters(
     tags_array = array(user_tags, type_=TEXT)
     
     # Query characters matching user tags, excluding already viewed ones
-    query = db.query(Character).filter(Character.is_public == True).filter(Character.tags.overlap(tags_array))
+    query = (
+        db.query(Character, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Character.creator_id == User.id)
+        .filter(Character.is_public == True)
+        .filter(Character.tags.overlap(tags_array))
+    )
     
     if excluded_ids:
         query = query.filter(~Character.id.in_(excluded_ids))
@@ -390,9 +408,17 @@ def get_recommended_characters(
     query = query.order_by(Character.views.desc())
     total = query.count()
     if short:
-        items = query.limit(10).all()
+        rows = query.limit(10).all()
+        items = []
+        for char, creator_profile_pic in rows:
+            char.creator_profile_pic = creator_profile_pic
+            items.append(char)
         return CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    items = query.offset((page - 1) * page_size).limit(page_size).all()
+    rows = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for char, creator_profile_pic in rows:
+        char.creator_profile_pic = creator_profile_pic
+        items.append(char)
     return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 @router.get("/api/characters/by-tag/{tag_name}", response_model=List[CharacterOut])
@@ -416,12 +442,25 @@ def get_recent_characters(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Character).filter(Character.is_public == True).order_by(Character.created_time.desc())
-    total = base_query.count()
+    total = db.query(Character).filter(Character.is_public == True).count()
+    base_query = (
+        db.query(Character, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Character.creator_id == User.id)
+        .filter(Character.is_public == True)
+        .order_by(Character.created_time.desc())
+    )
     if short:
-        items = base_query.limit(10).all()
+        rows = base_query.limit(10).all()
+        items = []
+        for char, creator_profile_pic in rows:
+            char.creator_profile_pic = creator_profile_pic
+            items.append(char)
         return CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for char, creator_profile_pic in rows:
+        char.creator_profile_pic = creator_profile_pic
+        items.append(char)
     return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 # ----------------------------------------------------------------

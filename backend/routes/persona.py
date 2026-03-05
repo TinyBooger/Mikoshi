@@ -23,12 +23,25 @@ def get_popular_personas(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Persona).filter(Persona.is_public == True).order_by(Persona.views.desc())
-    total = base_query.count()
+    total = db.query(Persona).filter(Persona.is_public == True).count()
+    base_query = (
+        db.query(Persona, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Persona.creator_id == User.id)
+        .filter(Persona.is_public == True)
+        .order_by(Persona.views.desc())
+    )
     if short:
-        items = base_query.limit(10).all()
+        rows = base_query.limit(10).all()
+        items = []
+        for persona, creator_profile_pic in rows:
+            persona.creator_profile_pic = creator_profile_pic
+            items.append(persona)
         return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for persona, creator_profile_pic in rows:
+        persona.creator_profile_pic = creator_profile_pic
+        items.append(persona)
     return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 # Recent Personas
@@ -39,12 +52,25 @@ def get_recent_personas(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Persona).filter(Persona.is_public == True).order_by(Persona.created_time.desc())
-    total = base_query.count()
+    total = db.query(Persona).filter(Persona.is_public == True).count()
+    base_query = (
+        db.query(Persona, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Persona.creator_id == User.id)
+        .filter(Persona.is_public == True)
+        .order_by(Persona.created_time.desc())
+    )
     if short:
-        items = base_query.limit(10).all()
+        rows = base_query.limit(10).all()
+        items = []
+        for persona, creator_profile_pic in rows:
+            persona.creator_profile_pic = creator_profile_pic
+            items.append(persona)
         return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for persona, creator_profile_pic in rows:
+        persona.creator_profile_pic = creator_profile_pic
+        items.append(persona)
     return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 # Recommended Personas (simple: most liked, fallback to recent)
@@ -55,12 +81,25 @@ def get_recommended_personas(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Persona).filter(Persona.is_public == True).order_by(Persona.views.desc(), Persona.created_time.desc())
+    base_query = (
+        db.query(Persona, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Persona.creator_id == User.id)
+        .filter(Persona.is_public == True)
+        .order_by(Persona.views.desc(), Persona.created_time.desc())
+    )
     total = base_query.count()
     if short:
-        items = base_query.limit(10).all()
+        rows = base_query.limit(10).all()
+        items = []
+        for persona, creator_profile_pic in rows:
+            persona.creator_profile_pic = creator_profile_pic
+            items.append(persona)
         return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for persona, creator_profile_pic in rows:
+        persona.creator_profile_pic = creator_profile_pic
+        items.append(persona)
     return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 # ------------------- PERSONA CRUD ROUTES -------------------

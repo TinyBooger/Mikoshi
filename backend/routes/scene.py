@@ -145,13 +145,26 @@ def get_popular_scenes(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Scene).filter(Scene.is_public == True).order_by(Scene.views.desc())
-    total = base_query.count()
+    total = db.query(Scene).filter(Scene.is_public == True).count()
+    base_query = (
+        db.query(Scene, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Scene.creator_id == User.id)
+        .filter(Scene.is_public == True)
+        .order_by(Scene.views.desc())
+    )
     if short:
-        items = base_query.limit(10).all()
-        return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=1, page_size=len(items), short=True)
-    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
-    return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=page, page_size=page_size, short=False)
+        rows = base_query.limit(10).all()
+        items = []
+        for scene, creator_profile_pic in rows:
+            scene.creator_profile_pic = creator_profile_pic
+            items.append(SceneOut.from_orm(scene))
+        return SceneListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for scene, creator_profile_pic in rows:
+        scene.creator_profile_pic = creator_profile_pic
+        items.append(SceneOut.from_orm(scene))
+    return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 # Recent Scenes
 @router.get("/api/scenes/recent", response_model=SceneListOut)
@@ -161,13 +174,26 @@ def get_recent_scenes(
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    base_query = db.query(Scene).filter(Scene.is_public == True).order_by(Scene.created_time.desc())
-    total = base_query.count()
+    total = db.query(Scene).filter(Scene.is_public == True).count()
+    base_query = (
+        db.query(Scene, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Scene.creator_id == User.id)
+        .filter(Scene.is_public == True)
+        .order_by(Scene.created_time.desc())
+    )
     if short:
-        items = base_query.limit(10).all()
-        return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=1, page_size=len(items), short=True)
-    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
-    return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=page, page_size=page_size, short=False)
+        rows = base_query.limit(10).all()
+        items = []
+        for scene, creator_profile_pic in rows:
+            scene.creator_profile_pic = creator_profile_pic
+            items.append(SceneOut.from_orm(scene))
+        return SceneListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for scene, creator_profile_pic in rows:
+        scene.creator_profile_pic = creator_profile_pic
+        items.append(SceneOut.from_orm(scene))
+    return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 
 # Recommended Scenes (personalized by liked_tags)
@@ -183,13 +209,27 @@ def get_recommended_scenes(
         return SceneListOut(items=[], total=0, page=1, page_size=0, short=short)
     user_tags = current_user.liked_tags or []
     tags_array = array(user_tags, type_=TEXT)
-    base_query = db.query(Scene).filter(Scene.is_public == True).filter(Scene.tags.overlap(tags_array)).order_by(Scene.views.desc())
+    base_query = (
+        db.query(Scene, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Scene.creator_id == User.id)
+        .filter(Scene.is_public == True)
+        .filter(Scene.tags.overlap(tags_array))
+        .order_by(Scene.views.desc())
+    )
     total = base_query.count()
     if short:
-        items = base_query.limit(10).all()
-        return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=1, page_size=len(items), short=True)
-    items = base_query.offset((page - 1) * page_size).limit(page_size).all()
-    return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=page, page_size=page_size, short=False)
+        rows = base_query.limit(10).all()
+        items = []
+        for scene, creator_profile_pic in rows:
+            scene.creator_profile_pic = creator_profile_pic
+            items.append(SceneOut.from_orm(scene))
+        return SceneListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for scene, creator_profile_pic in rows:
+        scene.creator_profile_pic = creator_profile_pic
+        items.append(SceneOut.from_orm(scene))
+    return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 # Read single Scene
 @router.get("/api/scenes/{scene_id}", response_model=SceneOut)
