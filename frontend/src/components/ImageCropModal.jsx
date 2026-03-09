@@ -78,6 +78,16 @@ export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, 
   }, [imageSrc, croppedAreaPixels, onSave, srcFile]);
 
   const isSquare = mode === 'square';
+  const originalTitle = t('image_crop_modal.original_title');
+  const originalDescription = isSquare
+    ? t('image_crop_modal.original_desc_square')
+    : t('image_crop_modal.original_desc_avatar');
+  const cropTitle = isSquare
+    ? t('image_crop_modal.crop_title_square')
+    : t('image_crop_modal.crop_title_avatar');
+  const cropDescription = isSquare
+    ? t('image_crop_modal.crop_desc_square')
+    : t('image_crop_modal.crop_desc_avatar');
 
   if (!srcFile) return null;
 
@@ -89,43 +99,71 @@ export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, 
             <h5 className="modal-title">{t('image_crop_modal.title')}</h5>
             <button type="button" className="btn-close" onClick={onCancel}></button>
           </div>
-          <div className="modal-body d-flex" style={{ gap: 16, padding: 12, alignItems: 'stretch' }}>
-            <div style={{ position: 'relative', width: '70%', height: 420, background: '#333' }}>
-              {imageSrc && (
-                <Cropper
-                  image={imageSrc}
-                  crop={crop}
-                  zoom={zoom}
-                  aspect={1}
-                  onCropChange={setCrop}
-                  onZoomChange={setZoom}
-                  onCropComplete={onCropComplete}
-                />
-              )}
-            </div>
-            <div style={{ width: '30%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: size, height: size, borderRadius: isSquare ? 8 : '50%', overflow: 'hidden', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #e9ecef' }}>
-                {previewLoading ? (
-                  <div className="spinner-border text-secondary" role="status" style={{ width: 36, height: 36 }}>
-                    <span className="visually-hidden">{t('common.loading')}</span>
-                  </div>
-                ) : previewDataUrl ? (
-                  <img src={previewDataUrl} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : imageSrc ? (
-                  <img src={imageSrc} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ color: '#888' }}>{t('image_crop_modal.preview')}</div>
-                )}
+          <div className="modal-body" style={{ padding: 12 }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: 16,
+                alignItems: 'stretch',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ flex: '1 1 300px', minWidth: 280 }}>
+                <div className="fw-semibold" style={{ marginBottom: 4 }}>{originalTitle}</div>
+                <div className="text-muted" style={{ fontSize: '0.82rem', marginBottom: 8 }}>{originalDescription}</div>
+                <div style={{ width: '100%', height: 420, borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {imageSrc ? (
+                    <img src={imageSrc} alt={t('image_crop_modal.original_preview_alt')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <div style={{ color: '#888' }}>{t('image_crop_modal.preview')}</div>
+                  )}
+                </div>
               </div>
-              <div style={{ width: '100%' }}>
-                <label className="form-label">{t('image_crop_modal.zoom')}</label>
-                <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={e => setZoom(Number(e.target.value))} className="form-range" />
+
+              <div style={{ flex: '1.2 1 360px', minWidth: 300 }}>
+                <div className="fw-semibold" style={{ marginBottom: 4 }}>{cropTitle}</div>
+                <div className="text-muted" style={{ fontSize: '0.82rem', marginBottom: 8 }}>{cropDescription}</div>
+                <div style={{ position: 'relative', width: '100%', height: 320, background: '#333', borderRadius: 10, overflow: 'hidden' }}>
+                  {imageSrc && (
+                    <Cropper
+                      image={imageSrc}
+                      crop={crop}
+                      zoom={zoom}
+                      aspect={1}
+                      onCropChange={setCrop}
+                      onZoomChange={setZoom}
+                      onCropComplete={onCropComplete}
+                    />
+                  )}
+                </div>
+
+                <div style={{ width: '100%', marginTop: 10 }}>
+                  <label className="form-label" style={{ marginBottom: 4 }}>{t('image_crop_modal.zoom')}</label>
+                  <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={e => setZoom(Number(e.target.value))} className="form-range" />
+                </div>
+
+                <div style={{ marginTop: 8 }}>
+                  <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 6 }}>{t('image_crop_modal.avatar_preview_label')}</div>
+                  <div style={{ width: size, height: size, borderRadius: isSquare ? 8 : '50%', overflow: 'hidden', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #e9ecef' }}>
+                    {previewLoading ? (
+                      <div className="spinner-border text-secondary" role="status" style={{ width: 36, height: 36 }}>
+                        <span className="visually-hidden">{t('common.loading')}</span>
+                      </div>
+                    ) : previewDataUrl ? (
+                      <img src={previewDataUrl} alt={t('image_crop_modal.cropped_preview_alt')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : imageSrc ? (
+                      <img src={imageSrc} alt={t('image_crop_modal.cropped_preview_alt')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ color: '#888' }}>{t('image_crop_modal.preview')}</div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
           <div className="modal-footer" style={{ display: 'flex', gap: 8 }}>
-            <SecondaryButton onClick={onCancel}>{t('common.cancel')}</SecondaryButton>
-            <PrimaryButton onClick={handleSave}>{t('common.save')}</PrimaryButton>
+            <SecondaryButton onClick={onCancel}>{t('image_crop_modal.cancel')}</SecondaryButton>
+            <PrimaryButton onClick={handleSave}>{t('image_crop_modal.save')}</PrimaryButton>
           </div>
         </div>
       </div>

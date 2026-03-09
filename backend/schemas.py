@@ -103,6 +103,8 @@ class UserOut(BaseModel):
     level: int = 1
     exp: int = 0
     daily_exp_gained: int = 0
+    daily_token_usage: int = 0
+    monthly_token_usage: int = 0
     badges: dict[str, Any] = {}
     active_badge: Optional[str] = None
     is_pro: bool = False

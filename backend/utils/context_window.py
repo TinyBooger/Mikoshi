@@ -1,6 +1,7 @@
 import os
 import re
 from typing import Dict, List, Tuple
+from utils.token_utils import estimate_tokens_from_messages
 
 
 DEFAULT_SOFT_TOKEN_LIMIT = int(os.getenv("CHAT_CONTEXT_SOFT_TOKEN_LIMIT", "900"))
@@ -20,14 +21,7 @@ def _truncate_text(value: str, max_len: int) -> str:
 
 
 def _approx_tokens(messages: List[dict]) -> int:
-    total_chars = 0
-    for msg in messages:
-        if not isinstance(msg, dict):
-            continue
-        role = str(msg.get("role", ""))
-        content = str(msg.get("content", ""))
-        total_chars += len(role) + len(content) + 10
-    return max(1, total_chars // 4)
+    return estimate_tokens_from_messages(messages)
 
 
 def _sanitize_messages(messages: List[dict]) -> List[dict]:

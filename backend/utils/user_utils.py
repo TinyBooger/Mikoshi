@@ -6,9 +6,10 @@ from datetime import datetime, UTC, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from models import Persona, User, Character
+from models import Persona, User, Character, ChatHistory
 from schemas import PersonaOut
 from utils.chat_history_utils import fetch_user_chat_history
+from utils.token_utils import estimate_tokens_from_messages
 
 
 def get_pro_state(user: User) -> dict[str, Any]:
@@ -30,6 +31,30 @@ def get_pro_state(user: User) -> dict[str, Any]:
         "active": pro_active,
         "days_remaining": pro_days_remaining,
         "status": pro_status,
+    }
+
+
+def _get_user_token_usage(db: Session, user_id: str) -> dict[str, int]:
+    now = datetime.now(UTC)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = today_start.replace(day=1)
+
+    chats_this_month = db.query(ChatHistory.messages, ChatHistory.last_updated).filter(
+        ChatHistory.user_id == user_id,
+        ChatHistory.last_updated >= month_start,
+    ).all()
+
+    daily_tokens = 0
+    monthly_tokens = 0
+    for messages, last_updated in chats_this_month:
+        estimated_tokens = estimate_tokens_from_messages(messages)
+        monthly_tokens += estimated_tokens
+        if last_updated and last_updated >= today_start:
+            daily_tokens += estimated_tokens
+
+    return {
+        "daily_token_usage": daily_tokens,
+        "monthly_token_usage": monthly_tokens,
     }
 
 
@@ -75,6 +100,7 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
     # Calculate characters_created by counting characters where creator_id matches user.id
     characters_created = db.query(Character).filter(Character.creator_id == user.id).count()
     pro_state = get_pro_state(user)
+    token_usage = _get_user_token_usage(db, user.id)
 
     return {
         "id": user.id,
@@ -92,6 +118,8 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
         "level": getattr(user, "level", 1) or 1,
         "exp": getattr(user, "exp", 0) or 0,
         "daily_exp_gained": getattr(user, "daily_exp_gained", 0) or 0,
+        "daily_token_usage": token_usage["daily_token_usage"],
+        "monthly_token_usage": token_usage["monthly_token_usage"],
         "default_persona_id": user.default_persona_id,
         "default_persona": default_persona,
         "badges": user.badges or {},

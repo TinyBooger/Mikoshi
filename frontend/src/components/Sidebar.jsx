@@ -433,6 +433,22 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
 
       {/* Profile / Login */}
       <div className="mt-auto px-1" style={{ fontSize: '0.8rem', flexShrink: 0 }}>
+        {userData && (
+          <div
+            className="d-flex align-items-center justify-content-between rounded-4 mb-2"
+            style={{
+              background: '#fff',
+              border: '1px solid #eef0f3',
+              padding: '0.45rem 0.65rem',
+              color: '#4b5563',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+            }}
+          >
+            <span>{t('sidebar.today_tokens', 'Today')}</span>
+            <span>{`${Number(userData?.daily_token_usage || 0).toLocaleString()} ${t('sidebar.tokens', 'tokens')}`}</span>
+          </div>
+        )}
   {userData ? (
           <div className="profile-dropdown-area position-relative">
             <button
@@ -452,7 +468,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </AvatarFrame>
-              <div className="flex-grow-1 text-start d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
+              <div className="flex-grow-1 text-start d-flex" style={{ minWidth: 0, lineHeight: 1.2 }}>
                 <span
                   className="text-truncate"
                   style={{
@@ -464,6 +480,8 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 >
                   {userData?.name || userData?.email}
                 </span>
+              </div>
+              <div className="d-flex align-items-center gap-2">
                 {isActivePro && (
                   <span
                     className="fw-bold"

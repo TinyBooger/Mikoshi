@@ -173,7 +173,12 @@
     "update_badge_failed": "更新徽章失败",
     "update_badge_error": "更新徽章时出错",
     "pro_remaining_date": "Pro到期时间",
-    "pro_no_expire_date": "未设置"
+    "pro_no_expire_date": "未设置",
+    "pro_benefits_title": "已实现的 Pro 权益",
+    "pro_benefit_unlimited_messages": "每日消息不限量",
+    "pro_benefit_2x_context": "摘要前上下文长度提升至 2 倍",
+    "pro_benefits_expand": "展开 Pro 权益",
+    "pro_benefits_collapse": "收起 Pro 权益"
   },
   "settings": {
     "title": "设置",
@@ -296,7 +301,7 @@
     "create_title": "新建角色",
     "fork_title": "衍生角色",
     "name": "名称",
-    "persona": "人设",
+    "persona": "设定",
     "required_marker": "*",
     "tagline": "标语",
     "tags": "标签",
@@ -304,7 +309,7 @@
     "improvise_greeting": "即兴问候",
     "greeting_improvising_placeholder": "开始对话时会动态生成问候语",
     "notes": {
-      "persona": "此字段决定角色的人设与行为方式。",
+      "persona": "设定决定了角色的行为方式和说话风格，仅自己可见。",
       "tagline": "将展示在角色封面上。",
       "greeting": "角色会说的第一句话。",
       "tags": "第一个标签会显示在封面上。"
@@ -318,6 +323,21 @@
       "presence_penalty": "存在惩罚",
       "frequency_penalty": "频率惩罚",
       "locked_notice": "升级到 Lv 3 或成为 Pro 用户以解锁高级设置。"
+    },
+    "advanced_help": {
+      "model": "选择语言模型。`deepseek-chat` 更适合通用角色扮演；`deepseek-reasoner` 推理更充分，但通常更慢。",
+      "temperature": "控制随机性。值越低越稳定可预测；值越高越有创意和变化。",
+      "top_p": "核采样范围。值越低可选词更集中、回复更收敛；值越高表达更发散多样。一般不建议与 Temperature 同时调节。",
+      "max_tokens": "单次回复的最大长度。deepseek-chat 默认 4096（最大 8192）；deepseek-reasoner 默认 32768（最大 65536）。",
+      "presence_penalty": "鼓励引入新内容。值越高，越不容易反复围绕同一主题。",
+      "frequency_penalty": "抑制重复用词。值越高，越能减少词语和句式重复。"
+    },
+    "advanced_token_tiers": {
+      "short_sentence": "短句",
+      "paragraph": "段落",
+      "long": "长回复",
+      "very_long": "超长回复",
+      "maximum": "最大"
     },
     "sample_dialogue": "示例对话",
     "picture": "角色图片",
@@ -343,6 +363,8 @@
     },
     "tags_suffix": "个标签",
     "alt_preview": "预览",
+    "avatar_label": "头像",
+    "cover_avatar_hint": "上传原比例封面图后，再裁剪圆形头像。",
     "tags_input_hint": "输入标签后点击\"添加\"（或按 Enter）",
     "visibility_settings": "可见性与访问权限",
     "public": "公开",
@@ -626,7 +648,19 @@
   "image_crop_modal": {
     "title": "裁剪图片",
     "zoom": "缩放",
-    "preview": "预览"
+    "preview": "预览",
+    "original_title": "原图",
+    "original_desc_avatar": "这张完整图片将作为封面图使用。",
+    "original_desc_square": "这是裁剪前的原始图片。",
+    "crop_title_avatar": "裁剪头像",
+    "crop_title_square": "裁剪区域",
+    "crop_desc_avatar": "拖动并缩放裁剪框，选择头像区域。",
+    "crop_desc_square": "拖动并缩放裁剪框，选择最终展示区域。",
+    "avatar_preview_label": "裁剪结果预览",
+    "original_preview_alt": "原图预览",
+    "cropped_preview_alt": "裁剪预览",
+    "cancel": "取消",
+    "save": "保存"
   },
   "confirm": {
     "delete_chat": {

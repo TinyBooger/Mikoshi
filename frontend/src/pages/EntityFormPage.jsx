@@ -470,6 +470,8 @@ export default function EntityFormPage() {
                   onChange={e => {
                     const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
                     if (f) { setRawSelectedFile(f); setShowCrop(true); }
+                    // Reset so selecting the same file again still triggers onChange.
+                    e.target.value = '';
                   }}
                   style={{
                     background: '#f5f6fa',

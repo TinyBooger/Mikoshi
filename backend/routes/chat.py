@@ -85,6 +85,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     except ClientDisconnect:
         return Response(status_code=499)
     messages = data.get("messages")
+    context_messages = data.get("context_messages")
     full_messages = data.get("full_messages")
     character_id = data.get("character_id")
     chat_id = data.get("chat_id")
@@ -100,10 +101,17 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     if not isinstance(full_messages, list) or not full_messages:
         full_messages = messages
 
+    if not isinstance(context_messages, list) or not context_messages:
+        context_messages = messages
+
     is_pro_user = is_pro_active(current_user)
 
     prepared_messages, _ = compact_conversation_messages(
         messages,
+        is_pro_user=is_pro_user,
+    )
+    _, context_window_info = compact_conversation_messages(
+        context_messages,
         is_pro_user=is_pro_user,
     )
     if not prepared_messages:
@@ -212,7 +220,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     ) or (limit_check.get("limit") or {})
 
                 # Send final metadata
-                yield f"data: {json.dumps({'done': True, 'chat_id': chat_id, 'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None), 'limits': limit_info})}\n\n"
+                yield f"data: {json.dumps({'done': True, 'chat_id': chat_id, 'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None), 'limits': limit_info, 'context_window': {**context_window_info, 'message_count': len(context_messages)}})}\n\n"
             
             except ClientDisconnect:
                 return
@@ -281,11 +289,19 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 "chat_id": entry.chat_id,
                 "chat_title": entry.title,
                 "limits": limit_info,
+                "context_window": {
+                    **context_window_info,
+                    "message_count": len(context_messages),
+                },
             }
 
         return {
             "response": reply,
             "limits": limit_info,
+            "context_window": {
+                **context_window_info,
+                "message_count": len(context_messages),
+            },
         }
 
 @router.post("/api/chat/rename")

@@ -14,11 +14,60 @@ import { silentExpGain } from '../utils/expUtils';
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
+  const TOKEN_LIMITS_BY_MODEL = {
+    'deepseek-chat': { min: 1, max: 8192, defaultValue: 4096, step: 128 },
+    'deepseek-reasoner': { min: 1, max: 65536, defaultValue: 32768, step: 256 },
+  };
+  const TOKEN_TIERS_BY_MODEL = {
+    'deepseek-chat': [
+      { value: 1024, labelKey: 'short_sentence' },
+      { value: 2048, labelKey: 'paragraph' },
+      { value: 4096, labelKey: 'long' },
+      { value: 6144, labelKey: 'very_long' },
+      { value: 8192, labelKey: 'maximum' },
+    ],
+    'deepseek-reasoner': [
+      { value: 8192, labelKey: 'short_sentence' },
+      { value: 16384, labelKey: 'paragraph' },
+      { value: 32768, labelKey: 'long' },
+      { value: 49152, labelKey: 'very_long' },
+      { value: 65536, labelKey: 'maximum' },
+    ],
+  };
+  const getTokenLimits = (modelName) => TOKEN_LIMITS_BY_MODEL[modelName] || TOKEN_LIMITS_BY_MODEL['deepseek-chat'];
+  const getTokenTiers = (modelName) => TOKEN_TIERS_BY_MODEL[modelName] || TOKEN_TIERS_BY_MODEL['deepseek-chat'];
+  const clampValue = (value, min, max, fallback) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+  };
+  const normalizeTokenTierValue = (modelName, rawValue) => {
+    const tokenLimits = getTokenLimits(modelName);
+    const tiers = getTokenTiers(modelName);
+    const clamped = clampValue(rawValue, tokenLimits.min, tokenLimits.max, tokenLimits.defaultValue);
+    return tiers.reduce((nearest, tier) => (
+      Math.abs(tier.value - clamped) < Math.abs(nearest.value - clamped) ? tier : nearest
+    ), tiers[0]).value;
+  };
+  const InfoHint = ({ text }) => (
+    <span
+      title={text}
+      aria-label={text}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        marginLeft: 6,
+        color: '#6b7280',
+        cursor: 'help',
+      }}
+    >
+      <i className="bi bi-info-circle" style={{ fontSize: '0.9rem' }}></i>
+    </span>
+  );
   const DEFAULT_CHAT_CONFIG = {
     model: 'deepseek-chat',
     temperature: 1.3,
     top_p: 0.9,
-    max_tokens: 250,
+    max_tokens: 4096,
     presence_penalty: 0,
     frequency_penalty: 0,
   };
@@ -76,6 +125,8 @@ export default function CharacterFormPage() {
   const [showAssistant, setShowAssistant] = useState(false);
   const [assistantMessages, setAssistantMessages] = useState(null);
   const [assistantGeneratedData, setAssistantGeneratedData] = useState(null);
+  const selectedTokenLimits = getTokenLimits(charData.model || DEFAULT_CHAT_CONFIG.model);
+  const selectedTokenTiers = getTokenTiers(charData.model || DEFAULT_CHAT_CONFIG.model);
 
   // Enforce level locks on fork/paid options
   useEffect(() => {
@@ -124,6 +175,7 @@ export default function CharacterFormPage() {
           setIsImprovisingGreeting(!!isImprov);
           
           if (mode === 'fork') {
+            const loadedModel = data.model || DEFAULT_CHAT_CONFIG.model;
             // In fork mode, set forked_from fields and clear the name for new creation
             setCharData({
               name: `${data.name} (Fork)`,
@@ -138,14 +190,15 @@ export default function CharacterFormPage() {
               price: 0,
               forked_from_id: data.id,
               forked_from_name: data.name,
-              model: data.model || DEFAULT_CHAT_CONFIG.model,
-              temperature: Number.isFinite(Number(data.temperature)) ? Number(data.temperature) : DEFAULT_CHAT_CONFIG.temperature,
-              top_p: Number.isFinite(Number(data.top_p)) ? Number(data.top_p) : DEFAULT_CHAT_CONFIG.top_p,
-              max_tokens: Number.isFinite(Number(data.max_tokens)) ? Number(data.max_tokens) : DEFAULT_CHAT_CONFIG.max_tokens,
-              presence_penalty: Number.isFinite(Number(data.presence_penalty)) ? Number(data.presence_penalty) : DEFAULT_CHAT_CONFIG.presence_penalty,
-              frequency_penalty: Number.isFinite(Number(data.frequency_penalty)) ? Number(data.frequency_penalty) : DEFAULT_CHAT_CONFIG.frequency_penalty,
+              model: loadedModel,
+              temperature: clampValue(data.temperature, 0, 2, DEFAULT_CHAT_CONFIG.temperature),
+              top_p: clampValue(data.top_p, 0, 1, DEFAULT_CHAT_CONFIG.top_p),
+              max_tokens: normalizeTokenTierValue(loadedModel, data.max_tokens),
+              presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
+              frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
             });
           } else {
+            const loadedModel = data.model || DEFAULT_CHAT_CONFIG.model;
             // Edit mode
             setCharData({
               name: data.name || '',
@@ -160,12 +213,12 @@ export default function CharacterFormPage() {
               price: 0,
               forked_from_id: data.forked_from_id || null,
               forked_from_name: data.forked_from_name || null,
-              model: data.model || DEFAULT_CHAT_CONFIG.model,
-              temperature: Number.isFinite(Number(data.temperature)) ? Number(data.temperature) : DEFAULT_CHAT_CONFIG.temperature,
-              top_p: Number.isFinite(Number(data.top_p)) ? Number(data.top_p) : DEFAULT_CHAT_CONFIG.top_p,
-              max_tokens: Number.isFinite(Number(data.max_tokens)) ? Number(data.max_tokens) : DEFAULT_CHAT_CONFIG.max_tokens,
-              presence_penalty: Number.isFinite(Number(data.presence_penalty)) ? Number(data.presence_penalty) : DEFAULT_CHAT_CONFIG.presence_penalty,
-              frequency_penalty: Number.isFinite(Number(data.frequency_penalty)) ? Number(data.frequency_penalty) : DEFAULT_CHAT_CONFIG.frequency_penalty,
+              model: loadedModel,
+              temperature: clampValue(data.temperature, 0, 2, DEFAULT_CHAT_CONFIG.temperature),
+              top_p: clampValue(data.top_p, 0, 1, DEFAULT_CHAT_CONFIG.top_p),
+              max_tokens: normalizeTokenTierValue(loadedModel, data.max_tokens),
+              presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
+              frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
             });
           }
           setLoading(false);
@@ -193,6 +246,16 @@ export default function CharacterFormPage() {
     const parsed = Number(value);
     const nextValue = Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
     handleChange(key, nextValue);
+  };
+
+  const handleModelChange = (nextModel) => {
+    const nextTokenLimits = getTokenLimits(nextModel);
+    setCharData(prev => ({
+      ...prev,
+      model: nextModel,
+      // Reset to model default for predictable UX when switching models.
+      max_tokens: normalizeTokenTierValue(nextModel, nextTokenLimits.defaultValue),
+    }));
   };
 
   const handleSubmit = async e => {
@@ -226,10 +289,13 @@ export default function CharacterFormPage() {
   const finalGreeting = isImprovisingGreeting ? SPECIAL_IMPROVISING_GREETING : charData.greeting.trim();
   formData.append("greeting", finalGreeting);
     formData.append("sample_dialogue", charData.sample.trim());
-  formData.append("model", charData.model || DEFAULT_CHAT_CONFIG.model);
+  const finalModel = charData.model || DEFAULT_CHAT_CONFIG.model;
+  const finalTokenLimits = getTokenLimits(finalModel);
+  const safeMaxTokens = clampValue(charData.max_tokens, finalTokenLimits.min, finalTokenLimits.max, finalTokenLimits.defaultValue);
+  formData.append("model", finalModel);
     formData.append("temperature", String(canUseAdvancedConfig ? (charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature) : DEFAULT_CHAT_CONFIG.temperature));
     formData.append("top_p", String(canUseAdvancedConfig ? (charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p) : DEFAULT_CHAT_CONFIG.top_p));
-    formData.append("max_tokens", String(canUseAdvancedConfig ? (charData.max_tokens ?? DEFAULT_CHAT_CONFIG.max_tokens) : DEFAULT_CHAT_CONFIG.max_tokens));
+  formData.append("max_tokens", String(canUseAdvancedConfig ? safeMaxTokens : DEFAULT_CHAT_CONFIG.max_tokens));
     formData.append("presence_penalty", String(canUseAdvancedConfig ? (charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty) : DEFAULT_CHAT_CONFIG.presence_penalty));
     formData.append("frequency_penalty", String(canUseAdvancedConfig ? (charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty) : DEFAULT_CHAT_CONFIG.frequency_penalty));
     if (!canUseAdvancedConfig) {
@@ -310,7 +376,14 @@ export default function CharacterFormPage() {
   if (loading) return null;
   return (
     <PageWrapper>
-      <div style={{ position: 'relative', width: '100%' }}>
+      <div className="character-form-page" style={{ position: 'relative', width: '100%' }}>
+        <style>{`
+          .character-form-page .form-control::placeholder,
+          .character-form-page textarea::placeholder {
+            color: #c5ccd3;
+            opacity: 1;
+          }
+        `}</style>
         <div style={{
           width: '100%',
           maxWidth: 700,
@@ -514,11 +587,14 @@ export default function CharacterFormPage() {
             </label>
             <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
               <div className="mb-3">
-                <label className="form-label" style={{ fontSize: '0.9rem' }}>{t('character_form.advanced.model')}</label>
+                <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                  {t('character_form.advanced.model')}
+                  <InfoHint text={t('character_form.advanced_help.model')} />
+                </label>
                 <select
                   className="form-select"
                   value={charData.model || DEFAULT_CHAT_CONFIG.model}
-                  onChange={e => handleChange('model', e.target.value)}
+                  onChange={e => handleModelChange(e.target.value)}
                   disabled={!canUseAdvancedConfig}
                   style={{ borderRadius: 12 }}
                 >
@@ -530,6 +606,7 @@ export default function CharacterFormPage() {
               <div className="mb-3">
                 <label className="form-label" style={{ fontSize: '0.9rem' }}>
                   {t('character_form.advanced.temperature')}: {charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature}
+                  <InfoHint text={t('character_form.advanced_help.temperature')} />
                 </label>
                 <input
                   type="range"
@@ -546,6 +623,7 @@ export default function CharacterFormPage() {
               <div className="mb-3">
                 <label className="form-label" style={{ fontSize: '0.9rem' }}>
                   {t('character_form.advanced.top_p')}: {charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p}
+                  <InfoHint text={t('character_form.advanced_help.top_p')} />
                 </label>
                 <input
                   type="range"
@@ -561,44 +639,54 @@ export default function CharacterFormPage() {
 
               <div className="row g-3">
                 <div className="col-md-4">
-                  <label className="form-label" style={{ fontSize: '0.9rem' }}>{t('character_form.advanced.max_tokens')}</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    min="1"
-                    max="8192"
-                    value={charData.max_tokens ?? DEFAULT_CHAT_CONFIG.max_tokens}
-                    onChange={e => updateConfig('max_tokens', e.target.value, 1, 8192, DEFAULT_CHAT_CONFIG.max_tokens)}
+                  <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                    {t('character_form.advanced.max_tokens')}: {charData.max_tokens ?? selectedTokenLimits.defaultValue}
+                    <InfoHint text={t('character_form.advanced_help.max_tokens')} />
+                  </label>
+                  <select
+                    className="form-select"
+                    value={normalizeTokenTierValue(charData.model || DEFAULT_CHAT_CONFIG.model, charData.max_tokens ?? selectedTokenLimits.defaultValue)}
+                    onChange={e => handleChange('max_tokens', Number(e.target.value))}
                     disabled={!canUseAdvancedConfig}
                     style={{ borderRadius: 12 }}
-                  />
+                  >
+                    {selectedTokenTiers.map(tier => (
+                      <option key={tier.value} value={tier.value}>
+                        {t(`character_form.advanced_token_tiers.${tier.labelKey}`)} ({tier.value})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="col-md-4">
-                  <label className="form-label" style={{ fontSize: '0.9rem' }}>{t('character_form.advanced.presence_penalty')}</label>
+                  <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                    {t('character_form.advanced.presence_penalty')}: {charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty}
+                    <InfoHint text={t('character_form.advanced_help.presence_penalty')} />
+                  </label>
                   <input
-                    type="number"
-                    className="form-control"
+                    type="range"
                     min="-2"
                     max="2"
                     step="0.1"
+                    className="form-range"
                     value={charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty}
                     onChange={e => updateConfig('presence_penalty', e.target.value, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty)}
                     disabled={!canUseAdvancedConfig}
-                    style={{ borderRadius: 12 }}
                   />
                 </div>
                 <div className="col-md-4">
-                  <label className="form-label" style={{ fontSize: '0.9rem' }}>{t('character_form.advanced.frequency_penalty')}</label>
+                  <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                    {t('character_form.advanced.frequency_penalty')}: {charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty}
+                    <InfoHint text={t('character_form.advanced_help.frequency_penalty')} />
+                  </label>
                   <input
-                    type="number"
-                    className="form-control"
+                    type="range"
                     min="-2"
                     max="2"
                     step="0.1"
+                    className="form-range"
                     value={charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty}
                     onChange={e => updateConfig('frequency_penalty', e.target.value, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty)}
                     disabled={!canUseAdvancedConfig}
-                    style={{ borderRadius: 12 }}
                   />
                 </div>
               </div>
@@ -687,7 +775,7 @@ export default function CharacterFormPage() {
 
           {/* Cover + Avatar Pictures */}
           <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.picture', 'Character Images')}</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.picture')}</label>
             <div className="d-flex align-items-center gap-3" style={{ flexWrap: 'wrap' }}>
               <div style={{ width: 148, height: 96, overflow: 'hidden', borderRadius: 8, background: '#fff', border: '1px solid #e9ecef' }}>
                 {picturePreview ? (
@@ -700,7 +788,7 @@ export default function CharacterFormPage() {
                 {avatarPreview ? (
                   <img src={avatarPreview} alt={t('character_form.alt_preview')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.75rem' }}>Avatar</div>
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.75rem' }}>{t('character_form.avatar_label')}</div>
                 )}
               </div>
               <div style={{ flex: 1 }}>
@@ -719,6 +807,8 @@ export default function CharacterFormPage() {
                     reader.readAsDataURL(f);
                     setRawSelectedFile(f);
                     setShowCrop(true);
+                    // Reset so selecting the same file again still triggers onChange.
+                    e.target.value = '';
                   }}
                   style={{
                     background: '#f5f6fa',
@@ -734,7 +824,7 @@ export default function CharacterFormPage() {
               </div>
             </div>
             <div className="text-muted mt-2" style={{ fontSize: '0.78rem' }}>
-              {t('character_form.cover_avatar_hint', 'Upload a cover image in original ratio, then choose a circular avatar from it.')}
+              {t('character_form.cover_avatar_hint')}
             </div>
           </div>
 

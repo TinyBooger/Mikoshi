@@ -173,7 +173,12 @@
     "update_badge_failed": "Failed to update badge",
     "update_badge_error": "Error updating badge",
     "pro_remaining_date": "Pro expires on",
-    "pro_no_expire_date": "Not set"
+    "pro_no_expire_date": "Not set",
+    "pro_benefits_title": "Implemented Pro benefits",
+    "pro_benefit_unlimited_messages": "Unlimited daily messages",
+    "pro_benefit_2x_context": "2x context length before summarization",
+    "pro_benefits_expand": "Show Pro benefits",
+    "pro_benefits_collapse": "Hide Pro benefits"
   },
   "settings": {
     "title": "Settings",
@@ -311,9 +316,24 @@
       "frequency_penalty": "Frequency Penalty",
       "locked_notice": "Upgrade to level 3 or become a Pro user to unlock advanced settings."
     },
+    "advanced_help": {
+      "model": "Select the language model. Use deepseek-chat for general roleplay, or deepseek-reasoner when you want slower but more deliberate reasoning.",
+      "temperature": "Controls randomness. Lower values are more stable and predictable; higher values are more creative and varied.",
+      "top_p": "Nucleus sampling. Lower values narrow token choices and make replies focused; higher values allow broader and more diverse wording. It is generally not recommended to tune Top P and Temperature at the same time.",
+      "max_tokens": "Maximum response length per reply. deepseek-chat default is 4096 (max 8192). deepseek-reasoner default is 32768 (max 65536).",
+      "presence_penalty": "Encourages introducing new topics. Higher values reduce repeating the same ideas.",
+      "frequency_penalty": "Reduces repeated words and phrases. Higher values discourage repetitive wording."
+    },
+    "advanced_token_tiers": {
+      "short_sentence": "Short sentence",
+      "paragraph": "Paragraph",
+      "long": "Long",
+      "very_long": "Very long",
+      "maximum": "Maximum"
+    },
     "sample_dialogue": "Sample Dialogue",
-    "picture": "Character Picture",
-    "no_picture": "No picture",
+    "picture": "角色图片",
+    "no_picture": "暂无图片",
     "save": "Save",
     "create": "Create",
     "delete": "Delete",
@@ -334,7 +354,9 @@
       "tags": "e.g., fantasy, guardian, nature"
     },
     "tags_suffix": "tags",
-    "alt_preview": "preview",
+    "alt_preview": "预览",
+    "avatar_label": "头像",
+    "cover_avatar_hint": "上传原比例封面图后，再裁剪圆形头像。",
     "tags_input_hint": "Type a tag, then tap Add (or press Enter)",
     "visibility_settings": "Visibility & Access",
     "public": "Public",
@@ -614,9 +636,21 @@
     "start_chat": "Start Chat"
   },
   "image_crop_modal": {
-    "title": "Crop Image",
-    "zoom": "Zoom",
-    "preview": "Preview"
+    "title": "裁剪图片",
+    "zoom": "缩放",
+    "preview": "预览",
+    "original_title": "原图",
+    "original_desc_avatar": "这张完整图片将作为封面图使用。",
+    "original_desc_square": "这是裁剪前的原始图片。",
+    "crop_title_avatar": "裁剪头像",
+    "crop_title_square": "裁剪区域",
+    "crop_desc_avatar": "拖动并缩放裁剪框，选择头像区域。",
+    "crop_desc_square": "拖动并缩放裁剪框，选择最终展示区域。",
+    "avatar_preview_label": "裁剪结果预览",
+    "original_preview_alt": "原图预览",
+    "cropped_preview_alt": "裁剪预览",
+    "cancel": "取消",
+    "save": "保存"
   },
   "confirm": {
     "delete_chat": {

@@ -34,6 +34,7 @@ export default function ChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [abortController, setAbortController] = useState(null);
   const [chatLimits, setChatLimits] = useState(null);
+  const [serverContextWindowUsage, setServerContextWindowUsage] = useState(null);
   const [showContextDetails, setShowContextDetails] = useState(false);
   const [hasLiked, setHasLiked] = useState({ character: false, scene: false, persona: false });
   const [showChatHistory, setShowChatHistory] = useState(false);
@@ -124,6 +125,7 @@ export default function ChatPage() {
     setSelectedPersona(null);
     setSelectedChat(null);
     setMessages([]);
+    setServerContextWindowUsage(null);
     isNewChat.current = true;
     setWelcomeDismissed(false);
     setInitModal(false);
@@ -271,6 +273,18 @@ export default function ChatPage() {
     };
 
     const requestMessages = compactMessagesForRequest(validMessages);
+    const strictServerUsageMatches =
+      serverContextWindowUsage &&
+      Number(serverContextWindowUsage.message_count || 0) === validMessages.length;
+
+    if (strictServerUsageMatches) {
+      return {
+        currentTokens: Number(serverContextWindowUsage.input_tokens || 0),
+        softLimit: Number(serverContextWindowUsage.soft_token_limit || effectiveSoftTokenLimit),
+        sentTokens: Number(serverContextWindowUsage.output_tokens || 0),
+        compacted: Boolean(serverContextWindowUsage.was_summarized),
+      };
+    }
 
     return {
       currentTokens: estimateTokens(validMessages),
@@ -641,6 +655,9 @@ export default function ChatPage() {
               
               if (data.done && data.chat_id) {
                 applyChatLimits(data.limits);
+                if (data.context_window) {
+                  setServerContextWindowUsage(data.context_window);
+                }
                 const newChat = {
                   chat_id: data.chat_id,
                   title: data.chat_title || (accumulatedReply ? accumulatedReply.slice(0, 30) + (accumulatedReply.length > 30 ? '...' : '') : 'New Chat'),
@@ -726,6 +743,7 @@ export default function ChatPage() {
           scene_id: selectedScene?.id || null,
           persona_id: selectedPersona?.id || null,
           messages: requestMessages,
+          context_messages: updatedMessages,
           full_messages: updatedMessages,
           chat_config: advancedChatConfig,
           stream: true
@@ -781,6 +799,9 @@ export default function ChatPage() {
             
             if (data.done) {
               applyChatLimits(data.limits);
+              if (data.context_window) {
+                setServerContextWindowUsage(data.context_window);
+              }
               // Stream completed, update chat history
               if (data.chat_id) {
                 // Preserve existing chat data or create new
@@ -1353,8 +1374,96 @@ export default function ChatPage() {
 
         {/* Input Area (no form) */}
         <form onSubmit={handleSend} style={{ padding: '0.8rem 1.2rem', background: '#f8f9fa', borderTop: '1.2px solid #e9ecef', flexShrink: 0 }}>
-          <div style={{ display: 'flex', gap: '0.64rem', alignItems: 'flex-end', flexDirection: 'column' }}>
-            <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'flex-end' }}>
+          <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'flex-end' }}>
+            <div
+              style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flexShrink: 0, marginBottom: 7 }}
+              onMouseEnter={() => setShowContextDetails(true)}
+              onMouseLeave={() => setShowContextDetails(false)}
+            >
+              <button
+                type="button"
+                onFocus={() => setShowContextDetails(true)}
+                onBlur={() => setShowContextDetails(false)}
+                onClick={() => setShowContextDetails((prev) => !prev)}
+                aria-label="上下文窗口使用情况"
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  color: '#6b7280',
+                  cursor: 'pointer'
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                  <circle cx="9" cy="9" r={pieRadius} fill="none" stroke="#e5e7eb" strokeWidth="2" />
+                  <circle
+                    cx="9"
+                    cy="9"
+                    r={pieRadius}
+                    fill="none"
+                    stroke={contextUsagePercent >= 90 ? '#dc3545' : '#18191a'}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray={pieCircumference}
+                    strokeDashoffset={pieStrokeOffset}
+                    transform="rotate(-90 9 9)"
+                  />
+                </svg>
+                <span>{contextUsagePercent}%</span>
+              </button>
+
+              {showContextDetails && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '140%',
+                    left: 0,
+                    transform: 'none',
+                    minWidth: 220,
+                    background: '#111827',
+                    color: '#f9fafb',
+                    borderRadius: 10,
+                    padding: '10px 12px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                    zIndex: 20,
+                    textAlign: 'left'
+                  }}
+                >
+                  <div style={{ fontSize: '0.74rem', fontWeight: 600, marginBottom: 6 }}>上下文使用情况</div>
+                  <div style={{ fontSize: '0.7rem', opacity: 0.9, marginBottom: 8 }}>
+                    {`当前 ${contextWindowUsage.currentTokens}/${contextWindowUsage.softLimit} tokens`}
+                  </div>
+
+                  <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.2)', overflow: 'hidden', marginBottom: 8 }}>
+                    <div
+                      style={{
+                        width: `${contextUsagePercent}%`,
+                        height: '100%',
+                        background: contextUsagePercent >= 90 ? '#ef4444' : '#60a5fa',
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ fontSize: '0.7rem', opacity: 0.9, marginBottom: 6 }}>
+                    {`发送到模型：${contextWindowUsage.sentTokens} tokens${contextWindowUsage.compacted ? '（已压缩）' : ''}`}
+                  </div>
+                  <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.2)', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        width: `${sentUsagePercent}%`,
+                        height: '100%',
+                        background: '#34d399',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '0.64rem', alignItems: 'flex-end' }}>
               <textarea
                 ref={textareaRef}
                 style={{
@@ -1448,6 +1557,7 @@ export default function ChatPage() {
                   }}
                   onMouseEnter={e => { if (!sending) e.currentTarget.style.background = '#232323'; }}
                   onMouseLeave={e => { if (!sending) e.currentTarget.style.background = '#18191a'; }}
+                  title={t('chat.input_shortcut_hint')}
                   disabled={sending}
                 >
                   {sending ? (
@@ -1457,104 +1567,6 @@ export default function ChatPage() {
                   )}
                 </button>
               )}
-            </div>
-            {/* Small helper line explaining notation (centered, single line) */}
-            <div style={{ width: '100%', marginTop: 6, fontSize: '0.72rem', color: '#6b7280', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {chatLimits?.is_limited && (
-                chatLimits.limit_reached
-                  ? `已达到每日上限（${chatLimits.daily_message_count}/${chatLimits.daily_message_cap}）。 • `
-                  : `今日剩余 ${chatLimits.remaining_messages} 条（${chatLimits.daily_message_count}/${chatLimits.daily_message_cap}）。 • `
-              )}
-
-              <div
-                style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
-                onMouseEnter={() => setShowContextDetails(true)}
-                onMouseLeave={() => setShowContextDetails(false)}
-              >
-                <button
-                  type="button"
-                  onFocus={() => setShowContextDetails(true)}
-                  onBlur={() => setShowContextDetails(false)}
-                  onClick={() => setShowContextDetails((prev) => !prev)}
-                  aria-label="上下文窗口使用情况"
-                  style={{
-                    border: 'none',
-                    background: 'transparent',
-                    padding: 0,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    color: '#6b7280',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-                    <circle cx="9" cy="9" r={pieRadius} fill="none" stroke="#e5e7eb" strokeWidth="2" />
-                    <circle
-                      cx="9"
-                      cy="9"
-                      r={pieRadius}
-                      fill="none"
-                      stroke={contextUsagePercent >= 90 ? '#dc3545' : '#18191a'}
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeDasharray={pieCircumference}
-                      strokeDashoffset={pieStrokeOffset}
-                      transform="rotate(-90 9 9)"
-                    />
-                  </svg>
-                  <span>{contextUsagePercent}%</span>
-                </button>
-
-                {showContextDetails && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: '140%',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      minWidth: 220,
-                      background: '#111827',
-                      color: '#f9fafb',
-                      borderRadius: 10,
-                      padding: '10px 12px',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-                      zIndex: 20,
-                      textAlign: 'left'
-                    }}
-                  >
-                    <div style={{ fontSize: '0.74rem', fontWeight: 600, marginBottom: 6 }}>上下文使用情况</div>
-                    <div style={{ fontSize: '0.7rem', opacity: 0.9, marginBottom: 8 }}>
-                      {`当前 ${contextWindowUsage.currentTokens}/${contextWindowUsage.softLimit} tokens`}
-                    </div>
-
-                    <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.2)', overflow: 'hidden', marginBottom: 8 }}>
-                      <div
-                        style={{
-                          width: `${contextUsagePercent}%`,
-                          height: '100%',
-                          background: contextUsagePercent >= 90 ? '#ef4444' : '#60a5fa',
-                        }}
-                      />
-                    </div>
-
-                    <div style={{ fontSize: '0.7rem', opacity: 0.9, marginBottom: 6 }}>
-                      {`发送到模型：${contextWindowUsage.sentTokens} tokens${contextWindowUsage.compacted ? '（已压缩）' : ''}`}
-                    </div>
-                    <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.2)', overflow: 'hidden' }}>
-                      <div
-                        style={{
-                          width: `${sentUsagePercent}%`,
-                          height: '100%',
-                          background: '#34d399',
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <span>{t('chat.input_notation_hint')} • {t('chat.input_shortcut_hint')}</span>
             </div>
           </div>
         </form>

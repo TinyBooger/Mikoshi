@@ -6,6 +6,10 @@ export default function UserStatsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [data, setData] = useState(null);
+  const [lookupUserId, setLookupUserId] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState('');
+  const [lookupResult, setLookupResult] = useState(null);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -36,6 +40,39 @@ export default function UserStatsPage() {
       fetchStats();
     }
   }, [sessionToken]);
+
+  const fetchSingleUserUsage = async () => {
+    const userId = lookupUserId.trim();
+    if (!userId) {
+      setLookupError('Please enter a user ID');
+      setLookupResult(null);
+      return;
+    }
+
+    setLookupLoading(true);
+    setLookupError('');
+    setLookupResult(null);
+
+    try {
+      const response = await fetch(`${window.API_BASE_URL}/api/admin/user-stats/user/${encodeURIComponent(userId)}`, {
+        headers: {
+          Authorization: sessionToken,
+        },
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.detail || 'Failed to load user token usage');
+      }
+
+      const payload = await response.json();
+      setLookupResult(payload);
+    } catch (err) {
+      setLookupError(err.message || 'Failed to load user token usage');
+    } finally {
+      setLookupLoading(false);
+    }
+  };
 
   const metrics = data?.metrics || {};
 
@@ -103,7 +140,7 @@ export default function UserStatsPage() {
     {
       title: 'Avg Daily Token Usage',
       value: Number(metrics.avg_daily_tokens_per_active_user || 0).toFixed(2),
-      subtitle: 'Estimated tokens per active user',
+      subtitle: 'Tokenizer-counted tokens per active user',
       border: 'success',
       icon: 'bi-cpu',
     },
@@ -152,6 +189,72 @@ export default function UserStatsPage() {
           </div>
 
           <div className="row g-3 mb-4">
+            <div className="col-12">
+              <div className="card">
+                <div className="card-header">
+                  <strong>Lookup Specific User Token Usage</strong>
+                </div>
+                <div className="card-body">
+                  <div className="d-flex gap-2 flex-wrap align-items-center mb-3">
+                    <input
+                      type="text"
+                      className="form-control"
+                      style={{ maxWidth: 360 }}
+                      placeholder="Enter user ID"
+                      value={lookupUserId}
+                      onChange={(e) => setLookupUserId(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          fetchSingleUserUsage();
+                        }
+                      }}
+                    />
+                    <button className="btn btn-primary" onClick={fetchSingleUserUsage} disabled={lookupLoading}>
+                      {lookupLoading ? 'Checking...' : 'Check'}
+                    </button>
+                  </div>
+
+                  {lookupError && (
+                    <div className="alert alert-danger mb-0" role="alert">
+                      {lookupError}
+                    </div>
+                  )}
+
+                  {lookupResult && (
+                    <div className="row g-3">
+                      <div className="col-sm-6 col-lg-3">
+                        <div className="border rounded p-3 h-100">
+                          <div className="text-muted small">User</div>
+                          <div className="fw-semibold text-truncate" title={lookupResult.user_id}>{lookupResult.user_name || lookupResult.user_id}</div>
+                          <div className="small text-muted text-truncate" title={lookupResult.user_id}>{lookupResult.user_id}</div>
+                        </div>
+                      </div>
+                      <div className="col-sm-6 col-lg-3">
+                        <div className="border rounded p-3 h-100">
+                          <div className="text-muted small">Daily Tokens</div>
+                          <div className="fs-5 fw-bold">{Number(lookupResult.daily_tokens || 0).toLocaleString()}</div>
+                        </div>
+                      </div>
+                      <div className="col-sm-6 col-lg-3">
+                        <div className="border rounded p-3 h-100">
+                          <div className="text-muted small">Monthly Tokens</div>
+                          <div className="fs-5 fw-bold">{Number(lookupResult.monthly_tokens || 0).toLocaleString()}</div>
+                        </div>
+                      </div>
+                      <div className="col-sm-6 col-lg-3">
+                        <div className="border rounded p-3 h-100">
+                          <div className="text-muted small">Rolling 30d Tokens</div>
+                          <div className="fs-5 fw-bold">{Number(lookupResult.rolling_30d_tokens || 0).toLocaleString()}</div>
+                          <div className="small text-muted">Daily chat sessions: {lookupResult.daily_chat_sessions || 0}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="col-md-6">
               <div className="card h-100">
                 <div className="card-header">
@@ -163,7 +266,7 @@ export default function UserStatsPage() {
                       <thead>
                         <tr>
                           <th>User ID</th>
-                          <th className="text-end">Estimated Tokens</th>
+                          <th className="text-end">Token Count</th>
                         </tr>
                       </thead>
                       <tbody>

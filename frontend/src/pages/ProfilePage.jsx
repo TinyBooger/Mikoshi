@@ -75,6 +75,7 @@ export default function ProfilePage() {
   // Badge selection modal state
   const [showBadgeSelector, setShowBadgeSelector] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState(userData?.active_badge || null);
+  const [showProBenefits, setShowProBenefits] = useState(false);
 
   // Sync selectedBadge with userData when it changes
   useEffect(() => {
@@ -501,6 +502,10 @@ export default function ProfilePage() {
   const formattedProExpireDate = displayUser?.pro_expire_date
     ? new Date(displayUser.pro_expire_date).toLocaleDateString(activeLocale)
     : null;
+
+  useEffect(() => {
+    setShowProBenefits(false);
+  }, [displayUser?.id, isActivePro]);
 
   if (userLoading) {
     return (
@@ -930,10 +935,68 @@ export default function ProfilePage() {
                       <span style={{ fontSize: '0.83rem', color: '#555' }}>{t('profile.total_likes')}</span>
                     </div>
                   </span>
+                  <span
+                    className="d-flex align-items-center gap-2"
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 12,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    }}
+                  >
+                    <i className="bi bi-lightning-charge" style={{ fontSize: '1.05rem' }}></i>
+                    <div className="d-flex flex-column" style={{ lineHeight: 1.15 }}>
+                      <strong style={{ fontSize: '1.05rem' }}>{Number(displayUser?.monthly_token_usage || 0).toLocaleString()}</strong>
+                      <span style={{ fontSize: '0.83rem', color: '#555' }}>{t('profile.monthly_tokens', 'Monthly Tokens')}</span>
+                    </div>
+                  </span>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Pro benefits above level progress, collapsed by default */}
+          {isActivePro && (
+            <div className="mt-3" style={{ maxWidth: 640 }}>
+              <button
+                type="button"
+                onClick={() => setShowProBenefits(prev => !prev)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  border: '1px solid #e1d9ff',
+                  background: '#f8f5ff',
+                  color: '#5b2f9b',
+                  borderRadius: 10,
+                  padding: '0.45rem 0.75rem',
+                  fontSize: '0.84rem',
+                  fontWeight: 700,
+                }}
+              >
+                <i className={`bi ${showProBenefits ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i>
+                {showProBenefits ? t('profile.pro_benefits_collapse') : t('profile.pro_benefits_expand')}
+              </button>
+              {showProBenefits && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: '0.7rem 0.85rem',
+                    borderRadius: 10,
+                    background: '#f8f5ff',
+                    border: '1px solid #e1d9ff',
+                  }}
+                >
+                  <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#5b2f9b', marginBottom: 4 }}>
+                    {t('profile.pro_benefits_title')}
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: '1.1rem', color: '#4a4a4a', fontSize: '0.84rem', lineHeight: 1.45 }}>
+                    <li>{t('profile.pro_benefit_unlimited_messages')}</li>
+                    <li>{t('profile.pro_benefit_2x_context')}</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Level & EXP Progress below header row */}
           <div className="mt-3">
@@ -1142,6 +1205,8 @@ export default function ProfilePage() {
                               setRawSelectedFile(f);
                               setShowCrop(true);
                             }
+                            // Reset so selecting the same file again still fires onChange.
+                            e.target.value = '';
                           }}
                           style={{ background: '#fff', border: '1.5px solid #111', color: '#111' }}
                         />

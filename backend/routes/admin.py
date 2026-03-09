@@ -11,6 +11,7 @@ from typing import List, Optional, Dict
 from pydantic import BaseModel
 from schemas import UserOut, UserMessageOut
 from utils.audit_logger import AuditLog
+from utils.token_utils import estimate_tokens_from_messages
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -41,39 +42,6 @@ class CharacterUpdate(BaseModel):
 
 class TagUpdate(BaseModel):
     name: Optional[str] = None
-
-
-def _normalize_content_to_text(content) -> str:
-    if content is None:
-        return ""
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts = []
-        for item in content:
-            if isinstance(item, dict):
-                text = item.get("text")
-                if isinstance(text, str):
-                    parts.append(text)
-            elif isinstance(item, str):
-                parts.append(item)
-        return " ".join(parts)
-    return str(content)
-
-
-def _estimate_tokens_from_messages(messages) -> int:
-    if not isinstance(messages, list):
-        return 0
-
-    total_chars = 0
-    for message in messages:
-        if not isinstance(message, dict):
-            continue
-        content = _normalize_content_to_text(message.get("content"))
-        total_chars += len(content)
-
-    # Rough conversion for mixed EN/ZH content in app usage.
-    return max(0, round(total_chars / 4))
 
 
 @router.get("/user-stats")
@@ -232,7 +200,7 @@ def get_user_data_stats(
     for user_id, messages in today_chats:
         if not user_id:
             continue
-        estimated_tokens = _estimate_tokens_from_messages(messages)
+        estimated_tokens = estimate_tokens_from_messages(messages)
         user_token_usage[user_id] = user_token_usage.get(user_id, 0) + estimated_tokens
 
     top_daily_token_users = sorted(
@@ -284,9 +252,60 @@ def get_user_data_stats(
         ],
         "top_daily_message_users": top_daily_message_users[:10],
         "notes": {
-            "token_usage": "Estimated from message text length in chats updated today (roughly 1 token ~= 4 chars).",
+            "token_usage": "Counted with tokenizer-based message accounting (tiktoken) on chats updated today.",
             "retention": "D1/D7 are cohort-based using register audit logs and login/chat activity dates.",
         }
+    }
+
+
+@router.get("/user-stats/user/{user_id}")
+def get_single_user_token_usage(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Get token usage metrics for a single user - Admin only."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    now = datetime.now(UTC)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = today_start.replace(day=1)
+    thirty_days_ago = today_start - timedelta(days=30)
+
+    chats_last_30_days = db.query(ChatHistory.messages, ChatHistory.last_updated).filter(
+        ChatHistory.user_id == user_id,
+        ChatHistory.last_updated >= thirty_days_ago,
+    ).all()
+
+    daily_tokens = 0
+    monthly_tokens = 0
+    rolling_30d_tokens = 0
+    for messages, last_updated in chats_last_30_days:
+        tokens = estimate_tokens_from_messages(messages)
+        rolling_30d_tokens += tokens
+        if last_updated and last_updated >= today_start:
+            daily_tokens += tokens
+        if last_updated and last_updated >= month_start:
+            monthly_tokens += tokens
+
+    daily_chat_sessions = db.query(func.count(ChatHistory.id)).filter(
+        ChatHistory.user_id == user_id,
+        ChatHistory.last_updated >= today_start,
+    ).scalar() or 0
+
+    return {
+        "user_id": user_id,
+        "user_name": user.name,
+        "snapshot_at": now.isoformat(),
+        "daily_tokens": daily_tokens,
+        "monthly_tokens": monthly_tokens,
+        "rolling_30d_tokens": rolling_30d_tokens,
+        "daily_chat_sessions": daily_chat_sessions,
+        "notes": {
+            "token_usage": "Tokenizer-counted (tiktoken) from chat history messages.",
+        },
     }
 
 
