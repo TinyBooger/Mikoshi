@@ -14,6 +14,8 @@ from utils.content_censor import censor_form_payload
 
 router = APIRouter()
 
+MAX_DESCRIPTION_LENGTH = 400
+
 
 # Popular Personas
 @router.get("/api/personas/popular", response_model=PersonaListOut)
@@ -128,9 +130,14 @@ async def create_persona(
     })
     name = (censored_payload.get("name") or "").strip()
     description = censored_payload.get("description")
+    if description is not None:
+        description = description.strip()
     intro = censored_payload.get("intro")
     tags = censored_payload.get("tags") or []
     forked_from_name = censored_payload.get("forked_from_name")
+
+    if description and len(description) > MAX_DESCRIPTION_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
 
     # Enforce: forking requires level 2 or higher
     if forked_from_id and current_user.level < 2:
@@ -233,6 +240,8 @@ async def update_persona(
     })
     name = censored_payload.get("name")
     description = censored_payload.get("description")
+    if description is not None:
+        description = description.strip()
     intro = censored_payload.get("intro")
     tags = censored_payload.get("tags")
     
@@ -244,6 +253,8 @@ async def update_persona(
     if name is not None:
         persona.name = name
     if description is not None:
+        if len(description) > MAX_DESCRIPTION_LENGTH:
+            raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
         persona.description = description
     if intro is not None:
         persona.intro = intro

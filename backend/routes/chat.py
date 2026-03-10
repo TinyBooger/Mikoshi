@@ -14,6 +14,7 @@ from utils.level_system import award_exp_with_limits
 from utils.message_limit import can_send_user_message, increment_user_message_count
 from utils.context_window import compact_conversation_messages
 from utils.user_utils import is_pro_active
+from utils.usage_utils import normalize_usage
 
 router = APIRouter()
 
@@ -151,8 +152,13 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         # Return streaming response
         async def generate():
             accumulated_reply = ""
+            response_usage = {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+            }
             try:
-                for chunk in stream_chat_completion_with_config(
+                for stream_event in stream_chat_completion_with_config(
                     prepared_messages,
                     model=chat_config["model"],
                     max_tokens=chat_config["max_tokens"],
@@ -161,6 +167,15 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     presence_penalty=chat_config["presence_penalty"],
                     frequency_penalty=chat_config["frequency_penalty"],
                 ):
+                    event_type = (stream_event or {}).get("type")
+                    if event_type == "usage":
+                        response_usage = normalize_usage((stream_event or {}).get("usage"))
+                        continue
+
+                    chunk = (stream_event or {}).get("content")
+                    if not isinstance(chunk, str) or not chunk:
+                        continue
+
                     accumulated_reply += chunk
                     # Send each chunk as SSE
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
@@ -180,7 +195,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             limit_check["is_user_request"],
                         ) or (limit_check.get("limit") or {})
 
-                        updated_messages = full_messages + [{"role": "assistant", "content": accumulated_reply}]
+                        updated_messages = full_messages + [{
+                            "role": "assistant",
+                            "content": accumulated_reply,
+                            "usage": response_usage,
+                        }]
 
                         # Fetch character details for sidebar display
                         character = db_session.query(Character).filter(Character.id == character_id).first()
@@ -242,6 +261,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 frequency_penalty=chat_config["frequency_penalty"],
             )
             reply = response.choices[0].message.content.strip()
+            response_usage = normalize_usage(getattr(response, "usage", None))
         except Exception:
             return JSONResponse(content={"error": "Server busy, please try again later."}, status_code=503)
 
@@ -253,7 +273,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
         # Update chat history
         if character_id:
-            updated_messages = full_messages + [{"role": "assistant", "content": reply}]
+            updated_messages = full_messages + [{
+                "role": "assistant",
+                "content": reply,
+                "usage": response_usage,
+            }]
 
             # Fetch character details for sidebar display
             character = db.query(Character).filter(Character.id == character_id).first()

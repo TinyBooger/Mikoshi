@@ -162,7 +162,7 @@ export default function Layout() {
     <div
       className="d-flex flex-column"
       style={{
-        height: '100vh',
+        height: '100dvh',
         overflow: 'hidden',
         width: '100%',
         position: 'fixed',
@@ -195,7 +195,7 @@ export default function Layout() {
       <div
         style={{
           display: 'flex',
-          height: '100vh',
+          height: '100dvh',
           width: '100%',
           position: 'fixed',
           inset: 0,
@@ -216,7 +216,7 @@ export default function Layout() {
               top: '7dvh',
               left: 0,
               width: '100vw',
-              height: 'calc(100vh - 7dvh)',
+              height: 'calc(100dvh - 7dvh)',
               background: 'rgba(0,0,0,0.3)',
               zIndex: 999,
               cursor: 'pointer',
@@ -237,7 +237,7 @@ export default function Layout() {
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain',
-            height: 'calc(100vh - 7dvh)',
+            height: 'calc(100dvh - 7dvh)',
             position: 'relative',
             paddingTop: '0',
             paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : '0',

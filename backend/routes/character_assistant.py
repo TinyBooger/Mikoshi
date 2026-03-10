@@ -43,10 +43,10 @@ IMPORTANT: Always respond in the same language as the user's prompt.
 Return ONLY a valid JSON object with these exact fields:
 {
     "name": "Character's name",
-    "persona": "Detailed character description including personality, background, speaking style, and behavior (200-800 characters)",
+    "persona": "Detailed character description including personality, background, speaking style, and behavior (up to 400 characters)",
     "tagline": "A short, catchy tagline (under 100 characters)",
     "greeting": "The character's first message to the user (under 200 characters)",
-    "sample_dialogue": "2-3 example conversation lines showing the character's tone, formatted as:\\nYou: [user message]\\nCharacter: [character response]"
+    "sample_dialogue": "2-3 example conversation lines showing the character's tone (under 200 characters total), formatted as:\\nYou: [user message]\\nCharacter: [character response]"
 }
 
 Make the character engaging, consistent, and appropriate. Be creative but stay true to the user's request."""

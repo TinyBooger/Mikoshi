@@ -16,6 +16,8 @@ from utils.content_censor import censor_form_payload
 
 router = APIRouter()
 
+MAX_DESCRIPTION_LENGTH = 400
+
 # ------------------- SCENE CRUD ROUTES -------------------
 
 # Create Scene
@@ -45,6 +47,9 @@ async def create_scene(
     intro = censored_payload.get("intro")
     tags = censored_payload.get("tags") or []
     forked_from_name = censored_payload.get("forked_from_name")
+
+    if len(description) > MAX_DESCRIPTION_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
 
     # Enforce: forking requires level 2 or higher
     if forked_from_id and current_user.level < 2:
@@ -270,6 +275,8 @@ async def update_scene(
     })
     name = censored_payload.get("name")
     description = censored_payload.get("description")
+    if description is not None:
+        description = description.strip()
     intro = censored_payload.get("intro")
     tags = censored_payload.get("tags")
     
@@ -281,6 +288,8 @@ async def update_scene(
     if name is not None:
         scene.name = name
     if description is not None:
+        if len(description) > MAX_DESCRIPTION_LENGTH:
+            raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
         scene.description = description
     if intro is not None:
         scene.intro = intro

@@ -140,7 +140,7 @@ export default function UserStatsPage() {
     {
       title: 'Avg Daily Token Usage',
       value: Number(metrics.avg_daily_tokens_per_active_user || 0).toFixed(2),
-      subtitle: 'Tokenizer-counted tokens per active user',
+      subtitle: 'API usage.total_tokens per active user',
       border: 'success',
       icon: 'bi-cpu',
     },
@@ -278,7 +278,7 @@ export default function UserStatsPage() {
                           data.single_user_daily_token_usage.map((row) => (
                             <tr key={row.user_id}>
                               <td style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.user_id}</td>
-                              <td className="text-end">{row.estimated_tokens}</td>
+                              <td className="text-end">{Number(row.total_tokens || 0).toLocaleString()}</td>
                             </tr>
                           ))
                         )}

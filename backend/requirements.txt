@@ -11,7 +11,6 @@ cloudinary
 firebase-admin
 python-dotenv
 openai
-tiktoken
 alibabacloud_dypnsapi20170525==2.0.0
 alibabacloud_credentials>=0.3.0
 alibabacloud_captcha20230305==1.1.4

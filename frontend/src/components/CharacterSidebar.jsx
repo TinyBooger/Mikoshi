@@ -43,12 +43,16 @@ export default function CharacterSidebar({
   setAdvancedChatConfig,
   onResetAdvancedChatConfig,
   canUseAdvancedChatConfig,
+  wallpaperOptions,
+  selectedWallpaperId,
+  onSelectWallpaper,
   isMobile = false, // allow parent to pass isMobile, default false
   setPersonaModalShow // <-- new prop to open PersonaModal
 }) {
   const [creatorHover, setCreatorHover] = React.useState(false);
   const [showFullTagline, setShowFullTagline] = React.useState(false);
   const [showProblemReport, setShowProblemReport] = React.useState(false);
+  const [showWallpaperPicker, setShowWallpaperPicker] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('chat');
   const { t } = useTranslation();
   const updateConfig = (key, value, min, max, fallback) => {
@@ -291,6 +295,66 @@ export default function CharacterSidebar({
               )}
             </div>
           )}
+
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '0.9rem',
+              padding: '0.8rem',
+              marginBottom: 14,
+              border: '1.2px solid #e5e7eb',
+            }}
+          >
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.01em' }}>
+              {t('chat.wallpaper')}
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary"
+              style={{ width: '100%', borderRadius: 10, marginBottom: showWallpaperPicker ? 10 : 0 }}
+              onClick={() => setShowWallpaperPicker((prev) => !prev)}
+            >
+              <i className="bi bi-image me-2"></i>
+              {showWallpaperPicker ? t('chat.wallpaper_hide') : t('chat.wallpaper_choose')}
+            </button>
+
+            {showWallpaperPicker && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                {(wallpaperOptions || []).map((wallpaper) => {
+                  const selected = selectedWallpaperId === wallpaper.id;
+                  return (
+                    <button
+                      key={wallpaper.id}
+                      type="button"
+                      onClick={() => onSelectWallpaper?.(wallpaper.id)}
+                      style={{
+                        border: selected ? '2px solid #18191a' : '1px solid #d1d5db',
+                        borderRadius: 10,
+                        background: '#fff',
+                        padding: 6,
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '100%',
+                          height: 52,
+                          borderRadius: 8,
+                          background: wallpaper.url ? `url(${wallpaper.url}) center/cover no-repeat` : 'linear-gradient(135deg,#f8fafc,#e5e7eb)',
+                          border: '1px solid rgba(0,0,0,0.06)',
+                          marginBottom: 6,
+                        }}
+                      />
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#111827' }}>
+                        {wallpaper.labelKey ? t(wallpaper.labelKey) : wallpaper.name}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
         {/* New Chat Button */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>

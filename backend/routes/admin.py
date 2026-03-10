@@ -11,7 +11,7 @@ from typing import List, Optional, Dict
 from pydantic import BaseModel
 from schemas import UserOut, UserMessageOut
 from utils.audit_logger import AuditLog
-from utils.token_utils import estimate_tokens_from_messages
+from utils.usage_utils import sum_usage_from_messages
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -200,8 +200,9 @@ def get_user_data_stats(
     for user_id, messages in today_chats:
         if not user_id:
             continue
-        estimated_tokens = estimate_tokens_from_messages(messages)
-        user_token_usage[user_id] = user_token_usage.get(user_id, 0) + estimated_tokens
+        usage = sum_usage_from_messages(messages)
+        total_tokens = usage["total_tokens"]
+        user_token_usage[user_id] = user_token_usage.get(user_id, 0) + total_tokens
 
     top_daily_token_users = sorted(
         user_token_usage.items(),
@@ -246,13 +247,13 @@ def get_user_data_stats(
         "single_user_daily_token_usage": [
             {
                 "user_id": user_id,
-                "estimated_tokens": estimated_tokens,
+                "total_tokens": total_tokens,
             }
-            for user_id, estimated_tokens in top_daily_token_users
+            for user_id, total_tokens in top_daily_token_users
         ],
         "top_daily_message_users": top_daily_message_users[:10],
         "notes": {
-            "token_usage": "Counted with tokenizer-based message accounting (tiktoken) on chats updated today.",
+            "token_usage": "Summed from API response usage fields persisted on assistant messages (chats updated today).",
             "retention": "D1/D7 are cohort-based using register audit logs and login/chat activity dates.",
         }
     }
@@ -283,7 +284,8 @@ def get_single_user_token_usage(
     monthly_tokens = 0
     rolling_30d_tokens = 0
     for messages, last_updated in chats_last_30_days:
-        tokens = estimate_tokens_from_messages(messages)
+        usage = sum_usage_from_messages(messages)
+        tokens = usage["total_tokens"]
         rolling_30d_tokens += tokens
         if last_updated and last_updated >= today_start:
             daily_tokens += tokens
@@ -304,7 +306,7 @@ def get_single_user_token_usage(
         "rolling_30d_tokens": rolling_30d_tokens,
         "daily_chat_sessions": daily_chat_sessions,
         "notes": {
-            "token_usage": "Tokenizer-counted (tiktoken) from chat history messages.",
+            "token_usage": "Summed from API response usage fields persisted on assistant messages.",
         },
     }
 

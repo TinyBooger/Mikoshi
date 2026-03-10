@@ -72,7 +72,7 @@ export default function CharacterFormPage() {
     frequency_penalty: 0,
   };
   const MAX_NAME_LENGTH = 50;
-  const MAX_PERSONA_LENGTH = 1000;
+  const MAX_PERSONA_LENGTH = 400;
   const MAX_TAGLINE_LENGTH = 100;
   // Get id param from route
   const params = useParams();
@@ -81,7 +81,7 @@ export default function CharacterFormPage() {
   const isForkMode = location.pathname.includes('/fork/');
   const mode = id ? (isForkMode ? 'fork' : 'edit') : 'create';
   const MAX_GREETING_LENGTH = 200;
-  const MAX_SAMPLE_LENGTH = 1000;
+  const MAX_SAMPLE_LENGTH = 200;
   const MAX_TAGS = 20;
   // Special prompt stored when a character uses an improvising greeting
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';

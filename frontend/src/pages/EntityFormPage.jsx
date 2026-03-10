@@ -30,7 +30,7 @@ export default function EntityFormPage() {
   const config = {
     persona: {
       maxNameLength: 50,
-      maxDescLength: 1000,
+      maxDescLength: 400,
       maxIntroLength: 200,
       maxTags: 20,
       apiEndpoint: 'personas',
@@ -40,7 +40,7 @@ export default function EntityFormPage() {
     },
     scene: {
       maxNameLength: 50,
-      maxDescLength: 1000,
+      maxDescLength: 400,
       maxIntroLength: 100,
       maxTags: 20,
       apiEndpoint: 'scenes',

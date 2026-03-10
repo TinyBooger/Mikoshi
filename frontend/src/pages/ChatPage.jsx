@@ -11,16 +11,21 @@ import SceneCharacterSelectModal from '../components/SceneCharacterSelectModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/ToastProvider';
 
+const WALLPAPER_OPTIONS = [
+  { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
+  { id: 'aurora', labelKey: 'chat.wallpaper_aurora', url: '/wallpapers/aurora.svg' },
+  { id: 'sunrise', labelKey: 'chat.wallpaper_sunrise', url: '/wallpapers/sunrise.svg' },
+  { id: 'waves', labelKey: 'chat.wallpaper_waves', url: '/wallpapers/waves.svg' },
+];
+
 export default function ChatPage() {
   const { t } = useTranslation();
   // Sentinel used to indicate a character should have an improvising greeting
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
   const SUMMARY_PREFIX = 'Summary of previous conversation:';
   const envSoftTokenLimit = Number(import.meta.env.VITE_CHAT_CONTEXT_SOFT_TOKEN_LIMIT);
-  const envTargetTokenLimit = Number(import.meta.env.VITE_CHAT_CONTEXT_TARGET_TOKEN_LIMIT);
   const envProSoftMultiplier = Number(import.meta.env.VITE_CHAT_CONTEXT_PRO_SOFT_LIMIT_MULTIPLIER);
   const CLIENT_SOFT_TOKEN_LIMIT = Number.isFinite(envSoftTokenLimit) && envSoftTokenLimit > 0 ? envSoftTokenLimit : 8000;
-  const CLIENT_TARGET_TOKEN_LIMIT = Number.isFinite(envTargetTokenLimit) && envTargetTokenLimit > 0 ? envTargetTokenLimit : 800;
   const CLIENT_PRO_SOFT_MULTIPLIER = Number.isFinite(envProSoftMultiplier) && envProSoftMultiplier > 1 ? envProSoftMultiplier : 2;
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
   const { userData, setUserData, sessionToken, refreshUserData, loading } = useContext(AuthContext);
@@ -30,6 +35,7 @@ export default function ChatPage() {
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [selectedWallpaperId, setSelectedWallpaperId] = useState(() => localStorage.getItem('chat.selectedWallpaper') || 'none');
   const [sending, setSending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [abortController, setAbortController] = useState(null);
@@ -111,6 +117,22 @@ export default function ChatPage() {
 
   const [characterId, setCharacterId] = useState(searchParams.get('character'));
   const [sceneId, setSceneId] = useState(searchParams.get('scene'));
+  const selectedWallpaper = WALLPAPER_OPTIONS.find((option) => option.id === selectedWallpaperId) || WALLPAPER_OPTIONS[0];
+
+  useEffect(() => {
+    if (!WALLPAPER_OPTIONS.some((option) => option.id === selectedWallpaperId)) {
+      setSelectedWallpaperId('none');
+    }
+  }, [selectedWallpaperId]);
+
+  useEffect(() => {
+    localStorage.setItem('chat.selectedWallpaper', selectedWallpaperId);
+  }, [selectedWallpaperId]);
+
+  const handleSelectWallpaper = (wallpaperId) => {
+    if (!WALLPAPER_OPTIONS.some((option) => option.id === wallpaperId)) return;
+    setSelectedWallpaperId(wallpaperId);
+  };
 
   // Update IDs instantly when URL searchParams change
   useEffect(() => {
@@ -213,47 +235,9 @@ export default function ChatPage() {
   const compactMessagesForRequest = (allMessages) => {
     if (!Array.isArray(allMessages)) return [];
 
-    const validMessages = allMessages.filter(
+    return allMessages.filter(
       (message) => message && typeof message === 'object' && message.role && typeof message.content === 'string'
     );
-
-    const systemMessages = validMessages.filter((message) => message.role === 'system');
-    const dialogueMessages = validMessages.filter((message) => message.role !== 'system');
-
-    const baseSystem = [...systemMessages]
-      .reverse()
-      .find((message) => !message.content.trim().startsWith(SUMMARY_PREFIX));
-
-    const summarySystemMessages = systemMessages.filter((message) =>
-      message.content.trim().startsWith(SUMMARY_PREFIX)
-    );
-
-    const estimateTokens = (msgList) => {
-      const totalChars = msgList.reduce((sum, message) => sum + (message.role?.length || 0) + (message.content?.length || 0) + 10, 0);
-      return Math.max(1, Math.floor(totalChars / 4));
-    };
-
-    const basePayload = [
-      ...(baseSystem ? [baseSystem] : []),
-      ...summarySystemMessages,
-    ];
-
-    const isProUser = !!userData?.is_pro;
-    const effectiveSoftTokenLimit = Math.floor(CLIENT_SOFT_TOKEN_LIMIT * (isProUser ? CLIENT_PRO_SOFT_MULTIPLIER : 1));
-
-    const fullPayload = [...basePayload, ...dialogueMessages];
-    if (estimateTokens(fullPayload) <= effectiveSoftTokenLimit) {
-      return fullPayload;
-    }
-
-    const trimmedDialogue = [...dialogueMessages];
-    let payload = [...basePayload, ...trimmedDialogue];
-    while (estimateTokens(payload) > CLIENT_TARGET_TOKEN_LIMIT && trimmedDialogue.length > 1) {
-      trimmedDialogue.shift();
-      payload = [...basePayload, ...trimmedDialogue];
-    }
-
-    return payload;
   };
 
   const getContextWindowUsage = (allMessages) => {
@@ -261,36 +245,41 @@ export default function ChatPage() {
     const effectiveSoftTokenLimit = Math.floor(CLIENT_SOFT_TOKEN_LIMIT * (isProUser ? CLIENT_PRO_SOFT_MULTIPLIER : 1));
 
     if (!Array.isArray(allMessages)) {
-      return { currentTokens: 0, softLimit: effectiveSoftTokenLimit, sentTokens: 0, compacted: false };
+      return {
+        currentTokens: 0,
+        softLimit: effectiveSoftTokenLimit,
+      };
     }
 
     const validMessages = allMessages.filter(
       (message) => message && typeof message === 'object' && message.role && typeof message.content === 'string'
     );
-    const estimateTokens = (msgList) => {
-      const totalChars = msgList.reduce((sum, message) => sum + (message.role?.length || 0) + (message.content?.length || 0) + 10, 0);
-      return Math.max(1, Math.floor(totalChars / 4));
-    };
 
-    const requestMessages = compactMessagesForRequest(validMessages);
-    const strictServerUsageMatches =
-      serverContextWindowUsage &&
-      Number(serverContextWindowUsage.message_count || 0) === validMessages.length;
+    if (serverContextWindowUsage) {
+      const serverInputTokens = Number(serverContextWindowUsage.input_tokens || 0);
 
-    if (strictServerUsageMatches) {
       return {
-        currentTokens: Number(serverContextWindowUsage.input_tokens || 0),
+        currentTokens: serverInputTokens,
         softLimit: Number(serverContextWindowUsage.soft_token_limit || effectiveSoftTokenLimit),
-        sentTokens: Number(serverContextWindowUsage.output_tokens || 0),
-        compacted: Boolean(serverContextWindowUsage.was_summarized),
+      };
+    }
+
+    for (let i = validMessages.length - 1; i >= 0; i -= 1) {
+      const message = validMessages[i];
+      if (message.role !== 'assistant' || !message.usage || typeof message.usage !== 'object') {
+        continue;
+      }
+
+      const usageInputTokens = Number(message.usage.prompt_tokens || 0);
+      return {
+        currentTokens: usageInputTokens,
+        softLimit: effectiveSoftTokenLimit,
       };
     }
 
     return {
-      currentTokens: estimateTokens(validMessages),
+      currentTokens: 0,
       softLimit: effectiveSoftTokenLimit,
-      sentTokens: estimateTokens(requestMessages),
-      compacted: requestMessages.length < validMessages.length,
     };
   };
 
@@ -1025,7 +1014,7 @@ export default function ChatPage() {
       );
       const nonSystemMessages = historyMessages.filter((m) => m?.role !== 'system');
 
-      // Keep exactly one live system prompt + compacted summary blocks + normal dialogue
+      // Keep exactly one live system prompt plus normal dialogue messages
       setMessages([sys, ...summarySystemMessages, ...nonSystemMessages]);
       
       // Set selected chat and mark as existing chat (not new)
@@ -1180,8 +1169,6 @@ export default function ChatPage() {
   const contextWindowUsage = getContextWindowUsage(messages);
   const contextUsageRatio = Math.min(1, contextWindowUsage.currentTokens / Math.max(1, contextWindowUsage.softLimit));
   const contextUsagePercent = Math.round(contextUsageRatio * 100);
-  const sentUsageRatio = Math.min(1, contextWindowUsage.sentTokens / Math.max(1, contextWindowUsage.softLimit));
-  const sentUsagePercent = Math.round(sentUsageRatio * 100);
   const pieRadius = 7;
   const pieCircumference = 2 * Math.PI * pieRadius;
   const pieStrokeOffset = pieCircumference * (1 - contextUsageRatio);
@@ -1203,7 +1190,11 @@ export default function ChatPage() {
         flexDirection: 'column', 
         minHeight: 0, 
         zIndex: 1,
-        background: '#fff', 
+        background: '#fff',
+        backgroundImage: selectedWallpaper?.url ? `url(${selectedWallpaper.url})` : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
         borderRadius: isMobile ? '0' : '1.5rem', 
         margin: isMobile ? '0' : '0 0.5rem 0 0.5rem', 
         boxShadow: '0 2px 16px rgba(0,0,0,0.04)', 
@@ -1211,7 +1202,16 @@ export default function ChatPage() {
         height: 'auto',
         }}>
         {/* Messages Area */}
-        <div style={{ flex: 1, padding: '1.2rem', overflowY: 'auto', background: '#fff', minHeight: 0 }}>
+        <div
+          style={{
+            flex: 1,
+            padding: '1.2rem',
+            overflowY: 'auto',
+            background: selectedWallpaper?.url ? 'rgba(255, 255, 255, 0.76)' : '#fff',
+            backdropFilter: selectedWallpaper?.url ? 'blur(1.5px)' : 'none',
+            minHeight: 0,
+          }}
+        >
           {(() => {
             const nonSystem = messages.filter(m => m.role !== 'system');
             // Show welcome only when starting a new chat (isNewChat.current)
@@ -1373,7 +1373,20 @@ export default function ChatPage() {
         </div>
 
         {/* Input Area (no form) */}
-        <form onSubmit={handleSend} style={{ padding: '0.8rem 1.2rem', background: '#f8f9fa', borderTop: '1.2px solid #e9ecef', flexShrink: 0 }}>
+        <form
+          onSubmit={handleSend}
+          style={{
+            paddingTop: '0.8rem',
+            paddingLeft: '1.2rem',
+            paddingRight: '1.2rem',
+            paddingBottom: isMobile
+              ? 'calc(0.8rem + env(safe-area-inset-bottom, 0px))'
+              : '0.8rem',
+            background: selectedWallpaper?.url ? 'rgba(248, 249, 250, 0.9)' : '#f8f9fa',
+            borderTop: '1.2px solid #e9ecef',
+            flexShrink: 0
+          }}
+        >
           <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'flex-end' }}>
             <div
               style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flexShrink: 0, marginBottom: 7 }}
@@ -1447,17 +1460,8 @@ export default function ChatPage() {
                     />
                   </div>
 
-                  <div style={{ fontSize: '0.7rem', opacity: 0.9, marginBottom: 6 }}>
-                    {`发送到模型：${contextWindowUsage.sentTokens} tokens${contextWindowUsage.compacted ? '（已压缩）' : ''}`}
-                  </div>
-                  <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.2)', overflow: 'hidden' }}>
-                    <div
-                      style={{
-                        width: `${sentUsagePercent}%`,
-                        height: '100%',
-                        background: '#34d399',
-                      }}
-                    />
+                  <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>
+                    基于上次请求
                   </div>
                 </div>
               )}
@@ -1501,7 +1505,6 @@ export default function ChatPage() {
                   }
                 }}
                 onBlur={e => e.target.style.border = '1.2px solid #e9ecef'}
-                disabled={sending}
                 rows={1}
               />
               {isStreaming ? (
@@ -1624,6 +1627,9 @@ export default function ChatPage() {
         setAdvancedChatConfig={setAdvancedChatConfig}
         onResetAdvancedChatConfig={() => setAdvancedChatConfig(normalizeAdvancedChatConfig(selectedCharacter))}
         canUseAdvancedChatConfig={canUseAdvancedChatConfig}
+        wallpaperOptions={WALLPAPER_OPTIONS}
+        selectedWallpaperId={selectedWallpaperId}
+        onSelectWallpaper={handleSelectWallpaper}
         isMobile={isMobile}
         setPersonaModalShow={() => setPersonaModal({ show: true })}
       />

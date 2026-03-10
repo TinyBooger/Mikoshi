@@ -9,7 +9,7 @@ from sqlalchemy import func
 from models import Persona, User, Character, ChatHistory
 from schemas import PersonaOut
 from utils.chat_history_utils import fetch_user_chat_history
-from utils.token_utils import estimate_tokens_from_messages
+from utils.usage_utils import sum_usage_from_messages
 
 
 def get_pro_state(user: User) -> dict[str, Any]:
@@ -47,10 +47,10 @@ def _get_user_token_usage(db: Session, user_id: str) -> dict[str, int]:
     daily_tokens = 0
     monthly_tokens = 0
     for messages, last_updated in chats_this_month:
-        estimated_tokens = estimate_tokens_from_messages(messages)
-        monthly_tokens += estimated_tokens
+        usage = sum_usage_from_messages(messages)
+        monthly_tokens += usage["total_tokens"]
         if last_updated and last_updated >= today_start:
-            daily_tokens += estimated_tokens
+            daily_tokens += usage["total_tokens"]
 
     return {
         "daily_token_usage": daily_tokens,
