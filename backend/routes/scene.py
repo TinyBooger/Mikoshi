@@ -119,6 +119,7 @@ def get_scenes(search: str = None, db: Session = Depends(get_db)):
 @router.get("/api/scenes-created", response_model=SceneListOut)
 def get_scenes_created(
     userId: str = Query(None),
+    sort: str = Query("recent"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -129,13 +130,18 @@ def get_scenes_created(
     Otherwise, fetch current user's created scenes.
     """
     if userId:
-        query = db.query(Scene).filter(Scene.creator_id == userId).order_by(Scene.created_time.desc())
+        query = db.query(Scene).filter(Scene.creator_id == userId)
         if not current_user or current_user.id != userId:
             query = query.filter(Scene.is_public == True)
     else:
         if not current_user:
             return SceneListOut(items=[], total=0, page=1, page_size=0, short=False)
-        query = db.query(Scene).filter(Scene.creator_id == current_user.id).order_by(Scene.created_time.desc())
+        query = db.query(Scene).filter(Scene.creator_id == current_user.id)
+
+    if sort == "popular":
+        query = query.order_by(Scene.views.desc(), Scene.created_time.desc())
+    else:
+        query = query.order_by(Scene.created_time.desc())
     
     total = query.count()
     scenes = query.offset((page - 1) * page_size).limit(page_size).all()
@@ -327,6 +333,7 @@ def delete_scene(scene_id: int, db: Session = Depends(get_db), current_user: Use
 @router.get("/api/scenes-liked", response_model=SceneListOut)
 def get_scenes_liked(
     userId: str = Query(None),
+    sort: str = Query("recent"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -336,16 +343,25 @@ def get_scenes_liked(
     If userId is provided, fetch that user's liked scenes.
     Otherwise, fetch current user's liked scenes.
     """
+    target_user_id = userId
     if userId:
-        liked_query = db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == userId)
+        target_user_id = userId
     else:
         if not current_user:
             return SceneListOut(items=[], total=0, page=1, page_size=0, short=False)
-        liked_query = db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == current_user.id)
-    
-    total = liked_query.count()
-    scene_ids = [sid for (sid,) in liked_query.offset((page - 1) * page_size).limit(page_size).all()]
-    if not scene_ids:
-        return SceneListOut(items=[], total=total, page=page, page_size=page_size, short=False)
-    scenes = db.query(Scene).filter(Scene.id.in_(scene_ids), Scene.is_public == True).all()
+        target_user_id = current_user.id
+
+    query = (
+        db.query(Scene)
+        .join(UserLikedScene, UserLikedScene.scene_id == Scene.id)
+        .filter(UserLikedScene.user_id == target_user_id, Scene.is_public == True)
+    )
+
+    if sort == "popular":
+        query = query.order_by(Scene.views.desc(), Scene.created_time.desc())
+    else:
+        query = query.order_by(Scene.created_time.desc())
+
+    total = query.count()
+    scenes = query.offset((page - 1) * page_size).limit(page_size).all()
     return SceneListOut(items=scenes, total=total, page=page, page_size=page_size, short=False)

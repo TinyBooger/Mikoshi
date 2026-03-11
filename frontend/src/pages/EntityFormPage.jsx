@@ -255,9 +255,14 @@ export default function EntityFormPage() {
         padding: '2.5rem 2rem',
         margin: '0 auto',
       }}>
-        <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>
+        <h2 className="fw-bold text-dark mb-2" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>
           {mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.edit_title`) : mode === 'fork' ? t(`${entityConfig.transactionKeyPrefix}.fork_title`, `Fork ${entityType.charAt(0).toUpperCase() + entityType.slice(1)}`) : t(`${entityConfig.transactionKeyPrefix}.create_title`)}
         </h2>
+        {mode === 'create' && (
+          <p className="text-muted mb-4" style={{ fontSize: '0.98rem', lineHeight: 1.65 }}>
+            {t(`${entityConfig.transactionKeyPrefix}.create_description`) || ''}
+          </p>
+        )}
         
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           {/* Forked From - Display only */}

@@ -393,6 +393,7 @@
   "persona_form": {
     "edit_title": "Edit Persona",
     "create_title": "Create New Persona",
+    "create_description": "A persona helps the AI understand your identity, speaking style, and preferences during chat.",
     "fork_title": "Fork Persona",
     "name": "Name",
     "required_marker": "*",
@@ -438,6 +439,7 @@
   "scene_form": {
     "edit_title": "Edit Scene",
     "create_title": "Create New Scene",
+    "create_description": "A scene sets the background, atmosphere, and environment for the conversation.",
     "fork_title": "Fork Scene",
     "name": "Name",
     "description": "Description",
@@ -937,6 +939,7 @@
     "no_bio": "No bio yet",
     "chats": "Chats",
     "likes": "Likes",
-    "characters_created": "Characters"
+    "characters_created": "Characters",
+    "recent_characters": "Recent Characters"
   }
 }

@@ -470,6 +470,7 @@ from typing import List
 @router.get("/api/characters-created", response_model=CharacterListOut)
 def get_user_created_characters(
     userId: str = Query(None),
+    sort: str = Query("recent"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -488,6 +489,11 @@ def get_user_created_characters(
         if not current_user:
             return CharacterListOut(items=[], total=0, page=1, page_size=0, short=False)
         query = db.query(Character).filter(Character.creator_id == current_user.id)
+
+    if sort == "popular":
+        query = query.order_by(Character.views.desc(), Character.created_time.desc())
+    else:
+        query = query.order_by(Character.created_time.desc())
     
     total = query.count()
     characters = query.offset((page - 1) * page_size).limit(page_size).all()
@@ -495,6 +501,7 @@ def get_user_created_characters(
 
 @router.get("/api/characters-liked", response_model=CharacterListOut)
 def get_user_liked_characters(
+    sort: str = Query("recent"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -503,12 +510,19 @@ def get_user_liked_characters(
     if not current_user:
         return CharacterListOut(items=[], total=0, page=1, page_size=0, short=False)
 
-    liked = db.query(UserLikedCharacter.character_id).filter_by(user_id=current_user.id)
-    total = liked.count()
-    liked_ids = [row.character_id for row in liked.offset((page - 1) * page_size).limit(page_size).all()]
-    if not liked_ids:
-        return CharacterListOut(items=[], total=total, page=page, page_size=page_size, short=False)
-    characters = db.query(Character).filter(Character.id.in_(liked_ids), Character.is_public == True).all()
+    query = (
+        db.query(Character)
+        .join(UserLikedCharacter, UserLikedCharacter.character_id == Character.id)
+        .filter(UserLikedCharacter.user_id == current_user.id, Character.is_public == True)
+    )
+
+    if sort == "popular":
+        query = query.order_by(Character.views.desc(), Character.created_time.desc())
+    else:
+        query = query.order_by(Character.created_time.desc())
+
+    total = query.count()
+    characters = query.offset((page - 1) * page_size).limit(page_size).all()
     return CharacterListOut(items=characters, total=total, page=page, page_size=page_size, short=False)
 
 

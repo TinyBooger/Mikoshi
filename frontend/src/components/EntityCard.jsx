@@ -11,8 +11,9 @@ import defaultPicture from '../assets/images/default-picture.png';
  * @param {Function} [props.onClick] Optional click handler
  * @param {boolean} [props.disableClick] Optional flag to disable click behavior
  * @param {boolean} [props.compact] Optional flag for compact horizontal layout
+ * @param {'default'|'mini'} [props.size] Optional visual size variant
  */
-export default function EntityCard({ type, entity, onClick, disableClick = false, compact = false }) {
+export default function EntityCard({ type, entity, onClick, disableClick = false, compact = false, size = 'default' }) {
   const { t } = useTranslation();
   // Mobile viewport detection
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
@@ -114,11 +115,15 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
     tagBorder = `${base}40`;
   }
 
+  const isMini = size === 'mini';
+
   // Card sizes
   // On mobile, use 4:5 aspect ratio for card (height = width * 1.25)
-  const CARD_WIDTH = compact ? '100%' : (isMobile ? '100%' : '11.25rem');
+  const CARD_WIDTH = compact ? '100%' : (isMobile ? '100%' : (isMini ? '8.25rem' : '11.25rem'));
   const CARD_ASPECT_RATIO = 1.25; // 4:5
-  const CARD_HEIGHT = compact
+  const CARD_HEIGHT = isMini
+    ? (isMobile ? '9.2rem' : '10.5rem')
+    : compact
     ? (isMobile ? '100%' : '15.625rem')
     : (isMobile ? 'calc(100vw / 2 * 1.25 - 0.5rem)' : '15.625rem'); // 2 columns, minus gap
   const IMAGE_ASPECT_RATIO = 0.8; // 4:5 image, but can be 1:1 if you prefer
@@ -266,8 +271,8 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
         }}
       >
         <div className="d-flex align-items-center justify-content-between" style={{ gap: '0.25rem', marginBottom: compact && isMobile ? '0.05rem' : '0.15rem' }}>
-          <h5 className="fw-bold text-dark text-truncate mb-0" style={{ fontSize: compact && isMobile ? '0.85rem' : (isMobile ? '0.92rem' : '0.98rem'), maxWidth: primaryTag ? '70%' : (isMobile ? '100%' : '9.375rem'), fontFamily: 'Inter, sans-serif' }}>{name}</h5>
-          {primaryTag && (
+          <h5 className="fw-bold text-dark text-truncate mb-0" style={{ fontSize: isMini ? '0.78rem' : (compact && isMobile ? '0.85rem' : (isMobile ? '0.92rem' : '0.98rem')), maxWidth: primaryTag && !isMini ? '70%' : (isMobile ? '100%' : (isMini ? '100%' : '9.375rem')), fontFamily: 'Inter, sans-serif' }}>{name}</h5>
+          {primaryTag && !isMini && (
             <span
               className="badge text-uppercase"
               title={primaryTag}
@@ -295,7 +300,7 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
         </span>
       </div>
       {/* Description/Tagline/Intro */}
-      {!(compact && isMobile) && (<div className="px-2" style={{
+      {!isMini && !(compact && isMobile) && (<div className="px-2" style={{
         flex: 1,
         minHeight: isMobile ? '1.125rem' : '1.375rem', // 18px/22px
         maxHeight: isMobile ? '1.125rem' : '1.375rem',
@@ -316,7 +321,7 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
         </span>
       </div>)}
       {/* Stats */}
-      {!(compact && isMobile) && (<div className="d-flex align-items-center justify-content-between px-2 pb-1" style={{ minHeight: isMobile ? '0.875rem' : '1.125rem' }}> {/* 14px/18px */}
+      {!isMini && !(compact && isMobile) && (<div className="d-flex align-items-center justify-content-between px-2 pb-1" style={{ minHeight: isMobile ? '0.875rem' : '1.125rem' }}> {/* 14px/18px */}
         <span className="d-flex align-items-center text-secondary" style={{ fontSize: isMobile ? '0.5625rem' : '0.625rem' }}> {/* 9px/10px */}
           <i className="bi bi-chat me-1"></i> {typeof views === 'number' ? views.toLocaleString() : 0}
         </span>
@@ -327,7 +332,7 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
         )}
       </div>)}
       {/* View Detail Button for forkable entities */}
-      {is_forkable && !(compact && isMobile) && (
+      {is_forkable && !isMini && !(compact && isMobile) && (
         <div className="px-2 pb-2">
           <button
             onClick={handleViewDetail}

@@ -30,6 +30,10 @@ export default function ProfilePage() {
     SCENES: 'scenes',
     PERSONAS: 'personas',
   };
+  const ENTITY_SORTS = {
+    RECENT: 'recent',
+    POPULAR: 'popular',
+  };
 
   const { userId: profileUserId } = useParams(); // get userId from route params
   const { userData, sessionToken, refreshUserData } = useContext(AuthContext);
@@ -45,6 +49,9 @@ export default function ProfilePage() {
   const [likedPersonas, setLikedPersonas] = useState([]);
   const [activeTab, setActiveTab] = useState(TAB_TYPES.CREATED);
   const [activeSubtab, setActiveSubtab] = useState(SUBTAB_TYPES.CHARACTERS);
+  const [characterSort, setCharacterSort] = useState(ENTITY_SORTS.RECENT);
+  const [sceneSort, setSceneSort] = useState(ENTITY_SORTS.RECENT);
+  const [personaSort, setPersonaSort] = useState(ENTITY_SORTS.RECENT);
   const [scenes, setScenes] = useState([]);
   const [likedScenes, setLikedScenes] = useState([]);
 
@@ -123,7 +130,7 @@ export default function ProfilePage() {
     const userIdParam = profileUserId ? `?userId=${profileUserId}` : '';
 
     // Created Characters
-    fetch(`${window.API_BASE_URL}/api/characters-created${userIdParam}${userIdParam ? '&' : '?'}page=${createdCharactersPage}&page_size=${pageSize}`, {
+    fetch(`${window.API_BASE_URL}/api/characters-created${userIdParam}${userIdParam ? '&' : '?'}sort=${characterSort}&page=${createdCharactersPage}&page_size=${pageSize}`, {
       headers: { 'Authorization': sessionToken }
     })
       .then(res => res.ok ? res.json() : null)
@@ -138,7 +145,7 @@ export default function ProfilePage() {
       });
 
     // Created Scenes
-    fetch(`${window.API_BASE_URL}/api/scenes-created${userIdParam}${userIdParam ? '&' : '?'}page=${scenesPage}&page_size=${pageSize}`, {
+    fetch(`${window.API_BASE_URL}/api/scenes-created${userIdParam}${userIdParam ? '&' : '?'}sort=${sceneSort}&page=${scenesPage}&page_size=${pageSize}`, {
       headers: { 'Authorization': sessionToken }
     })
       .then(res => res.ok ? res.json() : null)
@@ -153,7 +160,7 @@ export default function ProfilePage() {
       });
 
     // Created Personas
-    fetch(`${window.API_BASE_URL}/api/personas-created${userIdParam}${userIdParam ? '&' : '?'}page=${personasPage}&page_size=${pageSize}`, {
+    fetch(`${window.API_BASE_URL}/api/personas-created${userIdParam}${userIdParam ? '&' : '?'}sort=${personaSort}&page=${personasPage}&page_size=${pageSize}`, {
       headers: { 'Authorization': sessionToken }
     })
       .then(res => res.ok ? res.json() : null)
@@ -170,7 +177,7 @@ export default function ProfilePage() {
 
     // Liked Characters (only for own profile)
     if (isOwnProfile) {
-      fetch(`${window.API_BASE_URL}/api/characters-liked?page=${likedCharactersPage}&page_size=${pageSize}`, {
+      fetch(`${window.API_BASE_URL}/api/characters-liked?sort=${characterSort}&page=${likedCharactersPage}&page_size=${pageSize}`, {
         headers: { 'Authorization': sessionToken }
       })
         .then(res => res.ok ? res.json() : null)
@@ -189,7 +196,7 @@ export default function ProfilePage() {
 
     // Liked Scenes (only for own profile)
     if (isOwnProfile) {
-      fetch(`${window.API_BASE_URL}/api/scenes-liked?page=${likedScenesPage}&page_size=${pageSize}`, {
+      fetch(`${window.API_BASE_URL}/api/scenes-liked?sort=${sceneSort}&page=${likedScenesPage}&page_size=${pageSize}`, {
         headers: { 'Authorization': sessionToken }
       })
         .then(res => res.ok ? res.json() : null)
@@ -208,7 +215,7 @@ export default function ProfilePage() {
 
     // Liked Personas (only for own profile)
     if (isOwnProfile) {
-      fetch(`${window.API_BASE_URL}/api/personas-liked?page=${likedPersonasPage}&page_size=${pageSize}`, {
+      fetch(`${window.API_BASE_URL}/api/personas-liked?sort=${personaSort}&page=${likedPersonasPage}&page_size=${pageSize}`, {
         headers: { 'Authorization': sessionToken }
       })
         .then(res => res.ok ? res.json() : null)
@@ -225,7 +232,22 @@ export default function ProfilePage() {
       setLikedPersonas([]);
     }
     setLoading(false);
-  }, [navigate, sessionToken, userData, profileUserId, isOwnProfile, createdCharactersPage, likedCharactersPage, scenesPage, likedScenesPage, personasPage, likedPersonasPage]);
+  }, [navigate, sessionToken, userData, profileUserId, isOwnProfile, createdCharactersPage, likedCharactersPage, scenesPage, likedScenesPage, personasPage, likedPersonasPage, characterSort, sceneSort, personaSort]);
+
+  useEffect(() => {
+    setCreatedCharactersPage(1);
+    setLikedCharactersPage(1);
+  }, [characterSort]);
+
+  useEffect(() => {
+    setScenesPage(1);
+    setLikedScenesPage(1);
+  }, [sceneSort]);
+
+  useEffect(() => {
+    setPersonasPage(1);
+    setLikedPersonasPage(1);
+  }, [personaSort]);
 
   // Calculate total chats and likes from all created characters
   useEffect(() => {
@@ -1144,6 +1166,117 @@ export default function ProfilePage() {
               {t('profile.personas')}
             </button>
           </div>
+          )}
+          {activeSubtab === SUBTAB_TYPES.CHARACTERS && (
+            <div className="d-flex align-items-center" style={{ marginTop: 4, gap: 10 }}>
+              <span style={{ color: '#555', fontSize: '0.88rem', fontWeight: 600 }}>
+                {t('browse.sort_by', 'Sort by')}
+              </span>
+              <div className="d-flex" style={{ gap: 8 }}>
+                <button
+                  type="button"
+                  className="fw-bold py-1 px-3 border-0"
+                  style={{
+                    background: characterSort === ENTITY_SORTS.RECENT ? '#222' : '#f5f5f5',
+                    color: characterSort === ENTITY_SORTS.RECENT ? '#fff' : '#222',
+                    borderRadius: 8,
+                    border: '1.2px solid #222',
+                    transition: 'background 0.18s, color 0.18s',
+                  }}
+                  onClick={() => setCharacterSort(ENTITY_SORTS.RECENT)}
+                >
+                  {t('browse.recent', 'Recent')}
+                </button>
+                <button
+                  type="button"
+                  className="fw-bold py-1 px-3 border-0"
+                  style={{
+                    background: characterSort === ENTITY_SORTS.POPULAR ? '#222' : '#f5f5f5',
+                    color: characterSort === ENTITY_SORTS.POPULAR ? '#fff' : '#222',
+                    borderRadius: 8,
+                    border: '1.2px solid #222',
+                    transition: 'background 0.18s, color 0.18s',
+                  }}
+                  onClick={() => setCharacterSort(ENTITY_SORTS.POPULAR)}
+                >
+                  {t('browse.popular', 'Popular')}
+                </button>
+              </div>
+            </div>
+          )}
+          {activeSubtab === SUBTAB_TYPES.SCENES && (
+            <div className="d-flex align-items-center" style={{ marginTop: 4, gap: 10 }}>
+              <span style={{ color: '#555', fontSize: '0.88rem', fontWeight: 600 }}>
+                {t('browse.sort_by', 'Sort by')}
+              </span>
+              <div className="d-flex" style={{ gap: 8 }}>
+                <button
+                  type="button"
+                  className="fw-bold py-1 px-3 border-0"
+                  style={{
+                    background: sceneSort === ENTITY_SORTS.RECENT ? '#222' : '#f5f5f5',
+                    color: sceneSort === ENTITY_SORTS.RECENT ? '#fff' : '#222',
+                    borderRadius: 8,
+                    border: '1.2px solid #222',
+                    transition: 'background 0.18s, color 0.18s',
+                  }}
+                  onClick={() => setSceneSort(ENTITY_SORTS.RECENT)}
+                >
+                  {t('browse.recent', 'Recent')}
+                </button>
+                <button
+                  type="button"
+                  className="fw-bold py-1 px-3 border-0"
+                  style={{
+                    background: sceneSort === ENTITY_SORTS.POPULAR ? '#222' : '#f5f5f5',
+                    color: sceneSort === ENTITY_SORTS.POPULAR ? '#fff' : '#222',
+                    borderRadius: 8,
+                    border: '1.2px solid #222',
+                    transition: 'background 0.18s, color 0.18s',
+                  }}
+                  onClick={() => setSceneSort(ENTITY_SORTS.POPULAR)}
+                >
+                  {t('browse.popular', 'Popular')}
+                </button>
+              </div>
+            </div>
+          )}
+          {activeSubtab === SUBTAB_TYPES.PERSONAS && (
+            <div className="d-flex align-items-center" style={{ marginTop: 4, gap: 10 }}>
+              <span style={{ color: '#555', fontSize: '0.88rem', fontWeight: 600 }}>
+                {t('browse.sort_by', 'Sort by')}
+              </span>
+              <div className="d-flex" style={{ gap: 8 }}>
+                <button
+                  type="button"
+                  className="fw-bold py-1 px-3 border-0"
+                  style={{
+                    background: personaSort === ENTITY_SORTS.RECENT ? '#222' : '#f5f5f5',
+                    color: personaSort === ENTITY_SORTS.RECENT ? '#fff' : '#222',
+                    borderRadius: 8,
+                    border: '1.2px solid #222',
+                    transition: 'background 0.18s, color 0.18s',
+                  }}
+                  onClick={() => setPersonaSort(ENTITY_SORTS.RECENT)}
+                >
+                  {t('browse.recent', 'Recent')}
+                </button>
+                <button
+                  type="button"
+                  className="fw-bold py-1 px-3 border-0"
+                  style={{
+                    background: personaSort === ENTITY_SORTS.POPULAR ? '#222' : '#f5f5f5',
+                    color: personaSort === ENTITY_SORTS.POPULAR ? '#fff' : '#222',
+                    borderRadius: 8,
+                    border: '1.2px solid #222',
+                    transition: 'background 0.18s, color 0.18s',
+                  }}
+                  onClick={() => setPersonaSort(ENTITY_SORTS.POPULAR)}
+                >
+                  {t('browse.popular', 'Popular')}
+                </button>
+              </div>
+            </div>
           )}
           {/* Content based on active tab and subtab */}
           {renderTabContent()}

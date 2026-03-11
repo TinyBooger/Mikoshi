@@ -61,6 +61,13 @@ def _get_user_token_usage(db: Session, user_id: str) -> dict[str, int]:
 def enrich_user_with_character_count(user: User, db: Session) -> dict:
     """Convert User to dict with characters_created count"""
     pro_state = get_pro_state(user)
+    recent_characters = (
+        db.query(Character)
+        .filter(Character.creator_id == user.id, Character.is_public == True)
+        .order_by(Character.created_time.desc())
+        .limit(6)
+        .all()
+    )
 
     return {
         "id": user.id,
@@ -73,6 +80,14 @@ def enrich_user_with_character_count(user: User, db: Session) -> dict:
         "views": user.views or 0,
         "likes": user.likes or 0,
         "characters_created": db.query(func.count(Character.id)).filter(Character.creator_id == user.id).scalar() or 0,
+        "recent_characters": [
+            {
+                "id": character.id,
+                "name": character.name,
+                "picture": character.picture,
+            }
+            for character in recent_characters
+        ],
         "is_admin": user.is_admin or False,
         "default_persona_id": user.default_persona_id,
         "level": getattr(user, "level", 1) or 1,

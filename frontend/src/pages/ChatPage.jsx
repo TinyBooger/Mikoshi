@@ -60,6 +60,8 @@ export default function ChatPage() {
   const [selectedPersona, setSelectedPersona] = useState(null);
   const [selectedScene, setSelectedScene] = useState(null);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
+  const CHAT_INPUT_MAX_HEIGHT = 200;
+  const CHAT_INPUT_BASE_HEIGHT = 44;
   const DEFAULT_ADVANCED_CHAT_CONFIG = {
     model: 'deepseek-chat',
     temperature: 1.3,
@@ -712,7 +714,8 @@ export default function ChatPage() {
     
     // Reset textarea height after sending
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${CHAT_INPUT_BASE_HEIGHT}px`;
+      textareaRef.current.style.overflowY = 'hidden';
     }
 
     // Create abort controller for cancellation
@@ -848,9 +851,13 @@ export default function ChatPage() {
     // Auto-resize textarea
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      const maxHeight = 200; // Max height in pixels before scrolling
-      const newHeight = Math.min(textareaRef.current.scrollHeight, maxHeight);
+      const newHeight = Math.max(
+        CHAT_INPUT_BASE_HEIGHT,
+        Math.min(textareaRef.current.scrollHeight, CHAT_INPUT_MAX_HEIGHT)
+      );
       textareaRef.current.style.height = `${newHeight}px`;
+      textareaRef.current.style.overflowY =
+        textareaRef.current.scrollHeight > CHAT_INPUT_MAX_HEIGHT ? 'auto' : 'hidden';
     }
   };
 
@@ -1482,11 +1489,12 @@ export default function ChatPage() {
                   boxShadow: 'none',
                   transition: 'border 0.14s',
                   resize: 'none',
-                  minHeight: '38px',
-                  maxHeight: '200px',
-                  overflow: 'auto',
+                  minHeight: `${CHAT_INPUT_BASE_HEIGHT}px`,
+                  maxHeight: `${CHAT_INPUT_MAX_HEIGHT}px`,
+                  overflowY: 'hidden',
                   fontFamily: 'inherit',
-                  lineHeight: '1.5',
+                  lineHeight: '1.55',
+                  boxSizing: 'border-box',
                   WebkitAppearance: 'none',
                   appearance: 'none',
                 }}

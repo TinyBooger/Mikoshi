@@ -322,6 +322,7 @@ def unset_default_persona(
 @router.get("/api/personas-created", response_model=PersonaListOut)
 def get_personas_created(
     userId: str = Query(None),
+    sort: str = Query("recent"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -332,13 +333,18 @@ def get_personas_created(
     Otherwise, fetch current user's created personas.
     """
     if userId:
-        query = db.query(Persona).filter(Persona.creator_id == userId).order_by(Persona.created_time.desc())
+        query = db.query(Persona).filter(Persona.creator_id == userId)
         if not current_user or current_user.id != userId:
             query = query.filter(Persona.is_public == True)
     else:
         if not current_user:
             return PersonaListOut(items=[], total=0, page=1, page_size=0, short=False)
-        query = db.query(Persona).filter(Persona.creator_id == current_user.id).order_by(Persona.created_time.desc())
+        query = db.query(Persona).filter(Persona.creator_id == current_user.id)
+
+    if sort == "popular":
+        query = query.order_by(Persona.views.desc(), Persona.created_time.desc())
+    else:
+        query = query.order_by(Persona.created_time.desc())
     
     total = query.count()
     personas = query.offset((page - 1) * page_size).limit(page_size).all()
@@ -348,6 +354,7 @@ def get_personas_created(
 @router.get("/api/personas-liked", response_model=PersonaListOut)
 def get_personas_liked(
     userId: str = Query(None),
+    sort: str = Query("recent"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -357,16 +364,25 @@ def get_personas_liked(
     If userId is provided, fetch that user's liked personas.
     Otherwise, fetch current user's liked personas.
     """
+    target_user_id = userId
     if userId:
-        liked_query = db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == userId)
+        target_user_id = userId
     else:
         if not current_user:
             return PersonaListOut(items=[], total=0, page=1, page_size=0, short=False)
-        liked_query = db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id)
-    
-    total = liked_query.count()
-    persona_ids = [pid for (pid,) in liked_query.offset((page - 1) * page_size).limit(page_size).all()]
-    if not persona_ids:
-        return PersonaListOut(items=[], total=total, page=page, page_size=page_size, short=False)
-    personas = db.query(Persona).filter(Persona.id.in_(persona_ids), Persona.is_public == True).all()
+        target_user_id = current_user.id
+
+    query = (
+        db.query(Persona)
+        .join(UserLikedPersona, UserLikedPersona.persona_id == Persona.id)
+        .filter(UserLikedPersona.user_id == target_user_id, Persona.is_public == True)
+    )
+
+    if sort == "popular":
+        query = query.order_by(Persona.views.desc(), Persona.created_time.desc())
+    else:
+        query = query.order_by(Persona.created_time.desc())
+
+    total = query.count()
+    personas = query.offset((page - 1) * page_size).limit(page_size).all()
     return PersonaListOut(items=personas, total=total, page=page, page_size=page_size, short=False)

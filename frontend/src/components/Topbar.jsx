@@ -51,6 +51,25 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
 
   const [showProblemReport, setShowProblemReport] = useState(false);
   const [showUpdateNotification, setShowUpdateNotification] = useState(false);
+  const [showChatSettingsHint, setShowChatSettingsHint] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(() => window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileView(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isChatPage || !isMobileView) {
+      setShowChatSettingsHint(false);
+      return;
+    }
+
+    setShowChatSettingsHint(true);
+    const hideTimer = setTimeout(() => setShowChatSettingsHint(false), 3000);
+    return () => clearTimeout(hideTimer);
+  }, [isChatPage, location.pathname, isMobileView]);
 
   return (
     <div
@@ -211,33 +230,74 @@ function Topbar({ onToggleSidebar, sidebarVisible, onToggleCharacterSidebar, cha
         
         {/* Character Sidebar Toggle Button for ChatPage only - positioned on far right */}
         {isChatPage && (
-          <button
-            style={{
-              border: 'none',
-              background: 'none',
-              padding: 0,
-              margin: 0,
-              color: '#232323',
-              fontSize: '1.4rem',
-              cursor: 'pointer',
-              outline: 'none',
-              boxShadow: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'color 0.15s',
-            }}
-            onClick={onToggleCharacterSidebar}
-            aria-label={characterSidebarVisible ? t('topbar.hide_character_sidebar') : t('topbar.show_character_sidebar')}
-            tabIndex={0}
-            onMouseEnter={e => { e.currentTarget.style.color = '#232323'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#232323'; }}
-          >
-            <i
-              className={`bi ${characterSidebarVisible ? 'bi-people-fill' : 'bi-people'}`}
-              style={{ fontSize: '1.4rem', pointerEvents: 'none' }}
-            ></i>
-          </button>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            {showChatSettingsHint && isMobileView && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 0.5rem)',
+                  right: '-0.35rem',
+                  transform: 'translateY(0)',
+                  background: '#232323',
+                  color: '#fff',
+                  borderRadius: 8,
+                  padding: '0.4rem 0.6rem',
+                  fontSize: '0.78rem',
+                  lineHeight: 1.25,
+                  width: 'clamp(170px, 48vw, 230px)',
+                  maxWidth: 'calc(100vw - 1rem)',
+                  whiteSpace: 'normal',
+                  boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)',
+                  zIndex: 1200,
+                }}
+              >
+                点击这里打开聊天设置
+                <span
+                  style={{
+                    position: 'absolute',
+                    width: 0,
+                    height: 0,
+                    borderStyle: 'solid',
+                    top: '-7px',
+                    right: '12px',
+                    borderWidth: '0 7px 7px 7px',
+                    borderColor: 'transparent transparent #232323 transparent',
+                  }}
+                />
+              </div>
+            )}
+
+            <button
+              style={{
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                margin: 0,
+                color: '#232323',
+                fontSize: '1.4rem',
+                cursor: 'pointer',
+                outline: 'none',
+                boxShadow: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'color 0.15s',
+              }}
+              onClick={() => {
+                setShowChatSettingsHint(false);
+                onToggleCharacterSidebar();
+              }}
+              aria-label={characterSidebarVisible ? t('topbar.hide_character_sidebar') : t('topbar.show_character_sidebar')}
+              tabIndex={0}
+              onMouseEnter={e => { e.currentTarget.style.color = '#232323'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#232323'; }}
+            >
+              <i
+                className={`bi ${characterSidebarVisible ? 'bi-chat-square-text-fill' : 'bi-chat-square-text'}`}
+                style={{ fontSize: '1.4rem', pointerEvents: 'none' }}
+              ></i>
+            </button>
+          </div>
         )}
       </div>
       

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 import AvatarFrame from './AvatarFrame';
+import EntityCard from './EntityCard';
 
 /**
  * UserCard - Display a user profile as a list item
@@ -18,9 +19,24 @@ export default function UserCard({ user, onClick, disableClick = false }) {
   const [hovered, setHovered] = useState(false);
   const [badgeHovered, setBadgeHovered] = useState(null);
 
-  const { id, name, profile_pic, bio, level = 1, views = 0, likes = 0, characters_created = 0, badges = {}, active_badge = null } = user;
+  const {
+    id,
+    name,
+    profile_pic,
+    bio,
+    level = 1,
+    views = 0,
+    likes = 0,
+    characters_created = 0,
+    recent_characters = [],
+    badges = {},
+    active_badge = null,
+  } = user;
 
   const clickSuppressed = disableClick;
+  const displayedRecentCharacters = Array.isArray(recent_characters)
+    ? recent_characters.slice(0, 10)
+    : [];
 
   const handleClick = () => {
     if (clickSuppressed) return;
@@ -34,8 +50,9 @@ export default function UserCard({ user, onClick, disableClick = false }) {
       style={{
         width: '100%',
         display: 'flex',
-        alignItems: 'center',
-        gap: '1rem',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        gap: '0',
         padding: '1rem',
         background: '#fff',
         border: '1px solid #e9ecef',
@@ -49,99 +66,138 @@ export default function UserCard({ user, onClick, disableClick = false }) {
       onMouseEnter={() => !clickSuppressed && setHovered(true)}
       onMouseLeave={() => !clickSuppressed && setHovered(false)}
     >
-      {/* Avatar with optional badge frame */}
-      <div
-        style={{
-          position: 'relative',
-          flexShrink: 0,
-        }}
-      >
-        <AvatarFrame badge={active_badge} size={50}>
-          <img
-            src={
-              profile_pic
-                ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(profile_pic).replace(/^\//, '')}`
-                : defaultPicture
-            }
-            alt={name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        </AvatarFrame>
-        {/* Level Badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%' }}>
+        {/* Avatar with optional badge frame */}
         <div
           style={{
-            position: 'absolute',
-            bottom: -4,
-            right: -4,
-            zIndex: 2,
-            background: '#736B92',
-            color: '#fff',
-            width: 24,
-            height: 24,
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.65rem',
-            fontWeight: 700,
-            border: '2px solid #fff',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            position: 'relative',
+            flexShrink: 0,
           }}
         >
-          Lv{level}
+          <AvatarFrame badge={active_badge} size={50}>
+            <img
+              src={
+                profile_pic
+                  ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(profile_pic).replace(/^\//, '')}`
+                  : defaultPicture
+              }
+              alt={name}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </AvatarFrame>
+          {/* Level Badge */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: -4,
+              right: -4,
+              zIndex: 2,
+              background: '#736B92',
+              color: '#fff',
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              border: '2px solid #fff',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            }}
+          >
+            Lv{level}
+          </div>
+        </div>
+
+        {/* User Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h6
+            className="mb-1 text-truncate"
+            style={{
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              color: '#232323',
+              margin: 0,
+            }}
+            title={name}
+          >
+            {name}
+          </h6>
+          <p
+            style={{
+              fontSize: '0.85rem',
+              color: '#666',
+              margin: '0.25rem 0 0.5rem 0',
+              display: '-webkit-box',
+              WebkitLineClamp: 1,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {bio || <span style={{ opacity: 0.5, fontStyle: 'italic' }}>{t('user_card.no_bio', 'No bio yet')}</span>}
+          </p>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexShrink: 0 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.25rem' }}>{t('user_card.chats', 'Chats')}</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#232323' }}>
+              {typeof views === 'number' ? views.toLocaleString() : 0}
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.25rem' }}>{t('user_card.likes', 'Likes')}</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#232323' }}>
+              {typeof likes === 'number' ? likes.toLocaleString() : 0}
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.25rem' }}>{t('user_card.characters_created', 'Characters')}</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#232323' }}>
+              {typeof characters_created === 'number' ? characters_created.toLocaleString() : 0}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* User Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <h6
-          className="mb-1 text-truncate"
-          style={{
-            fontSize: '0.9rem',
-            fontWeight: 600,
-            color: '#232323',
-            margin: 0,
-          }}
-          title={name}
-        >
-          {name}
-        </h6>
-        <p
-          style={{
-            fontSize: '0.85rem',
-            color: '#666',
-            margin: '0.25rem 0 0.5rem 0',
-            display: '-webkit-box',
-            WebkitLineClamp: 1,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
-        >
-          {bio || <span style={{ opacity: 0.5, fontStyle: 'italic' }}>{t('user_card.no_bio', 'No bio yet')}</span>}
-        </p>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexShrink: 0 }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.25rem' }}>{t('user_card.chats', 'Chats')}</div>
-          <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#232323' }}>
-            {typeof views === 'number' ? views.toLocaleString() : 0}
+      {displayedRecentCharacters.length > 0 && (
+        <div style={{ marginTop: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ fontSize: '0.72rem', color: '#888', marginBottom: '0.35rem', fontWeight: 600 }}>
+            {t('user_card.recent_characters', 'Recent Characters')}
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.55rem',
+              overflowX: 'auto',
+              paddingBottom: '0.25rem',
+              scrollbarWidth: 'thin',
+            }}
+          >
+            {displayedRecentCharacters.map((character) => {
+              return (
+                <div key={character.id} style={{ width: 132, minWidth: 132, flexShrink: 0 }}>
+                  <EntityCard
+                    type="character"
+                    size="mini"
+                    entity={{
+                      id: character.id,
+                      name: character.name,
+                      picture: character.picture,
+                      creator_name: name,
+                      views: 0,
+                      likes: 0,
+                    }}
+                    onClick={() => navigate(`/chat?character=${encodeURIComponent(character.id)}`)}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.25rem' }}>{t('user_card.likes', 'Likes')}</div>
-          <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#232323' }}>
-            {typeof likes === 'number' ? likes.toLocaleString() : 0}
-          </div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.25rem' }}>{t('user_card.characters_created', 'Characters')}</div>
-          <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#232323' }}>
-            {typeof characters_created === 'number' ? characters_created.toLocaleString() : 0}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
