@@ -72,7 +72,8 @@ export default function CharacterFormPage() {
     frequency_penalty: 0,
   };
   const MAX_NAME_LENGTH = 50;
-  const MAX_PERSONA_LENGTH = 400;
+  const DEFAULT_MAX_PERSONA_LENGTH = 400;
+  const ADVANCED_MAX_PERSONA_LENGTH = 1200;
   const MAX_TAGLINE_LENGTH = 100;
   // Get id param from route
   const params = useParams();
@@ -81,7 +82,8 @@ export default function CharacterFormPage() {
   const isForkMode = location.pathname.includes('/fork/');
   const mode = id ? (isForkMode ? 'fork' : 'edit') : 'create';
   const MAX_GREETING_LENGTH = 200;
-  const MAX_SAMPLE_LENGTH = 200;
+  const DEFAULT_MAX_SAMPLE_LENGTH = 200;
+  const ADVANCED_MAX_SAMPLE_LENGTH = 600;
   const MAX_TAGS = 20;
   // Special prompt stored when a character uses an improvising greeting
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
@@ -127,6 +129,9 @@ export default function CharacterFormPage() {
   const [assistantGeneratedData, setAssistantGeneratedData] = useState(null);
   const selectedTokenLimits = getTokenLimits(charData.model || DEFAULT_CHAT_CONFIG.model);
   const selectedTokenTiers = getTokenTiers(charData.model || DEFAULT_CHAT_CONFIG.model);
+  const hasAdvancedLabel = (charData.tags || []).some(tag => String(tag).trim().toLowerCase() === 'advanced');
+  const maxPersonaLength = hasAdvancedLabel ? ADVANCED_MAX_PERSONA_LENGTH : DEFAULT_MAX_PERSONA_LENGTH;
+  const maxSampleLength = hasAdvancedLabel ? ADVANCED_MAX_SAMPLE_LENGTH : DEFAULT_MAX_SAMPLE_LENGTH;
 
   // Enforce level locks on fork/paid options
   useEffect(() => {
@@ -271,6 +276,14 @@ export default function CharacterFormPage() {
     }
     if (!charData.tags || charData.tags.length === 0) {
       toast.show(t('character_form.tags_required'), { type: 'error' });
+      return;
+    }
+    if (charData.persona.length > maxPersonaLength) {
+      toast.show(`Persona too long (max ${maxPersonaLength})`, { type: 'error' });
+      return;
+    }
+    if (charData.sample.length > maxSampleLength) {
+      toast.show(`Sample dialogue too long (max ${maxSampleLength})`, { type: 'error' });
       return;
     }
 
@@ -446,7 +459,7 @@ export default function CharacterFormPage() {
               rows={Math.max(5, Math.min(20, Math.ceil(charData.persona.length / 80)))}
               required
               value={charData.persona}
-              maxLength={MAX_PERSONA_LENGTH}
+              maxLength={maxPersonaLength}
               placeholder={t('character_form.placeholders.persona')}
               onChange={e => handleChange('persona', e.target.value)}
               style={{
@@ -463,7 +476,7 @@ export default function CharacterFormPage() {
               }}
             />
             <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-              {charData.persona.length}/{MAX_PERSONA_LENGTH}
+              {charData.persona.length}/{maxPersonaLength}
             </small>
           </div>
 
@@ -559,7 +572,7 @@ export default function CharacterFormPage() {
               className="form-control"
               rows={Math.max(5, Math.min(20, Math.ceil(charData.sample.length / 80)))}
               value={charData.sample}
-              maxLength={MAX_SAMPLE_LENGTH}
+              maxLength={maxSampleLength}
               placeholder={t('character_form.placeholders.sample_dialogue')}
               onChange={e => handleChange('sample', e.target.value)}
               style={{
@@ -576,7 +589,7 @@ export default function CharacterFormPage() {
               }}
             />
             <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-              {charData.sample.length}/{MAX_SAMPLE_LENGTH}
+              {charData.sample.length}/{maxSampleLength}
             </small>
           </div>
 
