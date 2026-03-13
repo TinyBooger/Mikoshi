@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from typing import Optional
 from utils.session import get_current_user
 from utils.llm_client import client
 from database import get_db
@@ -12,6 +13,7 @@ router = APIRouter(tags=["character_assistant"])
 
 class CharacterAssistantRequest(BaseModel):
     prompt: str
+    current_character: Optional[dict] = None
 
 
 class CharacterAssistantResponse(BaseModel):
@@ -20,6 +22,7 @@ class CharacterAssistantResponse(BaseModel):
     tagline: str
     greeting: str
     sample_dialogue: str
+    long_description: str = ""
 
 
 @router.post("/api/character-assistant", response_model=CharacterAssistantResponse)
@@ -30,15 +33,21 @@ async def generate_character(
 ):
     """
     Generate character details based on a user's prompt using AI.
-    Returns structured character data for name, persona, tagline, greeting, and sample dialogue.
+    Returns structured character data for name, persona, tagline, greeting, sample dialogue, and long description.
     """
     if not request.prompt or not request.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
-    system_prompt = """You are a creative character designer for a roleplay chat application. 
-Generate detailed character information based on the user's request.
+    system_prompt = """You are a creative character designer for a roleplay chat application.
+Generate or refine character information based on the user's request and current character state.
 
 IMPORTANT: Always respond in the same language as the user's prompt.
+
+Editing behavior rules:
+- If current character data is provided, treat this as an edit request by default.
+- Keep unchanged fields consistent unless the user explicitly asks to rewrite them.
+- Do NOT restart from scratch when existing context is present.
+- Improve and extend details while preserving established character identity and tone.
 
 Return ONLY a valid JSON object with these exact fields:
 {
@@ -46,17 +55,23 @@ Return ONLY a valid JSON object with these exact fields:
     "persona": "Detailed character description including personality, background, speaking style, and behavior (up to 400 characters)",
     "tagline": "A short, catchy tagline (under 100 characters)",
     "greeting": "The character's first message to the user (under 200 characters)",
-    "sample_dialogue": "2-3 example conversation lines showing the character's tone (under 200 characters total), formatted as:\\nYou: [user message]\\nCharacter: [character response]"
+    "sample_dialogue": "2-3 example conversation lines showing the character's tone (under 200 characters total), formatted as:\\nYou: [user message]\\nCharacter: [character response]",
+    "long_description": "Detailed long-form character setting and lore. If context is advanced, provide rich content up to 10000 Chinese characters; otherwise keep concise."
 }
 
-Make the character engaging, consistent, and appropriate. Be creative but stay true to the user's request."""
+Make the character engaging, consistent, and appropriate. Be creative but stay true to the user's request and current character context."""
+
+    user_payload = {
+        "user_request": request.prompt,
+        "current_character": request.current_character or {}
+    }
 
     try:
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": request.prompt}
+                {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)}
             ],
             max_tokens=1500,
             temperature=1.2,
@@ -75,7 +90,7 @@ Make the character engaging, consistent, and appropriate. Be creative but stay t
         character_data = json.loads(content)
         
         # Validate required fields
-        required_fields = ["name", "persona", "tagline", "greeting", "sample_dialogue"]
+        required_fields = ["name", "persona", "tagline", "greeting", "sample_dialogue", "long_description"]
         for field in required_fields:
             if field not in character_data:
                 raise ValueError(f"Missing required field: {field}")

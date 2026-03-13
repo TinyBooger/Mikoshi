@@ -1,27 +1,26 @@
-def validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label="standard"):
+def validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label="standard", long_description=""):
     MAX_NAME_LENGTH = 50
-    STANDARD_MAX_PERSONA_LENGTH = 400
-    ADVANCED_MAX_PERSONA_LENGTH = 1200
+    MAX_PERSONA_LENGTH = 400
     MAX_TAGLINE_LENGTH = 200
     MAX_GREETING_LENGTH = 500
-    STANDARD_MAX_SAMPLE_LENGTH = 200
-    ADVANCED_MAX_SAMPLE_LENGTH = 600
+    MAX_SAMPLE_LENGTH = 200
     MAX_TAGS = 20
+    ADVANCED_MAX_LONG_DESCRIPTION_LENGTH = 10000
 
     safe_context_label = "advanced" if context_label == "advanced" else "standard"
-    max_persona_length = ADVANCED_MAX_PERSONA_LENGTH if safe_context_label == "advanced" else STANDARD_MAX_PERSONA_LENGTH
-    max_sample_length = ADVANCED_MAX_SAMPLE_LENGTH if safe_context_label == "advanced" else STANDARD_MAX_SAMPLE_LENGTH
 
     if len(name) > MAX_NAME_LENGTH:
         return f"Name too long (max {MAX_NAME_LENGTH})"
-    if len(persona) > max_persona_length:
-        return f"Persona too long (max {max_persona_length})"
+    if len(persona) > MAX_PERSONA_LENGTH:
+        return f"Persona too long (max {MAX_PERSONA_LENGTH})"
     if len(tagline) > MAX_TAGLINE_LENGTH:
         return f"Tagline too long (max {MAX_TAGLINE_LENGTH})"
     if len(greeting) > MAX_GREETING_LENGTH:
         return f"Greeting too long (max {MAX_GREETING_LENGTH})"
-    if len(sample_dialogue) > max_sample_length:
-        return f"Sample dialogue too long (max {max_sample_length})"
+    if len(sample_dialogue) > MAX_SAMPLE_LENGTH:
+        return f"Sample dialogue too long (max {MAX_SAMPLE_LENGTH})"
+    if safe_context_label == "advanced" and len(long_description) > ADVANCED_MAX_LONG_DESCRIPTION_LENGTH:
+        return f"Long description too long (max {ADVANCED_MAX_LONG_DESCRIPTION_LENGTH})"
     if len(tags) > MAX_TAGS:
         return f"Too many tags (max {MAX_TAGS})"
     if len(set(tags)) != len(tags):

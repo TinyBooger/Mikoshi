@@ -72,9 +72,9 @@ export default function CharacterFormPage() {
     frequency_penalty: 0,
   };
   const MAX_NAME_LENGTH = 50;
-  const STANDARD_MAX_PERSONA_LENGTH = 400;
-  const ADVANCED_MAX_PERSONA_LENGTH = 1200;
+  const MAX_PERSONA_LENGTH = 400;
   const MAX_TAGLINE_LENGTH = 100;
+  const ADVANCED_MAX_LONG_DESCRIPTION_LENGTH = 10000;
   // Get id param from route
   const params = useParams();
   const id = params.id;
@@ -82,11 +82,8 @@ export default function CharacterFormPage() {
   const isForkMode = location.pathname.includes('/fork/');
   const mode = id ? (isForkMode ? 'fork' : 'edit') : 'create';
   const MAX_GREETING_LENGTH = 200;
-  const STANDARD_MAX_SAMPLE_LENGTH = 200;
-  const ADVANCED_MAX_SAMPLE_LENGTH = 600;
+  const MAX_SAMPLE_LENGTH = 200;
   const MAX_TAGS = 20;
-  const getMaxPersonaLength = (contextLabel) => contextLabel === 'advanced' ? ADVANCED_MAX_PERSONA_LENGTH : STANDARD_MAX_PERSONA_LENGTH;
-  const getMaxSampleLength = (contextLabel) => contextLabel === 'advanced' ? ADVANCED_MAX_SAMPLE_LENGTH : STANDARD_MAX_SAMPLE_LENGTH;
   // Special prompt stored when a character uses an improvising greeting
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
 
@@ -94,6 +91,7 @@ export default function CharacterFormPage() {
   const userLevel = Number(userData?.level || 1);
   const isProUser = !!userData?.is_pro;
   const canUseAdvancedConfig = userLevel >= 3 || isProUser;
+  const canUseAdvancedCharacter = isProUser;
   const canPrivate = userLevel >= 2 || isProUser;
   const canFork = userLevel >= 2 || isProUser;
   const navigate = useNavigate();
@@ -103,6 +101,7 @@ export default function CharacterFormPage() {
     persona: '',
     context_label: 'standard',
     sample: '',
+    long_description: '',
     tagline: '',
     tags: [],
     greeting: '',
@@ -127,14 +126,13 @@ export default function CharacterFormPage() {
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit' || mode === 'fork');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAssistant, setShowAssistant] = useState(false);
   const [assistantMessages, setAssistantMessages] = useState(null);
   const [assistantGeneratedData, setAssistantGeneratedData] = useState(null);
   const selectedTokenLimits = getTokenLimits(charData.model || DEFAULT_CHAT_CONFIG.model);
   const selectedTokenTiers = getTokenTiers(charData.model || DEFAULT_CHAT_CONFIG.model);
   const effectiveContextLabel = charData.context_label === 'advanced' ? 'advanced' : 'standard';
-  const maxPersonaLength = getMaxPersonaLength(effectiveContextLabel);
-  const maxSampleLength = getMaxSampleLength(effectiveContextLabel);
 
   // Enforce level locks on fork/paid options
   useEffect(() => {
@@ -146,13 +144,16 @@ export default function CharacterFormPage() {
       if (!canFork && prev.is_forkable) {
         next = { ...next, is_forkable: false };
       }
+      if (!canUseAdvancedCharacter && prev.context_label === 'advanced') {
+        next = { ...next, context_label: 'standard' };
+      }
       // In fork mode, must be free and forkable
       if (mode === 'fork') {
         next = { ...next, is_free: true, price: 0, is_forkable: true };
       }
       return next;
     });
-  }, [canPrivate, canFork, mode]);
+  }, [canPrivate, canFork, canUseAdvancedCharacter, mode]);
 
   useEffect(() => {
     if (mode === 'edit' || mode === 'fork') {
@@ -190,6 +191,7 @@ export default function CharacterFormPage() {
               persona: data.persona || '',
               context_label: data.context_label === 'advanced' ? 'advanced' : 'standard',
               sample: data.example_messages || '',
+              long_description: data.long_description || '',
               tagline: data.tagline || '',
               tags: data.tags || [],
               greeting: isImprov ? '' : loadedGreeting,
@@ -214,6 +216,7 @@ export default function CharacterFormPage() {
               persona: data.persona || '',
               context_label: data.context_label === 'advanced' ? 'advanced' : 'standard',
               sample: data.example_messages || '',
+              long_description: data.long_description || '',
               tagline: data.tagline || '',
               tags: data.tags || [],
               greeting: isImprov ? '' : loadedGreeting,
@@ -270,6 +273,7 @@ export default function CharacterFormPage() {
 
   const handleSubmit = async e => {
     e.preventDefault();
+    if (isSubmitting) return;
   if (!sessionToken) {
       toast.show(t('character_form.not_logged_in'), { type: 'error' });
       navigate("/");
@@ -283,12 +287,16 @@ export default function CharacterFormPage() {
       toast.show(t('character_form.tags_required'), { type: 'error' });
       return;
     }
-    if (charData.persona.length > maxPersonaLength) {
-      toast.show(`Persona too long (max ${maxPersonaLength})`, { type: 'error' });
+    if (charData.persona.length > MAX_PERSONA_LENGTH) {
+      toast.show(`Persona too long (max ${MAX_PERSONA_LENGTH})`, { type: 'error' });
       return;
     }
-    if (charData.sample.length > maxSampleLength) {
-      toast.show(`Sample dialogue too long (max ${maxSampleLength})`, { type: 'error' });
+    if (charData.sample.length > MAX_SAMPLE_LENGTH) {
+      toast.show(`Sample dialogue too long (max ${MAX_SAMPLE_LENGTH})`, { type: 'error' });
+      return;
+    }
+    if (effectiveContextLabel === 'advanced' && charData.long_description.length > ADVANCED_MAX_LONG_DESCRIPTION_LENGTH) {
+      toast.show(`Long description too long (max ${ADVANCED_MAX_LONG_DESCRIPTION_LENGTH})`, { type: 'error' });
       return;
     }
 
@@ -308,7 +316,10 @@ export default function CharacterFormPage() {
   const finalGreeting = isImprovisingGreeting ? SPECIAL_IMPROVISING_GREETING : charData.greeting.trim();
   formData.append("greeting", finalGreeting);
     formData.append("sample_dialogue", charData.sample.trim());
-  const finalModel = charData.model || DEFAULT_CHAT_CONFIG.model;
+    if (effectiveContextLabel === 'advanced') {
+      formData.append("long_description", charData.long_description.trim());
+    }
+    const finalModel = charData.model || DEFAULT_CHAT_CONFIG.model;
   const finalTokenLimits = getTokenLimits(finalModel);
   const safeMaxTokens = clampValue(charData.max_tokens, finalTokenLimits.min, finalTokenLimits.max, finalTokenLimits.defaultValue);
   formData.append("model", finalModel);
@@ -324,6 +335,7 @@ export default function CharacterFormPage() {
     formData.append("is_forkable", String(!!charData.is_forkable));
     if (picture) formData.append("picture", picture);
     if (avatarPicture) formData.append("avatar_picture", avatarPicture);
+    setIsSubmitting(true);
     try {
       const res = await fetch(mode === 'edit' ? `${window.API_BASE_URL}/api/update-character` : `${window.API_BASE_URL}/api/create-character`, {
         method: "POST",
@@ -343,6 +355,8 @@ export default function CharacterFormPage() {
       }
     } catch (error) {
       toast.show(t('character_form.error'), { type: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -379,6 +393,7 @@ export default function CharacterFormPage() {
       tagline: generatedData.tagline || prev.tagline,
       greeting: generatedData.greeting || prev.greeting,
       sample: generatedData.sample_dialogue || prev.sample,
+      long_description: generatedData.long_description || prev.long_description,
     }));
     // Don't close the assistant window, keep the conversation going
   };
@@ -465,7 +480,7 @@ export default function CharacterFormPage() {
               rows={Math.max(5, Math.min(20, Math.ceil(charData.persona.length / 80)))}
               required
               value={charData.persona}
-              maxLength={maxPersonaLength}
+              maxLength={MAX_PERSONA_LENGTH}
               placeholder={t('character_form.placeholders.persona')}
               onChange={e => handleChange('persona', e.target.value)}
               style={{
@@ -482,36 +497,8 @@ export default function CharacterFormPage() {
               }}
             />
             <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-              {charData.persona.length}/{maxPersonaLength}
+              {charData.persona.length}/{MAX_PERSONA_LENGTH}
             </small>
-          </div>
-
-          {/* Context Label */}
-          <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              {t('character_form.context_label', 'Context Label')}
-              <small className="text-muted" style={{ marginLeft: 8 }}>
-                {t('character_form.context_label_note', 'Advanced unlocks longer description and example message limits')}
-              </small>
-            </label>
-            <select
-              className="form-select"
-              value={effectiveContextLabel}
-              onChange={e => handleChange('context_label', e.target.value === 'advanced' ? 'advanced' : 'standard')}
-              style={{
-                background: '#f5f6fa',
-                color: '#18191a',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-              }}
-            >
-              <option value="standard">{t('character_form.context_label_standard', 'Standard')}</option>
-              <option value="advanced">{t('character_form.context_label_advanced', 'Advanced')}</option>
-            </select>
           </div>
 
           {/* Tagline */}
@@ -606,7 +593,7 @@ export default function CharacterFormPage() {
               className="form-control"
               rows={Math.max(5, Math.min(20, Math.ceil(charData.sample.length / 80)))}
               value={charData.sample}
-              maxLength={maxSampleLength}
+              maxLength={MAX_SAMPLE_LENGTH}
               placeholder={t('character_form.placeholders.sample_dialogue')}
               onChange={e => handleChange('sample', e.target.value)}
               style={{
@@ -623,9 +610,104 @@ export default function CharacterFormPage() {
               }}
             />
             <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-              {charData.sample.length}/{maxSampleLength}
+              {charData.sample.length}/{MAX_SAMPLE_LENGTH}
             </small>
           </div>
+
+          {/* Context Label */}
+          <div className="mb-4">
+            <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.5rem', display: 'block' }}>
+              角色类型
+            </label>
+            <div style={{ display: 'flex', gap: 0, borderRadius: 12, overflow: 'hidden', border: '1.5px solid #e9ecef', width: 'fit-content' }}>
+              <button
+                type="button"
+                onClick={() => handleChange('context_label', 'standard')}
+                style={{
+                  padding: '0.5rem 1.4rem',
+                  fontSize: '1rem',
+                  fontWeight: effectiveContextLabel === 'standard' ? 700 : 400,
+                  background: effectiveContextLabel === 'standard' ? '#232323' : '#f5f6fa',
+                  color: effectiveContextLabel === 'standard' ? '#fff' : '#555',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s, color 0.15s',
+                }}
+              >
+                标准
+              </button>
+              <button
+                type="button"
+                onClick={() => canUseAdvancedCharacter && handleChange('context_label', 'advanced')}
+                disabled={!canUseAdvancedCharacter}
+                title={!canUseAdvancedCharacter ? '升级为Pro用户后可用' : ''}
+                style={{
+                  padding: '0.5rem 1.4rem',
+                  fontSize: '1rem',
+                  fontWeight: effectiveContextLabel === 'advanced' ? 700 : 400,
+                  background: effectiveContextLabel === 'advanced' ? '#7c3aed' : '#f5f6fa',
+                  color: effectiveContextLabel === 'advanced' ? '#fff' : (!canUseAdvancedCharacter ? '#bbb' : '#555'),
+                  border: 'none',
+                  cursor: canUseAdvancedCharacter ? 'pointer' : 'not-allowed',
+                  transition: 'background 0.15s, color 0.15s',
+                  opacity: !canUseAdvancedCharacter ? 0.7 : 1,
+                }}
+              >
+                高级
+                {!canUseAdvancedCharacter && (
+                  <span style={{ marginLeft: 4, fontSize: '0.75rem' }}>🔒</span>
+                )}
+              </button>
+            </div>
+            {!canUseAdvancedCharacter ? (
+              <small style={{ display: 'block', marginTop: 8, color: '#9333ea' }}>
+                升级为Pro用户可以增加最多10000字的详细人物设定
+              </small>
+            ) : effectiveContextLabel === 'advanced' ? (
+              <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>
+                高级角色可填写最多10000字的详细人物设定，用于构建更丰富的角色背景
+              </small>
+            ) : (
+              <small style={{ display: 'block', marginTop: 8, color: '#888' }}>
+                选择「高级」后可额外填写最多10000字的详细人物设定
+              </small>
+            )}
+          </div>
+
+          {/* Long Description (advanced only) */}
+          {effectiveContextLabel === 'advanced' && (
+            <div className="mb-4 position-relative">
+              <label className="form-label fw-bold" style={{ color: '#232323' }}>
+                {t('character_form.long_description', '详细人物设定')}
+                <small className="text-muted" style={{ marginLeft: 8 }}>
+                  {t('character_form.notes.long_description', '仅高级角色可用，最多10000字')}
+                </small>
+              </label>
+              <textarea
+                className="form-control"
+                rows={Math.max(6, Math.min(30, Math.ceil((charData.long_description || '').length / 80)))}
+                value={charData.long_description || ''}
+                maxLength={ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
+                placeholder={t('character_form.placeholders.long_description', '在此填写角色的详细背景设定（最多10000字）...')}
+                onChange={e => handleChange('long_description', e.target.value)}
+                style={{
+                  background: '#f5f6fa',
+                  color: '#18191a',
+                  border: '1.5px solid #e9ecef',
+                  borderRadius: 16,
+                  fontSize: '1.08rem',
+                  padding: '0.7rem 1.2rem',
+                  boxShadow: 'none',
+                  outline: 'none',
+                  paddingRight: '3rem',
+                  resize: 'vertical',
+                }}
+              />
+              <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+                {(charData.long_description || '').length}/{ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
+              </small>
+            </div>
+          )}
 
           {/* Advanced Chat Config */}
           <div className="mb-4">
@@ -876,12 +958,22 @@ export default function CharacterFormPage() {
           </div>
 
           <div className="d-flex gap-3 mt-4 justify-content-end">
-            <PrimaryButton type="submit">
-              <i className="bi bi-save me-2"></i>{mode === 'edit' ? t('character_form.save') : t('character_form.create')}
+            <PrimaryButton type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  {t('character_form.processing', '正在处理角色，请稍候...')}
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-save me-2"></i>{mode === 'edit' ? t('character_form.save') : t('character_form.create')}
+                </>
+              )}
             </PrimaryButton>
             {mode === 'edit' && (
               <PrimaryButton
                 type="button"
+                disabled={isSubmitting}
                 style={{
                   background: '#d32f2f',
                   color: '#fff'
@@ -902,6 +994,43 @@ export default function CharacterFormPage() {
       </div>
       
       </div>
+
+      {isSubmitting && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.55)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 11000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 460,
+              background: '#ffffff',
+              borderRadius: 18,
+              boxShadow: '0 16px 48px rgba(0,0,0,0.25)',
+              padding: '1.25rem 1.2rem',
+              textAlign: 'center',
+            }}
+          >
+            <div className="spinner-border" role="status" aria-hidden="true" style={{ width: '2.2rem', height: '2.2rem', color: '#736B92' }}></div>
+            <div style={{ marginTop: '0.9rem', fontWeight: 700, color: '#1f2937', fontSize: '1rem' }}>
+              {t('character_form.processing', '正在处理角色，请稍候...')}
+            </div>
+            <div style={{ marginTop: '0.45rem', color: '#4b5563', fontSize: '0.9rem', lineHeight: 1.5 }}>
+              {t('character_form.processing_tip', '正在创建/更新角色，并处理详细设定分段。请不要关闭页面。')}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* AI Assistant Floating Button - Fixed position using portal */}
       {createPortal(
@@ -994,7 +1123,9 @@ export default function CharacterFormPage() {
           `}</style>
           <div
             className="ai-assistant-button"
-            onClick={() => setShowAssistant(true)}
+            onClick={() => {
+              if (!isSubmitting) setShowAssistant(true);
+            }}
             style={{
               position: 'fixed',
               right: '20px',
@@ -1008,11 +1139,12 @@ export default function CharacterFormPage() {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
               boxShadow: '-4px 4px 16px rgba(102, 126, 234, 0.4)',
               zIndex: 1000,
               transition: 'all 0.3s ease',
               gap: '0.5rem',
+              opacity: isSubmitting ? 0.6 : 1,
             }}
             onMouseEnter={(e) => {
               if (window.innerWidth > 768) {
@@ -1077,6 +1209,7 @@ export default function CharacterFormPage() {
         <CharacterAssistantModal
           onApply={handleApplyAssistant}
           onHide={() => setShowAssistant(false)}
+          currentCharData={charData}
           initialMessages={assistantMessages}
           initialGeneratedData={assistantGeneratedData}
           onMessagesChange={setAssistantMessages}

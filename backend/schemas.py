@@ -49,6 +49,8 @@ class CharacterOut(BaseModel):
     name: str
     persona: str
     example_messages: Optional[str] = ""
+    long_description: Optional[str] = ""
+    long_description_chunks: list[dict[str, str]] = []
     context_label: str = "standard"
     tagline: Optional[str] = ""
     tags: list[str] = []

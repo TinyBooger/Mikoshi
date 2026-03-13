@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import array, TEXT
 from typing import List, Optional
 from datetime import datetime, UTC
+import json
 
 from database import get_db
 from models import Character, User, Tag, UserLikedCharacter
@@ -14,8 +15,102 @@ from utils.validators import validate_character_fields
 from utils.content_censor import censor_form_payload
 from schemas import CharacterOut, CharacterListOut
 from utils.level_system import award_exp_with_limits
+from utils.llm_client import client
 
 router = APIRouter()
+
+LONG_DESCRIPTION_CHUNK_PROMPT = """Split the following character description into semantic chunks for an AI roleplay system.
+
+Rules:
+
+* Each chunk should contain one coherent idea or topic.
+* Each chunk must be understandable on its own.
+* Maximum 120 words per chunk.
+* Maximum 12 chunks total.
+* Preserve important roleplay information.
+* Avoid repeating information across chunks.
+
+Order the chunks by importance for roleplay:
+
+* Most important character traits, behavior rules, and personality first.
+* Then relationships or motivations.
+* Then background or lore.
+* Least important details last.
+
+Output JSON only:
+
+{
+"chunks": [
+{"content": "..."},
+{"content": "..."}
+]
+}"""
+
+
+def _extract_json_payload(raw: str) -> dict:
+    content = (raw or "").strip()
+    if "```json" in content:
+        content = content.split("```json", 1)[1].split("```", 1)[0].strip()
+    elif "```" in content:
+        content = content.split("```", 1)[1].split("```", 1)[0].strip()
+    return json.loads(content)
+
+
+def _sanitize_chunks(payload: dict) -> list[dict[str, str]]:
+    chunks = payload.get("chunks") if isinstance(payload, dict) else []
+    if not isinstance(chunks, list):
+        return []
+    cleaned: list[dict[str, str]] = []
+    for chunk in chunks[:12]:
+        if not isinstance(chunk, dict):
+            continue
+        text = str(chunk.get("content", "")).strip()
+        if not text:
+            continue
+        words = text.split()
+        if len(words) > 120:
+            text = " ".join(words[:120]).strip()
+        cleaned.append({"content": text})
+    return cleaned
+
+
+def _fallback_split_chunks(long_description: str) -> list[dict[str, str]]:
+    words = (long_description or "").split()
+    if not words:
+        return []
+    chunks = []
+    for i in range(0, len(words), 120):
+        piece = " ".join(words[i:i + 120]).strip()
+        if piece:
+            chunks.append({"content": piece})
+        if len(chunks) >= 12:
+            break
+    return chunks
+
+
+def split_long_description_chunks(long_description: str) -> tuple[list[dict[str, str]], bool]:
+    source = (long_description or "").strip()
+    if not source:
+        return [], True
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": LONG_DESCRIPTION_CHUNK_PROMPT},
+                {"role": "user", "content": source},
+            ],
+            max_tokens=1800,
+            temperature=0.2,
+            top_p=0.9,
+        )
+        raw = response.choices[0].message.content if response and response.choices else ""
+        parsed = _extract_json_payload(raw or "")
+        chunks = _sanitize_chunks(parsed)
+        if chunks:
+            return chunks, True
+        return _fallback_split_chunks(source), False
+    except Exception:
+        return _fallback_split_chunks(source), False
 
 
 def normalize_context_label(value: Optional[str]) -> str:
@@ -65,6 +160,7 @@ async def create_character(
     tags: List[str] = Form([]),
     greeting: str = Form(""),
     sample_dialogue: str = Form(""),
+    long_description: str = Form(""),
     context_label: str = Form("standard"),
     model: str = Form("deepseek-chat"),
     temperature: float = Form(1.3),
@@ -91,6 +187,7 @@ async def create_character(
         "tags": tags,
         "greeting": greeting,
         "sample_dialogue": sample_dialogue,
+        "long_description": long_description,
         "forked_from_name": forked_from_name,
     })
     name = (censored_payload.get("name") or "").strip()
@@ -99,6 +196,7 @@ async def create_character(
     tags = censored_payload.get("tags") or []
     greeting = (censored_payload.get("greeting") or "")
     sample_dialogue = (censored_payload.get("sample_dialogue") or "")
+    long_description = (censored_payload.get("long_description") or "")
     forked_from_name = censored_payload.get("forked_from_name")
     context_label = normalize_context_label(context_label)
 
@@ -106,13 +204,16 @@ async def create_character(
     if existing:
         return JSONResponse(content={"error": "Character already exists"}, status_code=400)
     
-    error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label)
+    error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label, long_description)
     if error:
         raise HTTPException(status_code=400, detail=error)
 
     is_pro_user = bool(current_user.is_pro)
     can_create_private = is_pro_user or (current_user.level or 1) >= 2
     can_use_fork_features = is_pro_user or (current_user.level or 1) >= 2
+
+    if context_label == "advanced" and not is_pro_user:
+        raise HTTPException(status_code=403, detail="Advanced characters require Pro user")
 
     # Enforce private character capability by level or Pro
     if not is_public and not can_create_private:
@@ -133,6 +234,7 @@ async def create_character(
         else:
             db.add(Tag(name=tag_name, count=1))
 
+    normalized_long_description = long_description.strip()
     can_use_advanced_config = is_pro_user or (current_user.level or 1) >= 3
     chat_config = parse_character_chat_config(
         model=model,
@@ -142,6 +244,11 @@ async def create_character(
         presence_penalty=presence_penalty,
         frequency_penalty=frequency_penalty,
     ) if can_use_advanced_config else default_character_chat_config()
+    long_description_chunks = []
+    if context_label == "advanced" and normalized_long_description:
+        long_description_chunks, split_ok = split_long_description_chunks(normalized_long_description)
+        if not split_ok:
+            raise HTTPException(status_code=502, detail="Failed to split long description into chunks")
 
     char = Character(
         name=name,
@@ -150,6 +257,8 @@ async def create_character(
         tags=tags,
         greeting=greeting.strip(),
         example_messages=sample_dialogue.strip(),
+        long_description=normalized_long_description,
+        long_description_chunks=long_description_chunks,
         context_label=context_label,
         model=chat_config["model"],
         temperature=chat_config["temperature"],
@@ -214,6 +323,7 @@ async def update_character(
     tags: List[str] = Form([]),
     greeting: str = Form(""),
     sample_dialogue: str = Form(""),
+    long_description: str = Form(""),
     context_label: Optional[str] = Form(None),
     model: str = Form("deepseek-chat"),
     temperature: float = Form(1.3),
@@ -240,6 +350,7 @@ async def update_character(
         "tags": tags,
         "greeting": greeting,
         "sample_dialogue": sample_dialogue,
+        "long_description": long_description,
     })
     name = (censored_payload.get("name") or "").strip()
     persona = (censored_payload.get("persona") or "").strip()
@@ -247,15 +358,19 @@ async def update_character(
     tags = censored_payload.get("tags") or []
     greeting = (censored_payload.get("greeting") or "")
     sample_dialogue = (censored_payload.get("sample_dialogue") or "")
+    long_description = (censored_payload.get("long_description") or "")
     context_label = normalize_context_label(context_label if context_label is not None else char.context_label)
     
-    error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label)
+    error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label, long_description)
     if error:
         raise HTTPException(status_code=400, detail=error)
     
     is_pro_user = bool(current_user.is_pro)
     can_create_private = is_pro_user or (current_user.level or 1) >= 2
     can_use_fork_features = is_pro_user or (current_user.level or 1) >= 2
+
+    if context_label == "advanced" and not is_pro_user:
+        raise HTTPException(status_code=403, detail="Advanced characters require Pro user")
 
     # Enforce level-based private character access (L2+)
     final_is_public = is_public if is_public is not None else char.is_public
@@ -268,12 +383,30 @@ async def update_character(
     if final_is_forkable and not can_use_fork_features:
         raise HTTPException(status_code=403, detail="Forkable characters require level 2 or higher")
 
+    normalized_long_description = long_description.strip()
+    existing_long_description = (char.long_description or "").strip()
+    long_description_changed = normalized_long_description != existing_long_description
+
+    if context_label == "advanced":
+        if not normalized_long_description:
+            long_description_chunks = []
+        elif long_description_changed:
+            long_description_chunks, split_ok = split_long_description_chunks(normalized_long_description)
+            if not split_ok:
+                raise HTTPException(status_code=502, detail="Failed to split long description into chunks")
+        else:
+            long_description_chunks = char.long_description_chunks or []
+    else:
+        long_description_chunks = []
+
     char.name = name
     char.persona = persona
     char.tagline = tagline.strip()
     char.tags = tags
     char.greeting = greeting.strip()
     char.example_messages = sample_dialogue.strip()
+    char.long_description = normalized_long_description
+    char.long_description_chunks = long_description_chunks
     char.context_label = context_label
     can_use_advanced_config = is_pro_user or (current_user.level or 1) >= 3
     chat_config = parse_character_chat_config(

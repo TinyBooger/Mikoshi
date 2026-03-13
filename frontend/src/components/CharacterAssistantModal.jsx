@@ -90,11 +90,25 @@ export default function CharacterAssistantModal({
 
     setLoading(true);
     try {
-      // Build context from previous character data if exists
-      let contextPrompt = userMessage;
-      if (generatedData) {
-        contextPrompt = `Previous character data:\nName: ${generatedData.name}\nPersona: ${generatedData.persona}\nTagline: ${generatedData.tagline}\nGreeting: ${generatedData.greeting}\nSample Dialogue: ${generatedData.sample_dialogue}\n\nUser request: ${userMessage}\n\nPlease modify the character based on this request.`;
-      }
+      const effectiveCurrentData = generatedData
+        ? {
+            name: generatedData.name || '',
+            persona: generatedData.persona || '',
+            tagline: generatedData.tagline || '',
+            greeting: generatedData.greeting || '',
+            sample_dialogue: generatedData.sample_dialogue || '',
+            long_description: generatedData.long_description || '',
+            context_label: currentCharData?.context_label || 'standard',
+          }
+        : {
+            name: currentCharData?.name || '',
+            persona: currentCharData?.persona || '',
+            tagline: currentCharData?.tagline || '',
+            greeting: currentCharData?.greeting || '',
+            sample_dialogue: currentCharData?.sample || '',
+            long_description: currentCharData?.long_description || '',
+            context_label: currentCharData?.context_label || 'standard',
+          };
 
       const response = await fetch(`${window.API_BASE_URL}/api/character-assistant`, {
         method: 'POST',
@@ -102,7 +116,10 @@ export default function CharacterAssistantModal({
           'Content-Type': 'application/json',
           'Authorization': sessionToken
         },
-        body: JSON.stringify({ prompt: contextPrompt })
+        body: JSON.stringify({
+          prompt: userMessage,
+          current_character: effectiveCurrentData,
+        })
       });
 
       const data = await response.json();
@@ -111,7 +128,7 @@ export default function CharacterAssistantModal({
         setGeneratedData(data);
         
         // Add assistant response to chat
-        const assistantMessage = `${t('character_assistant.generated_prefix')}\n\n**${t('character_form.name')}:** ${data.name}\n\n**${t('character_form.tagline')}:** ${data.tagline}\n\n**${t('character_form.persona')}:** ${data.persona}\n\n**${t('character_form.greeting')}:** ${data.greeting}\n\n**${t('character_form.sample_dialogue')}:**\n${data.sample_dialogue}`;
+        const assistantMessage = `${t('character_assistant.generated_prefix')}\n\n**${t('character_form.name')}:** ${data.name}\n\n**${t('character_form.tagline')}:** ${data.tagline}\n\n**${t('character_form.persona')}:** ${data.persona}\n\n**${t('character_form.greeting')}:** ${data.greeting}\n\n**${t('character_form.sample_dialogue')}:**\n${data.sample_dialogue}\n\n**${t('character_form.long_description', '详细人物设定')}:**\n${data.long_description || ''}`;
         
         setMessages([...newMessages, { 
           role: 'assistant', 

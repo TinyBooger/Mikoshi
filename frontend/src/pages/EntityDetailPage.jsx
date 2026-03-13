@@ -222,6 +222,12 @@ export default function EntityDetailPage() {
     secondaryInfo = entity.intro || '';
   }
 
+  const longDescriptionChunks = Array.isArray(entity?.long_description_chunks)
+    ? entity.long_description_chunks
+        .map((chunk) => (typeof chunk?.content === 'string' ? chunk.content.trim() : ''))
+        .filter(Boolean)
+    : [];
+
   return (
     <PageWrapper>
       <div 
@@ -403,6 +409,49 @@ export default function EntityDetailPage() {
                   <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
                     {entity.example_messages}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {entity.long_description && (
+              <div className="card mb-4">
+                <div className="card-body">
+                  <h3 className="card-title mb-3">
+                    {t('entity_detail.long_description', '详细人物设定')}
+                  </h3>
+                  <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                    {entity.long_description}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {longDescriptionChunks.length > 0 && (
+              <div className="card mb-4">
+                <div className="card-body">
+                  <h3 className="card-title mb-3">
+                    {t('entity_detail.long_description_chunks', '详细设定分段')}
+                  </h3>
+                  <div className="d-flex flex-column gap-3">
+                    {longDescriptionChunks.map((chunkText, index) => (
+                      <div
+                        key={`chunk-${index}`}
+                        style={{
+                          padding: '0.75rem 0.9rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '10px',
+                          background: '#f8fafc'
+                        }}
+                      >
+                        <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.4rem' }}>
+                          {t('entity_detail.chunk_priority', '优先级')} {index + 1}
+                        </div>
+                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                          {chunkText}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

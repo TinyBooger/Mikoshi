@@ -6189,3 +6189,755 @@ WHERE characters.creator_id = %(creator_id_1)s) AS anon_1]
 [parameters: {'creator_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2'}]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 
+2026-03-13 12:20:51 - utils.error_logger - CRITICAL - [ProgrammingError] Unhandled exception: (psycopg2.errors.UndefinedColumn) 错误:  字段 characters.long_description_chunks 不存在
+LINE 2: ....long_description AS characters_long_description, characters...
+                                                             ^
+
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT characters.id AS characters_id, characters.name AS characters_name, characters.persona AS characters_persona, characters.example_messages AS characters_example_messages, characters.long_description AS characters_long_description, characters.long_description_chunks AS characters_long_description_chunks, characters.context_label AS characters_context_label, characters.tagline AS characters_tagline, characters.tags AS characters_tags, characters.is_public AS characters_is_public, characters.is_forkable AS characters_is_forkable, characters.views AS characters_views, characters.likes AS characters_likes, characters.picture AS characters_picture, characters.avatar_picture AS characters_avatar_picture, characters.greeting AS characters_greeting, characters.model AS characters_model, characters.temperature AS characters_temperature, characters.top_p AS characters_top_p, characters.max_tokens AS characters_max_tokens, characters.presence_penalty AS characters_presence_penalty, characters.frequency_penalty AS characters_frequency_penalty, characters.created_time AS characters_created_time, characters.creator_id AS characters_creator_id, characters.creator_name AS characters_creator_name, characters.forked_from_id AS characters_forked_from_id, characters.forked_from_name AS characters_forked_from_name 
+FROM characters 
+WHERE characters.creator_id = %(creator_id_1)s) AS anon_1]
+[parameters: {'creator_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2'}]
+(Background on this error at: https://sqlalche.me/e/20/f405) | Endpoint: GET /api/users/me
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1961, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 944, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: 错误:  字段 characters.long_description_chunks 不存在
+LINE 2: ....long_description AS characters_long_description, characters...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 302, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 215, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\concurrency.py", line 38, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2470, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 967, in run
+    result = context.run(func, *args)
+  File "D:\projects\Mikoshi-MonoRepo\backend\routes\auth.py", line 38, in get_current_user
+    return build_user_response(user, db)
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\user_utils.py", line 116, in build_user_response
+    characters_created = db.query(Character).filter(Character.creator_id == user.id).count()
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 3146, in count
+    self._legacy_from_self(col).enable_eagerloads(False).scalar()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2835, in scalar
+    ret = self.one()
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2808, in one
+    return self._iter().one()  # type: ignore
+           ~~~~~~~~~~^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2365, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2251, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1413, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1635, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1840, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1980, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2349, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1961, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 944, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) 错误:  字段 characters.long_description_chunks 不存在
+LINE 2: ....long_description AS characters_long_description, characters...
+                                                             ^
+
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT characters.id AS characters_id, characters.name AS characters_name, characters.persona AS characters_persona, characters.example_messages AS characters_example_messages, characters.long_description AS characters_long_description, characters.long_description_chunks AS characters_long_description_chunks, characters.context_label AS characters_context_label, characters.tagline AS characters_tagline, characters.tags AS characters_tags, characters.is_public AS characters_is_public, characters.is_forkable AS characters_is_forkable, characters.views AS characters_views, characters.likes AS characters_likes, characters.picture AS characters_picture, characters.avatar_picture AS characters_avatar_picture, characters.greeting AS characters_greeting, characters.model AS characters_model, characters.temperature AS characters_temperature, characters.top_p AS characters_top_p, characters.max_tokens AS characters_max_tokens, characters.presence_penalty AS characters_presence_penalty, characters.frequency_penalty AS characters_frequency_penalty, characters.created_time AS characters_created_time, characters.creator_id AS characters_creator_id, characters.creator_name AS characters_creator_name, characters.forked_from_id AS characters_forked_from_id, characters.forked_from_name AS characters_forked_from_name 
+FROM characters 
+WHERE characters.creator_id = %(creator_id_1)s) AS anon_1]
+[parameters: {'creator_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+
+2026-03-13 12:20:51 - utils.error_logger - CRITICAL - [ProgrammingError] Unhandled exception: (psycopg2.errors.UndefinedColumn) 错误:  字段 characters.long_description_chunks 不存在
+LINE 2: ....long_description AS characters_long_description, characters...
+                                                             ^
+
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT characters.id AS characters_id, characters.name AS characters_name, characters.persona AS characters_persona, characters.example_messages AS characters_example_messages, characters.long_description AS characters_long_description, characters.long_description_chunks AS characters_long_description_chunks, characters.context_label AS characters_context_label, characters.tagline AS characters_tagline, characters.tags AS characters_tags, characters.is_public AS characters_is_public, characters.is_forkable AS characters_is_forkable, characters.views AS characters_views, characters.likes AS characters_likes, characters.picture AS characters_picture, characters.avatar_picture AS characters_avatar_picture, characters.greeting AS characters_greeting, characters.model AS characters_model, characters.temperature AS characters_temperature, characters.top_p AS characters_top_p, characters.max_tokens AS characters_max_tokens, characters.presence_penalty AS characters_presence_penalty, characters.frequency_penalty AS characters_frequency_penalty, characters.created_time AS characters_created_time, characters.creator_id AS characters_creator_id, characters.creator_name AS characters_creator_name, characters.forked_from_id AS characters_forked_from_id, characters.forked_from_name AS characters_forked_from_name 
+FROM characters 
+WHERE characters.creator_id = %(creator_id_1)s) AS anon_1]
+[parameters: {'creator_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2'}]
+(Background on this error at: https://sqlalche.me/e/20/f405) | Endpoint: GET /api/users/me
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1961, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 944, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: 错误:  字段 characters.long_description_chunks 不存在
+LINE 2: ....long_description AS characters_long_description, characters...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 302, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 215, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\concurrency.py", line 38, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2470, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 967, in run
+    result = context.run(func, *args)
+  File "D:\projects\Mikoshi-MonoRepo\backend\routes\auth.py", line 38, in get_current_user
+    return build_user_response(user, db)
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\user_utils.py", line 116, in build_user_response
+    characters_created = db.query(Character).filter(Character.creator_id == user.id).count()
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 3146, in count
+    self._legacy_from_self(col).enable_eagerloads(False).scalar()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2835, in scalar
+    ret = self.one()
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2808, in one
+    return self._iter().one()  # type: ignore
+           ~~~~~~~~~~^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2365, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2251, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1413, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1635, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1840, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1980, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2349, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1961, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 944, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) 错误:  字段 characters.long_description_chunks 不存在
+LINE 2: ....long_description AS characters_long_description, characters...
+                                                             ^
+
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT characters.id AS characters_id, characters.name AS characters_name, characters.persona AS characters_persona, characters.example_messages AS characters_example_messages, characters.long_description AS characters_long_description, characters.long_description_chunks AS characters_long_description_chunks, characters.context_label AS characters_context_label, characters.tagline AS characters_tagline, characters.tags AS characters_tags, characters.is_public AS characters_is_public, characters.is_forkable AS characters_is_forkable, characters.views AS characters_views, characters.likes AS characters_likes, characters.picture AS characters_picture, characters.avatar_picture AS characters_avatar_picture, characters.greeting AS characters_greeting, characters.model AS characters_model, characters.temperature AS characters_temperature, characters.top_p AS characters_top_p, characters.max_tokens AS characters_max_tokens, characters.presence_penalty AS characters_presence_penalty, characters.frequency_penalty AS characters_frequency_penalty, characters.created_time AS characters_created_time, characters.creator_id AS characters_creator_id, characters.creator_name AS characters_creator_name, characters.forked_from_id AS characters_forked_from_id, characters.forked_from_name AS characters_forked_from_name 
+FROM characters 
+WHERE characters.creator_id = %(creator_id_1)s) AS anon_1]
+[parameters: {'creator_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+
+2026-03-13 12:20:55 - utils.error_logger - CRITICAL - [ProgrammingError] Unhandled exception: (psycopg2.errors.UndefinedColumn) 错误:  字段 characters.long_description_chunks 不存在
+LINE 2: ....long_description AS characters_long_description, characters...
+                                                             ^
+
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT characters.id AS characters_id, characters.name AS characters_name, characters.persona AS characters_persona, characters.example_messages AS characters_example_messages, characters.long_description AS characters_long_description, characters.long_description_chunks AS characters_long_description_chunks, characters.context_label AS characters_context_label, characters.tagline AS characters_tagline, characters.tags AS characters_tags, characters.is_public AS characters_is_public, characters.is_forkable AS characters_is_forkable, characters.views AS characters_views, characters.likes AS characters_likes, characters.picture AS characters_picture, characters.avatar_picture AS characters_avatar_picture, characters.greeting AS characters_greeting, characters.model AS characters_model, characters.temperature AS characters_temperature, characters.top_p AS characters_top_p, characters.max_tokens AS characters_max_tokens, characters.presence_penalty AS characters_presence_penalty, characters.frequency_penalty AS characters_frequency_penalty, characters.created_time AS characters_created_time, characters.creator_id AS characters_creator_id, characters.creator_name AS characters_creator_name, characters.forked_from_id AS characters_forked_from_id, characters.forked_from_name AS characters_forked_from_name 
+FROM characters 
+WHERE characters.creator_id = %(creator_id_1)s) AS anon_1]
+[parameters: {'creator_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2'}]
+(Background on this error at: https://sqlalche.me/e/20/f405) | Endpoint: POST /api/login
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1961, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 944, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: 错误:  字段 characters.long_description_chunks 不存在
+LINE 2: ....long_description AS characters_long_description, characters...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 302, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 215, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\concurrency.py", line 38, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2470, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 967, in run
+    result = context.run(func, *args)
+  File "D:\projects\Mikoshi-MonoRepo\backend\routes\auth.py", line 216, in login_user
+    user_response = build_user_response(user, db)
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\user_utils.py", line 116, in build_user_response
+    characters_created = db.query(Character).filter(Character.creator_id == user.id).count()
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 3146, in count
+    self._legacy_from_self(col).enable_eagerloads(False).scalar()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2835, in scalar
+    ret = self.one()
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2808, in one
+    return self._iter().one()  # type: ignore
+           ~~~~~~~~~~^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2365, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2251, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1413, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1635, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1840, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1980, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2349, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1961, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 944, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) 错误:  字段 characters.long_description_chunks 不存在
+LINE 2: ....long_description AS characters_long_description, characters...
+                                                             ^
+
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT characters.id AS characters_id, characters.name AS characters_name, characters.persona AS characters_persona, characters.example_messages AS characters_example_messages, characters.long_description AS characters_long_description, characters.long_description_chunks AS characters_long_description_chunks, characters.context_label AS characters_context_label, characters.tagline AS characters_tagline, characters.tags AS characters_tags, characters.is_public AS characters_is_public, characters.is_forkable AS characters_is_forkable, characters.views AS characters_views, characters.likes AS characters_likes, characters.picture AS characters_picture, characters.avatar_picture AS characters_avatar_picture, characters.greeting AS characters_greeting, characters.model AS characters_model, characters.temperature AS characters_temperature, characters.top_p AS characters_top_p, characters.max_tokens AS characters_max_tokens, characters.presence_penalty AS characters_presence_penalty, characters.frequency_penalty AS characters_frequency_penalty, characters.created_time AS characters_created_time, characters.creator_id AS characters_creator_id, characters.creator_name AS characters_creator_name, characters.forked_from_id AS characters_forked_from_id, characters.forked_from_name AS characters_forked_from_name 
+FROM characters 
+WHERE characters.creator_id = %(creator_id_1)s) AS anon_1]
+[parameters: {'creator_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+
+2026-03-13 12:20:59 - utils.error_logger - CRITICAL - [ProgrammingError] Unhandled exception: (psycopg2.errors.UndefinedColumn) 错误:  字段 characters.long_description_chunks 不存在
+LINE 2: ....long_description AS characters_long_description, characters...
+                                                             ^
+
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT characters.id AS characters_id, characters.name AS characters_name, characters.persona AS characters_persona, characters.example_messages AS characters_example_messages, characters.long_description AS characters_long_description, characters.long_description_chunks AS characters_long_description_chunks, characters.context_label AS characters_context_label, characters.tagline AS characters_tagline, characters.tags AS characters_tags, characters.is_public AS characters_is_public, characters.is_forkable AS characters_is_forkable, characters.views AS characters_views, characters.likes AS characters_likes, characters.picture AS characters_picture, characters.avatar_picture AS characters_avatar_picture, characters.greeting AS characters_greeting, characters.model AS characters_model, characters.temperature AS characters_temperature, characters.top_p AS characters_top_p, characters.max_tokens AS characters_max_tokens, characters.presence_penalty AS characters_presence_penalty, characters.frequency_penalty AS characters_frequency_penalty, characters.created_time AS characters_created_time, characters.creator_id AS characters_creator_id, characters.creator_name AS characters_creator_name, characters.forked_from_id AS characters_forked_from_id, characters.forked_from_name AS characters_forked_from_name 
+FROM characters 
+WHERE characters.creator_id = %(creator_id_1)s) AS anon_1]
+[parameters: {'creator_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2'}]
+(Background on this error at: https://sqlalche.me/e/20/f405) | Endpoint: POST /api/login
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1961, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 944, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: 错误:  字段 characters.long_description_chunks 不存在
+LINE 2: ....long_description AS characters_long_description, characters...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 302, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 215, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\concurrency.py", line 38, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2470, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 967, in run
+    result = context.run(func, *args)
+  File "D:\projects\Mikoshi-MonoRepo\backend\routes\auth.py", line 216, in login_user
+    user_response = build_user_response(user, db)
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\user_utils.py", line 116, in build_user_response
+    characters_created = db.query(Character).filter(Character.creator_id == user.id).count()
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 3146, in count
+    self._legacy_from_self(col).enable_eagerloads(False).scalar()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2835, in scalar
+    ret = self.one()
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2808, in one
+    return self._iter().one()  # type: ignore
+           ~~~~~~~~~~^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2365, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2251, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1413, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1635, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1840, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1980, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2349, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1961, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 944, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) 错误:  字段 characters.long_description_chunks 不存在
+LINE 2: ....long_description AS characters_long_description, characters...
+                                                             ^
+
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT characters.id AS characters_id, characters.name AS characters_name, characters.persona AS characters_persona, characters.example_messages AS characters_example_messages, characters.long_description AS characters_long_description, characters.long_description_chunks AS characters_long_description_chunks, characters.context_label AS characters_context_label, characters.tagline AS characters_tagline, characters.tags AS characters_tags, characters.is_public AS characters_is_public, characters.is_forkable AS characters_is_forkable, characters.views AS characters_views, characters.likes AS characters_likes, characters.picture AS characters_picture, characters.avatar_picture AS characters_avatar_picture, characters.greeting AS characters_greeting, characters.model AS characters_model, characters.temperature AS characters_temperature, characters.top_p AS characters_top_p, characters.max_tokens AS characters_max_tokens, characters.presence_penalty AS characters_presence_penalty, characters.frequency_penalty AS characters_frequency_penalty, characters.created_time AS characters_created_time, characters.creator_id AS characters_creator_id, characters.creator_name AS characters_creator_name, characters.forked_from_id AS characters_forked_from_id, characters.forked_from_name AS characters_forked_from_name 
+FROM characters 
+WHERE characters.creator_id = %(creator_id_1)s) AS anon_1]
+[parameters: {'creator_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+

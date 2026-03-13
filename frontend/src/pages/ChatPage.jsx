@@ -23,10 +23,7 @@ export default function ChatPage() {
   // Sentinel used to indicate a character should have an improvising greeting
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
   const SUMMARY_PREFIX = 'Summary of previous conversation:';
-  const envSoftTokenLimit = Number(import.meta.env.VITE_CHAT_CONTEXT_SOFT_TOKEN_LIMIT);
-  const envProSoftMultiplier = Number(import.meta.env.VITE_CHAT_CONTEXT_PRO_SOFT_LIMIT_MULTIPLIER);
-  const CLIENT_SOFT_TOKEN_LIMIT = Number.isFinite(envSoftTokenLimit) && envSoftTokenLimit > 0 ? envSoftTokenLimit : 8000;
-  const CLIENT_PRO_SOFT_MULTIPLIER = Number.isFinite(envProSoftMultiplier) && envProSoftMultiplier > 1 ? envProSoftMultiplier : 2;
+  const CLIENT_SOFT_TOKEN_LIMIT = 3000;
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
   const { userData, setUserData, sessionToken, refreshUserData, loading } = useContext(AuthContext);
   const canUseAdvancedChatConfig = !!userData?.is_pro || Number(userData?.level || 1) >= 3;
@@ -243,8 +240,7 @@ export default function ChatPage() {
   };
 
   const getContextWindowUsage = (allMessages) => {
-    const isProUser = !!userData?.is_pro;
-    const effectiveSoftTokenLimit = Math.floor(CLIENT_SOFT_TOKEN_LIMIT * (isProUser ? CLIENT_PRO_SOFT_MULTIPLIER : 1));
+    const effectiveSoftTokenLimit = CLIENT_SOFT_TOKEN_LIMIT;
 
     if (!Array.isArray(allMessages)) {
       return {
@@ -1467,8 +1463,16 @@ export default function ChatPage() {
                   </div>
 
                   <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>
-                    基于上次请求
+                    基于上次请求的上下文使用情况
                   </div>
+                  <div style={{ fontSize: '0.7rem', opacity: 0.9, marginTop: 4 }}>
+                    到达上限时聊天记录将被总结。
+                  </div>
+                  {Number(serverContextWindowUsage?.summary_messages_count || 0) > 0 && (
+                    <div style={{ fontSize: '0.7rem', color: '#86efac', marginTop: 4 }}>
+                      已自动整理旧消息并保留最近 15 条对话。
+                    </div>
+                  )}
                 </div>
               )}
             </div>
