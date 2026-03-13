@@ -49,6 +49,7 @@ class CharacterOut(BaseModel):
     name: str
     persona: str
     example_messages: Optional[str] = ""
+    context_label: str = "standard"
     tagline: Optional[str] = ""
     tags: list[str] = []
     views: int = 0

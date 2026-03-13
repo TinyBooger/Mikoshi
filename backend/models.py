@@ -10,6 +10,7 @@ class Character(Base):
     name = Column(String, unique=True, index=True, nullable=False)
     persona = Column(Text, nullable=False)
     example_messages = Column(Text, default="")
+    context_label = Column(String(20), nullable=False, default="standard")
     tagline = Column(String(255), default="")  # 50 words fits ~255 chars
     tags = Column(ARRAY(Text), default=[])   # array of strings
     is_public = Column(Boolean, default=True, nullable=False)

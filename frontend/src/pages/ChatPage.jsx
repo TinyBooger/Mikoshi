@@ -1271,19 +1271,18 @@ export default function ChatPage() {
                               }}
                             />
                           ) : (
-                            <div style={{
-                              width: 96,
-                              height: 96,
-                              borderRadius: '50%',
-                              background: 'linear-gradient(135deg,#6b8cff,#a28bff)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: '#fff',
-                              fontWeight: 700,
-                              fontSize: '1.6rem',
-                              margin: '0 auto'
-                            }}>{charName ? charName.charAt(0).toUpperCase() : 'M'}</div>
+                            <img
+                              src={defaultPic}
+                              alt={charName || 'Character'}
+                              style={{
+                                width: 96,
+                                height: 96,
+                                objectFit: 'cover',
+                                borderRadius: '50%',
+                                display: 'block',
+                                margin: '0 auto'
+                              }}
+                            />
                           )}
 
                           {/* Title centered */}

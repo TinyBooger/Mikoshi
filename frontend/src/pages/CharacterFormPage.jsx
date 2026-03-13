@@ -72,7 +72,7 @@ export default function CharacterFormPage() {
     frequency_penalty: 0,
   };
   const MAX_NAME_LENGTH = 50;
-  const DEFAULT_MAX_PERSONA_LENGTH = 400;
+  const STANDARD_MAX_PERSONA_LENGTH = 400;
   const ADVANCED_MAX_PERSONA_LENGTH = 1200;
   const MAX_TAGLINE_LENGTH = 100;
   // Get id param from route
@@ -82,9 +82,11 @@ export default function CharacterFormPage() {
   const isForkMode = location.pathname.includes('/fork/');
   const mode = id ? (isForkMode ? 'fork' : 'edit') : 'create';
   const MAX_GREETING_LENGTH = 200;
-  const DEFAULT_MAX_SAMPLE_LENGTH = 200;
+  const STANDARD_MAX_SAMPLE_LENGTH = 200;
   const ADVANCED_MAX_SAMPLE_LENGTH = 600;
   const MAX_TAGS = 20;
+  const getMaxPersonaLength = (contextLabel) => contextLabel === 'advanced' ? ADVANCED_MAX_PERSONA_LENGTH : STANDARD_MAX_PERSONA_LENGTH;
+  const getMaxSampleLength = (contextLabel) => contextLabel === 'advanced' ? ADVANCED_MAX_SAMPLE_LENGTH : STANDARD_MAX_SAMPLE_LENGTH;
   // Special prompt stored when a character uses an improvising greeting
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
 
@@ -99,6 +101,7 @@ export default function CharacterFormPage() {
   const [charData, setCharData] = useState({
     name: '',
     persona: '',
+    context_label: 'standard',
     sample: '',
     tagline: '',
     tags: [],
@@ -129,9 +132,9 @@ export default function CharacterFormPage() {
   const [assistantGeneratedData, setAssistantGeneratedData] = useState(null);
   const selectedTokenLimits = getTokenLimits(charData.model || DEFAULT_CHAT_CONFIG.model);
   const selectedTokenTiers = getTokenTiers(charData.model || DEFAULT_CHAT_CONFIG.model);
-  const hasAdvancedLabel = (charData.tags || []).some(tag => String(tag).trim().toLowerCase() === 'advanced');
-  const maxPersonaLength = hasAdvancedLabel ? ADVANCED_MAX_PERSONA_LENGTH : DEFAULT_MAX_PERSONA_LENGTH;
-  const maxSampleLength = hasAdvancedLabel ? ADVANCED_MAX_SAMPLE_LENGTH : DEFAULT_MAX_SAMPLE_LENGTH;
+  const effectiveContextLabel = charData.context_label === 'advanced' ? 'advanced' : 'standard';
+  const maxPersonaLength = getMaxPersonaLength(effectiveContextLabel);
+  const maxSampleLength = getMaxSampleLength(effectiveContextLabel);
 
   // Enforce level locks on fork/paid options
   useEffect(() => {
@@ -185,6 +188,7 @@ export default function CharacterFormPage() {
             setCharData({
               name: `${data.name} (Fork)`,
               persona: data.persona || '',
+              context_label: data.context_label === 'advanced' ? 'advanced' : 'standard',
               sample: data.example_messages || '',
               tagline: data.tagline || '',
               tags: data.tags || [],
@@ -208,6 +212,7 @@ export default function CharacterFormPage() {
             setCharData({
               name: data.name || '',
               persona: data.persona || '',
+              context_label: data.context_label === 'advanced' ? 'advanced' : 'standard',
               sample: data.example_messages || '',
               tagline: data.tagline || '',
               tags: data.tags || [],
@@ -296,6 +301,7 @@ export default function CharacterFormPage() {
     }
     formData.append("name", charData.name.trim());
     formData.append("persona", charData.persona.trim());
+    formData.append("context_label", effectiveContextLabel);
     formData.append("tagline", charData.tagline.trim());
     charData.tags.forEach(tag => formData.append("tags", tag));
   // If improvising greeting is enabled, store the special prompt instead of the input value
@@ -478,6 +484,34 @@ export default function CharacterFormPage() {
             <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
               {charData.persona.length}/{maxPersonaLength}
             </small>
+          </div>
+
+          {/* Context Label */}
+          <div className="mb-4 position-relative">
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              {t('character_form.context_label', 'Context Label')}
+              <small className="text-muted" style={{ marginLeft: 8 }}>
+                {t('character_form.context_label_note', 'Advanced unlocks longer description and example message limits')}
+              </small>
+            </label>
+            <select
+              className="form-select"
+              value={effectiveContextLabel}
+              onChange={e => handleChange('context_label', e.target.value === 'advanced' ? 'advanced' : 'standard')}
+              style={{
+                background: '#f5f6fa',
+                color: '#18191a',
+                border: '1.5px solid #e9ecef',
+                borderRadius: 16,
+                fontSize: '1.08rem',
+                padding: '0.7rem 1.2rem',
+                boxShadow: 'none',
+                outline: 'none',
+              }}
+            >
+              <option value="standard">{t('character_form.context_label_standard', 'Standard')}</option>
+              <option value="advanced">{t('character_form.context_label_advanced', 'Advanced')}</option>
+            </select>
           </div>
 
           {/* Tagline */}

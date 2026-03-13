@@ -18,6 +18,10 @@ from utils.level_system import award_exp_with_limits
 router = APIRouter()
 
 
+def normalize_context_label(value: Optional[str]) -> str:
+    return "advanced" if value == "advanced" else "standard"
+
+
 def parse_character_chat_config(
     model: str,
     temperature: float,
@@ -61,6 +65,7 @@ async def create_character(
     tags: List[str] = Form([]),
     greeting: str = Form(""),
     sample_dialogue: str = Form(""),
+    context_label: str = Form("standard"),
     model: str = Form("deepseek-chat"),
     temperature: float = Form(1.3),
     top_p: float = Form(0.9),
@@ -95,12 +100,13 @@ async def create_character(
     greeting = (censored_payload.get("greeting") or "")
     sample_dialogue = (censored_payload.get("sample_dialogue") or "")
     forked_from_name = censored_payload.get("forked_from_name")
+    context_label = normalize_context_label(context_label)
 
     existing = db.query(Character).filter(Character.name == name).first()
     if existing:
         return JSONResponse(content={"error": "Character already exists"}, status_code=400)
     
-    error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags)
+    error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label)
     if error:
         raise HTTPException(status_code=400, detail=error)
 
@@ -144,6 +150,7 @@ async def create_character(
         tags=tags,
         greeting=greeting.strip(),
         example_messages=sample_dialogue.strip(),
+        context_label=context_label,
         model=chat_config["model"],
         temperature=chat_config["temperature"],
         top_p=chat_config["top_p"],
@@ -207,6 +214,7 @@ async def update_character(
     tags: List[str] = Form([]),
     greeting: str = Form(""),
     sample_dialogue: str = Form(""),
+    context_label: Optional[str] = Form(None),
     model: str = Form("deepseek-chat"),
     temperature: float = Form(1.3),
     top_p: float = Form(0.9),
@@ -239,8 +247,9 @@ async def update_character(
     tags = censored_payload.get("tags") or []
     greeting = (censored_payload.get("greeting") or "")
     sample_dialogue = (censored_payload.get("sample_dialogue") or "")
+    context_label = normalize_context_label(context_label if context_label is not None else char.context_label)
     
-    error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags)
+    error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label)
     if error:
         raise HTTPException(status_code=400, detail=error)
     
@@ -265,6 +274,7 @@ async def update_character(
     char.tags = tags
     char.greeting = greeting.strip()
     char.example_messages = sample_dialogue.strip()
+    char.context_label = context_label
     can_use_advanced_config = is_pro_user or (current_user.level or 1) >= 3
     chat_config = parse_character_chat_config(
         model=model,

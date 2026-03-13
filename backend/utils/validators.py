@@ -1,20 +1,16 @@
-def _has_advanced_label(tags):
-    return any(str(tag).strip().lower() == "advanced" for tag in (tags or []))
-
-
-def validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags):
+def validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label="standard"):
     MAX_NAME_LENGTH = 50
-    DEFAULT_MAX_PERSONA_LENGTH = 400
+    STANDARD_MAX_PERSONA_LENGTH = 400
     ADVANCED_MAX_PERSONA_LENGTH = 1200
     MAX_TAGLINE_LENGTH = 200
     MAX_GREETING_LENGTH = 500
-    DEFAULT_MAX_SAMPLE_LENGTH = 200
+    STANDARD_MAX_SAMPLE_LENGTH = 200
     ADVANCED_MAX_SAMPLE_LENGTH = 600
     MAX_TAGS = 20
 
-    has_advanced_label = _has_advanced_label(tags)
-    max_persona_length = ADVANCED_MAX_PERSONA_LENGTH if has_advanced_label else DEFAULT_MAX_PERSONA_LENGTH
-    max_sample_length = ADVANCED_MAX_SAMPLE_LENGTH if has_advanced_label else DEFAULT_MAX_SAMPLE_LENGTH
+    safe_context_label = "advanced" if context_label == "advanced" else "standard"
+    max_persona_length = ADVANCED_MAX_PERSONA_LENGTH if safe_context_label == "advanced" else STANDARD_MAX_PERSONA_LENGTH
+    max_sample_length = ADVANCED_MAX_SAMPLE_LENGTH if safe_context_label == "advanced" else STANDARD_MAX_SAMPLE_LENGTH
 
     if len(name) > MAX_NAME_LENGTH:
         return f"Name too long (max {MAX_NAME_LENGTH})"
