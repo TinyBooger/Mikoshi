@@ -327,6 +327,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 "total_tokens": 0,
             }
             try:
+                print(
+                    "[chat] prepared_messages:",
+                    json.dumps(prepared_messages, ensure_ascii=False, indent=2),
+                    flush=True,
+                )
                 for stream_event in stream_chat_completion_with_config(
                     prepared_messages,
                     model=chat_config["model"],
@@ -421,6 +426,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     else:
         # Non-streaming fallback (original logic)
         try:
+            print(
+                "[chat] prepared_messages:",
+                json.dumps(prepared_messages, ensure_ascii=False, indent=2),
+                flush=True,
+            )
             response = client.chat.completions.create(
                 model=chat_config["model"],
                 messages=prepared_messages,
