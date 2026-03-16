@@ -8250,3 +8250,377 @@ WHERE chat_histories.user_id = %(user_id_1)s ORDER BY chat_histories.last_update
 [parameters: {'user_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2', 'param_1': 30}]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 
+2026-03-16 13:58:38 - utils.error_logger - CRITICAL - [ProgrammingError] Unhandled exception: (psycopg2.errors.UndefinedColumn) 错误:  字段 chat_histories.chat_config 不存在
+LINE 1: ...at_histories.messages AS chat_histories_messages, chat_histo...
+                                                             ^
+
+[SQL: SELECT chat_histories.id AS chat_histories_id, chat_histories.chat_id AS chat_histories_chat_id, chat_histories.user_id AS chat_histories_user_id, chat_histories.character_id AS chat_histories_character_id, chat_histories.scene_id AS chat_histories_scene_id, chat_histories.persona_id AS chat_histories_persona_id, chat_histories.character_name AS chat_histories_character_name, chat_histories.character_picture AS chat_histories_character_picture, chat_histories.scene_name AS chat_histories_scene_name, chat_histories.scene_picture AS chat_histories_scene_picture, chat_histories.title AS chat_histories_title, chat_histories.messages AS chat_histories_messages, chat_histories.chat_config AS chat_histories_chat_config, chat_histories.is_pinned AS chat_histories_is_pinned, chat_histories.last_updated AS chat_histories_last_updated, chat_histories.created_at AS chat_histories_created_at 
+FROM chat_histories 
+WHERE chat_histories.user_id = %(user_id_1)s ORDER BY chat_histories.last_updated DESC, chat_histories.id DESC 
+ LIMIT %(param_1)s]
+[parameters: {'user_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2', 'param_1': 30}]
+(Background on this error at: https://sqlalche.me/e/20/f405) | Endpoint: GET /api/users/me
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1961, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 944, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: 错误:  字段 chat_histories.chat_config 不存在
+LINE 1: ...at_histories.messages AS chat_histories_messages, chat_histo...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 302, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 215, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\concurrency.py", line 38, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2470, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 967, in run
+    result = context.run(func, *args)
+  File "D:\projects\Mikoshi-MonoRepo\backend\routes\auth.py", line 38, in get_current_user
+    return build_user_response(user, db)
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\user_utils.py", line 128, in build_user_response
+    "chat_history": fetch_user_chat_history(db, user.id),
+                    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\chat_history_utils.py", line 38, in fetch_user_chat_history
+    .all()
+     ~~~^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ~~~~~~~~~~^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2365, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2251, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1413, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1635, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1840, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1980, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2349, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1961, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 944, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) 错误:  字段 chat_histories.chat_config 不存在
+LINE 1: ...at_histories.messages AS chat_histories_messages, chat_histo...
+                                                             ^
+
+[SQL: SELECT chat_histories.id AS chat_histories_id, chat_histories.chat_id AS chat_histories_chat_id, chat_histories.user_id AS chat_histories_user_id, chat_histories.character_id AS chat_histories_character_id, chat_histories.scene_id AS chat_histories_scene_id, chat_histories.persona_id AS chat_histories_persona_id, chat_histories.character_name AS chat_histories_character_name, chat_histories.character_picture AS chat_histories_character_picture, chat_histories.scene_name AS chat_histories_scene_name, chat_histories.scene_picture AS chat_histories_scene_picture, chat_histories.title AS chat_histories_title, chat_histories.messages AS chat_histories_messages, chat_histories.chat_config AS chat_histories_chat_config, chat_histories.is_pinned AS chat_histories_is_pinned, chat_histories.last_updated AS chat_histories_last_updated, chat_histories.created_at AS chat_histories_created_at 
+FROM chat_histories 
+WHERE chat_histories.user_id = %(user_id_1)s ORDER BY chat_histories.last_updated DESC, chat_histories.id DESC 
+ LIMIT %(param_1)s]
+[parameters: {'user_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2', 'param_1': 30}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+
+2026-03-16 13:58:39 - utils.error_logger - CRITICAL - [ProgrammingError] Unhandled exception: (psycopg2.errors.UndefinedColumn) 错误:  字段 chat_histories.chat_config 不存在
+LINE 1: ...at_histories.messages AS chat_histories_messages, chat_histo...
+                                                             ^
+
+[SQL: SELECT chat_histories.id AS chat_histories_id, chat_histories.chat_id AS chat_histories_chat_id, chat_histories.user_id AS chat_histories_user_id, chat_histories.character_id AS chat_histories_character_id, chat_histories.scene_id AS chat_histories_scene_id, chat_histories.persona_id AS chat_histories_persona_id, chat_histories.character_name AS chat_histories_character_name, chat_histories.character_picture AS chat_histories_character_picture, chat_histories.scene_name AS chat_histories_scene_name, chat_histories.scene_picture AS chat_histories_scene_picture, chat_histories.title AS chat_histories_title, chat_histories.messages AS chat_histories_messages, chat_histories.chat_config AS chat_histories_chat_config, chat_histories.is_pinned AS chat_histories_is_pinned, chat_histories.last_updated AS chat_histories_last_updated, chat_histories.created_at AS chat_histories_created_at 
+FROM chat_histories 
+WHERE chat_histories.user_id = %(user_id_1)s ORDER BY chat_histories.last_updated DESC, chat_histories.id DESC 
+ LIMIT %(param_1)s]
+[parameters: {'user_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2', 'param_1': 30}]
+(Background on this error at: https://sqlalche.me/e/20/f405) | Endpoint: GET /api/users/me
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1961, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 944, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: 错误:  字段 chat_histories.chat_config 不存在
+LINE 1: ...at_histories.messages AS chat_histories_messages, chat_histo...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 302, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 215, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\concurrency.py", line 38, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2470, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 967, in run
+    result = context.run(func, *args)
+  File "D:\projects\Mikoshi-MonoRepo\backend\routes\auth.py", line 38, in get_current_user
+    return build_user_response(user, db)
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\user_utils.py", line 128, in build_user_response
+    "chat_history": fetch_user_chat_history(db, user.id),
+                    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\chat_history_utils.py", line 38, in fetch_user_chat_history
+    .all()
+     ~~~^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ~~~~~~~~~~^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2365, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2251, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1413, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1635, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1840, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1980, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2349, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1961, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 944, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) 错误:  字段 chat_histories.chat_config 不存在
+LINE 1: ...at_histories.messages AS chat_histories_messages, chat_histo...
+                                                             ^
+
+[SQL: SELECT chat_histories.id AS chat_histories_id, chat_histories.chat_id AS chat_histories_chat_id, chat_histories.user_id AS chat_histories_user_id, chat_histories.character_id AS chat_histories_character_id, chat_histories.scene_id AS chat_histories_scene_id, chat_histories.persona_id AS chat_histories_persona_id, chat_histories.character_name AS chat_histories_character_name, chat_histories.character_picture AS chat_histories_character_picture, chat_histories.scene_name AS chat_histories_scene_name, chat_histories.scene_picture AS chat_histories_scene_picture, chat_histories.title AS chat_histories_title, chat_histories.messages AS chat_histories_messages, chat_histories.chat_config AS chat_histories_chat_config, chat_histories.is_pinned AS chat_histories_is_pinned, chat_histories.last_updated AS chat_histories_last_updated, chat_histories.created_at AS chat_histories_created_at 
+FROM chat_histories 
+WHERE chat_histories.user_id = %(user_id_1)s ORDER BY chat_histories.last_updated DESC, chat_histories.id DESC 
+ LIMIT %(param_1)s]
+[parameters: {'user_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2', 'param_1': 30}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+

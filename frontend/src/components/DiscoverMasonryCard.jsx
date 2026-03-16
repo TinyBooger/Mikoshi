@@ -8,6 +8,9 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isCreatorHovered, setIsCreatorHovered] = useState(false);
+  const [isCardHovered, setIsCardHovered] = useState(false);
+  const [isAdvancedBadgeHovered, setIsAdvancedBadgeHovered] = useState(false);
+  const [cardTilt, setCardTilt] = useState({ x: 0, y: 0 });
 
   const {
     id,
@@ -143,6 +146,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
 
   const suppressPersonaNavigation = type === 'persona' && !onClick;
   const clickSuppressed = disableClick || suppressPersonaNavigation;
+  const isAdvancedCharacter = type === 'character' && entity?.context_label === 'advanced';
 
   const handleClick = () => {
     if (clickSuppressed) return;
@@ -170,6 +174,16 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
     navigate(`/profile/${encodeURIComponent(creator_id)}`);
   };
 
+  const handleCardMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width;
+    const py = (e.clientY - rect.top) / rect.height;
+    const maxTilt = 5;
+    const tiltY = (px - 0.5) * maxTilt * 2;
+    const tiltX = (0.5 - py) * maxTilt * 2;
+    setCardTilt({ x: tiltX, y: tiltY });
+  };
+
   return (
     <article
       style={{
@@ -177,12 +191,28 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
         borderRadius: '12px',
         border: '1px solid #e9ecef',
         background: '#f9fafb',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+        boxShadow:
+          isAdvancedCharacter && isCardHovered
+            ? '0 0 0 1px rgba(215, 164, 59, 0.35), 0 8px 24px rgba(215, 164, 59, 0.22)'
+            : '0 2px 10px rgba(0,0,0,0.08)',
+        transform: isCardHovered
+          ? `perspective(900px) rotateX(${cardTilt.x.toFixed(2)}deg) rotateY(${cardTilt.y.toFixed(2)}deg) translateY(-4px)`
+          : 'perspective(900px) rotateX(0deg) rotateY(0deg) translateY(0px)',
+        transformStyle: 'preserve-3d',
+        willChange: 'transform, box-shadow',
         cursor: clickSuppressed ? 'default' : 'pointer',
         overflow: 'hidden',
         breakInside: 'avoid',
+        transition: 'transform 0.16s ease, box-shadow 0.2s ease',
       }}
       onClick={clickSuppressed ? undefined : handleClick}
+      onMouseEnter={() => setIsCardHovered(true)}
+      onMouseMove={handleCardMouseMove}
+      onMouseLeave={() => {
+        setIsCardHovered(false);
+        setIsAdvancedBadgeHovered(false);
+        setCardTilt({ x: 0, y: 0 });
+      }}
     >
       <div
         style={{
@@ -195,6 +225,51 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
         }}
       >
         <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4, zIndex: 2 }}>
+          {isAdvancedCharacter && (
+            <div
+              style={{ position: 'relative', display: 'inline-flex' }}
+              onMouseEnter={() => setIsAdvancedBadgeHovered(true)}
+              onMouseLeave={() => setIsAdvancedBadgeHovered(false)}
+            >
+              <span
+                style={{
+                  background: 'linear-gradient(135deg, #F8E39A 0%, #E1B755 45%, #C88A1B 100%)',
+                  color: '#4A3210',
+                  fontSize: '0.58rem',
+                  padding: '2px 6px',
+                  borderRadius: '999px',
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  border: '1px solid rgba(255, 245, 203, 0.9)',
+                  letterSpacing: '0.3px',
+                  boxShadow: '0 1px 5px rgba(146, 98, 19, 0.35)',
+                }}
+              >
+                万字
+              </span>
+              {isAdvancedBadgeHovered && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    right: 0,
+                    whiteSpace: 'nowrap',
+                    background: 'rgba(35, 27, 10, 0.95)',
+                    color: '#F7E6B5',
+                    fontSize: '0.64rem',
+                    lineHeight: 1.2,
+                    padding: '0.28rem 0.45rem',
+                    borderRadius: '0.35rem',
+                    border: '1px solid rgba(248, 227, 154, 0.4)',
+                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.25)',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  该角色有着更丰富的细节
+                </span>
+              )}
+            </div>
+          )}
           {is_public === false && (
             <span
               title={t('entity_card.private') || 'Private'}

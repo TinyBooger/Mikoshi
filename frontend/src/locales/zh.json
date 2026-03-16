@@ -118,6 +118,8 @@
     "advanced_temperature": "温度",
     "advanced_top_p": "Top P",
     "advanced_max_tokens": "最大输出 Token",
+    "advanced_context_window": "上下文长度",
+    "advanced_context_window_notice": "更长的上下文长度可以保留更多的历史消息，但是会加速token消耗",
     "advanced_presence_penalty": "存在惩罚",
     "advanced_frequency_penalty": "频率惩罚",
     "advanced_hint": "修改后会立即用于当前聊天请求。",

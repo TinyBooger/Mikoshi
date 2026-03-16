@@ -22,6 +22,47 @@ SUMMARY_SYSTEM_PROMPT = (
 DEFAULT_SOFT_TOKEN_LIMIT = 3000
 DEFAULT_RECENT_MESSAGE_COUNT = 15
 DEFAULT_SUMMARY_MAX_TOKENS = 300
+DEFAULT_CONTEXT_WINDOW_TIER = "3k"
+
+CONTEXT_WINDOW_TIERS = (
+    {"key": "3k", "tokens": 3000, "pro_only": False},
+    {"key": "6k", "tokens": 6000, "pro_only": False},
+    {"key": "12k", "tokens": 12000, "pro_only": False},
+    {"key": "24k", "tokens": 24000, "pro_only": True},
+    {"key": "32k", "tokens": 32000, "pro_only": True},
+)
+
+
+def get_context_window_tiers(*, is_pro: bool) -> list[dict]:
+    allowed: list[dict] = []
+    for tier in CONTEXT_WINDOW_TIERS:
+        if tier["pro_only"] and not is_pro:
+            continue
+        allowed.append(dict(tier))
+    return allowed
+
+
+def resolve_context_window_settings(
+    chat_config: dict | None,
+    *,
+    can_use_advanced_config: bool,
+    is_pro: bool,
+) -> tuple[str, int]:
+    if not can_use_advanced_config:
+        return DEFAULT_CONTEXT_WINDOW_TIER, DEFAULT_SOFT_TOKEN_LIMIT
+
+    allowed_tiers = get_context_window_tiers(is_pro=is_pro)
+    tier_by_key = {str(tier["key"]): int(tier["tokens"]) for tier in allowed_tiers}
+
+    requested_tier = ""
+    if isinstance(chat_config, dict):
+        requested_tier = str(chat_config.get("context_window_tier", "")).strip().lower()
+
+    if requested_tier in tier_by_key:
+        return requested_tier, tier_by_key[requested_tier]
+
+    default_tier = DEFAULT_CONTEXT_WINDOW_TIER if DEFAULT_CONTEXT_WINDOW_TIER in tier_by_key else allowed_tiers[0]["key"]
+    return str(default_tier), int(tier_by_key[str(default_tier)])
 
 
 def _normalize_text(value: str) -> str:

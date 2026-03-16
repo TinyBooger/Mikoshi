@@ -5,6 +5,10 @@ import SecondaryButton from './SecondaryButton';
 import InfoCard from './InfoCard';
 import ProblemReportModal from './ProblemReportModal';
 import { useTranslation } from 'react-i18next';
+import {
+  getContextWindowTierOptions,
+  normalizeContextWindowTier,
+} from '../utils/contextWindow';
 
 
 // Accept all required props for the sidebar
@@ -60,6 +64,15 @@ export default function CharacterSidebar({
   const [showMemoryManagement, setShowMemoryManagement] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('chat');
   const { t } = useTranslation();
+  const isProUser = !!userData?.is_pro;
+  const contextWindowTierOptions = getContextWindowTierOptions({
+    canUseAdvancedConfig: canUseAdvancedChatConfig,
+    isProUser,
+  });
+  const selectedContextWindowTier = normalizeContextWindowTier(advancedChatConfig?.context_window_tier, {
+    canUseAdvancedConfig: canUseAdvancedChatConfig,
+    isProUser,
+  });
   const updateConfig = (key, value, min, max, fallback) => {
     const parsed = Number(value);
     const nextValue = Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
@@ -92,6 +105,7 @@ export default function CharacterSidebar({
         WebkitOverflowScrolling: 'touch',
         display: 'flex',
         flexDirection: 'column',
+        overflow: 'hidden',
         pointerEvents: characterSidebarVisible ? 'auto' : 'none',
         opacity: characterSidebarVisible ? 1 : 0,
         borderRadius: '1.5rem',
@@ -108,6 +122,7 @@ export default function CharacterSidebar({
         WebkitOverflowScrolling: 'touch',
         display: 'flex',
         flexDirection: 'column',
+        overflow: 'hidden',
         pointerEvents: characterSidebarVisible ? 'auto' : 'none',
         opacity: characterSidebarVisible ? 1 : 0,
         flexShrink: 0,
@@ -135,7 +150,7 @@ export default function CharacterSidebar({
         />
       )}
       <div style={sidebarStyle}>
-        <aside style={{ width: '100%', minHeight: 0, background: 'transparent', borderRadius: '1.2rem', margin: 0, boxShadow: 'none', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', height: 'auto' }}>
+        <aside style={{ width: '100%', minHeight: 0, maxHeight: '100%', background: 'transparent', borderRadius: '1.2rem', margin: 0, boxShadow: 'none', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', boxSizing: 'border-box', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
           {/* Main Entity InfoCard */}
           <div style={{
             background: '#fff',
@@ -656,6 +671,33 @@ export default function CharacterSidebar({
                 disabled={!canUseAdvancedChatConfig}
                 style={{ marginBottom: 10, borderRadius: 8 }}
               />
+
+              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                {t('chat.advanced_context_window')}
+              </label>
+              <select
+                className="form-select form-select-sm"
+                value={selectedContextWindowTier}
+                onChange={(e) => {
+                  const normalizedTier = normalizeContextWindowTier(e.target.value, {
+                    canUseAdvancedConfig: canUseAdvancedChatConfig,
+                    isProUser,
+                  });
+                  setAdvancedChatConfig((prev) => ({ ...prev, context_window_tier: normalizedTier }));
+                }}
+                disabled={!canUseAdvancedChatConfig}
+                style={{ marginBottom: 8, borderRadius: 8 }}
+              >
+                {contextWindowTierOptions.map((tier) => (
+                  <option key={tier.key} value={tier.key}>
+                    {`${tier.tokens / 1000}k tokens`}
+                  </option>
+                ))}
+              </select>
+
+              <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4, marginBottom: 10 }}>
+                {t('chat.advanced_context_window_notice')}
+              </div>
 
               <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                 {t('chat.advanced_presence_penalty')}

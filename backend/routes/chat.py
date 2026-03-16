@@ -14,7 +14,7 @@ from datetime import datetime, UTC
 from models import User, Character, Scene, ChatHistory
 from utils.level_system import award_exp_with_limits
 from utils.message_limit import can_send_user_message, increment_user_message_count
-from utils.context_window import compact_conversation_messages
+from utils.context_window import compact_conversation_messages, resolve_context_window_settings
 from utils.usage_utils import normalize_usage
 
 router = APIRouter()
@@ -259,7 +259,17 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     scene_id = data.get("scene_id")
     persona_id = data.get("persona_id")
     can_use_advanced_config = bool(current_user.is_pro) or (current_user.level or 1) >= 3
-    chat_config = parse_chat_config(data.get("chat_config")) if can_use_advanced_config else default_chat_config()
+    raw_chat_config = data.get("chat_config")
+    chat_config = parse_chat_config(raw_chat_config) if can_use_advanced_config else default_chat_config()
+    context_window_tier, context_window_soft_limit = resolve_context_window_settings(
+        raw_chat_config,
+        can_use_advanced_config=can_use_advanced_config,
+        is_pro=bool(current_user.is_pro),
+    )
+    persisted_chat_config = {
+        **chat_config,
+        "context_window_tier": context_window_tier,
+    }
     stream = data.get("stream", True)  # Default to streaming
 
     if not messages or not isinstance(messages, list):
@@ -271,8 +281,14 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     if not isinstance(context_messages, list) or not context_messages:
         context_messages = messages
 
-    prepared_messages, _ = compact_conversation_messages(messages)
-    _, context_window_info = compact_conversation_messages(context_messages)
+    prepared_messages, _ = compact_conversation_messages(
+        messages,
+        soft_token_limit=context_window_soft_limit,
+    )
+    _, context_window_info = compact_conversation_messages(
+        context_messages,
+        soft_token_limit=context_window_soft_limit,
+    )
     if not prepared_messages:
         return JSONResponse(content={"error": "Invalid messages after normalization"}, status_code=400)
 
@@ -374,7 +390,10 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             "content": accumulated_reply,
                             "usage": response_usage,
                         }]
-                        updated_messages, _ = compact_conversation_messages(updated_messages)
+                        updated_messages, _ = compact_conversation_messages(
+                            updated_messages,
+                            soft_token_limit=context_window_soft_limit,
+                        )
 
                         # Fetch character details for sidebar display
                         character = db_session.query(Character).filter(Character.id == character_id).first()
@@ -385,6 +404,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             "character_picture": character.picture if character else None,
                             "title": generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
                             "messages": updated_messages,
+                            "chat_config": persisted_chat_config,
                             "last_updated": datetime.now(UTC),
                             "created_at": existing_entry.created_at if existing_entry else datetime.now(UTC),
                         }
@@ -414,7 +434,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     ) or (limit_check.get("limit") or {})
 
                 # Send final metadata
-                yield f"data: {json.dumps({'done': True, 'chat_id': chat_id, 'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None), 'limits': limit_info, 'context_window': {**context_window_info, 'message_count': len(context_messages)}})}\n\n"
+                yield f"data: {json.dumps({'done': True, 'chat_id': chat_id, 'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None), 'limits': limit_info, 'context_window': {**context_window_info, 'message_count': len(context_messages), 'selected_tier': context_window_tier}})}\n\n"
             
             except ClientDisconnect:
                 return
@@ -458,7 +478,10 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 "content": reply,
                 "usage": response_usage,
             }]
-            updated_messages, _ = compact_conversation_messages(updated_messages)
+            updated_messages, _ = compact_conversation_messages(
+                updated_messages,
+                soft_token_limit=context_window_soft_limit,
+            )
 
             # Fetch character details for sidebar display
             character = db.query(Character).filter(Character.id == character_id).first()
@@ -469,6 +492,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 "character_picture": character.picture if character else None,
                 "title": generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
                 "messages": updated_messages,
+                "chat_config": persisted_chat_config,
                 "last_updated": datetime.now(UTC),
                 "created_at": existing_entry.created_at if existing_entry else datetime.now(UTC),
             }
@@ -497,6 +521,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 "context_window": {
                     **context_window_info,
                     "message_count": len(context_messages),
+                    "selected_tier": context_window_tier,
                 },
             }
 
@@ -506,6 +531,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             "context_window": {
                 **context_window_info,
                 "message_count": len(context_messages),
+                "selected_tier": context_window_tier,
             },
         }
 

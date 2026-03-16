@@ -10,6 +10,11 @@ import PersonaModal from '../components/PersonaModal';
 import SceneCharacterSelectModal from '../components/SceneCharacterSelectModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/ToastProvider';
+import {
+  DEFAULT_CONTEXT_WINDOW_TIER,
+  getContextWindowTokenLimit,
+  normalizeContextWindowTier,
+} from '../utils/contextWindow';
 
 const WALLPAPER_OPTIONS = [
   { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
@@ -54,10 +59,10 @@ export default function ChatPage() {
   // Sentinel used to indicate a character should have an improvising greeting
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
   const SUMMARY_PREFIX = 'Summary of previous conversation:';
-  const CLIENT_SOFT_TOKEN_LIMIT = 3000;
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
   const { userData, setUserData, sessionToken, refreshUserData, loading } = useContext(AuthContext);
   const canUseAdvancedChatConfig = !!userData?.is_pro || Number(userData?.level || 1) >= 3;
+  const isProUser = !!userData?.is_pro;
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const [likes, setLikes] = useState(0);
@@ -100,6 +105,7 @@ export default function ChatPage() {
     max_tokens: 250,
     presence_penalty: 0,
     frequency_penalty: 0,
+    context_window_tier: DEFAULT_CONTEXT_WINDOW_TIER,
   };
   const normalizeAdvancedChatConfig = (character) => {
     if (!canUseAdvancedChatConfig) {
@@ -112,6 +118,10 @@ export default function ChatPage() {
       return Math.min(max, Math.max(min, parsed));
     };
     const model = character.model === 'deepseek-reasoner' ? 'deepseek-reasoner' : 'deepseek-chat';
+    const normalizedContextWindowTier = normalizeContextWindowTier(character.context_window_tier, {
+      canUseAdvancedConfig: canUseAdvancedChatConfig,
+      isProUser,
+    });
     return {
       model,
       temperature: clamp(character.temperature, 0, 2, DEFAULT_ADVANCED_CHAT_CONFIG.temperature),
@@ -119,6 +129,38 @@ export default function ChatPage() {
       max_tokens: Math.round(clamp(character.max_tokens, 1, 8192, DEFAULT_ADVANCED_CHAT_CONFIG.max_tokens)),
       presence_penalty: clamp(character.presence_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty),
       frequency_penalty: clamp(character.frequency_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty),
+      context_window_tier: normalizedContextWindowTier,
+    };
+  };
+  const normalizeAdvancedChatConfigFromEntry = (rawConfig, fallbackCharacter = null) => {
+    const fallback = normalizeAdvancedChatConfig(fallbackCharacter);
+    if (!canUseAdvancedChatConfig) {
+      return DEFAULT_ADVANCED_CHAT_CONFIG;
+    }
+    if (!rawConfig || typeof rawConfig !== 'object') {
+      return fallback;
+    }
+
+    const clamp = (value, min, max, fallbackValue) => {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) return fallbackValue;
+      return Math.min(max, Math.max(min, parsed));
+    };
+
+    const model = rawConfig.model === 'deepseek-reasoner' ? 'deepseek-reasoner' : 'deepseek-chat';
+    const normalizedContextWindowTier = normalizeContextWindowTier(rawConfig.context_window_tier, {
+      canUseAdvancedConfig: canUseAdvancedChatConfig,
+      isProUser,
+    });
+
+    return {
+      model,
+      temperature: clamp(rawConfig.temperature, 0, 2, fallback.temperature),
+      top_p: clamp(rawConfig.top_p, 0, 1, fallback.top_p),
+      max_tokens: Math.round(clamp(rawConfig.max_tokens, 1, 8192, fallback.max_tokens)),
+      presence_penalty: clamp(rawConfig.presence_penalty, -2, 2, fallback.presence_penalty),
+      frequency_penalty: clamp(rawConfig.frequency_penalty, -2, 2, fallback.frequency_penalty),
+      context_window_tier: normalizedContextWindowTier,
     };
   };
   const [advancedChatConfig, setAdvancedChatConfig] = useState(DEFAULT_ADVANCED_CHAT_CONFIG);
@@ -299,7 +341,10 @@ export default function ChatPage() {
   };
 
   const getContextWindowUsage = (allMessages) => {
-    const effectiveSoftTokenLimit = CLIENT_SOFT_TOKEN_LIMIT;
+    const effectiveSoftTokenLimit = getContextWindowTokenLimit(advancedChatConfig?.context_window_tier, {
+      canUseAdvancedConfig: canUseAdvancedChatConfig,
+      isProUser,
+    });
 
     if (!Array.isArray(allMessages)) {
       return {
@@ -885,6 +930,7 @@ export default function ChatPage() {
                   character_name: selectedCharacter?.name || null,
                   character_picture: selectedCharacter?.picture || null,
                   messages: ensureMessageIds([{ role: 'assistant', content: accumulatedReply, message_id: improvisingGreetingId, is_pinned: false }]),
+                  chat_config: { ...advancedChatConfig },
                   last_updated: new Date().toISOString(),
                   created_at: new Date().toISOString(),
                   ...((scene?.id || sceneId || selectedScene?.id) && { scene_id: scene?.id || sceneId || selectedScene?.id }),
@@ -1039,6 +1085,7 @@ export default function ChatPage() {
                   character_name: existingChat?.character_name || selectedCharacter?.name || null,
                   character_picture: existingChat?.character_picture || selectedCharacter?.picture || null,
                   messages: ensureMessageIds([...updatedMessages, { role: 'assistant', content: accumulatedReply, message_id: assistantMessageId, is_pinned: false }]),
+                  chat_config: { ...advancedChatConfig },
                   last_updated: new Date().toISOString(),
                   created_at: existingChat?.created_at || new Date().toISOString(),
                   ...((selectedScene?.id || sceneId) && { scene_id: selectedScene?.id || sceneId }),
@@ -1174,14 +1221,9 @@ export default function ChatPage() {
             .then(data => {
               character = data;
               setSelectedCharacter(data);
-              if (data) {
-                setAdvancedChatConfig(normalizeAdvancedChatConfig(data));
-              }
             })
             .catch(err => console.error('Error loading character:', err))
         );
-      } else {
-        setAdvancedChatConfig(normalizeAdvancedChatConfig(character));
       }
       
       if (chat.scene_id) {
@@ -1211,6 +1253,9 @@ export default function ChatPage() {
       }
       
       await Promise.all(promises);
+
+      // History config always has precedence; character defaults are only fallback.
+      setAdvancedChatConfig(normalizeAdvancedChatConfigFromEntry(chat?.chat_config, character));
 
       // Refresh liked status for the loaded entities
       const likeParams = [];

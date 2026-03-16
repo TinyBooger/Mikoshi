@@ -118,6 +118,8 @@
     "advanced_temperature": "Temperature",
     "advanced_top_p": "Top P",
     "advanced_max_tokens": "Max Tokens",
+    "advanced_context_window": "Context Window",
+    "advanced_context_window_notice": "A longer context window preserves more chat history, but it will consume tokens faster.",
     "advanced_presence_penalty": "Presence Penalty",
     "advanced_frequency_penalty": "Frequency Penalty",
     "advanced_hint": "Changes apply to the current chat requests immediately.",
