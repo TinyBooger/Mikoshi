@@ -26,9 +26,11 @@ Rules:
 * Each chunk should contain one coherent idea or topic.
 * Each chunk must be understandable on its own.
 * Maximum 120 words per chunk.
-* Maximum 12 chunks total.
+* Maximum 50 chunks total.
 * Preserve important roleplay information.
 * Avoid repeating information across chunks.
+* Rewrite content into dense instruction-style text.
+* Use short phrases and compact wording.
 
 Order the chunks by importance for roleplay:
 
@@ -61,7 +63,7 @@ def _sanitize_chunks(payload: dict) -> list[dict[str, str]]:
     if not isinstance(chunks, list):
         return []
     cleaned: list[dict[str, str]] = []
-    for chunk in chunks[:12]:
+    for chunk in chunks[:50]:
         if not isinstance(chunk, dict):
             continue
         text = str(chunk.get("content", "")).strip()
@@ -83,7 +85,7 @@ def _fallback_split_chunks(long_description: str) -> list[dict[str, str]]:
         piece = " ".join(words[i:i + 120]).strip()
         if piece:
             chunks.append({"content": piece})
-        if len(chunks) >= 12:
+        if len(chunks) >= 50:
             break
     return chunks
 
