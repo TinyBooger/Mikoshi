@@ -125,7 +125,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
           : (t('sidebar.chat_unpinned_success') || 'Chat unpinned.'),
         { type: 'success' }
       );
-      refreshUserData?.({ silent: true });
     } catch (error) {
       setUserData((prev) => {
         if (!prev?.chat_history) return prev;
@@ -530,7 +529,12 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                     </button>
                     <button
                       type="button"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }}
                       onClick={(event) => {
+                        event.preventDefault();
                         event.stopPropagation();
                         setChatMenuOpenId((prev) => (prev === item.chat_id ? null : item.chat_id));
                       }}
@@ -578,7 +582,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                         type="button"
                         className="dropdown-item"
                         style={{ borderRadius: 8, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 8 }}
-                        onClick={() => handleToggleRecentChatPin(item)}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          handleToggleRecentChatPin(item);
+                        }}
                       >
                         <i className={item.is_pinned ? 'bi bi-pin-angle' : 'bi bi-pin-angle-fill'}></i>
                         {item.is_pinned
@@ -589,7 +597,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                         type="button"
                         className="dropdown-item text-danger"
                         style={{ borderRadius: 8, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 8 }}
-                        onClick={() => handleDeleteRecentChat(item)}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          handleDeleteRecentChat(item);
+                        }}
                       >
                         <i className="bi bi-trash"></i>
                         {t('sidebar.delete_chat') || 'Delete chat'}

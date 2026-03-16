@@ -85,6 +85,8 @@ def enrich_user_with_character_count(user: User, db: Session) -> dict:
                 "id": character.id,
                 "name": character.name,
                 "picture": character.picture,
+                "views": character.views or 0,
+                "likes": character.likes or 0,
             }
             for character in recent_characters
         ],

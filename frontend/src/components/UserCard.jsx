@@ -187,8 +187,8 @@ export default function UserCard({ user, onClick, disableClick = false }) {
                       name: character.name,
                       picture: character.picture,
                       creator_name: name,
-                      views: 0,
-                      likes: 0,
+                      views: typeof character.views === 'number' ? character.views : 0,
+                      likes: typeof character.likes === 'number' ? character.likes : 0,
                     }}
                     onClick={() => navigate(`/chat?character=${encodeURIComponent(character.id)}`)}
                   />

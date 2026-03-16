@@ -294,10 +294,12 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
             </span>
           )}
         </div>
-        <span className="text-muted small" style={{ fontSize: isMobile ? '0.68rem' : '0.74rem', fontFamily: 'Inter, sans-serif', fontWeight: 400, display: 'block', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: isMobile ? '100%' : '9.375rem' }}>
-          <i className="bi bi-person-circle me-1"></i>
-          {creatorDisplay ? creatorDisplay : <span style={{ opacity: 0.4 }}>Unknown</span>}
-        </span>
+        {!isMini && (
+          <span className="text-muted small" style={{ fontSize: isMobile ? '0.68rem' : '0.74rem', fontFamily: 'Inter, sans-serif', fontWeight: 400, display: 'block', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: isMobile ? '100%' : '9.375rem' }}>
+            <i className="bi bi-person-circle me-1"></i>
+            {creatorDisplay ? creatorDisplay : <span style={{ opacity: 0.4 }}>Unknown</span>}
+          </span>
+        )}
       </div>
       {/* Description/Tagline/Intro */}
       {!isMini && !(compact && isMobile) && (<div className="px-2" style={{
@@ -321,7 +323,7 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
         </span>
       </div>)}
       {/* Stats */}
-      {!isMini && !(compact && isMobile) && (<div className="d-flex align-items-center justify-content-between px-2 pb-1" style={{ minHeight: isMobile ? '0.875rem' : '1.125rem' }}> {/* 14px/18px */}
+      {!(compact && isMobile) && (<div className="d-flex align-items-center justify-content-between px-2 pb-1" style={{ minHeight: isMini ? (isMobile ? '1rem' : '1.1rem') : (isMobile ? '0.875rem' : '1.125rem') }}> {/* 14px/18px */}
         <span className="d-flex align-items-center text-secondary" style={{ fontSize: isMobile ? '0.5625rem' : '0.625rem' }}> {/* 9px/10px */}
           <i className="bi bi-chat me-1"></i> {typeof views === 'number' ? views.toLocaleString() : 0}
         </span>

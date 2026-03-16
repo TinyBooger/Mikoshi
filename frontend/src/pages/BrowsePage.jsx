@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import { useNavigate, useLocation, useOutletContext } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import DiscoverMasonryCard from '../components/DiscoverMasonryCard';
 import UserCard from '../components/UserCard';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
-import PaginationBar from '../components/PaginationBar';
 import PrimaryButton from '../components/PrimaryButton';
 import OnboardingTour from '../components/OnboardingTour';
 
@@ -34,12 +33,16 @@ function BrowsePage() {
   const [activeSubTab, setActiveSubTab] = useState('popular');
   const [entities, setEntities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(20);
+  const [hasMore, setHasMore] = useState(true);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const [showFirstTimeBanner, setShowFirstTimeBanner] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const loadMoreRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => setViewportWidth(window.innerWidth);
@@ -66,16 +69,14 @@ function BrowsePage() {
   const masonryColumnCount = viewportWidth < 768 ? 2 : 5;
   const isMobile = viewportWidth < 768;
 
-  // Helper: update `page` in the URL query string
-  const updatePageInUrl = (nextPage, replace = false) => {
-    const searchParams = new URLSearchParams(location.search);
-    if (!nextPage || nextPage <= 1) {
-      searchParams.delete('page');
-    } else {
-      searchParams.set('page', String(nextPage));
-    }
-    navigate({ pathname: location.pathname, search: searchParams.toString() }, { replace });
-  };
+  // Distribute items by index so visual reading order is left-to-right, then next row.
+  const masonryColumns = useMemo(() => {
+    const columns = Array.from({ length: masonryColumnCount }, () => []);
+    entities.forEach((entity, index) => {
+      columns[index % masonryColumnCount].push(entity);
+    });
+    return columns;
+  }, [entities, masonryColumnCount]);
 
   // Parse tab from URL
   useEffect(() => {
@@ -93,16 +94,10 @@ function BrowsePage() {
   // Reset page when tabs change
   useEffect(() => {
     setPage(1);
-    updatePageInUrl(1, true);
+    setEntities([]);
+    setTotal(0);
+    setHasMore(true);
   }, [activeMainTab, activeSubTab]);
-
-  // Initialize page from URL on load/search change
-  useEffect(() => {
-    const sp = new URLSearchParams(location.search);
-    const p = parseInt(sp.get('page') || '1', 10);
-    const normalized = Number.isNaN(p) || p < 1 ? 1 : p;
-    setPage(normalized);
-  }, [location.search]);
 
   // Navigation
   const handleMainTab = (tab) => {
@@ -114,11 +109,16 @@ function BrowsePage() {
 
   // Fetch data
   useEffect(() => {
-  if (!sessionToken) {
+    if (!sessionToken) {
       navigate('/');
       return;
     }
-    setIsLoading(true);
+    if (page === 1) {
+      setIsLoading(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+
     let url = '';
     if (activeMainTab === 'characters') {
       url = `${window.API_BASE_URL}/api/characters/${activeSubTab}`;
@@ -136,25 +136,66 @@ function BrowsePage() {
       .then(data => {
         // Expect wrapper: { items, total, page, page_size, short }
         if (data && Array.isArray(data.items)) {
-          setEntities(data.items);
-          setTotal(data.total || 0);
-          setPageSize(data.page_size || 20);
+          const incoming = data.items;
+          const nextTotal = data.total || 0;
+          const nextPageSize = data.page_size || 20;
+
+          setEntities(prev => (page === 1 ? incoming : [...prev, ...incoming]));
+          setTotal(nextTotal);
+          setPageSize(nextPageSize);
+          setHasMore(nextTotal > 0 ? (page * nextPageSize) < nextTotal : incoming.length >= nextPageSize);
         } else if (Array.isArray(data)) { // fallback legacy list
-          setEntities(data);
+          setEntities(prev => (page === 1 ? data : prev));
           setTotal(data.length);
           setPageSize(20);
+          setHasMore(false);
         } else {
+          if (page === 1) {
+            setEntities([]);
+            setTotal(0);
+          }
+          setHasMore(false);
+        }
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      })
+      .catch(() => {
+        if (page === 1) {
           setEntities([]);
           setTotal(0);
         }
+        setHasMore(false);
         setIsLoading(false);
-      })
-      .catch(() => {
-        setEntities([]);
-        setTotal(0);
-        setIsLoading(false);
+        setIsLoadingMore(false);
       });
   }, [activeMainTab, activeSubTab, sessionToken, navigate, page]);
+
+  useEffect(() => {
+    if (isLoading || isLoadingMore || !hasMore) return;
+    if (!loadMoreRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting) {
+          setPage(prev => prev + 1);
+        }
+      },
+      { rootMargin: '200px 0px' }
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [isLoading, isLoadingMore, hasMore]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 400);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Title logic
   const getSectionTitle = () => {
@@ -495,14 +536,19 @@ function BrowsePage() {
             ) : (
               <div
                 style={{
-                  columnCount: masonryColumnCount,
-                  columnGap: '16px',
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${masonryColumnCount}, minmax(0, 1fr))`,
+                  gap: '16px',
                   width: '100%',
                 }}
               >
-                {entities.map(entity => (
-                  <div key={entity.id} className="browse-entity-card" style={{ breakInside: 'avoid', marginBottom: '16px' }}>
-                    <DiscoverMasonryCard type={activeMainTab.slice(0, -1)} entity={entity} />
+                {masonryColumns.map((column, columnIndex) => (
+                  <div key={columnIndex} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {column.map(entity => (
+                      <div key={entity.id} className="browse-entity-card">
+                        <DiscoverMasonryCard type={activeMainTab.slice(0, -1)} entity={entity} />
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
@@ -510,17 +556,46 @@ function BrowsePage() {
           </section>
         )}
       </div>
-      {/* Bottom Pagination */}
-      <PaginationBar
-        page={page}
-        total={total}
-        pageSize={pageSize}
-        loading={isLoading}
-        onPageChange={(next) => {
-          setPage(next);
-          updatePageInUrl(next);
+
+      {isLoadingMore && (
+        <div className="text-center my-4">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">{t('browse.loading')}</span>
+          </div>
+        </div>
+      )}
+
+      {hasMore && !isLoading && <div ref={loadMoreRef} style={{ height: 1, width: '100%' }} />}
+
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        aria-label={t('common.back_to_top', 'Back to top')}
+        style={{
+          position: 'fixed',
+          right: isMobile ? '12px' : '20px',
+          bottom: isMobile ? '24px' : '32px',
+          width: isMobile ? '42px' : '48px',
+          height: isMobile ? '42px' : '48px',
+          borderRadius: '50%',
+          border: 'none',
+          background: '#736B92',
+          color: '#fff',
+          boxShadow: '0 8px 20px rgba(0, 0, 0, 0.2)',
+          cursor: showBackToTop ? 'pointer' : 'default',
+          zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: showBackToTop ? 1 : 0,
+          transform: showBackToTop ? 'translateY(0)' : 'translateY(12px)',
+          transition: 'opacity 0.24s ease, transform 0.24s ease, background 0.2s',
+          pointerEvents: showBackToTop ? 'auto' : 'none',
         }}
-      />
+        onMouseEnter={e => { if (showBackToTop) e.currentTarget.style.background = '#6A6286'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = '#736B92'; }}
+      >
+        <i className="bi bi-arrow-up" style={{ fontSize: isMobile ? '1rem' : '1.1rem' }}></i>
+      </button>
       </div>
     </PageWrapper>
   );

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
 import AuthLayout from './components/AuthLayout';
 import AdminApp from './admin/AdminApp.jsx';
@@ -36,80 +36,90 @@ import AlipayReturnPage from './pages/AlipayReturnPage.jsx';
 import ProUpgradePage from './pages/ProUpgradePage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
+function AppRootLayout() {
+  const { userData } = useContext(AuthContext);
+  return userData ? <Layout /> : <AuthLayout />;
+}
+
+function ProtectedPage({ children }) {
+  const { userData } = useContext(AuthContext);
+  return userData ? children : <Navigate to="/" replace />;
+}
+
+function PublicOnlyPage({ children }) {
+  const { userData } = useContext(AuthContext);
+  return userData ? <Navigate to="/browse" replace /> : children;
+}
+
+function RootIndexPage() {
+  const { userData } = useContext(AuthContext);
+  return userData ? <Navigate to="/browse" replace /> : <WelcomePage />;
+}
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <AppRootLayout />,
+    children: [
+      { index: true, element: <RootIndexPage /> },
+      { path: 'test', element: <ProtectedPage><TestPage /></ProtectedPage> },
+      { path: 'browse', element: <ProtectedPage><BrowsePage /></ProtectedPage> },
+      { path: 'browse/:mainTab/:subTab', element: <ProtectedPage><BrowsePage /></ProtectedPage> },
+      { path: 'browse/:mainTab', element: <ProtectedPage><BrowsePage /></ProtectedPage> },
+      { path: 'HomePage', element: <ProtectedPage><HomePage /></ProtectedPage> },
+      { path: 'character/create', element: <ProtectedPage><CharacterFormPage /></ProtectedPage> },
+      { path: 'character/edit/:id', element: <ProtectedPage><CharacterFormPage /></ProtectedPage> },
+      { path: 'character/fork/:id', element: <ProtectedPage><CharacterFormPage /></ProtectedPage> },
+      { path: 'persona/create', element: <ProtectedPage><EntityFormPage /></ProtectedPage> },
+      { path: 'persona/edit/:id', element: <ProtectedPage><EntityFormPage /></ProtectedPage> },
+      { path: 'persona/fork/:id', element: <ProtectedPage><EntityFormPage /></ProtectedPage> },
+      { path: 'scene/create', element: <ProtectedPage><EntityFormPage /></ProtectedPage> },
+      { path: 'scene/edit/:id', element: <ProtectedPage><EntityFormPage /></ProtectedPage> },
+      { path: 'scene/fork/:id', element: <ProtectedPage><EntityFormPage /></ProtectedPage> },
+      { path: ':type/:id', element: <ProtectedPage><EntityDetailPage /></ProtectedPage> },
+      { path: 'chat', element: <ProtectedPage><ChatPage /></ProtectedPage> },
+      { path: 'profile', element: <ProtectedPage><ProfilePage /></ProtectedPage> },
+      { path: 'profile/:userId', element: <ProtectedPage><ProfilePage publicView={true} /></ProtectedPage> },
+      { path: 'settings', element: <ProtectedPage><SettingsPage /></ProtectedPage> },
+      { path: 'search', element: <ProtectedPage><SearchPage /></ProtectedPage> },
+      { path: 'alipay/test', element: <ProtectedPage><AlipayTestPage /></ProtectedPage> },
+      { path: 'alipay/return', element: <ProtectedPage><AlipayReturnPage /></ProtectedPage> },
+      { path: 'pro-upgrade', element: <ProtectedPage><ProUpgradePage /></ProtectedPage> },
+      { path: 'sign-up', element: <PublicOnlyPage><SignUpPage /></PublicOnlyPage> },
+      { path: 'reset-password', element: <PublicOnlyPage><ResetPasswordPage /></PublicOnlyPage> },
+      { path: 'terms-of-service', element: <TermsOfServicePage /> },
+      { path: 'privacy-policy', element: <PrivacyPolicyPage /> },
+    ],
+  },
+  {
+    path: '/admin',
+    element: <AdminRoute><AdminApp /></AdminRoute>,
+    children: [
+      { index: true, element: <DashboardPage /> },
+      { path: 'users', element: <UsersPage /> },
+      { path: 'characters', element: <CharactersPage /> },
+      { path: 'tags', element: <TagsPage /> },
+      { path: 'search-terms', element: <SearchTermsPage /> },
+      { path: 'invitations', element: <InvitationCodesPage /> },
+      { path: 'problem-reports', element: <ProblemReportsPage /> },
+      { path: 'notifications', element: <NotificationsPage /> },
+      { path: 'error-logs', element: <ErrorLogsPage /> },
+      { path: 'audit-logs', element: <AuditLogsPage /> },
+      { path: 'user-stats', element: <UserStatsPage /> },
+    ],
+  },
+  {
+    path: '*',
+    element: <NotFoundPage />,
+  },
+]);
+
 export default function App() {
-  const { userData, loading } = useContext(AuthContext);
+  const { loading } = useContext(AuthContext);
 
   if (loading) {
     return null; // Or a loading spinner
   }
-
-  const router = createBrowserRouter([
-    userData
-      ? {
-          path: '/',
-          element: <Layout />,
-          children: [
-            { index: true, element: <Navigate to="/browse" replace /> },
-            { path: 'test', element: <TestPage /> },
-            { path: 'browse', element: <BrowsePage /> },
-            { path: 'browse/:mainTab/:subTab', element: <BrowsePage /> },
-            { path: 'browse/:mainTab', element: <BrowsePage /> },
-            { path: 'HomePage', element: <HomePage /> },
-            { path: 'character/create', element: <CharacterFormPage /> },
-            { path: 'character/edit/:id', element: <CharacterFormPage /> },
-            { path: 'character/fork/:id', element: <CharacterFormPage /> },
-            { path: 'persona/create', element: <EntityFormPage /> },
-            { path: 'persona/edit/:id', element: <EntityFormPage /> },
-            { path: 'persona/fork/:id', element: <EntityFormPage /> },
-            { path: 'scene/create', element: <EntityFormPage /> },
-            { path: 'scene/edit/:id', element: <EntityFormPage /> },
-            { path: 'scene/fork/:id', element: <EntityFormPage /> },
-            { path: ':type/:id', element: <EntityDetailPage /> },
-            { path: 'chat', element: <ChatPage /> },
-            { path: 'profile', element: <ProfilePage /> },
-            { path: 'profile/:userId', element: <ProfilePage publicView={true} /> },
-            { path: 'settings', element: <SettingsPage /> },
-            { path: 'search', element: <SearchPage /> },
-            { path: 'alipay/test', element: <AlipayTestPage /> },
-            { path: 'alipay/return', element: <AlipayReturnPage /> },
-            { path: 'pro-upgrade', element: <ProUpgradePage /> },
-            { path: 'terms-of-service', element: <TermsOfServicePage /> },
-            { path: 'privacy-policy', element: <PrivacyPolicyPage /> },
-          ],
-        }
-      : {
-          path: '/',
-          element: <AuthLayout />,
-          children: [
-            { index: true, element: <WelcomePage /> },
-            { path: 'sign-up', element: <SignUpPage /> },
-            { path: 'reset-password', element: <ResetPasswordPage /> },
-            { path: 'terms-of-service', element: <TermsOfServicePage /> },
-            { path: 'privacy-policy', element: <PrivacyPolicyPage /> },
-          ],
-        },
-    {
-      path: '/admin',
-      element: <AdminRoute><AdminApp /></AdminRoute>,
-      children: [
-        { index: true, element: <DashboardPage /> },
-        { path: 'users', element: <UsersPage /> },
-        { path: 'characters', element: <CharactersPage /> },
-        { path: 'tags', element: <TagsPage /> },
-        { path: 'search-terms', element: <SearchTermsPage /> },
-        { path: 'invitations', element: <InvitationCodesPage /> },
-        { path: 'problem-reports', element: <ProblemReportsPage /> },
-        { path: 'notifications', element: <NotificationsPage /> },
-        { path: 'error-logs', element: <ErrorLogsPage /> },
-        { path: 'audit-logs', element: <AuditLogsPage /> },
-        { path: 'user-stats', element: <UserStatsPage /> },
-      ],
-    },
-    {
-      path: '*',
-      element: <NotFoundPage />,
-    },
-  ]);
 
   return <RouterProvider router={router} />;
 }
