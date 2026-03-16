@@ -18,6 +18,37 @@ const WALLPAPER_OPTIONS = [
   { id: 'waves', labelKey: 'chat.wallpaper_waves', url: '/wallpapers/waves.svg' },
 ];
 
+const MOBILE_LONG_PRESS_MS = 500;
+const MAX_PINNED_MEMORIES = 10;
+
+const generateMessageId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const ensureMessageIds = (messageList = []) => {
+  if (!Array.isArray(messageList)) return [];
+  return messageList.map((message) => {
+    if (!message || typeof message !== 'object') return message;
+    if (message.role === 'system') return message;
+    const hasValidId = typeof message.message_id === 'string' && message.message_id.trim();
+    return {
+      ...message,
+      message_id: hasValidId ? message.message_id : generateMessageId(),
+      is_pinned: !!message.is_pinned,
+    };
+  });
+};
+
+const getMessagePreview = (content = '', max = 88) => {
+  if (typeof content !== 'string') return '';
+  const compact = content.replace(/\s+/g, ' ').trim();
+  if (compact.length <= max) return compact;
+  return `${compact.slice(0, max)}...`;
+};
+
 export default function ChatPage() {
   const { t } = useTranslation();
   // Sentinel used to indicate a character should have an improvising greeting
@@ -45,6 +76,7 @@ export default function ChatPage() {
   const [editingChatId, setEditingChatId] = useState(null);
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
+  const [messageMenu, setMessageMenu] = useState({ open: false, messageId: null, x: 0, y: 0 });
 
   // Whether the welcome notice has been dismissed (show only once per new chat)
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
@@ -53,6 +85,8 @@ export default function ChatPage() {
   const textareaRef = useRef(null);
   // Ref for messages container to enable auto-scrolling
   const messagesEndRef = useRef(null);
+  const messageLongPressTimerRef = useRef(null);
+  const messageMenuRef = useRef(null);
 
   const [selectedPersona, setSelectedPersona] = useState(null);
   const [selectedScene, setSelectedScene] = useState(null);
@@ -114,6 +148,30 @@ export default function ChatPage() {
     };
   }, [abortController]);
 
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!messageMenu.open) return;
+      if (messageMenuRef.current && messageMenuRef.current.contains(event.target)) {
+        return;
+      }
+      setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+    };
+  }, [messageMenu.open]);
+
+  useEffect(() => () => {
+    if (messageLongPressTimerRef.current) {
+      clearTimeout(messageLongPressTimerRef.current);
+      messageLongPressTimerRef.current = null;
+    }
+  }, []);
+
   const [characterId, setCharacterId] = useState(searchParams.get('character'));
   const [sceneId, setSceneId] = useState(searchParams.get('scene'));
   const selectedWallpaper = WALLPAPER_OPTIONS.find((option) => option.id === selectedWallpaperId) || WALLPAPER_OPTIONS[0];
@@ -146,6 +204,7 @@ export default function ChatPage() {
     setSelectedPersona(null);
     setSelectedChat(null);
     setMessages([]);
+    setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
     setServerContextWindowUsage(null);
     isNewChat.current = true;
     setWelcomeDismissed(false);
@@ -279,6 +338,179 @@ export default function ChatPage() {
       currentTokens: 0,
       softLimit: effectiveSoftTokenLimit,
     };
+  };
+
+  const syncPinnedStateInUserHistory = (chatId, messageId, isPinned) => {
+    if (!chatId || !messageId) return;
+    if (!userData?.chat_history) return;
+
+    setUserData((prev) => {
+      if (!prev?.chat_history) return prev;
+      return {
+        ...prev,
+        chat_history: prev.chat_history.map((chatEntry) => {
+          if (chatEntry.chat_id !== chatId) return chatEntry;
+          const historyMessages = Array.isArray(chatEntry.messages) ? chatEntry.messages : [];
+          return {
+            ...chatEntry,
+            messages: historyMessages.map((msg) => {
+              if (!msg || typeof msg !== 'object') return msg;
+              if (msg.message_id !== messageId) return msg;
+              return { ...msg, is_pinned: isPinned };
+            }),
+          };
+        }),
+      };
+    });
+  };
+
+  const persistPinnedMessage = async (message, isPinned) => {
+    if (!selectedChat?.chat_id) return;
+    if (!message?.message_id) return;
+
+    const response = await fetch(`${window.API_BASE_URL}/api/chat/pin-message`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': sessionToken,
+      },
+      body: JSON.stringify({
+        chat_id: selectedChat.chat_id,
+        message_id: message.message_id,
+        is_pinned: !!isPinned,
+        message_role: message.role,
+        message_content: message.content,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => null);
+      throw new Error(errorPayload?.error || 'Failed to update pinned memory');
+    }
+  };
+
+  const handleTogglePin = async (messageId, nextPinnedState) => {
+    const targetMessage = messages.find((m) => m?.message_id === messageId);
+    if (!targetMessage) return;
+
+    if (!selectedChat?.chat_id) {
+      toast.show(t('chat.pin_requires_saved_chat') || 'Send a message first to save and pin memories.', { type: 'warning' });
+      return;
+    }
+
+    if (nextPinnedState && !targetMessage.is_pinned) {
+      const currentPinnedCount = messages.filter((m) => m?.role !== 'system' && m?.is_pinned).length;
+      if (currentPinnedCount >= MAX_PINNED_MEMORIES) {
+        toast.show(
+          t('chat.memory_pin_limit_reached', { max: MAX_PINNED_MEMORIES }) || `You can pin up to ${MAX_PINNED_MEMORIES} memories.`,
+          { type: 'warning' }
+        );
+        return;
+      }
+    }
+
+    setMessages((prev) => prev.map((m) => {
+      if (!m || typeof m !== 'object') return m;
+      if (m.message_id !== messageId) return m;
+      return { ...m, is_pinned: nextPinnedState };
+    }));
+
+    setSelectedChat((prev) => {
+      if (!prev || !Array.isArray(prev.messages)) return prev;
+      return {
+        ...prev,
+        messages: prev.messages.map((m) => {
+          if (!m || typeof m !== 'object') return m;
+          if (m.message_id !== messageId) return m;
+          return { ...m, is_pinned: nextPinnedState };
+        }),
+      };
+    });
+
+    syncPinnedStateInUserHistory(selectedChat?.chat_id, messageId, nextPinnedState);
+
+    try {
+      await persistPinnedMessage(targetMessage, nextPinnedState);
+      toast.show(
+        nextPinnedState
+          ? (t('chat.memory_pinned_success') || 'Memory pinned.')
+          : (t('chat.memory_unpinned_success') || 'Memory unpinned.'),
+        { type: 'success' }
+      );
+    } catch (error) {
+      setMessages((prev) => prev.map((m) => {
+        if (!m || typeof m !== 'object') return m;
+        if (m.message_id !== messageId) return m;
+        return { ...m, is_pinned: !nextPinnedState };
+      }));
+      setSelectedChat((prev) => {
+        if (!prev || !Array.isArray(prev.messages)) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.map((m) => {
+            if (!m || typeof m !== 'object') return m;
+            if (m.message_id !== messageId) return m;
+            return { ...m, is_pinned: !nextPinnedState };
+          }),
+        };
+      });
+      syncPinnedStateInUserHistory(selectedChat?.chat_id, messageId, !nextPinnedState);
+      toast.show(error.message || (t('chat.memory_pin_failed') || 'Failed to update memory pin.'), { type: 'error' });
+    }
+  };
+
+  const openMessageMenu = (event, messageId) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const clientX = Number(event.clientX || 0);
+    const clientY = Number(event.clientY || 0);
+    setMessageMenu({
+      open: true,
+      messageId,
+      x: clientX,
+      y: clientY,
+    });
+  };
+
+  const startMessageLongPress = (touchEvent, messageId) => {
+    if (!isMobile) return;
+    if (messageLongPressTimerRef.current) {
+      clearTimeout(messageLongPressTimerRef.current);
+      messageLongPressTimerRef.current = null;
+    }
+
+    const touch = touchEvent.touches?.[0];
+    const clientX = Number(touch?.clientX || 0);
+    const clientY = Number(touch?.clientY || 0);
+
+    messageLongPressTimerRef.current = window.setTimeout(() => {
+      setMessageMenu({
+        open: true,
+        messageId,
+        x: clientX,
+        y: clientY,
+      });
+      messageLongPressTimerRef.current = null;
+    }, MOBILE_LONG_PRESS_MS);
+  };
+
+  const stopMessageLongPress = () => {
+    if (messageLongPressTimerRef.current) {
+      clearTimeout(messageLongPressTimerRef.current);
+      messageLongPressTimerRef.current = null;
+    }
+  };
+
+  const jumpToMessage = (messageId) => {
+    if (!messageId) return;
+    const target = document.getElementById(`message-${messageId}`);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.style.transition = 'box-shadow 0.2s ease';
+    target.style.boxShadow = '0 0 0 2px rgba(24,25,26,0.25)';
+    window.setTimeout(() => {
+      target.style.boxShadow = 'none';
+    }, 1100);
   };
 
   // Fetch initial entity data when modal opens and IDs are present
@@ -580,6 +812,7 @@ export default function ChatPage() {
       // Ask backend to generate a reply (this will also create a chat entry server-side when character_id provided)
       setSending(true);
       setIsStreaming(true);
+      const improvisingGreetingId = generateMessageId();
       
       const controller = new AbortController();
       setAbortController(controller);
@@ -615,7 +848,7 @@ export default function ChatPage() {
         let accumulatedReply = "";
         
         // Add placeholder message
-        setMessages([sys, { role: 'assistant', content: '' }]);
+        setMessages(ensureMessageIds([sys, { role: 'assistant', content: '', message_id: improvisingGreetingId, is_pinned: false }]));
 
         while (true) {
           const { done, value } = await reader.read();
@@ -637,7 +870,7 @@ export default function ChatPage() {
               
               if (data.chunk) {
                 accumulatedReply += data.chunk;
-                setMessages([sys, { role: 'assistant', content: accumulatedReply }]);
+                setMessages(ensureMessageIds([sys, { role: 'assistant', content: accumulatedReply, message_id: improvisingGreetingId, is_pinned: false }]));
               }
               
               if (data.done && data.chat_id) {
@@ -651,7 +884,7 @@ export default function ChatPage() {
                   character_id: characterId,
                   character_name: selectedCharacter?.name || null,
                   character_picture: selectedCharacter?.picture || null,
-                  messages: [{ role: 'assistant', content: accumulatedReply }],
+                  messages: ensureMessageIds([{ role: 'assistant', content: accumulatedReply, message_id: improvisingGreetingId, is_pinned: false }]),
                   last_updated: new Date().toISOString(),
                   created_at: new Date().toISOString(),
                   ...((scene?.id || sceneId || selectedScene?.id) && { scene_id: scene?.id || sceneId || selectedScene?.id }),
@@ -685,10 +918,12 @@ export default function ChatPage() {
     if (charGreeting) {
       greet = {
         role: 'assistant',
-        content: charGreeting
+        content: charGreeting,
+        message_id: generateMessageId(),
+        is_pinned: false,
       };
     }
-    setMessages(greet ? [sys, greet] : [sys]);
+    setMessages(ensureMessageIds(greet ? [sys, greet] : [sys]));
   };
 
   const handleSend = async (event) => {
@@ -703,7 +938,7 @@ export default function ChatPage() {
       isNewChat.current = false;
     }
     
-    const updatedMessages = [...messages, { role: 'user', content: input.trim() }];
+    const updatedMessages = ensureMessageIds([...messages, { role: 'user', content: input.trim(), message_id: generateMessageId(), is_pinned: false }]);
     const requestMessages = compactMessagesForRequest(updatedMessages);
     setMessages(updatedMessages);
     setInput('');
@@ -750,9 +985,10 @@ export default function ChatPage() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let accumulatedReply = "";
+      const assistantMessageId = generateMessageId();
       
       // Add a placeholder message for the assistant that we'll update incrementally
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+      setMessages(prev => ensureMessageIds([...prev, { role: 'assistant', content: '', message_id: assistantMessageId, is_pinned: false }]));
 
       while (true) {
         const { done, value } = await reader.read();
@@ -779,9 +1015,11 @@ export default function ChatPage() {
                 const newMessages = [...prev];
                 newMessages[newMessages.length - 1] = { 
                   role: 'assistant', 
-                  content: accumulatedReply 
+                  content: accumulatedReply,
+                  message_id: assistantMessageId,
+                  is_pinned: false,
                 };
-                return newMessages;
+                return ensureMessageIds(newMessages);
               });
             }
             
@@ -800,7 +1038,7 @@ export default function ChatPage() {
                   character_id: characterId,
                   character_name: existingChat?.character_name || selectedCharacter?.name || null,
                   character_picture: existingChat?.character_picture || selectedCharacter?.picture || null,
-                  messages: [...updatedMessages, { role: 'assistant', content: accumulatedReply }],
+                  messages: ensureMessageIds([...updatedMessages, { role: 'assistant', content: accumulatedReply, message_id: assistantMessageId, is_pinned: false }]),
                   last_updated: new Date().toISOString(),
                   created_at: existingChat?.created_at || new Date().toISOString(),
                   ...((selectedScene?.id || sceneId) && { scene_id: selectedScene?.id || sceneId }),
@@ -1018,11 +1256,12 @@ export default function ChatPage() {
       const nonSystemMessages = historyMessages.filter((m) => m?.role !== 'system');
 
       // Keep exactly one live system prompt plus normal dialogue messages
-      setMessages([sys, ...summarySystemMessages, ...nonSystemMessages]);
+      setMessages(ensureMessageIds([sys, ...summarySystemMessages, ...nonSystemMessages]));
       
       // Set selected chat and mark as existing chat (not new)
       setSelectedChat({
         ...chat,
+        messages: ensureMessageIds(historyMessages),
         last_updated: chat.last_updated || new Date().toISOString()
       });
       
@@ -1170,6 +1409,17 @@ export default function ChatPage() {
   };
 
   const contextWindowUsage = getContextWindowUsage(messages);
+  const pinnedMemories = messages
+    .filter((m) => m?.role !== 'system' && m?.message_id && m?.is_pinned)
+    .map((m) => ({
+      message_id: m.message_id,
+      role: m.role,
+      content: m.content,
+      preview: getMessagePreview(m.content),
+    }));
+  const activeMessageForMenu = messageMenu.messageId
+    ? messages.find((m) => m?.message_id === messageMenu.messageId)
+    : null;
   const contextUsageRatio = Math.min(1, contextWindowUsage.currentTokens / Math.max(1, contextWindowUsage.softLimit));
   const contextUsagePercent = Math.round(contextUsageRatio * 100);
   const pieRadius = 7;
@@ -1319,12 +1569,19 @@ export default function ChatPage() {
                 ) : (
                   nonSystem.map((m, i) => (
                     <div
-                      key={i}
+                      key={m.message_id || i}
+                      id={m.message_id ? `message-${m.message_id}` : undefined}
                       style={{
                         display: 'flex',
                         marginBottom: '1.2rem',
                         justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
                       }}
+                      onTouchStart={(event) => {
+                        if (!m?.message_id) return;
+                        startMessageLongPress(event, m.message_id);
+                      }}
+                      onTouchEnd={stopMessageLongPress}
+                      onTouchCancel={stopMessageLongPress}
                     >
                       <div style={{
                         display: 'flex',
@@ -1358,8 +1615,41 @@ export default function ChatPage() {
                           wordBreak: 'break-word',
                           maxWidth: '100%'
                         }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.76rem', marginBottom: 2, opacity: 0.7 }}>
-                            {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.76rem', opacity: 0.7 }}>
+                              {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
+                              {m.is_pinned && (
+                                <span style={{ marginLeft: 8, fontSize: '0.72rem', color: '#334155' }}>
+                                  <i className="bi bi-pin-angle-fill" style={{ marginRight: 4 }}></i>
+                                  {t('chat.pinned_memory') || 'Pinned'}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                if (!m?.message_id) return;
+                                openMessageMenu(event, m.message_id);
+                              }}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                color: '#6b7280',
+                                cursor: 'pointer',
+                                width: 22,
+                                height: 22,
+                                borderRadius: 999,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: 0,
+                                flexShrink: 0,
+                              }}
+                              aria-label={t('chat.message_options') || 'Message options'}
+                              title={t('chat.message_options') || 'Message options'}
+                            >
+                              <i className="bi bi-three-dots"></i>
+                            </button>
                           </div>
                           <div>{renderMessageContent(m.content)}</div>
                         </div>
@@ -1373,6 +1663,42 @@ export default function ChatPage() {
             );
           })()}
         </div>
+
+        {messageMenu.open && activeMessageForMenu && (
+          <div
+            ref={messageMenuRef}
+            style={{
+              position: 'fixed',
+              top: Math.max(8, messageMenu.y + 8),
+              left: Math.max(8, Math.min(window.innerWidth - 200, messageMenu.x - 20)),
+              width: 190,
+              background: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: 12,
+              boxShadow: '0 10px 28px rgba(0,0,0,0.16)',
+              zIndex: 1200,
+              padding: 6,
+            }}
+          >
+            <button
+              type="button"
+              className="dropdown-item"
+              style={{ borderRadius: 8, fontSize: '0.86rem', display: 'flex', alignItems: 'center', gap: 8 }}
+              onClick={async () => {
+                const nextPinnedState = !activeMessageForMenu.is_pinned;
+                const targetId = activeMessageForMenu.message_id;
+                setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
+                if (!targetId) return;
+                await handleTogglePin(targetId, nextPinnedState);
+              }}
+            >
+              <i className={activeMessageForMenu.is_pinned ? 'bi bi-pin-angle' : 'bi bi-pin-angle-fill'}></i>
+              {activeMessageForMenu.is_pinned
+                ? (t('chat.unpin_memory') || 'Unpin memory')
+                : (t('chat.pin_memory') || 'Pin as memory')}
+            </button>
+          </div>
+        )}
 
         {/* Input Area (no form) */}
         <form
@@ -1641,6 +1967,10 @@ export default function ChatPage() {
         wallpaperOptions={WALLPAPER_OPTIONS}
         selectedWallpaperId={selectedWallpaperId}
         onSelectWallpaper={handleSelectWallpaper}
+        pinnedMemories={pinnedMemories}
+        maxPinnedMemories={MAX_PINNED_MEMORIES}
+        onJumpToPinnedMemory={jumpToMessage}
+        onUnpinMemory={(messageId) => handleTogglePin(messageId, false)}
         isMobile={isMobile}
         setPersonaModalShow={() => setPersonaModal({ show: true })}
       />

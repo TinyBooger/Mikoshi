@@ -21,6 +21,7 @@ def serialize_chat_history_entry(entry: ChatHistory) -> dict:
         "persona_id": entry.persona_id,
         "title": entry.title,
         "messages": entry.messages or [],
+        "is_pinned": bool(getattr(entry, "is_pinned", False)),
         "last_updated": entry.last_updated.isoformat() if entry.last_updated else None,
         "created_at": entry.created_at.isoformat() if entry.created_at else None,
     }
@@ -87,6 +88,7 @@ def upsert_chat_history_entry(
         "scene_picture": payload.get("scene_picture"),
         "title": payload.get("title"),
         "messages": payload.get("messages", []),
+        "is_pinned": bool(payload.get("is_pinned")) if "is_pinned" in payload else bool(getattr(entry, "is_pinned", False)),
         "last_updated": payload.get("last_updated", now),
     }
 

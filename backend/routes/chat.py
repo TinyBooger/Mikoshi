@@ -30,6 +30,7 @@ _DEFAULT_COMMON_WORDS = {
     "she", "that", "the", "their", "them", "there", "they", "this", "to", "was", "we",
     "were", "will", "with", "you", "your",
 }
+MAX_PINNED_MEMORIES = 10
 
 
 def _load_common_words() -> set[str]:
@@ -237,6 +238,12 @@ def default_chat_config():
         "presence_penalty": 0.0,
         "frequency_penalty": 0.0,
     }
+
+
+def _normalize_message_content(content: str | None) -> str:
+    if not isinstance(content, str):
+        return ""
+    return re.sub(r"\s+", " ", content).strip()
 
 @router.post("/api/chat")
 async def chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -531,3 +538,126 @@ async def delete_chat(request: Request, current_user: User = Depends(get_current
     db.delete(entry)
     db.commit()
     return {"status": "success"}
+
+
+@router.post("/api/chat/pin")
+async def pin_chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        data = await request.json()
+    except ClientDisconnect:
+        return Response(status_code=499)
+
+    chat_id = data.get("chat_id")
+    is_pinned = bool(data.get("is_pinned"))
+
+    if not isinstance(chat_id, str) or not chat_id.strip():
+        return JSONResponse(content={"error": "Missing chat_id"}, status_code=400)
+
+    entry = fetch_chat_history_entry(db, current_user.id, chat_id)
+    if not entry:
+        return JSONResponse(content={"error": "Chat not found"}, status_code=404)
+
+    entry.is_pinned = is_pinned
+    db.commit()
+
+    return {
+        "status": "success",
+        "chat_id": chat_id,
+        "is_pinned": bool(entry.is_pinned),
+    }
+
+
+@router.post("/api/chat/pin-message")
+async def pin_chat_message(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        data = await request.json()
+    except ClientDisconnect:
+        return Response(status_code=499)
+
+    chat_id = data.get("chat_id")
+    message_id = data.get("message_id")
+    is_pinned = bool(data.get("is_pinned"))
+    message_role = str(data.get("message_role") or "").strip().lower()
+    message_content = _normalize_message_content(data.get("message_content"))
+
+    if not isinstance(chat_id, str) or not chat_id.strip():
+        return JSONResponse(content={"error": "Missing chat_id"}, status_code=400)
+
+    if not isinstance(message_id, str) or not message_id.strip():
+        return JSONResponse(content={"error": "Missing message_id"}, status_code=400)
+
+    entry = fetch_chat_history_entry(db, current_user.id, chat_id)
+    if not entry:
+        return JSONResponse(content={"error": "Chat not found"}, status_code=404)
+
+    messages = entry.messages if isinstance(entry.messages, list) else []
+    target_message = None
+
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        existing_message_id = message.get("message_id")
+        if isinstance(existing_message_id, str) and existing_message_id == message_id:
+            target_message = message
+            break
+
+    if target_message is None and message_role in {"user", "assistant"} and message_content:
+        for message in messages:
+            if not isinstance(message, dict):
+                continue
+            role = str(message.get("role") or "").strip().lower()
+            if role != message_role:
+                continue
+            content = _normalize_message_content(message.get("content"))
+            if content != message_content:
+                continue
+            target_message = message
+            break
+
+    if target_message is None:
+        return JSONResponse(content={"error": "Message not found in chat"}, status_code=404)
+
+    was_pinned = bool(target_message.get("is_pinned"))
+    if is_pinned and not was_pinned:
+        pinned_count_before = 0
+        for message in messages:
+            if not isinstance(message, dict):
+                continue
+            if str(message.get("role") or "").strip().lower() not in {"user", "assistant"}:
+                continue
+            if bool(message.get("is_pinned")):
+                pinned_count_before += 1
+
+        if pinned_count_before >= MAX_PINNED_MEMORIES:
+            return JSONResponse(
+                content={
+                    "error": "MEMORY_PIN_LIMIT_REACHED",
+                    "message": f"You can pin up to {MAX_PINNED_MEMORIES} memories per chat.",
+                    "max_pinned_memories": MAX_PINNED_MEMORIES,
+                },
+                status_code=400,
+            )
+
+    target_message["message_id"] = message_id
+    target_message["is_pinned"] = is_pinned
+    entry.messages = messages
+    entry.last_updated = datetime.now(UTC)
+
+    db.commit()
+
+    pinned_count = 0
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        if str(message.get("role") or "").strip().lower() not in {"user", "assistant"}:
+            continue
+        if bool(message.get("is_pinned")):
+            pinned_count += 1
+
+    return {
+        "status": "success",
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "is_pinned": is_pinned,
+        "pinned_messages_count": pinned_count,
+    }

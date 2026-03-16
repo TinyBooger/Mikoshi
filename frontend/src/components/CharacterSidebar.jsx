@@ -46,6 +46,10 @@ export default function CharacterSidebar({
   wallpaperOptions,
   selectedWallpaperId,
   onSelectWallpaper,
+  pinnedMemories,
+  maxPinnedMemories = 10,
+  onJumpToPinnedMemory,
+  onUnpinMemory,
   isMobile = false, // allow parent to pass isMobile, default false
   setPersonaModalShow // <-- new prop to open PersonaModal
 }) {
@@ -53,6 +57,7 @@ export default function CharacterSidebar({
   const [showFullTagline, setShowFullTagline] = React.useState(false);
   const [showProblemReport, setShowProblemReport] = React.useState(false);
   const [showWallpaperPicker, setShowWallpaperPicker] = React.useState(false);
+  const [showMemoryManagement, setShowMemoryManagement] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('chat');
   const { t } = useTranslation();
   const updateConfig = (key, value, min, max, fallback) => {
@@ -368,6 +373,80 @@ export default function CharacterSidebar({
         </div>
 
         {/* Chat History Section */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#18191a' }}>
+              {t('chat.memory_management')}
+            </h6>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '0.76rem', color: '#6b7280' }}>
+                {(Array.isArray(pinnedMemories) ? pinnedMemories.length : 0)}/{maxPinnedMemories}
+              </span>
+              <SecondaryButton
+                type="button"
+                isMobile={isMobile}
+                onClick={() => setShowMemoryManagement((prev) => !prev)}
+              >
+                {showMemoryManagement ? t('chat.hide') : t('chat.show')}
+              </SecondaryButton>
+            </div>
+          </div>
+          {showMemoryManagement && (
+            <div style={{ maxHeight: 176, overflowY: 'auto', borderRadius: 12, background: '#f8fafc', padding: 8, border: '1px solid #e5e7eb' }}>
+              {!Array.isArray(pinnedMemories) || pinnedMemories.length === 0 ? (
+                <div style={{ fontSize: '0.82rem', color: '#6b7280', padding: '0.35rem 0.5rem', lineHeight: 1.4 }}>
+                  {t('chat.memory_empty_hint')}
+                </div>
+              ) : (
+                pinnedMemories.map((memory) => (
+                  <div
+                    key={memory.message_id}
+                    style={{
+                      background: '#fff',
+                      borderRadius: 10,
+                      border: '1px solid #e5e7eb',
+                      padding: '0.46rem 0.6rem',
+                      marginBottom: 6,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 600 }}>
+                        {memory.role === 'user' ? t('chat.you') : (selectedCharacter?.name || t('chat.memory_assistant_label'))}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onUnpinMemory?.(memory.message_id)}
+                        className="btn btn-sm btn-link p-0"
+                        style={{ fontSize: '0.72rem', color: '#b91c1c', textDecoration: 'none' }}
+                      >
+                        <i className="bi bi-pin-angle me-1"></i>
+                        {t('chat.unpin_memory')}
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onJumpToPinnedMemory?.(memory.message_id)}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        padding: 0,
+                        fontSize: '0.8rem',
+                        color: '#1f2937',
+                        textAlign: 'left',
+                        width: '100%',
+                        lineHeight: 1.35,
+                      }}
+                      title={memory.content}
+                    >
+                      {memory.preview}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
         {userData?.chat_history?.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>

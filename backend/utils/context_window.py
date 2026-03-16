@@ -56,6 +56,13 @@ def _sanitize_messages(messages: List[dict]) -> List[dict]:
         if not role or not content:
             continue
         normalized = {"role": role, "content": content}
+        message_id = msg.get("message_id")
+        if isinstance(message_id, str) and message_id.strip():
+            normalized["message_id"] = message_id.strip()
+
+        if bool(msg.get("is_pinned")):
+            normalized["is_pinned"] = True
+
         if role == "assistant":
             usage = normalize_usage(msg.get("usage"))
             if usage["total_tokens"] > 0:
@@ -88,6 +95,13 @@ def _latest_assistant_usage(messages: List[dict]) -> dict[str, int]:
         if usage["total_tokens"] > 0:
             return usage
     return normalize_usage(None)
+
+
+def _is_pinned_conversation_message(message: dict) -> bool:
+    role = str(message.get("role", "")).strip().lower()
+    if role not in {"user", "assistant"}:
+        return False
+    return bool(message.get("is_pinned"))
 
 
 def _build_summary_prompt_input(existing_summary_text: str, old_messages: List[dict]) -> str:
@@ -171,6 +185,7 @@ def compact_conversation_messages(
             "output_tokens": 0,
             "summary_messages_count": 0,
             "recent_messages_count": 0,
+            "pinned_messages_count": 0,
             "soft_token_limit": soft_token_limit,
             "token_source": "usage",
         }
@@ -185,16 +200,19 @@ def compact_conversation_messages(
     summary_system_messages = [m for m in sanitized if _is_summary_system_message(m)]
     system_messages = [m for m in sanitized if m.get("role") == "system" and not _is_summary_system_message(m)]
     conversation_messages = [m for m in sanitized if m.get("role") != "system"]
+    pinned_messages = [m for m in conversation_messages if _is_pinned_conversation_message(m)]
+    unpinned_messages = [m for m in conversation_messages if not _is_pinned_conversation_message(m)]
 
     estimated_conversation_tokens = sum(_estimate_tokens(str(m.get("content", ""))) for m in conversation_messages)
 
     should_compact = estimated_conversation_tokens >= effective_soft_token_limit
 
     summary_messages_count = 0
-    if should_compact and conversation_messages:
-        recent_count = min(effective_recent_message_count, len(conversation_messages))
-        recent_messages = conversation_messages[-recent_count:]
-        old_messages = conversation_messages[:-recent_count]
+    pinned_messages_count = len(pinned_messages)
+    if should_compact and unpinned_messages:
+        recent_count = min(effective_recent_message_count, len(unpinned_messages))
+        recent_messages = unpinned_messages[-recent_count:]
+        old_messages = unpinned_messages[:-recent_count]
 
         existing_summary_text = "\n".join(
             filter(None, (_extract_summary_body(msg) for msg in summary_system_messages))
@@ -211,11 +229,18 @@ def compact_conversation_messages(
             summary_messages_count = len(summary_system_messages)
             recent_messages_count = len(conversation_messages)
         else:
+            kept_unpinned_ids = {id(msg) for msg in recent_messages}
             compacted_messages = [*system_messages]
             if summary_message:
                 compacted_messages.append(summary_message)
                 summary_messages_count = 1
-            compacted_messages.extend(recent_messages)
+            for message in conversation_messages:
+                if _is_pinned_conversation_message(message):
+                    compacted_messages.append(message)
+                    continue
+                if id(message) in kept_unpinned_ids:
+                    compacted_messages.append(message)
+
             recent_messages_count = len(recent_messages)
     else:
         compacted_messages = sanitized
@@ -231,6 +256,7 @@ def compact_conversation_messages(
         "output_tokens": latest_usage["completion_tokens"],
         "summary_messages_count": summary_messages_count,
         "recent_messages_count": recent_messages_count,
+        "pinned_messages_count": pinned_messages_count,
         "soft_token_limit": effective_soft_token_limit,
         "token_source": token_source,
     }
