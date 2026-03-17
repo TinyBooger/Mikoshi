@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from utils.chat_history_utils import iter_chat_history_messages
+
 
 def _to_non_negative_int(value: Any) -> int:
     try:
@@ -46,10 +48,7 @@ def sum_usage_from_messages(messages: Any) -> dict[str, int]:
         "total_tokens": 0,
     }
 
-    if not isinstance(messages, list):
-        return totals
-
-    for message in messages:
+    for message in iter_chat_history_messages(messages, dedupe=True):
         if not isinstance(message, dict):
             continue
 

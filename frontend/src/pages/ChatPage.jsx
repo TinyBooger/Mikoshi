@@ -25,6 +25,7 @@ const WALLPAPER_OPTIONS = [
 
 const MOBILE_LONG_PRESS_MS = 500;
 const MAX_PINNED_MEMORIES = 10;
+const DEFAULT_BRANCH_ID = 'branch_main';
 
 const generateMessageId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -45,6 +46,148 @@ const ensureMessageIds = (messageList = []) => {
       is_pinned: !!message.is_pinned,
     };
   });
+};
+
+const normalizeChatBranch = (branch, index = 0) => {
+  const fallbackBranchId = index === 0 ? DEFAULT_BRANCH_ID : `branch_local_${index + 1}`;
+  const branchId = typeof branch?.branch_id === 'string' && branch.branch_id.trim()
+    ? branch.branch_id.trim()
+    : fallbackBranchId;
+
+  return {
+    branch_id: branchId,
+    parent_branch_id: typeof branch?.parent_branch_id === 'string' && branch.parent_branch_id.trim()
+      ? branch.parent_branch_id.trim()
+      : null,
+    parent_message_id: typeof branch?.parent_message_id === 'string' && branch.parent_message_id.trim()
+      ? branch.parent_message_id.trim()
+      : null,
+    label: typeof branch?.label === 'string' && branch.label.trim()
+      ? branch.label.trim()
+      : (index === 0 ? 'Main' : `Branch ${index + 1}`),
+    created_at: branch?.created_at || null,
+    last_updated: branch?.last_updated || null,
+    messages: ensureMessageIds(Array.isArray(branch?.messages) ? branch.messages : []),
+  };
+};
+
+const normalizeChatEntry = (chat) => {
+  if (!chat || typeof chat !== 'object') return null;
+
+  const sourceBranches = Array.isArray(chat.branches) && chat.branches.length > 0
+    ? chat.branches
+    : [{ branch_id: DEFAULT_BRANCH_ID, label: 'Main', messages: chat.messages || [] }];
+  const branches = sourceBranches.map((branch, index) => normalizeChatBranch(branch, index));
+
+  const requestedActiveBranchId = typeof chat.active_branch_id === 'string' && chat.active_branch_id.trim()
+    ? chat.active_branch_id.trim()
+    : branches[0]?.branch_id || DEFAULT_BRANCH_ID;
+  const activeBranch = branches.find((branch) => branch.branch_id === requestedActiveBranchId) || branches[0];
+
+  return {
+    ...chat,
+    branches,
+    active_branch_id: activeBranch?.branch_id || DEFAULT_BRANCH_ID,
+    messages: activeBranch?.messages || [],
+  };
+};
+
+const getActiveBranch = (chat) => {
+  const normalized = normalizeChatEntry(chat);
+  if (!normalized) return null;
+  return normalized.branches.find((branch) => branch.branch_id === normalized.active_branch_id) || normalized.branches[0] || null;
+};
+
+const updateChatEntryBranchMessages = (chatEntry, branchId, nextMessages, extraFields = {}, makeActive = true) => {
+  const normalized = normalizeChatEntry(chatEntry) || normalizeChatEntry({});
+  const normalizedMessages = ensureMessageIds(nextMessages);
+  const nextBranchId = branchId || normalized.active_branch_id || DEFAULT_BRANCH_ID;
+  let branchFound = false;
+
+  const branches = normalized.branches.map((branch) => {
+    if (branch.branch_id !== nextBranchId) return branch;
+    branchFound = true;
+    return {
+      ...branch,
+      ...extraFields,
+      messages: normalizedMessages,
+    };
+  });
+
+  const finalBranches = branchFound
+    ? branches
+    : [
+        ...branches,
+        normalizeChatBranch({
+          branch_id: nextBranchId,
+          label: extraFields.label,
+          parent_branch_id: extraFields.parent_branch_id,
+          parent_message_id: extraFields.parent_message_id,
+          created_at: extraFields.created_at || new Date().toISOString(),
+          last_updated: extraFields.last_updated || new Date().toISOString(),
+          messages: normalizedMessages,
+        }, branches.length),
+      ];
+
+  const activeBranchId = makeActive ? nextBranchId : normalized.active_branch_id;
+  const activeBranch = finalBranches.find((branch) => branch.branch_id === activeBranchId) || finalBranches[0];
+
+  return {
+    ...normalized,
+    branches: finalBranches,
+    active_branch_id: activeBranch?.branch_id || nextBranchId,
+    messages: activeBranch?.messages || [],
+  };
+};
+
+// Computes branch navigator info for each message that sits at a branch divergence point.
+// Returns a Map<messageId, { currentIdx, options: Branch[] }>
+const computeForkNav = (allBranches, activeBranchId) => {
+  if (!allBranches || allBranches.length <= 1) return new Map();
+  const activeBranch = allBranches.find((b) => b.branch_id === activeBranchId);
+  if (!activeBranch) return new Map();
+  const result = new Map();
+
+  // Case 1: active branch has direct children — show navigator at the fork-source message
+  const childrenByParentMsg = {};
+  for (const branch of allBranches) {
+    if (branch.parent_branch_id === activeBranchId && branch.parent_message_id) {
+      if (!childrenByParentMsg[branch.parent_message_id]) {
+        childrenByParentMsg[branch.parent_message_id] = [];
+      }
+      childrenByParentMsg[branch.parent_message_id].push(branch);
+    }
+  }
+  for (const [parentMsgId, children] of Object.entries(childrenByParentMsg)) {
+    result.set(parentMsgId, { currentIdx: 0, options: [activeBranch, ...children] });
+  }
+
+  // Case 2: active branch is a child — show navigator at its first diverging message
+  if (activeBranch.parent_message_id && activeBranch.parent_branch_id) {
+    const parentBranch = allBranches.find((b) => b.branch_id === activeBranch.parent_branch_id);
+    const siblings = allBranches.filter(
+      (b) =>
+        b.parent_branch_id === activeBranch.parent_branch_id &&
+        b.parent_message_id === activeBranch.parent_message_id,
+    );
+    const options = parentBranch ? [parentBranch, ...siblings] : [...siblings];
+    const currentIdx = options.findIndex((b) => b?.branch_id === activeBranchId);
+    const parentMsgIds = new Set(
+      (parentBranch?.messages || []).map((m) => m?.message_id).filter(Boolean),
+    );
+    let forkMessageId = null;
+    for (const msg of activeBranch.messages || []) {
+      if (msg?.message_id && !parentMsgIds.has(msg.message_id)) {
+        forkMessageId = msg.message_id;
+        break;
+      }
+    }
+    if (forkMessageId && !result.has(forkMessageId)) {
+      result.set(forkMessageId, { currentIdx, options });
+    }
+  }
+
+  return result;
 };
 
 const getMessagePreview = (content = '', max = 88) => {
@@ -79,6 +222,9 @@ export default function ChatPage() {
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
   const [editingChatId, setEditingChatId] = useState(null);
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editingMessageText, setEditingMessageText] = useState('');
+  const [branchSelectionPending, setBranchSelectionPending] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [messageMenu, setMessageMenu] = useState({ open: false, messageId: null, x: 0, y: 0 });
@@ -246,6 +392,8 @@ export default function ChatPage() {
     setSelectedPersona(null);
     setSelectedChat(null);
     setMessages([]);
+    setEditingMessageId(null);
+    setEditingMessageText('');
     setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
     setServerContextWindowUsage(null);
     isNewChat.current = true;
@@ -332,6 +480,51 @@ export default function ChatPage() {
     return 'Failed to send message. Please try again.';
   };
 
+  const buildSystemPromptMessage = (character = selectedCharacter, scene = selectedScene, persona = selectedPersona) => ({
+    role: 'system',
+    content: buildSystemMessage(
+      character?.name || '',
+      character?.persona || '',
+      character?.example_messages || '',
+      persona?.description || null,
+      persona?.name || null,
+      scene?.description || null
+    )
+  });
+
+  const buildDisplayMessagesForChat = (chatEntry, character = selectedCharacter, scene = selectedScene, persona = selectedPersona) => {
+    const normalizedChat = normalizeChatEntry(chatEntry);
+    if (!normalizedChat) return [];
+    const sys = buildSystemPromptMessage(character, scene, persona);
+    const branchMessages = Array.isArray(normalizedChat.messages) ? normalizedChat.messages : [];
+    const summarySystemMessages = branchMessages.filter(
+      (m) => m?.role === 'system' && typeof m?.content === 'string' && m.content.trim().startsWith(SUMMARY_PREFIX)
+    );
+    const nonSystemMessages = branchMessages.filter((m) => m?.role !== 'system');
+    return ensureMessageIds([sys, ...summarySystemMessages, ...nonSystemMessages]);
+  };
+
+  const upsertChatHistoryEntryLocally = (rawChatEntry, { selectChat = true } = {}) => {
+    const nextChatEntry = normalizeChatEntry(rawChatEntry);
+    if (!nextChatEntry) return null;
+
+    if (selectChat) {
+      setSelectedChat(nextChatEntry);
+    }
+
+    setUserData((prev) => {
+      if (!prev) return prev;
+      const previousHistory = Array.isArray(prev.chat_history) ? prev.chat_history : [];
+      const filtered = previousHistory.filter((entry) => entry?.chat_id !== nextChatEntry.chat_id);
+      return {
+        ...prev,
+        chat_history: [nextChatEntry, ...filtered].slice(0, 30),
+      };
+    });
+
+    return nextChatEntry;
+  };
+
   const compactMessagesForRequest = (allMessages) => {
     if (!Array.isArray(allMessages)) return [];
 
@@ -395,15 +588,20 @@ export default function ChatPage() {
         ...prev,
         chat_history: prev.chat_history.map((chatEntry) => {
           if (chatEntry.chat_id !== chatId) return chatEntry;
-          const historyMessages = Array.isArray(chatEntry.messages) ? chatEntry.messages : [];
-          return {
-            ...chatEntry,
-            messages: historyMessages.map((msg) => {
+          const normalizedChat = normalizeChatEntry(chatEntry);
+          if (!normalizedChat) return chatEntry;
+          const activeBranchId = normalizedChat.active_branch_id;
+          return updateChatEntryBranchMessages(
+            normalizedChat,
+            activeBranchId,
+            normalizedChat.messages.map((msg) => {
               if (!msg || typeof msg !== 'object') return msg;
               if (msg.message_id !== messageId) return msg;
               return { ...msg, is_pinned: isPinned };
             }),
-          };
+            {},
+            true
+          );
         }),
       };
     });
@@ -421,6 +619,7 @@ export default function ChatPage() {
       },
       body: JSON.stringify({
         chat_id: selectedChat.chat_id,
+        branch_id: selectedChat.active_branch_id,
         message_id: message.message_id,
         is_pinned: !!isPinned,
         message_role: message.role,
@@ -461,15 +660,18 @@ export default function ChatPage() {
     }));
 
     setSelectedChat((prev) => {
-      if (!prev || !Array.isArray(prev.messages)) return prev;
-      return {
-        ...prev,
-        messages: prev.messages.map((m) => {
+      if (!prev) return prev;
+      return updateChatEntryBranchMessages(
+        prev,
+        prev.active_branch_id,
+        prev.messages.map((m) => {
           if (!m || typeof m !== 'object') return m;
           if (m.message_id !== messageId) return m;
           return { ...m, is_pinned: nextPinnedState };
         }),
-      };
+        {},
+        true
+      );
     });
 
     syncPinnedStateInUserHistory(selectedChat?.chat_id, messageId, nextPinnedState);
@@ -489,15 +691,18 @@ export default function ChatPage() {
         return { ...m, is_pinned: !nextPinnedState };
       }));
       setSelectedChat((prev) => {
-        if (!prev || !Array.isArray(prev.messages)) return prev;
-        return {
-          ...prev,
-          messages: prev.messages.map((m) => {
+        if (!prev) return prev;
+        return updateChatEntryBranchMessages(
+          prev,
+          prev.active_branch_id,
+          prev.messages.map((m) => {
             if (!m || typeof m !== 'object') return m;
             if (m.message_id !== messageId) return m;
             return { ...m, is_pinned: !nextPinnedState };
           }),
-        };
+          {},
+          true
+        );
       });
       syncPinnedStateInUserHistory(selectedChat?.chat_id, messageId, !nextPinnedState);
       toast.show(error.message || (t('chat.memory_pin_failed') || 'Failed to update memory pin.'), { type: 'error' });
@@ -831,17 +1036,7 @@ export default function ChatPage() {
 
   const startNewChat = async (fetchedData) => {
     const { character, scene, persona } = fetchedData || {};
-    const sys = {
-      role: "system",
-      content: buildSystemMessage(
-        character?.name || "",
-        character?.persona || "",
-        character?.example_messages || "",
-        persona?.description || null,
-        persona?.name || null,
-        scene?.description || null
-      )
-    };
+    const sys = buildSystemPromptMessage(character, scene, persona);
     // Use the character's greeting if available. Do not emit a special scene greeting here
     // because the scene introduction is now handled by the welcome notice.
     // If the character uses the improvising sentinel, call the backend LLM to generate
@@ -852,110 +1047,17 @@ export default function ChatPage() {
     setInput('');
 
     if (charGreeting === SPECIAL_IMPROVISING_GREETING) {
-      // Start with only the system message while we request an initial assistant reply
       setMessages([sys]);
-      // Ask backend to generate a reply (this will also create a chat entry server-side when character_id provided)
-      setSending(true);
-      setIsStreaming(true);
-      const improvisingGreetingId = generateMessageId();
-      
-      const controller = new AbortController();
-      setAbortController(controller);
-      
-      try {
-        const res = await fetch(`${window.API_BASE_URL}/api/chat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': sessionToken
-          },
-          body: JSON.stringify({
-            character_id: characterId,
-            scene_id: (scene?.id || selectedScene?.id) || null,
-            persona_id: (persona?.id || selectedPersona?.id) || null,
-            messages: [sys],
-            chat_config: advancedChatConfig,
-            stream: true
-          }),
-          signal: controller.signal
-        });
-        
-        if (!res.ok) {
-          const errorPayload = await res.json().catch(() => null);
-          if (errorPayload?.limits) {
-            applyChatLimits(errorPayload.limits);
-          }
-          throw new Error(getChatErrorMessage(errorPayload));
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let accumulatedReply = "";
-        
-        // Add placeholder message
-        setMessages(ensureMessageIds([sys, { role: 'assistant', content: '', message_id: improvisingGreetingId, is_pinned: false }]));
-
-        while (true) {
-          const { done, value } = await reader.read();
-          
-          if (done) break;
-          
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-          
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = JSON.parse(line.slice(6));
-              
-              if (data.error) {
-                toast.show(t('chat.error_generating_greeting') || 'Failed to generate greeting.', { type: 'error' });
-                setMessages([sys]); // Reset to just system message
-                break;
-              }
-              
-              if (data.chunk) {
-                accumulatedReply += data.chunk;
-                setMessages(ensureMessageIds([sys, { role: 'assistant', content: accumulatedReply, message_id: improvisingGreetingId, is_pinned: false }]));
-              }
-              
-              if (data.done && data.chat_id) {
-                applyChatLimits(data.limits);
-                if (data.context_window) {
-                  setServerContextWindowUsage(data.context_window);
-                }
-                const newChat = {
-                  chat_id: data.chat_id,
-                  title: data.chat_title || (accumulatedReply ? accumulatedReply.slice(0, 30) + (accumulatedReply.length > 30 ? '...' : '') : 'New Chat'),
-                  character_id: characterId,
-                  character_name: selectedCharacter?.name || null,
-                  character_picture: selectedCharacter?.picture || null,
-                  messages: ensureMessageIds([{ role: 'assistant', content: accumulatedReply, message_id: improvisingGreetingId, is_pinned: false }]),
-                  chat_config: { ...advancedChatConfig },
-                  last_updated: new Date().toISOString(),
-                  created_at: new Date().toISOString(),
-                  ...((scene?.id || sceneId || selectedScene?.id) && { scene_id: scene?.id || sceneId || selectedScene?.id }),
-                  ...(selectedPersona?.id && { persona_id: selectedPersona.id })
-                };
-                setSelectedChat(newChat);
-                if (userData && userData.chat_history) {
-                  const filtered = userData.chat_history.filter(h => h.chat_id !== data.chat_id);
-                  setUserData(prev => ({ ...prev, chat_history: [newChat, ...filtered].slice(0, 30) }));
-                }
-              }
-            }
-          }
-        }
-      } catch (err) {
-        if (err.name === 'AbortError') {
-        } else {
-          console.error('Error generating improvising greeting:', err);
-          toast.show(err.message || t('chat.error_generating_greeting') || 'Failed to generate greeting.', { type: 'error' });
-        }
-      } finally {
-        setSending(false);
-        setIsStreaming(false);
-        setAbortController(null);
-      }
+      await sendChatTurn({
+        nextMessages: [sys],
+        sourceBranchId: null,
+        restoreMessagesOnError: [sys],
+        shouldDismissWelcome: false,
+        errorMessage: t('chat.error_generating_greeting') || 'Failed to generate greeting.',
+        characterOverride: character,
+        sceneOverride: scene,
+        personaOverride: persona,
+      });
       return;
     }
 
@@ -972,52 +1074,54 @@ export default function ChatPage() {
     setMessages(ensureMessageIds(greet ? [sys, greet] : [sys]));
   };
 
-  const handleSend = async (event) => {
-    event.preventDefault(); // Always prevent default
-    if (sending || !input.trim() || !selectedCharacter) return;
-    setSending(true);
-    setIsStreaming(true);
-    
-    // If this is the user's first message in a new chat, dismiss the welcome
-    if (isNewChat.current && !welcomeDismissed) {
+  const sendChatTurn = async ({
+    nextMessages,
+    forkFromMessageId = null,
+    sourceBranchId = selectedChat?.active_branch_id || null,
+    restoreMessagesOnError = nextMessages,
+    shouldDismissWelcome = true,
+    errorMessage = 'Failed to send message. Please try again.',
+    characterOverride = selectedCharacter,
+    sceneOverride = selectedScene,
+    personaOverride = selectedPersona,
+  }) => {
+    if (!characterOverride) return;
+
+    if (shouldDismissWelcome && isNewChat.current && !welcomeDismissed) {
       setWelcomeDismissed(true);
       isNewChat.current = false;
     }
-    
-    const updatedMessages = ensureMessageIds([...messages, { role: 'user', content: input.trim(), message_id: generateMessageId(), is_pinned: false }]);
-    const requestMessages = compactMessagesForRequest(updatedMessages);
-    setMessages(updatedMessages);
-    setInput('');
-    
-    // Reset textarea height after sending
-    if (textareaRef.current) {
-      textareaRef.current.style.height = `${CHAT_INPUT_BASE_HEIGHT}px`;
-      textareaRef.current.style.overflowY = 'hidden';
-    }
 
-    // Create abort controller for cancellation
+    setSending(true);
+    setIsStreaming(true);
+
+    const requestMessages = compactMessagesForRequest(nextMessages);
     const controller = new AbortController();
+    const assistantMessageId = generateMessageId();
     setAbortController(controller);
+    setMessages(ensureMessageIds([...nextMessages, { role: 'assistant', content: '', message_id: assistantMessageId, is_pinned: false }]));
 
     try {
       const response = await fetch(`${window.API_BASE_URL}/api/chat`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': sessionToken 
+          'Authorization': sessionToken
         },
         body: JSON.stringify({
-          character_id: characterId,
+          character_id: characterOverride?.id || characterId,
           chat_id: selectedChat?.chat_id,
-          scene_id: selectedScene?.id || null,
-          persona_id: selectedPersona?.id || null,
+          branch_id: sourceBranchId,
+          fork_from_message_id: forkFromMessageId,
+          scene_id: sceneOverride?.id || null,
+          persona_id: personaOverride?.id || null,
           messages: requestMessages,
-          context_messages: updatedMessages,
-          full_messages: updatedMessages,
+          context_messages: nextMessages,
+          full_messages: nextMessages,
           chat_config: advancedChatConfig,
-          stream: true
+          stream: true,
         }),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -1030,100 +1134,81 @@ export default function ChatPage() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let accumulatedReply = "";
-      const assistantMessageId = generateMessageId();
-      
-      // Add a placeholder message for the assistant that we'll update incrementally
-      setMessages(prev => ensureMessageIds([...prev, { role: 'assistant', content: '', message_id: assistantMessageId, is_pinned: false }]));
+      let accumulatedReply = '';
 
       while (true) {
         const { done, value } = await reader.read();
-        
         if (done) break;
-        
+
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n');
-        
+
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = JSON.parse(line.slice(6));
-            
-            if (data.error) {
-              toast.show('Failed to send message. Please try again.', { type: 'error' });
-              setMessages(prev => prev.slice(0, -1)); // Remove placeholder
-              break;
+          if (!line.startsWith('data: ')) continue;
+          const data = JSON.parse(line.slice(6));
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          if (data.chunk) {
+            accumulatedReply += data.chunk;
+            setMessages((prev) => {
+              const newMessages = [...prev];
+              newMessages[newMessages.length - 1] = {
+                role: 'assistant',
+                content: accumulatedReply,
+                message_id: assistantMessageId,
+                is_pinned: false,
+              };
+              return ensureMessageIds(newMessages);
+            });
+          }
+
+          if (data.done) {
+            applyChatLimits(data.limits);
+            if (data.context_window) {
+              setServerContextWindowUsage(data.context_window);
             }
-            
-            if (data.chunk) {
-              accumulatedReply += data.chunk;
-              // Update the last message (assistant's response) incrementally
-              setMessages(prev => {
-                const newMessages = [...prev];
-                newMessages[newMessages.length - 1] = { 
-                  role: 'assistant', 
-                  content: accumulatedReply,
-                  message_id: assistantMessageId,
-                  is_pinned: false,
-                };
-                return ensureMessageIds(newMessages);
-              });
-            }
-            
-            if (data.done) {
-              applyChatLimits(data.limits);
-              if (data.context_window) {
-                setServerContextWindowUsage(data.context_window);
-              }
-              // Stream completed, update chat history
-              if (data.chat_id) {
-                // Preserve existing chat data or create new
-                const existingChat = userData?.chat_history?.find(h => h.chat_id === data.chat_id);
-                const newChat = {
-                  chat_id: data.chat_id,
-                  title: data.chat_title || updatedMessages.find(m => m.role === 'user')?.content || 'New Chat',
-                  character_id: characterId,
-                  character_name: existingChat?.character_name || selectedCharacter?.name || null,
-                  character_picture: existingChat?.character_picture || selectedCharacter?.picture || null,
-                  messages: ensureMessageIds([...updatedMessages, { role: 'assistant', content: accumulatedReply, message_id: assistantMessageId, is_pinned: false }]),
-                  chat_config: { ...advancedChatConfig },
-                  last_updated: new Date().toISOString(),
-                  created_at: existingChat?.created_at || new Date().toISOString(),
-                  ...((selectedScene?.id || sceneId) && { scene_id: selectedScene?.id || sceneId }),
-                  ...(selectedPersona?.id && { persona_id: selectedPersona.id })
-                };
-                setSelectedChat(newChat);
-                
-                // Update chat history in userData for instant UI
-                if (userData && userData.chat_history) {
-                  const filtered = userData.chat_history.filter(h => h.chat_id !== data.chat_id);
-                  setUserData(prev => ({
-                    ...prev,
-                    chat_history: [newChat, ...filtered].slice(0, 30)
-                  }));
-                }
-              }
+            if (data.chat_entry) {
+              const nextChatEntry = upsertChatHistoryEntryLocally(data.chat_entry);
+              setMessages(buildDisplayMessagesForChat(nextChatEntry));
+            } else {
+              setMessages(ensureMessageIds([...nextMessages, { role: 'assistant', content: accumulatedReply, message_id: assistantMessageId, is_pinned: false }]));
             }
           }
         }
       }
     } catch (err) {
-      if (err.name === 'AbortError') {
-      } else {
-        toast.show(err.message || 'Failed to send message. Please try again.', { type: 'error' });
+      if (err.name !== 'AbortError') {
+        toast.show(err.message || errorMessage, { type: 'error' });
       }
-      // Remove the incomplete assistant message if there's an error
-      setMessages(prev => {
-        const lastMsg = prev[prev.length - 1];
-        if (lastMsg && lastMsg.role === 'assistant' && !lastMsg.content) {
-          return prev.slice(0, -1);
-        }
-        return prev;
-      });
+      setMessages(ensureMessageIds(restoreMessagesOnError));
     } finally {
       setSending(false);
       setIsStreaming(false);
       setAbortController(null);
     }
+  };
+
+  const handleSend = async (event) => {
+    event.preventDefault();
+    if (sending || !input.trim() || !selectedCharacter) return;
+    const updatedMessages = ensureMessageIds([...messages, { role: 'user', content: input.trim(), message_id: generateMessageId(), is_pinned: false }]);
+    setMessages(updatedMessages);
+    setInput('');
+    
+    // Reset textarea height after sending
+    if (textareaRef.current) {
+      textareaRef.current.style.height = `${CHAT_INPUT_BASE_HEIGHT}px`;
+      textareaRef.current.style.overflowY = 'hidden';
+    }
+
+    await sendChatTurn({
+      nextMessages: updatedMessages,
+      sourceBranchId: selectedChat?.active_branch_id || null,
+      restoreMessagesOnError: updatedMessages,
+    });
   };
 
   // Handle textarea input and auto-resize
@@ -1146,6 +1231,8 @@ export default function ChatPage() {
   const handleNewChat = async () => {
     setSelectedChat(null);
     setMessages([]);
+    setEditingMessageId(null);
+    setEditingMessageText('');
     isNewChat.current = true;
     setWelcomeDismissed(false);
 
@@ -1201,9 +1288,12 @@ export default function ChatPage() {
 
   const loadChat = async (chat) => {
     try {
+      const normalizedChat = normalizeChatEntry(chat);
+      if (!normalizedChat) return;
+
       // Update IDs from the chat entry
-      setCharacterId(chat.character_id);
-      setSceneId(chat.scene_id || null);
+      setCharacterId(normalizedChat.character_id);
+      setSceneId(normalizedChat.scene_id || null);
       
       // Fetch all required entities in parallel
       const promises = [];
@@ -1212,9 +1302,9 @@ export default function ChatPage() {
       let persona = null;
       
       // Only fetch if we don't have it or if it's different
-      if (!character || character.id !== chat.character_id) {
+      if (!character || character.id !== normalizedChat.character_id) {
         promises.push(
-          fetch(`${window.API_BASE_URL}/api/character/${chat.character_id}`, {
+          fetch(`${window.API_BASE_URL}/api/character/${normalizedChat.character_id}`, {
             headers: { 'Authorization': sessionToken }
           })
             .then(res => res.ok ? res.json() : null)
@@ -1226,9 +1316,9 @@ export default function ChatPage() {
         );
       }
       
-      if (chat.scene_id) {
+      if (normalizedChat.scene_id) {
         promises.push(
-          fetch(`${window.API_BASE_URL}/api/scenes/${chat.scene_id}`, {
+          fetch(`${window.API_BASE_URL}/api/scenes/${normalizedChat.scene_id}`, {
             headers: { 'Authorization': sessionToken }
           })
             .then(res => res.ok ? res.json() : null)
@@ -1239,9 +1329,9 @@ export default function ChatPage() {
         setSelectedScene(null);
       }
       
-      if (chat.persona_id) {
+      if (normalizedChat.persona_id) {
         promises.push(
-          fetch(`${window.API_BASE_URL}/api/personas/${chat.persona_id}`, {
+          fetch(`${window.API_BASE_URL}/api/personas/${normalizedChat.persona_id}`, {
             headers: { 'Authorization': sessionToken }
           })
             .then(res => res.ok ? res.json() : null)
@@ -1255,13 +1345,13 @@ export default function ChatPage() {
       await Promise.all(promises);
 
       // History config always has precedence; character defaults are only fallback.
-      setAdvancedChatConfig(normalizeAdvancedChatConfigFromEntry(chat?.chat_config, character));
+      setAdvancedChatConfig(normalizeAdvancedChatConfigFromEntry(normalizedChat?.chat_config, character));
 
       // Refresh liked status for the loaded entities
       const likeParams = [];
-      if (chat.character_id) likeParams.push(`character_id=${chat.character_id}`);
-      if (chat.scene_id) likeParams.push(`scene_id=${chat.scene_id}`);
-      if (chat.persona_id) likeParams.push(`persona_id=${chat.persona_id}`);
+      if (normalizedChat.character_id) likeParams.push(`character_id=${normalizedChat.character_id}`);
+      if (normalizedChat.scene_id) likeParams.push(`scene_id=${normalizedChat.scene_id}`);
+      if (normalizedChat.persona_id) likeParams.push(`persona_id=${normalizedChat.persona_id}`);
 
       if (likeParams.length > 0) {
         fetch(`${window.API_BASE_URL}/api/is-liked-multi?${likeParams.join('&')}`, {
@@ -1281,34 +1371,13 @@ export default function ChatPage() {
         setHasLiked({ character: false, scene: false, persona: false });
       }
       
-      // Build proper system message with all context
-      const sys = {
-        role: "system",
-        content: buildSystemMessage(
-          character?.name || "",
-          character?.persona || "",
-          character?.example_messages || "",
-          persona?.description || null,
-          persona?.name || null,
-          scene?.description || null
-        )
-      };
-      
-      const historyMessages = Array.isArray(chat.messages) ? chat.messages : [];
-      const summarySystemMessages = historyMessages.filter(
-        (m) => m?.role === 'system' && typeof m?.content === 'string' && m.content.trim().startsWith(SUMMARY_PREFIX)
-      );
-      const nonSystemMessages = historyMessages.filter((m) => m?.role !== 'system');
-
-      // Keep exactly one live system prompt plus normal dialogue messages
-      setMessages(ensureMessageIds([sys, ...summarySystemMessages, ...nonSystemMessages]));
-      
-      // Set selected chat and mark as existing chat (not new)
-      setSelectedChat({
-        ...chat,
-        messages: ensureMessageIds(historyMessages),
-        last_updated: chat.last_updated || new Date().toISOString()
+      const normalizedLoadedChat = normalizeChatEntry({
+        ...normalizedChat,
+        last_updated: normalizedChat.last_updated || new Date().toISOString(),
       });
+
+      setMessages(buildDisplayMessagesForChat(normalizedLoadedChat, character, scene, persona));
+      setSelectedChat(normalizedLoadedChat);
       
       // Mark as existing chat, dismiss welcome
       isNewChat.current = false;
@@ -1318,6 +1387,107 @@ export default function ChatPage() {
       console.error('Error loading chat:', error);
       toast.show(t('chat.error_loading_chat') || 'Failed to load chat.', { type: 'error' });
     }
+  };
+
+  const handleSelectBranch = async (branchId) => {
+    if (!selectedChat?.chat_id || !branchId || branchSelectionPending) return;
+
+    const normalizedChat = normalizeChatEntry(selectedChat);
+    const targetBranch = normalizedChat?.branches?.find((branch) => branch.branch_id === branchId);
+    if (!normalizedChat || !targetBranch) return;
+
+    const nextChatEntry = {
+      ...normalizedChat,
+      active_branch_id: targetBranch.branch_id,
+      messages: targetBranch.messages,
+    };
+
+    setBranchSelectionPending(true);
+    setSelectedChat(nextChatEntry);
+    setMessages(buildDisplayMessagesForChat(nextChatEntry));
+    setEditingMessageId(null);
+    setEditingMessageText('');
+
+    try {
+      const response = await fetch(`${window.API_BASE_URL}/api/chat/select-branch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': sessionToken,
+        },
+        body: JSON.stringify({
+          chat_id: normalizedChat.chat_id,
+          branch_id: targetBranch.branch_id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to switch branch.');
+      }
+
+      const payload = await response.json();
+      if (payload?.chat) {
+        const updatedChat = upsertChatHistoryEntryLocally(payload.chat);
+        setMessages(buildDisplayMessagesForChat(updatedChat));
+      }
+    } catch (error) {
+      setSelectedChat(normalizedChat);
+      setMessages(buildDisplayMessagesForChat(normalizedChat));
+      toast.show(error.message || 'Failed to switch branch.', { type: 'error' });
+    } finally {
+      setBranchSelectionPending(false);
+    }
+  };
+
+  const handleStartEditingMessage = (message) => {
+    if (!message?.message_id || message.role !== 'user' || sending) return;
+    setEditingMessageId(message.message_id);
+    setEditingMessageText(message.content || '');
+    setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
+  };
+
+  const handleCancelEditingMessage = () => {
+    setEditingMessageId(null);
+    setEditingMessageText('');
+  };
+
+  const handleSaveEditedMessage = async () => {
+    if (!editingMessageId || !selectedCharacter || sending) return;
+
+    const trimmedContent = editingMessageText.trim();
+    if (!trimmedContent) {
+      toast.show(t('chat.empty_message_error') || 'Message cannot be empty.', { type: 'warning' });
+      return;
+    }
+
+    const originalMessages = ensureMessageIds(messages);
+    const targetIndex = originalMessages.findIndex((message) => message?.message_id === editingMessageId);
+    if (targetIndex < 0) return;
+
+    const targetMessage = originalMessages[targetIndex];
+    if (targetMessage?.role !== 'user') return;
+
+    const forkedMessages = ensureMessageIds(
+      originalMessages.slice(0, targetIndex + 1).map((message) => {
+        if (!message || typeof message !== 'object') return message;
+        if (message.message_id !== editingMessageId) return message;
+        return {
+          ...message,
+          content: trimmedContent,
+          message_id: generateMessageId(),
+          is_pinned: false,
+        };
+      })
+    );
+
+    handleCancelEditingMessage();
+    await sendChatTurn({
+      nextMessages: forkedMessages,
+      forkFromMessageId: editingMessageId,
+      sourceBranchId: selectedChat?.active_branch_id || null,
+      restoreMessagesOnError: originalMessages,
+      errorMessage: t('chat.edit_branch_failed') || 'Failed to create a new branch from this message.',
+    });
   };
 
   const handleRename = async (chatId, currentTitle) => {
@@ -1462,6 +1632,8 @@ export default function ChatPage() {
       content: m.content,
       preview: getMessagePreview(m.content),
     }));
+  const activeChatBranches = normalizeChatEntry(selectedChat)?.branches || [];
+  const forkNavMap = computeForkNav(activeChatBranches, selectedChat?.active_branch_id);
   const activeMessageForMenu = messageMenu.messageId
     ? messages.find((m) => m?.message_id === messageMenu.messageId)
     : null;
@@ -1628,76 +1800,201 @@ export default function ChatPage() {
                       onTouchEnd={stopMessageLongPress}
                       onTouchCancel={stopMessageLongPress}
                     >
+                      {/* Column: avatar+bubble row, then below-bubble controls */}
                       <div style={{
                         display: 'flex',
-                        alignItems: 'flex-end',
-                        flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
-                        maxWidth: '80%'
+                        flexDirection: 'column',
+                        alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+                        maxWidth: editingMessageId === m.message_id && m.role === 'user'
+                          ? (isMobile ? '96%' : '92%')
+                          : '80%',
                       }}>
-                        <img
-                          src={
-                            m.role === 'user'
-                              ? (userData?.profile_pic
-                                  ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}`
-                                  : defaultPic)
-                                : ((selectedCharacter?.avatar_picture || selectedCharacter?.picture)
-                                  ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(selectedCharacter.avatar_picture || selectedCharacter.picture).replace(/^\//, '')}`
-                                  : defaultPic)
-                          }
-                          alt={m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
-                          style={{ width: 77, height: 77, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef' }}
-                        />
+                        {/* Avatar + bubble row */}
                         <div style={{
-                          margin: m.role === 'user' ? '0 0.4rem 0 0.88rem' : '0 0.88rem 0 0.4rem',
-                          // Use the same light style as the assistant for consistency
-                          background: '#f5f6fa',
-                          color: '#232323',
-                          borderRadius: '0.88rem',
-                          padding: '0.68rem 0.96rem',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                          fontSize: '0.82rem',
-                          minWidth: 0,
-                          wordBreak: 'break-word',
-                          maxWidth: '100%'
+                          display: 'flex',
+                          alignItems: 'flex-end',
+                          flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
-                            <div style={{ fontWeight: 600, fontSize: '0.76rem', opacity: 0.7 }}>
-                              {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
-                              {m.is_pinned && (
-                                <span style={{ marginLeft: 8, fontSize: '0.72rem', color: '#334155' }}>
-                                  <i className="bi bi-pin-angle-fill" style={{ marginRight: 4 }}></i>
-                                  {t('chat.pinned_memory') || 'Pinned'}
-                                </span>
-                              )}
+                          <img
+                            src={
+                              m.role === 'user'
+                                ? (userData?.profile_pic
+                                    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}`
+                                    : defaultPic)
+                                  : ((selectedCharacter?.avatar_picture || selectedCharacter?.picture)
+                                    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(selectedCharacter.avatar_picture || selectedCharacter.picture).replace(/^\//, '')}`
+                                    : defaultPic)
+                            }
+                            alt={m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
+                            style={{ width: 77, height: 77, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef' }}
+                          />
+                          <div style={{
+                            margin: m.role === 'user' ? '0 0.4rem 0 0.88rem' : '0 0.88rem 0 0.4rem',
+                            background: '#f5f6fa',
+                            color: '#232323',
+                            borderRadius: '0.88rem',
+                            padding: '0.68rem 0.96rem',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                            fontSize: '0.82rem',
+                            minWidth: 0,
+                            wordBreak: 'break-word',
+                            maxWidth: '100%',
+                            width: editingMessageId === m.message_id && m.role === 'user'
+                              ? (isMobile ? '100%' : 'min(70vw, 760px)')
+                              : 'auto',
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
+                              <div style={{ fontWeight: 600, fontSize: '0.76rem', opacity: 0.7 }}>
+                                {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
+                                {m.is_pinned && (
+                                  <span style={{ marginLeft: 8, fontSize: '0.72rem', color: '#334155' }}>
+                                    <i className="bi bi-pin-angle-fill" style={{ marginRight: 4 }}></i>
+                                    {t('chat.pinned_memory') || 'Pinned'}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  if (!m?.message_id) return;
+                                  openMessageMenu(event, m.message_id);
+                                }}
+                                style={{
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#6b7280',
+                                  cursor: 'pointer',
+                                  width: 22,
+                                  height: 22,
+                                  borderRadius: 999,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: 0,
+                                  flexShrink: 0,
+                                }}
+                                aria-label={t('chat.message_options') || 'Message options'}
+                                title={t('chat.message_options') || 'Message options'}
+                              >
+                                <i className="bi bi-three-dots"></i>
+                              </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                if (!m?.message_id) return;
-                                openMessageMenu(event, m.message_id);
-                              }}
-                              style={{
+                            {editingMessageId === m.message_id && m.role === 'user' ? (
+                              <textarea
+                                value={editingMessageText}
+                                onChange={(event) => setEditingMessageText(event.target.value)}
+                                rows={4}
+                                autoFocus
+                                style={{
+                                  width: '100%',
+                                  borderRadius: 10,
+                                  border: '1px solid #d1d5db',
+                                  padding: '0.7rem 0.8rem',
+                                  fontSize: '0.82rem',
+                                  resize: 'vertical',
+                                  minHeight: 96,
+                                }}
+                              />
+                            ) : (
+                              <div>{renderMessageContent(m.content)}</div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Below-bubble controls — only for user messages */}
+                        {m.role === 'user' && m?.message_id && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                            {/* Edit pencil button / Cancel + Save when editing */}
+                            {editingMessageId === m.message_id ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-secondary"
+                                  onClick={handleCancelEditingMessage}
+                                  disabled={sending}
+                                >
+                                  取消
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-dark"
+                                  onClick={handleSaveEditedMessage}
+                                  disabled={sending || !editingMessageText.trim()}
+                                >
+                                  发送
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditingMessage(m)}
+                                disabled={!!editingMessageId || sending}
+                                style={{
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#9ca3af',
+                                  cursor: !!editingMessageId || sending ? 'not-allowed' : 'pointer',
+                                  width: 26,
+                                  height: 26,
+                                  borderRadius: 6,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: 0,
+                                  fontSize: '0.82rem',
+                                }}
+                                title={t('chat.edit_into_branch') || 'Edit into new branch'}
+                                aria-label={t('chat.edit_into_branch') || 'Edit into new branch'}
+                              >
+                                <i className="bi bi-pencil"></i>
+                              </button>
+                            )}
+                            {/* Branch navigator — < X / Y > */}
+                            {(() => {
+                              const nav = forkNavMap.get(m.message_id);
+                              if (!nav) return null;
+                              const prevIdx = (nav.currentIdx - 1 + nav.options.length) % nav.options.length;
+                              const nextIdx = (nav.currentIdx + 1) % nav.options.length;
+                              const navBtnStyle = {
                                 border: 'none',
                                 background: 'transparent',
-                                color: '#6b7280',
-                                cursor: 'pointer',
-                                width: 22,
-                                height: 22,
-                                borderRadius: 999,
+                                color: '#374151',
+                                borderRadius: 6,
+                                width: 24,
+                                height: 24,
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 padding: 0,
-                                flexShrink: 0,
-                              }}
-                              aria-label={t('chat.message_options') || 'Message options'}
-                              title={t('chat.message_options') || 'Message options'}
-                            >
-                              <i className="bi bi-three-dots"></i>
-                            </button>
+                                cursor: branchSelectionPending || sending ? 'not-allowed' : 'pointer',
+                                opacity: branchSelectionPending || sending ? 0.5 : 1,
+                                fontSize: '0.9rem',
+                                lineHeight: 1,
+                              };
+                              return (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <button
+                                    type="button"
+                                    style={navBtnStyle}
+                                    disabled={branchSelectionPending || sending}
+                                    onClick={() => handleSelectBranch(nav.options[prevIdx].branch_id)}
+                                    title={nav.options[prevIdx]?.label || `Branch ${prevIdx + 1}`}
+                                  >‹</button>
+                                  <span style={{ fontSize: '0.74rem', color: '#6b7280', minWidth: 36, textAlign: 'center', userSelect: 'none' }}>
+                                    {nav.currentIdx + 1}&nbsp;/&nbsp;{nav.options.length}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    style={navBtnStyle}
+                                    disabled={branchSelectionPending || sending}
+                                    onClick={() => handleSelectBranch(nav.options[nextIdx].branch_id)}
+                                    title={nav.options[nextIdx]?.label || `Branch ${nextIdx + 1}`}
+                                  >›</button>
+                                </div>
+                              );
+                            })()}
                           </div>
-                          <div>{renderMessageContent(m.content)}</div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   ))

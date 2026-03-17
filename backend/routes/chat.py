@@ -5,7 +5,19 @@ from starlette.requests import ClientDisconnect
 from database import get_db
 from utils.session import get_current_user
 from utils.llm_client import client, stream_chat_completion_with_config
-from utils.chat_history_utils import fetch_chat_history_entry, upsert_chat_history_entry, serialize_chat_history_entry
+from utils.chat_history_utils import (
+    fetch_chat_history_entry,
+    upsert_chat_history_entry,
+    serialize_chat_history_entry,
+    normalize_chat_history_payload,
+    get_chat_history_active_branch_id,
+    get_chat_history_branch,
+    get_chat_history_messages,
+    set_chat_history_active_branch,
+    replace_chat_history_branch_messages,
+    fork_chat_history_branch,
+    generate_chat_message_id,
+)
 import uuid
 import json
 import re
@@ -245,6 +257,91 @@ def _normalize_message_content(content: str | None) -> str:
         return ""
     return re.sub(r"\s+", " ", content).strip()
 
+
+def _build_assistant_message(content: str, usage: dict[str, int]) -> dict:
+    return {
+        "role": "assistant",
+        "content": content,
+        "usage": usage,
+        "message_id": generate_chat_message_id(),
+        "is_pinned": False,
+    }
+
+
+def _persist_chat_history_turn(
+    db_session: Session,
+    *,
+    current_user_id: str,
+    chat_id: str,
+    existing_entry: ChatHistory | None,
+    character_id: int | None,
+    scene_id: int | None,
+    persona_id: int | None,
+    full_messages: list[dict],
+    reply: str,
+    response_usage: dict[str, int],
+    persisted_chat_config: dict,
+    context_window_soft_limit: int,
+    requested_branch_id: str | None,
+    fork_from_message_id: str | None,
+) -> ChatHistory:
+    assistant_message = _build_assistant_message(reply, response_usage)
+    updated_messages = full_messages + [assistant_message]
+    updated_messages, _ = compact_conversation_messages(
+        updated_messages,
+        soft_token_limit=context_window_soft_limit,
+    )
+
+    existing_payload = normalize_chat_history_payload(existing_entry.messages if existing_entry else [])
+
+    if fork_from_message_id:
+        message_payload, _ = fork_chat_history_branch(
+            existing_payload,
+            source_branch_id=requested_branch_id or get_chat_history_active_branch_id(existing_payload),
+            messages=updated_messages,
+            parent_message_id=fork_from_message_id,
+        )
+    else:
+        target_branch_id = requested_branch_id or get_chat_history_active_branch_id(existing_payload)
+        existing_branch = get_chat_history_branch(existing_payload, target_branch_id)
+        message_payload, _ = replace_chat_history_branch_messages(
+            existing_payload,
+            branch_id=existing_branch.get("branch_id") or target_branch_id,
+            messages=updated_messages,
+            parent_branch_id=existing_branch.get("parent_branch_id"),
+            parent_message_id=existing_branch.get("parent_message_id"),
+            label=existing_branch.get("label"),
+            make_active=True,
+        )
+
+    character = db_session.query(Character).filter(Character.id == character_id).first() if character_id else None
+
+    payload = {
+        "character_id": character_id,
+        "character_name": character.name if character else None,
+        "character_picture": character.picture if character else None,
+        "title": generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
+        "messages": message_payload,
+        "chat_config": persisted_chat_config,
+        "last_updated": datetime.now(UTC),
+        "created_at": existing_entry.created_at if existing_entry else datetime.now(UTC),
+    }
+    if scene_id:
+        payload["scene_id"] = scene_id
+        scene = db_session.query(Scene).filter(Scene.id == scene_id).first()
+        if scene:
+            payload["scene_name"] = scene.name
+            payload["scene_picture"] = scene.picture
+    if persona_id:
+        payload["persona_id"] = persona_id
+
+    return upsert_chat_history_entry(
+        db_session,
+        user_id=current_user_id,
+        chat_id=chat_id,
+        payload=payload,
+    )
+
 @router.post("/api/chat")
 async def chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
@@ -258,6 +355,8 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     chat_id = data.get("chat_id")
     scene_id = data.get("scene_id")
     persona_id = data.get("persona_id")
+    branch_id = data.get("branch_id")
+    fork_from_message_id = data.get("fork_from_message_id")
     can_use_advanced_config = bool(current_user.is_pro) or (current_user.level or 1) >= 3
     raw_chat_config = data.get("chat_config")
     chat_config = parse_chat_config(raw_chat_config) if can_use_advanced_config else default_chat_config()
@@ -311,6 +410,17 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     existing_entry = None
     if chat_id:
         existing_entry = fetch_chat_history_entry(db, current_user.id, chat_id)
+        if existing_entry and (not isinstance(branch_id, str) or not branch_id.strip()):
+            branch_id = get_chat_history_active_branch_id(existing_entry.messages)
+    if isinstance(branch_id, str):
+        branch_id = branch_id.strip() or None
+    else:
+        branch_id = None
+
+    if isinstance(fork_from_message_id, str):
+        fork_from_message_id = fork_from_message_id.strip() or None
+    else:
+        fork_from_message_id = None
 
     # Generate chat_id upfront for new chats
     if not chat_id and character_id:
@@ -384,46 +494,23 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             db_session,
                             limit_check["is_user_request"],
                         ) or (limit_check.get("limit") or {})
-
-                        updated_messages = full_messages + [{
-                            "role": "assistant",
-                            "content": accumulated_reply,
-                            "usage": response_usage,
-                        }]
-                        updated_messages, _ = compact_conversation_messages(
-                            updated_messages,
-                            soft_token_limit=context_window_soft_limit,
-                        )
-
-                        # Fetch character details for sidebar display
-                        character = db_session.query(Character).filter(Character.id == character_id).first()
-
-                        payload = {
-                            "character_id": character_id,
-                            "character_name": character.name if character else None,
-                            "character_picture": character.picture if character else None,
-                            "title": generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
-                            "messages": updated_messages,
-                            "chat_config": persisted_chat_config,
-                            "last_updated": datetime.now(UTC),
-                            "created_at": existing_entry.created_at if existing_entry else datetime.now(UTC),
-                        }
-                        if scene_id:
-                            payload["scene_id"] = scene_id
-                            # Fetch scene details for sidebar display
-                            scene = db_session.query(Scene).filter(Scene.id == scene_id).first()
-                            if scene:
-                                payload["scene_name"] = scene.name
-                                payload["scene_picture"] = scene.picture
-                        if persona_id:
-                            payload["persona_id"] = persona_id
-
-                        entry = upsert_chat_history_entry(
+                        entry = _persist_chat_history_turn(
                             db_session,
-                            user_id=current_user.id,
+                            current_user_id=current_user.id,
                             chat_id=chat_id,
-                            payload=payload,
+                            existing_entry=existing_entry,
+                            character_id=character_id,
+                            scene_id=scene_id,
+                            persona_id=persona_id,
+                            full_messages=full_messages,
+                            reply=accumulated_reply,
+                            response_usage=response_usage,
+                            persisted_chat_config=persisted_chat_config,
+                            context_window_soft_limit=context_window_soft_limit,
+                            requested_branch_id=branch_id,
+                            fork_from_message_id=fork_from_message_id,
                         )
+                        serialized_entry = serialize_chat_history_entry(entry)
                     finally:
                         db_session.close()
                 else:
@@ -434,7 +521,17 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     ) or (limit_check.get("limit") or {})
 
                 # Send final metadata
-                yield f"data: {json.dumps({'done': True, 'chat_id': chat_id, 'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None), 'limits': limit_info, 'context_window': {**context_window_info, 'message_count': len(context_messages), 'selected_tier': context_window_tier}})}\n\n"
+                done_payload = {
+                    'done': True,
+                    'chat_id': chat_id,
+                    'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
+                    'limits': limit_info,
+                    'context_window': {**context_window_info, 'message_count': len(context_messages), 'selected_tier': context_window_tier},
+                }
+                if character_id:
+                    done_payload['chat_entry'] = serialized_entry
+                    done_payload['branch_id'] = serialized_entry.get('active_branch_id')
+                yield f"data: {json.dumps(done_payload)}\n\n"
             
             except ClientDisconnect:
                 return
@@ -471,52 +568,34 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             limit_check["is_user_request"],
         ) or (limit_check.get("limit") or {})
 
+        serialized_entry = None
+
         # Update chat history
         if character_id:
-            updated_messages = full_messages + [{
-                "role": "assistant",
-                "content": reply,
-                "usage": response_usage,
-            }]
-            updated_messages, _ = compact_conversation_messages(
-                updated_messages,
-                soft_token_limit=context_window_soft_limit,
-            )
-
-            # Fetch character details for sidebar display
-            character = db.query(Character).filter(Character.id == character_id).first()
-
-            payload = {
-                "character_id": character_id,
-                "character_name": character.name if character else None,
-                "character_picture": character.picture if character else None,
-                "title": generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
-                "messages": updated_messages,
-                "chat_config": persisted_chat_config,
-                "last_updated": datetime.now(UTC),
-                "created_at": existing_entry.created_at if existing_entry else datetime.now(UTC),
-            }
-            if scene_id:
-                payload["scene_id"] = scene_id
-                # Fetch scene details for sidebar display
-                scene = db.query(Scene).filter(Scene.id == scene_id).first()
-                if scene:
-                    payload["scene_name"] = scene.name
-                    payload["scene_picture"] = scene.picture
-            if persona_id:
-                payload["persona_id"] = persona_id
-
-            entry = upsert_chat_history_entry(
+            entry = _persist_chat_history_turn(
                 db,
-                user_id=current_user.id,
+                current_user_id=current_user.id,
                 chat_id=chat_id,
-                payload=payload,
+                existing_entry=existing_entry,
+                character_id=character_id,
+                scene_id=scene_id,
+                persona_id=persona_id,
+                full_messages=full_messages,
+                reply=reply,
+                response_usage=response_usage,
+                persisted_chat_config=persisted_chat_config,
+                context_window_soft_limit=context_window_soft_limit,
+                requested_branch_id=branch_id,
+                fork_from_message_id=fork_from_message_id,
             )
+            serialized_entry = serialize_chat_history_entry(entry)
 
             return {
                 "response": reply,
                 "chat_id": entry.chat_id,
                 "chat_title": entry.title,
+                "branch_id": serialized_entry.get("active_branch_id"),
+                "chat_entry": serialized_entry,
                 "limits": limit_info,
                 "context_window": {
                     **context_window_info,
@@ -603,6 +682,37 @@ async def pin_chat(request: Request, current_user: User = Depends(get_current_us
     }
 
 
+@router.post("/api/chat/select-branch")
+async def select_chat_branch(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        data = await request.json()
+    except ClientDisconnect:
+        return Response(status_code=499)
+
+    chat_id = data.get("chat_id")
+    branch_id = data.get("branch_id")
+
+    if not isinstance(chat_id, str) or not chat_id.strip():
+        return JSONResponse(content={"error": "Missing chat_id"}, status_code=400)
+
+    if not isinstance(branch_id, str) or not branch_id.strip():
+        return JSONResponse(content={"error": "Missing branch_id"}, status_code=400)
+
+    entry = fetch_chat_history_entry(db, current_user.id, chat_id)
+    if not entry:
+        return JSONResponse(content={"error": "Chat not found"}, status_code=404)
+
+    entry.messages = set_chat_history_active_branch(entry.messages, branch_id.strip())
+    entry.last_updated = datetime.now(UTC)
+    db.commit()
+    db.refresh(entry)
+
+    return {
+        "status": "success",
+        "chat": serialize_chat_history_entry(entry),
+    }
+
+
 @router.post("/api/chat/pin-message")
 async def pin_chat_message(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
@@ -613,6 +723,7 @@ async def pin_chat_message(request: Request, current_user: User = Depends(get_cu
     chat_id = data.get("chat_id")
     message_id = data.get("message_id")
     is_pinned = bool(data.get("is_pinned"))
+    branch_id = data.get("branch_id")
     message_role = str(data.get("message_role") or "").strip().lower()
     message_content = _normalize_message_content(data.get("message_content"))
 
@@ -626,7 +737,12 @@ async def pin_chat_message(request: Request, current_user: User = Depends(get_cu
     if not entry:
         return JSONResponse(content={"error": "Chat not found"}, status_code=404)
 
-    messages = entry.messages if isinstance(entry.messages, list) else []
+    if not isinstance(branch_id, str) or not branch_id.strip():
+        branch_id = get_chat_history_active_branch_id(entry.messages)
+    else:
+        branch_id = branch_id.strip()
+
+    messages = get_chat_history_messages(entry.messages, branch_id)
     target_message = None
 
     for message in messages:
@@ -676,7 +792,16 @@ async def pin_chat_message(request: Request, current_user: User = Depends(get_cu
 
     target_message["message_id"] = message_id
     target_message["is_pinned"] = is_pinned
-    entry.messages = messages
+    updated_payload, _ = replace_chat_history_branch_messages(
+        entry.messages,
+        branch_id=branch_id,
+        messages=messages,
+        parent_branch_id=get_chat_history_branch(entry.messages, branch_id).get("parent_branch_id"),
+        parent_message_id=get_chat_history_branch(entry.messages, branch_id).get("parent_message_id"),
+        label=get_chat_history_branch(entry.messages, branch_id).get("label"),
+        make_active=True,
+    )
+    entry.messages = updated_payload
     entry.last_updated = datetime.now(UTC)
 
     db.commit()
@@ -695,5 +820,6 @@ async def pin_chat_message(request: Request, current_user: User = Depends(get_cu
         "chat_id": chat_id,
         "message_id": message_id,
         "is_pinned": is_pinned,
+        "branch_id": branch_id,
         "pinned_messages_count": pinned_count,
     }

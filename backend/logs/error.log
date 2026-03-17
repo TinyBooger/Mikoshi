@@ -8626,3 +8626,4 @@ WHERE chat_histories.user_id = %(user_id_1)s ORDER BY chat_histories.last_update
 
 2026-03-17 11:42:40 - utils.error_logger - ERROR - [UnhandledPromiseRejection] Cannot read properties of undefined (reading 'nodeName') | Endpoint: None http://localhost:3000/admin | User: HAeAnts3IJW6bfPHgyjKfcurWfE2
 2026-03-17 11:42:40 - utils.error_logger - ERROR - [UnhandledPromiseRejection] Cannot read properties of undefined (reading 'nodeName') | Endpoint: None http://localhost:3000/admin | User: HAeAnts3IJW6bfPHgyjKfcurWfE2
+2026-03-17 15:15:50 - utils.error_logger - CRITICAL - [HTTPError] HTTP 500 error | Endpoint: POST /api/character-assistant

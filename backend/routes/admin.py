@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from schemas import UserOut, UserMessageOut
 from utils.audit_logger import AuditLog
 from utils.usage_utils import sum_usage_from_messages
+from utils.chat_history_utils import count_chat_history_messages
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -125,9 +126,11 @@ def get_user_data_stats(
     wau = len(weekly_activity_user_ids)
     mau = len(monthly_activity_user_ids)
 
-    avg_chat_length = db.query(
-        func.avg(func.jsonb_array_length(ChatHistory.messages))
-    ).scalar() or 0
+    avg_chat_length = 0
+    all_chat_payloads = db.query(ChatHistory.messages).all()
+    if all_chat_payloads:
+        total_message_count = sum(count_chat_history_messages(messages) for (messages,) in all_chat_payloads)
+        avg_chat_length = total_message_count / len(all_chat_payloads)
 
     total_chat_sessions = db.query(func.count(ChatHistory.id)).scalar() or 0
 
