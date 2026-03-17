@@ -1581,14 +1581,16 @@ export default function ChatPage() {
   // This is intentionally lightweight: it looks for *wrapped* tokens and (parenthesis) tokens
   const renderMessageContent = (text) => {
     if (!text) return null;
+    // Resolve escaped asterisks before parsing so \* is never treated as an action delimiter
+    const normalized = text.replace(/\\\*/g, '\x00LITERAL_STAR\x00');
     // Split by tokens but keep delimiters using regex
     const parts = [];
     const re = /(\*[^*]+\*)|(\([^)]*\))/g;
     let lastIndex = 0;
     let match;
-    while ((match = re.exec(text)) !== null) {
+    while ((match = re.exec(normalized)) !== null) {
       if (match.index > lastIndex) {
-        parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+        parts.push({ type: 'text', content: normalized.slice(lastIndex, match.index) });
       }
       const token = match[0];
       if (token.startsWith('*') && token.endsWith('*')) {
@@ -1600,20 +1602,22 @@ export default function ChatPage() {
       }
       lastIndex = re.lastIndex;
     }
-    if (lastIndex < text.length) {
-      parts.push({ type: 'text', content: text.slice(lastIndex) });
+    if (lastIndex < normalized.length) {
+      parts.push({ type: 'text', content: normalized.slice(lastIndex) });
     }
+
+    const restoreStar = (str) => str.split('\x00LITERAL_STAR\x00').join('*');
 
     return parts.map((p, idx) => {
       // Use inheritable colors so these tokens adapt to the parent bubble's color
       if (p.type === 'action') {
-        return <span key={idx} style={{ fontStyle: 'italic', fontWeight: 600, margin: '0 4px', color: 'inherit' }}>{p.content}</span>;
+        return <span key={idx} style={{ fontStyle: 'italic', fontWeight: 600, margin: '0 4px', color: 'inherit' }}>{restoreStar(p.content)}</span>;
       }
       if (p.type === 'scene') {
-        return <span key={idx} style={{ fontStyle: 'italic', color: 'inherit', opacity: 0.9, margin: '0 4px' }}>({p.content})</span>;
+        return <span key={idx} style={{ fontStyle: 'italic', color: 'inherit', opacity: 0.9, margin: '0 4px' }}>({restoreStar(p.content)})</span>;
       }
       // For text parts, split by newlines and render with <br/> tags
-      const lines = p.content.split('\n');
+      const lines = restoreStar(p.content).split('\n');
       return <span key={idx}>{lines.map((line, i) => (
         <React.Fragment key={i}>
           {line}

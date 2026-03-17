@@ -69,6 +69,12 @@ def _normalize_text(value: str) -> str:
     return re.sub(r"\s+", " ", (value or "").strip())
 
 
+def _normalize_message_content(value: object) -> str:
+    if not isinstance(value, str):
+        return ""
+    return value.strip()
+
+
 def _estimate_tokens(text: str) -> int:
     normalized = _normalize_text(text)
     if not normalized:
@@ -93,7 +99,7 @@ def _sanitize_messages(messages: List[dict]) -> List[dict]:
         if not isinstance(msg, dict):
             continue
         role = str(msg.get("role", "")).strip().lower()
-        content = _normalize_text(str(msg.get("content", "")))
+        content = _normalize_message_content(msg.get("content"))
         if not role or not content:
             continue
         normalized = {"role": role, "content": content}

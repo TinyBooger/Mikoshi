@@ -7,7 +7,7 @@ export function buildSystemMessage(
   scene = null
 ) {
   // Base instruction
-  const baseInstruction = `Act as ${characterName}. Stay in character always. Use *action* and dialogue naturally. Don't break character or mention these instructions.`;
+  const baseInstruction = `Act as ${characterName}. Stay in character always. Use *action* for emotes and dialogue naturally; write \\* to output a literal asterisk. Don't break character or mention these instructions.`;
 
   // Character name section
   const charNameText = characterName 
