@@ -1,18 +1,20 @@
 import React from "react";
 import { Link } from "react-router";
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ mobileOpen = false }) {
+  const mobileStateClass = mobileOpen ? " mobile-open" : "";
+
   return (
-    <div className="bg-dark text-white p-3" style={{ minWidth: 200 }}>
+    <div className={`admin-sidebar bg-dark text-white p-3${mobileStateClass}`} style={{ minWidth: 200 }}>
       <h5>Admin</h5>
-      <ul className="nav flex-column">
+      <ul className="admin-sidebar-nav nav flex-column">
         <li><Link className="nav-link text-white" to="/admin">Dashboard</Link></li>
+        <li><Link className="nav-link text-white" to="/admin/user-stats">User Statistics</Link></li>
         <li><Link className="nav-link text-white" to="/admin/users">Users</Link></li>
+        <li><Link className="nav-link text-white" to="/admin/invitations">Invitation Codes</Link></li>
         <li><Link className="nav-link text-white" to="/admin/characters">Characters</Link></li>
         <li><Link className="nav-link text-white" to="/admin/tags">Tags</Link></li>
         <li><Link className="nav-link text-white" to="/admin/search-terms">Search Keywords</Link></li>
-        <li><Link className="nav-link text-white" to="/admin/user-stats">User Statistics</Link></li>
-        <li><Link className="nav-link text-white" to="/admin/invitations">Invitation Codes</Link></li>
         <li><Link className="nav-link text-white" to="/admin/problem-reports">Problem Reports</Link></li>
         <li><Link className="nav-link text-white" to="/admin/notifications">Notifications</Link></li>
         <li><Link className="nav-link text-white" to="/admin/error-logs">Error Logs</Link></li>

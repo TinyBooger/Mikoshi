@@ -8624,3 +8624,5 @@ WHERE chat_histories.user_id = %(user_id_1)s ORDER BY chat_histories.last_update
 [parameters: {'user_id_1': 'HAeAnts3IJW6bfPHgyjKfcurWfE2', 'param_1': 30}]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 
+2026-03-17 11:42:40 - utils.error_logger - ERROR - [UnhandledPromiseRejection] Cannot read properties of undefined (reading 'nodeName') | Endpoint: None http://localhost:3000/admin | User: HAeAnts3IJW6bfPHgyjKfcurWfE2
+2026-03-17 11:42:40 - utils.error_logger - ERROR - [UnhandledPromiseRejection] Cannot read properties of undefined (reading 'nodeName') | Endpoint: None http://localhost:3000/admin | User: HAeAnts3IJW6bfPHgyjKfcurWfE2
