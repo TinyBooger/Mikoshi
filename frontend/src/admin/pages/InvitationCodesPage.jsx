@@ -8,8 +8,45 @@ export default function InvitationCodesPage() {
   const [generatedCode, setGeneratedCode] = useState(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [invitationCodeRequired, setInvitationCodeRequired] = useState(true);
+  const [settingUpdating, setSettingUpdating] = useState(false);
   const pageSize = 20;
   const { sessionToken } = useContext(AuthContext);
+
+  const fetchSettings = () => {
+    fetch(`${window.API_BASE_URL}/api/admin/invitations/settings`, {
+      headers: { 'Authorization': sessionToken }
+    })
+      .then(res => res.json())
+      .then(data => setInvitationCodeRequired(data.invitation_code_required))
+      .catch(err => console.error('Error fetching invitation settings:', err));
+  };
+
+  const handleToggleRequirement = async () => {
+    setSettingUpdating(true);
+    try {
+      const response = await fetch(`${window.API_BASE_URL}/api/admin/invitations/settings`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': sessionToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ invitation_code_required: !invitationCodeRequired })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setInvitationCodeRequired(data.invitation_code_required);
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.detail || 'Failed to update setting'}`);
+      }
+    } catch (err) {
+      console.error('Error updating invitation setting:', err);
+      alert('Failed to update setting');
+    } finally {
+      setSettingUpdating(false);
+    }
+  };
 
   const fetchCodes = () => {
     setLoading(true);
@@ -31,6 +68,7 @@ export default function InvitationCodesPage() {
 
   useEffect(() => {
     fetchCodes();
+    fetchSettings();
   }, [sessionToken]);
 
   const handleGenerate = async (e) => {
@@ -147,6 +185,41 @@ export default function InvitationCodesPage() {
           <i className="bi bi-plus-circle me-2"></i>
           Generate Code
         </button>
+      </div>
+
+      {/* Invitation Code Requirement Toggle */}
+      <div className="card mb-4 border-0 shadow-sm">
+        <div className="card-body d-flex align-items-center justify-content-between py-3">
+          <div>
+            <h6 className="mb-1 fw-semibold">
+              <i className="bi bi-key me-2"></i>
+              Require Invitation Code at Registration
+            </h6>
+            <small className="text-muted">
+              {invitationCodeRequired
+                ? 'New users must provide a valid invitation code to register.'
+                : 'Open registration — invitation code field is hidden and not enforced.'}
+            </small>
+          </div>
+          <div className="form-check form-switch ms-4 mb-0">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              role="switch"
+              id="invitationRequiredSwitch"
+              checked={invitationCodeRequired}
+              onChange={handleToggleRequirement}
+              disabled={settingUpdating}
+              style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
+            />
+            <label
+              className={`form-check-label ms-2 fw-bold ${invitationCodeRequired ? 'text-success' : 'text-secondary'}`}
+              htmlFor="invitationRequiredSwitch"
+            >
+              {settingUpdating ? 'Updating…' : invitationCodeRequired ? 'Enabled' : 'Disabled'}
+            </label>
+          </div>
+        </div>
       </div>
 
       <div className="table-responsive">

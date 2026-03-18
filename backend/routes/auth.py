@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from database import get_db
-from models import User
+from models import User, SystemSettings
 from schemas import UserOut, AuthUserOut, VerifyPhoneOut
 from utils.session import create_session_token, verify_session_token
 from utils.user_utils import build_user_response, check_and_expire_pro
@@ -13,6 +13,7 @@ from utils.captcha_utils import verify_captcha_param, get_captcha_verifier
 from utils.audit_logger import record_audit
 from utils.request_utils import get_client_ip, get_user_agent, get_request_metadata
 import re
+from typing import Optional
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -20,6 +21,19 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Simple session token-based authentication
 from fastapi import Header
+
+
+def _is_invitation_code_required(db: Session) -> bool:
+    """Check whether invitation code requirement is currently enabled."""
+    setting = db.query(SystemSettings).filter(SystemSettings.key == "invitation_code_required").first()
+    return setting.value == "true" if setting else True
+
+
+@router.get("/api/registration-settings")
+def get_registration_settings(db: Session = Depends(get_db)):
+    """Public endpoint: returns current registration configuration."""
+    return {"invitation_code_required": _is_invitation_code_required(db)}
+
 
 @router.get("/api/users/me", response_model=UserOut)
 def get_current_user(
@@ -92,35 +106,35 @@ def register_user(
     email: str = Form(...),
     name: str = Form(...),
     password: str = Form(...),
-    invitation_code: str = Form(...),
+    invitation_code: Optional[str] = Form(None),
     bio: str = Form(None),
     profile_pic: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
-    # Validate invitation code first
     from models import InvitationCode
     from datetime import datetime, UTC
-    
-    invitation = db.query(InvitationCode).filter(
-        InvitationCode.code == invitation_code.upper()
-    ).first()
-    
-    if not invitation:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invitation code")
-    
-    if not invitation.is_active:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation code has been revoked")
-    
-    if invitation.use_count >= invitation.max_uses:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation code has reached its usage limit")
-    
-    print(f"expires_at type: {type(invitation.expires_at)}")
-    print(f"expires_at tzinfo: {invitation.expires_at.tzinfo}")
-    print(f"expires_at value: {invitation.expires_at}")
-    print(f"now(UTC) type: {type(datetime.now(UTC))}")
-    
-    if invitation.expires_at and datetime.now(UTC) > invitation.expires_at:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation code has expired")
+
+    # Validate invitation code only when the setting requires it
+    invitation = None
+    if _is_invitation_code_required(db):
+        if not invitation_code or not invitation_code.strip():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation code is required")
+
+        invitation = db.query(InvitationCode).filter(
+            InvitationCode.code == invitation_code.upper()
+        ).first()
+
+        if not invitation:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invitation code")
+
+        if not invitation.is_active:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation code has been revoked")
+
+        if invitation.use_count >= invitation.max_uses:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation code has reached its usage limit")
+
+        if invitation.expires_at and datetime.now(UTC) > invitation.expires_at:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation code has expired")
     
     # Proceed with user registration
     if db.query(User).filter(User.email == email).first():
@@ -142,13 +156,14 @@ def register_user(
     db.commit()
     db.refresh(user)
     
-    # Mark invitation code as used
-    invitation.use_count += 1
-    if invitation.use_count == 1:  # First use
-        invitation.used_by = user.id
-        invitation.used_at = datetime.now(UTC)
-    db.commit()
-    
+    # Mark invitation code as used (only when it was validated)
+    if invitation:
+        invitation.use_count += 1
+        if invitation.use_count == 1:  # First use
+            invitation.used_by = user.id
+            invitation.used_at = datetime.now(UTC)
+        db.commit()
+
     # If an image was uploaded, save it and update the user record
     if profile_pic:
         try:
@@ -395,7 +410,7 @@ def verify_phone(
 def register_with_phone(
     verified_phone_token: str = Form(...),
     name: str = Form(...),
-    invitation_code: str = Form(...),
+    invitation_code: Optional[str] = Form(None),
     email: str = Form(None),
     password: str = Form(None),
     bio: str = Form(None),
@@ -428,37 +443,45 @@ def register_with_phone(
                 detail="Email already registered"
             )
     
-    # 验证邀请码
+    # 验证邀请码（仅在系统设置要求时）
     from models import InvitationCode
     from datetime import datetime, UTC
-    
-    invitation = db.query(InvitationCode).filter(
-        InvitationCode.code == invitation_code.upper()
-    ).first()
-    
-    if not invitation:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid invitation code"
-        )
-    
-    if not invitation.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This invitation code has been revoked"
-        )
-    
-    if invitation.use_count >= invitation.max_uses:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This invitation code has reached its usage limit"
-        )
-    
-    if invitation.expires_at and datetime.now(UTC) > invitation.expires_at:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This invitation code has expired"
-        )
+
+    invitation = None
+    if _is_invitation_code_required(db):
+        if not invitation_code or not invitation_code.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invitation code is required"
+            )
+
+        invitation = db.query(InvitationCode).filter(
+            InvitationCode.code == invitation_code.upper()
+        ).first()
+
+        if not invitation:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid invitation code"
+            )
+
+        if not invitation.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This invitation code has been revoked"
+            )
+
+        if invitation.use_count >= invitation.max_uses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This invitation code has reached its usage limit"
+            )
+
+        if invitation.expires_at and datetime.now(UTC) > invitation.expires_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This invitation code has expired"
+            )
     
     # 验证用户名
     error = validate_account_fields(name=name)
@@ -500,12 +523,13 @@ def register_with_phone(
         except Exception:
             pass
     
-    # 更新邀请码使用记录
-    invitation.use_count += 1
-    if invitation.use_count == 1:
-        invitation.used_by = user.id
-        invitation.used_at = datetime.now(UTC)
-    db.commit()
+    # 更新邀请码使用记录（仅在使用了邀请码时）
+    if invitation:
+        invitation.use_count += 1
+        if invitation.use_count == 1:
+            invitation.used_by = user.id
+            invitation.used_at = datetime.now(UTC)
+        db.commit()
     
     # 创建session token
     token = create_session_token(user)

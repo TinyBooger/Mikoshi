@@ -28,7 +28,15 @@ export default function SignUpPage() {
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [error, setError] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [invitationCodeRequired, setInvitationCodeRequired] = useState(true);
   const { registerWithPhone, loading } = useContext(AuthContext);
+
+  useEffect(() => {
+    fetch(`${window.API_BASE_URL}/api/registration-settings`)
+      .then(res => res.json())
+      .then(data => setInvitationCodeRequired(data.invitation_code_required))
+      .catch(() => setInvitationCodeRequired(true)); // default to required on error
+  }, []);
 
   const handleGoBack = () => {
     navigate(-1);
@@ -44,8 +52,8 @@ export default function SignUpPage() {
       return;
     }
     
-    // Validate invitation code
-    if (!invitationCode.trim()) {
+    // Validate invitation code only when required
+    if (invitationCodeRequired && !invitationCode.trim()) {
       setError(t('signup.invitation_code_required'));
       return;
     }
@@ -100,6 +108,7 @@ export default function SignUpPage() {
                 />
                 <small className="form-text text-muted">已验证</small>
               </div>
+              {invitationCodeRequired && (
               <div className="mb-3">
                 <label className="form-label">{t('signup.invitation_code')}</label>
                 <input
@@ -115,6 +124,7 @@ export default function SignUpPage() {
                   {t('signup.invitation_code_hint')}
                 </small>
               </div>
+              )}
               <div className="mb-3">
                 <label className="form-label">{t('signup.name')}</label>
                 <input

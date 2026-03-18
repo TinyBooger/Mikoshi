@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from database import get_db
-from models import InvitationCode, User
+from models import InvitationCode, SystemSettings, User
 from utils.session import get_current_admin_user, get_current_user
 from typing import Optional
 from pydantic import BaseModel
@@ -203,3 +203,41 @@ def use_invitation_code(
     db.commit()
     
     return {"message": "Invitation code used successfully"}
+
+
+class InvitationSettingsRequest(BaseModel):
+    invitation_code_required: bool
+
+
+@router.get("/settings")
+def get_invitation_settings(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Get invitation code settings - Admin only"""
+    setting = db.query(SystemSettings).filter(SystemSettings.key == "invitation_code_required").first()
+    required = setting.value == "true" if setting else True
+    return {"invitation_code_required": required}
+
+
+@router.put("/settings")
+def update_invitation_settings(
+    request: InvitationSettingsRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Update invitation code requirement setting - Admin only"""
+    setting = db.query(SystemSettings).filter(SystemSettings.key == "invitation_code_required").first()
+    if setting:
+        setting.value = "true" if request.invitation_code_required else "false"
+        setting.updated_at = datetime.now(UTC)
+        setting.updated_by = current_admin.id
+    else:
+        setting = SystemSettings(
+            key="invitation_code_required",
+            value="true" if request.invitation_code_required else "false",
+            updated_by=current_admin.id
+        )
+        db.add(setting)
+    db.commit()
+    return {"invitation_code_required": request.invitation_code_required}
