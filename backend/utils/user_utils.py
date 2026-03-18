@@ -6,10 +6,9 @@ from datetime import datetime, UTC, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from models import Persona, User, Character, ChatHistory
+from models import Persona, User, Character, UserTokenUsageLedger
 from schemas import PersonaOut
 from utils.chat_history_utils import fetch_user_chat_history
-from utils.usage_utils import sum_usage_from_messages
 
 
 def get_pro_state(user: User) -> dict[str, Any]:
@@ -37,24 +36,30 @@ def get_pro_state(user: User) -> dict[str, Any]:
 def _get_user_token_usage(db: Session, user_id: str) -> dict[str, int]:
     now = datetime.now(UTC)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    month_start = today_start.replace(day=1)
+    month_start = today_start.replace(day=1).date()
+    today_date = today_start.date()
 
-    chats_this_month = db.query(ChatHistory.messages, ChatHistory.last_updated).filter(
-        ChatHistory.user_id == user_id,
-        ChatHistory.last_updated >= month_start,
-    ).all()
+    daily_tokens = (
+        db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
+        .filter(
+            UserTokenUsageLedger.user_id == user_id,
+            UserTokenUsageLedger.usage_date == today_date,
+        )
+        .scalar()
+    ) or 0
 
-    daily_tokens = 0
-    monthly_tokens = 0
-    for messages, last_updated in chats_this_month:
-        usage = sum_usage_from_messages(messages)
-        monthly_tokens += usage["total_tokens"]
-        if last_updated and last_updated >= today_start:
-            daily_tokens += usage["total_tokens"]
+    monthly_tokens = (
+        db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
+        .filter(
+            UserTokenUsageLedger.user_id == user_id,
+            UserTokenUsageLedger.usage_date >= month_start,
+        )
+        .scalar()
+    ) or 0
 
     return {
-        "daily_token_usage": daily_tokens,
-        "monthly_token_usage": monthly_tokens,
+        "daily_token_usage": int(daily_tokens),
+        "monthly_token_usage": int(monthly_tokens),
     }
 
 

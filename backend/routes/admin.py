@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_, and_
 from datetime import datetime, timedelta, UTC
 from database import get_db
-from models import User, Character, Tag, SearchTerm, ChatHistory
+from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger
 from utils.session import get_current_admin_user
 from utils.security_middleware import get_rate_limit_status
 from utils.user_utils import enrich_user_with_character_count, build_user_response
@@ -11,7 +11,6 @@ from typing import List, Optional, Dict
 from pydantic import BaseModel
 from schemas import UserOut, UserMessageOut
 from utils.audit_logger import AuditLog
-from utils.usage_utils import sum_usage_from_messages
 from utils.chat_history_utils import count_chat_history_messages
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -195,27 +194,24 @@ def get_user_data_stats(
     d1_retention = (d1_retained / d1_eligible * 100) if d1_eligible else 0
     d7_retention = (d7_retained / d7_eligible * 100) if d7_eligible else 0
 
-    today_chats = db.query(ChatHistory.user_id, ChatHistory.messages).filter(
-        ChatHistory.last_updated >= today_start
+    today_token_rows = db.query(
+        UserTokenUsageLedger.user_id,
+        UserTokenUsageLedger.total_tokens,
+    ).filter(
+        UserTokenUsageLedger.usage_date == today_date
     ).all()
 
-    user_token_usage = {}
-    for user_id, messages in today_chats:
-        if not user_id:
-            continue
-        usage = sum_usage_from_messages(messages)
-        total_tokens = usage["total_tokens"]
-        user_token_usage[user_id] = user_token_usage.get(user_id, 0) + total_tokens
-
     top_daily_token_users = sorted(
-        user_token_usage.items(),
+        [(user_id, int(total_tokens or 0)) for user_id, total_tokens in today_token_rows if user_id],
         key=lambda item: item[1],
-        reverse=True
+        reverse=True,
     )[:10]
 
+    today_token_sum = sum(int(total_tokens or 0) for _, total_tokens in today_token_rows)
+    today_active_token_users = sum(1 for _, total_tokens in today_token_rows if int(total_tokens or 0) > 0)
     avg_daily_tokens_per_active_user = (
-        sum(user_token_usage.values()) / len(user_token_usage)
-        if user_token_usage else 0
+        today_token_sum / today_active_token_users
+        if today_active_token_users > 0 else 0
     )
 
     daily_message_counts = db.query(User.id, User.daily_action_counts).all()
@@ -256,7 +252,7 @@ def get_user_data_stats(
         ],
         "top_daily_message_users": top_daily_message_users[:10],
         "notes": {
-            "token_usage": "Summed from API response usage fields persisted on assistant messages (chats updated today).",
+            "token_usage": "Summed from daily ledger rows written from API response usage.",
             "retention": "D1/D7 are cohort-based using register audit logs and login/chat activity dates.",
         }
     }
@@ -275,25 +271,36 @@ def get_single_user_token_usage(
 
     now = datetime.now(UTC)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    month_start = today_start.replace(day=1)
-    thirty_days_ago = today_start - timedelta(days=30)
+    month_start = today_start.replace(day=1).date()
+    thirty_days_ago = (today_start - timedelta(days=30)).date()
+    today_date = today_start.date()
 
-    chats_last_30_days = db.query(ChatHistory.messages, ChatHistory.last_updated).filter(
-        ChatHistory.user_id == user_id,
-        ChatHistory.last_updated >= thirty_days_ago,
-    ).all()
+    daily_tokens = (
+        db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
+        .filter(
+            UserTokenUsageLedger.user_id == user_id,
+            UserTokenUsageLedger.usage_date == today_date,
+        )
+        .scalar()
+    ) or 0
 
-    daily_tokens = 0
-    monthly_tokens = 0
-    rolling_30d_tokens = 0
-    for messages, last_updated in chats_last_30_days:
-        usage = sum_usage_from_messages(messages)
-        tokens = usage["total_tokens"]
-        rolling_30d_tokens += tokens
-        if last_updated and last_updated >= today_start:
-            daily_tokens += tokens
-        if last_updated and last_updated >= month_start:
-            monthly_tokens += tokens
+    monthly_tokens = (
+        db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
+        .filter(
+            UserTokenUsageLedger.user_id == user_id,
+            UserTokenUsageLedger.usage_date >= month_start,
+        )
+        .scalar()
+    ) or 0
+
+    rolling_30d_tokens = (
+        db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
+        .filter(
+            UserTokenUsageLedger.user_id == user_id,
+            UserTokenUsageLedger.usage_date >= thirty_days_ago,
+        )
+        .scalar()
+    ) or 0
 
     daily_chat_sessions = db.query(func.count(ChatHistory.id)).filter(
         ChatHistory.user_id == user_id,
@@ -304,12 +311,12 @@ def get_single_user_token_usage(
         "user_id": user_id,
         "user_name": user.name,
         "snapshot_at": now.isoformat(),
-        "daily_tokens": daily_tokens,
-        "monthly_tokens": monthly_tokens,
-        "rolling_30d_tokens": rolling_30d_tokens,
+        "daily_tokens": int(daily_tokens),
+        "monthly_tokens": int(monthly_tokens),
+        "rolling_30d_tokens": int(rolling_30d_tokens),
         "daily_chat_sessions": daily_chat_sessions,
         "notes": {
-            "token_usage": "Summed from API response usage fields persisted on assistant messages.",
+            "token_usage": "Summed from daily ledger rows written from API response usage.",
         },
     }
 

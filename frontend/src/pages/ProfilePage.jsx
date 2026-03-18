@@ -113,6 +113,31 @@ export default function ProfilePage() {
     }
   }, [isOwnProfile, sessionToken, refreshUserData]);
 
+  // Keep own-profile stats (including monthly token usage) fresh when returning to this page.
+  useEffect(() => {
+    if (!isOwnProfile || !refreshUserData) return;
+
+    refreshUserData({ silent: true });
+
+    const handleFocus = () => {
+      refreshUserData({ silent: true });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshUserData({ silent: true });
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isOwnProfile, refreshUserData]);
+
   // Fetch created and liked entities for profile
   useEffect(() => {
     if (!sessionToken && !profileUserId) {

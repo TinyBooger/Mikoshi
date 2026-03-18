@@ -20,9 +20,10 @@ SUMMARY_SYSTEM_PROMPT = (
 )
 
 DEFAULT_SOFT_TOKEN_LIMIT = 3000
-DEFAULT_RECENT_MESSAGE_COUNT = 15
+DEFAULT_RECENT_MESSAGE_COUNT = 2
 DEFAULT_SUMMARY_MAX_TOKENS = 300
 DEFAULT_CONTEXT_WINDOW_TIER = "3k"
+DEFAULT_COMPACTION_TRIGGER_RATIO = 0.95
 
 CONTEXT_WINDOW_TIERS = (
     {"key": "3k", "tokens": 3000, "pro_only": False},
@@ -171,9 +172,9 @@ def _build_summary_prompt_input(existing_summary_text: str, old_messages: List[d
     return "\n".join(lines).strip()
 
 
-def _summarize_with_prompt(summary_input: str, *, summary_max_tokens: int) -> str:
+def _summarize_with_prompt(summary_input: str, *, summary_max_tokens: int) -> tuple[str, dict[str, int]]:
     if not summary_input:
-        return ""
+        return "", normalize_usage(None)
 
     response = llm_client.chat.completions.create(
         model=SUMMARY_MODEL,
@@ -186,7 +187,8 @@ def _summarize_with_prompt(summary_input: str, *, summary_max_tokens: int) -> st
         top_p=0.9,
     )
     content = response.choices[0].message.content if response and response.choices else ""
-    return _normalize_text(content)
+    usage = normalize_usage(getattr(response, "usage", None))
+    return _normalize_text(content), usage
 
 
 def _build_summary_message(
@@ -194,28 +196,30 @@ def _build_summary_message(
     old_messages: List[dict],
     *,
     summary_max_tokens: int,
-) -> dict | None:
+) -> tuple[dict | None, dict[str, int]]:
     if not existing_summary_text and not old_messages:
-        return None
+        return None, normalize_usage(None)
 
     summary_input = _build_summary_prompt_input(existing_summary_text, old_messages)
     summary_body = ""
+    summary_usage = normalize_usage(None)
     try:
-        summary_body = _summarize_with_prompt(summary_input, summary_max_tokens=summary_max_tokens)
+        summary_body, summary_usage = _summarize_with_prompt(summary_input, summary_max_tokens=summary_max_tokens)
     except Exception:
         summary_body = ""
+        summary_usage = normalize_usage(None)
 
     if not summary_body and existing_summary_text:
         # Keep previous memory if summarization fails.
         summary_body = existing_summary_text
 
     if not summary_body:
-        return None
+        return None, summary_usage
 
     return {
         "role": "system",
         "content": f"{SUMMARY_PREFIX}\n{summary_body}",
-    }
+    }, summary_usage
 
 
 def compact_conversation_messages(
@@ -224,12 +228,14 @@ def compact_conversation_messages(
     soft_token_limit: int = DEFAULT_SOFT_TOKEN_LIMIT,
     recent_message_count: int = DEFAULT_RECENT_MESSAGE_COUNT,
     summary_max_tokens: int = DEFAULT_SUMMARY_MAX_TOKENS,
-) -> Tuple[List[dict], Dict[str, int | bool]]:
+) -> Tuple[List[dict], Dict[str, int | bool | str | dict[str, int]]]:
     sanitized = _sanitize_messages(messages)
     if not sanitized:
         return [], {
             "input_tokens": 0,
             "output_tokens": 0,
+            "summary_usage": normalize_usage(None),
+            "summary_calls": 0,
             "summary_messages_count": 0,
             "recent_messages_count": 0,
             "pinned_messages_count": 0,
@@ -252,9 +258,11 @@ def compact_conversation_messages(
 
     estimated_conversation_tokens = sum(_estimate_tokens(str(m.get("content", ""))) for m in conversation_messages)
 
-    should_compact = estimated_conversation_tokens >= effective_soft_token_limit
+    compaction_trigger_tokens = max(1, int(effective_soft_token_limit * DEFAULT_COMPACTION_TRIGGER_RATIO))
+    should_compact = estimated_conversation_tokens >= compaction_trigger_tokens
 
     summary_messages_count = 0
+    summary_usage = normalize_usage(None)
     pinned_messages_count = len(pinned_messages)
     if should_compact and unpinned_messages:
         recent_count = min(effective_recent_message_count, len(unpinned_messages))
@@ -264,7 +272,7 @@ def compact_conversation_messages(
         existing_summary_text = "\n".join(
             filter(None, (_extract_summary_body(msg) for msg in summary_system_messages))
         )
-        summary_message = _build_summary_message(
+        summary_message, summary_usage = _build_summary_message(
             existing_summary_text,
             old_messages,
             summary_max_tokens=effective_summary_max_tokens,
@@ -301,9 +309,12 @@ def compact_conversation_messages(
     return compacted_messages, {
         "input_tokens": input_tokens,
         "output_tokens": latest_usage["completion_tokens"],
+        "summary_usage": summary_usage,
+        "summary_calls": 1 if summary_usage["total_tokens"] > 0 else 0,
         "summary_messages_count": summary_messages_count,
         "recent_messages_count": recent_messages_count,
         "pinned_messages_count": pinned_messages_count,
         "soft_token_limit": effective_soft_token_limit,
+        "compaction_trigger_tokens": compaction_trigger_tokens,
         "token_source": token_source,
     }

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey, UniqueConstraint, Boolean, Float
+from sqlalchemy import Column, String, Integer, DateTime, Date, Text, ForeignKey, UniqueConstraint, Boolean, Float
 from sqlalchemy.orm import relationship
 from database import Base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -78,6 +78,23 @@ class User(Base):
     default_persona_id = Column(Integer, ForeignKey('personas.id', ondelete='SET NULL'), nullable=True)
 
     chat_histories = relationship("ChatHistory", back_populates="user", cascade="all, delete-orphan")
+
+
+class UserTokenUsageLedger(Base):
+    __tablename__ = "user_token_usage_ledger"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    usage_date = Column(Date, nullable=False, index=True)
+    prompt_tokens = Column(Integer, default=0, nullable=False)
+    completion_tokens = Column(Integer, default=0, nullable=False)
+    total_tokens = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'usage_date', name='uix_user_token_usage_ledger_user_date'),
+    )
 
 
 class ChatHistory(Base):

@@ -1167,6 +1167,9 @@ export default function ChatPage() {
 
           if (data.done) {
             applyChatLimits(data.limits);
+            if (refreshUserData) {
+              refreshUserData({ silent: true });
+            }
             if (data.context_window) {
               setServerContextWindowUsage(data.context_window);
             }
@@ -1695,6 +1698,26 @@ export default function ChatPage() {
 
             return (
               <>
+                {Number(serverContextWindowUsage?.summary_messages_count || 0) > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.9rem' }}>
+                    <div
+                      style={{
+                        maxWidth: 760,
+                        width: '100%',
+                        textAlign: 'center',
+                        fontSize: '0.78rem',
+                        color: '#334155',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '0.75rem',
+                        padding: '0.45rem 0.7rem',
+                      }}
+                    >
+                      为控制上下文窗口已压缩。
+                    </div>
+                  </div>
+                )}
+
                 {showWelcome && (
                   (() => {
                     // Build a system-style welcome notice independent from the assistant's greeting message
@@ -2138,11 +2161,11 @@ export default function ChatPage() {
                     基于上次请求的上下文使用情况
                   </div>
                   <div style={{ fontSize: '0.7rem', opacity: 0.9, marginTop: 4 }}>
-                    到达上限时聊天记录将被总结。
+                    到达 95% 上下文窗口时，系统会开始压缩上下文。
                   </div>
                   {Number(serverContextWindowUsage?.summary_messages_count || 0) > 0 && (
                     <div style={{ fontSize: '0.7rem', color: '#86efac', marginTop: 4 }}>
-                      已自动整理旧消息并保留最近 15 条对话。
+                      已自动整理旧消息并保留最近 2 条对话用于请求上下文。
                     </div>
                   )}
                 </div>

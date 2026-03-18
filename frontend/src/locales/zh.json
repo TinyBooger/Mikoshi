@@ -407,6 +407,7 @@
     "input_placeholder": "描述您的角色或请求修改...",
     "thinking": "思考中...",
     "tip": "按 Enter 发送，Shift+Enter 换行",
+    "token_notice": "使用AI助手会消耗token",
     "generated_prefix": "✨ 您的角色已生成！我已自动应用到表单中。",
     "applied_success": "角色已应用到表单！",
     "error": "生成角色失败，请重试。",

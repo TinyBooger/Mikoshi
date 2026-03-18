@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from utils.chat_history_utils import iter_chat_history_messages
-
 
 def _to_non_negative_int(value: Any) -> int:
     try:
@@ -39,22 +37,3 @@ def normalize_usage(usage: Any) -> dict[str, int]:
         "total_tokens": total_tokens,
     }
 
-
-def sum_usage_from_messages(messages: Any) -> dict[str, int]:
-    """Aggregate token usage from chat messages that include a `usage` field."""
-    totals = {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0,
-    }
-
-    for message in iter_chat_history_messages(messages, dedupe=True):
-        if not isinstance(message, dict):
-            continue
-
-        usage = normalize_usage(message.get("usage"))
-        totals["prompt_tokens"] += usage["prompt_tokens"]
-        totals["completion_tokens"] += usage["completion_tokens"]
-        totals["total_tokens"] += usage["total_tokens"]
-
-    return totals

@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from utils.session import get_current_user
 from utils.llm_client import client
+from utils.usage_utils import normalize_usage
+from utils.token_usage_ledger import record_token_usage
 from database import get_db
 from models import User
 import json
@@ -77,6 +79,15 @@ Make the character engaging, consistent, and appropriate. Be creative but stay t
             temperature=1.2,
             top_p=0.95
         )
+
+        usage = normalize_usage(getattr(response, "usage", None))
+        if usage["total_tokens"] > 0:
+            record_token_usage(
+                db,
+                user_id=current_user.id,
+                usage=usage,
+            )
+            db.commit()
 
         content = response.choices[0].message.content.strip()
         

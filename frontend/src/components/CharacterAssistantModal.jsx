@@ -443,6 +443,9 @@ export default function CharacterAssistantModal({
           <small className="text-muted d-block" style={{ fontSize: '0.8rem' }}>
             {t('character_assistant.tip')}
           </small>
+          <small className="d-block" style={{ fontSize: '0.8rem', color: '#b45309', marginTop: 4 }}>
+            {t('character_assistant.token_notice', '使用AI助手会消耗token')}
+          </small>
         </div>
       </div>
     </>

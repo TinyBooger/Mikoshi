@@ -399,6 +399,7 @@
     "input_placeholder": "Describe your character or request changes...",
     "thinking": "Thinking...",
     "tip": "Press Enter to send, Shift+Enter for new line",
+    "token_notice": "Using AI Assistant will consume tokens.",
     "generated_prefix": "✨ Here's your character! I've automatically applied it to the form.",
     "applied_success": "Character applied to form!",
     "error": "Failed to generate character. Please try again.",

@@ -28,8 +28,15 @@ from utils.level_system import award_exp_with_limits
 from utils.message_limit import can_send_user_message, increment_user_message_count
 from utils.context_window import compact_conversation_messages, resolve_context_window_settings
 from utils.usage_utils import normalize_usage
+from utils.token_usage_ledger import record_token_usage
 
 router = APIRouter()
+
+
+def _extract_context_summary_usage(context_info: dict | None) -> dict[str, int]:
+    if not isinstance(context_info, dict):
+        return normalize_usage(None)
+    return normalize_usage(context_info.get("summary_usage"))
 
 _KEYWORD_TOKEN_RE = re.compile(r"[A-Za-z0-9']+|[\u4e00-\u9fff]{2,}")
 _COMMON_WORDS_FILES = (
@@ -287,10 +294,6 @@ def _persist_chat_history_turn(
 ) -> ChatHistory:
     assistant_message = _build_assistant_message(reply, response_usage)
     updated_messages = full_messages + [assistant_message]
-    updated_messages, _ = compact_conversation_messages(
-        updated_messages,
-        soft_token_limit=context_window_soft_limit,
-    )
 
     existing_payload = normalize_chat_history_payload(existing_entry.messages if existing_entry else [])
 
@@ -380,17 +383,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     if not isinstance(context_messages, list) or not context_messages:
         context_messages = messages
 
-    prepared_messages, _ = compact_conversation_messages(
-        messages,
-        soft_token_limit=context_window_soft_limit,
-    )
-    _, context_window_info = compact_conversation_messages(
-        context_messages,
-        soft_token_limit=context_window_soft_limit,
-    )
-    if not prepared_messages:
-        return JSONResponse(content={"error": "Invalid messages after normalization"}, status_code=400)
-
     limit_check = can_send_user_message(current_user, full_messages)
     limit_info = limit_check.get("limit") or {}
     if limit_check["blocked"]:
@@ -402,6 +394,40 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             },
             status_code=429,
         )
+
+    prepared_messages, prepared_context_info = compact_conversation_messages(
+        messages,
+        soft_token_limit=context_window_soft_limit,
+    )
+    if context_messages == messages:
+        context_window_info = prepared_context_info
+    else:
+        _, context_window_info = compact_conversation_messages(
+            context_messages,
+            soft_token_limit=context_window_soft_limit,
+        )
+
+    summary_usage = normalize_usage(None)
+    prepared_summary_usage = _extract_context_summary_usage(prepared_context_info)
+    summary_usage["prompt_tokens"] += prepared_summary_usage["prompt_tokens"]
+    summary_usage["completion_tokens"] += prepared_summary_usage["completion_tokens"]
+    summary_usage["total_tokens"] += prepared_summary_usage["total_tokens"]
+
+    if context_window_info is not prepared_context_info:
+        context_summary_usage = _extract_context_summary_usage(context_window_info)
+        summary_usage["prompt_tokens"] += context_summary_usage["prompt_tokens"]
+        summary_usage["completion_tokens"] += context_summary_usage["completion_tokens"]
+        summary_usage["total_tokens"] += context_summary_usage["total_tokens"]
+
+    if summary_usage["total_tokens"] > 0:
+        record_token_usage(
+            db,
+            user_id=current_user.id,
+            usage=summary_usage,
+        )
+        db.commit()
+    if not prepared_messages:
+        return JSONResponse(content={"error": "Invalid messages after normalization"}, status_code=400)
 
     # Award daily chat EXP (handled by centralized function with limits)
     exp_result = award_exp_with_limits(current_user, "daily_chat", db)
@@ -494,6 +520,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             db_session,
                             limit_check["is_user_request"],
                         ) or (limit_check.get("limit") or {})
+                        record_token_usage(
+                            db_session,
+                            user_id=stream_user.id,
+                            usage=response_usage,
+                        )
                         entry = _persist_chat_history_turn(
                             db_session,
                             current_user_id=current_user.id,
@@ -519,6 +550,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         db,
                         limit_check["is_user_request"],
                     ) or (limit_check.get("limit") or {})
+                    record_token_usage(
+                        db,
+                        user_id=current_user.id,
+                        usage=response_usage,
+                    )
 
                 # Send final metadata
                 done_payload = {
@@ -567,6 +603,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             db,
             limit_check["is_user_request"],
         ) or (limit_check.get("limit") or {})
+        record_token_usage(
+            db,
+            user_id=current_user.id,
+            usage=response_usage,
+        )
 
         serialized_entry = None
 
