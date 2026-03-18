@@ -27,6 +27,125 @@ class CharacterAssistantResponse(BaseModel):
     long_description: str = ""
 
 
+ASSISTANT_FIELD_LIMITS = {
+    "name": 50,
+    "persona": 400,
+    "tagline": 100,
+    "greeting": 200,
+    "sample_dialogue": 200,
+    "advanced_long_description": 10000,
+}
+
+
+def _as_trimmed_text(value) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _trim_to_limit(value: str, max_length: int) -> str:
+    if max_length <= 0:
+        return ""
+    return value[:max_length]
+
+
+def _sanitize_character_output(character_data: dict, context_label: str) -> dict:
+    sanitized = {
+        "name": _trim_to_limit(_as_trimmed_text(character_data.get("name")), ASSISTANT_FIELD_LIMITS["name"]),
+        "persona": _trim_to_limit(_as_trimmed_text(character_data.get("persona")), ASSISTANT_FIELD_LIMITS["persona"]),
+        "tagline": _trim_to_limit(_as_trimmed_text(character_data.get("tagline")), ASSISTANT_FIELD_LIMITS["tagline"]),
+        "greeting": _trim_to_limit(_as_trimmed_text(character_data.get("greeting")), ASSISTANT_FIELD_LIMITS["greeting"]),
+        "sample_dialogue": _trim_to_limit(_as_trimmed_text(character_data.get("sample_dialogue")), ASSISTANT_FIELD_LIMITS["sample_dialogue"]),
+    }
+
+    if context_label == "advanced":
+        sanitized["long_description"] = _trim_to_limit(
+            _as_trimmed_text(character_data.get("long_description")),
+            ASSISTANT_FIELD_LIMITS["advanced_long_description"],
+        )
+    else:
+        sanitized["long_description"] = ""
+
+    return sanitized
+
+
+def _normalize_context_label(value: Optional[str]) -> str:
+    return "advanced" if value == "advanced" else "standard"
+
+
+def _build_system_prompt(context_label: str) -> str:
+    if context_label == "advanced":
+        return """You are a creative character designer for a roleplay chat application.
+Generate or refine character information based on the user's request and current character state.
+
+IMPORTANT: Always respond in the same language as the user's prompt.
+
+Current character mode: advanced.
+This mode includes all basic fields plus an extended long-form setting field.
+
+Editing behavior rules:
+- If current character data is provided, treat this as an edit request by default.
+- Keep unchanged fields consistent unless the user explicitly asks to rewrite them.
+- Do NOT restart from scratch when existing context is present.
+- Improve and extend details while preserving established character identity and tone.
+
+Return ONLY a valid JSON object with these exact fields:
+{
+    "name": "Character's name (max 50 characters)",
+    "persona": "Detailed character description including personality, background, speaking style, and behavior (max 400 characters)",
+    "tagline": "A short, catchy tagline (max 100 characters)",
+    "greeting": "The character's first message to the user (max 200 characters)",
+    "sample_dialogue": "2-3 example conversation lines showing the character's tone (max 200 characters total), formatted as:\nYou: [user message]\nCharacter: [character response]",
+    "long_description": "Detailed long-form character setting and lore for advanced mode (max 10000 characters)."
+}
+
+Hard limits (must never be exceeded):
+- name <= 50 chars
+- persona <= 400 chars
+- tagline <= 100 chars
+- greeting <= 200 chars
+- sample_dialogue <= 200 chars total
+- long_description <= 10000 chars
+
+Make the character engaging, consistent, and appropriate. Be creative but stay true to the user's request and current character context."""
+
+    return """You are a creative character designer for a roleplay chat application.
+Generate or refine character information based on the user's request and current character state.
+
+IMPORTANT: Always respond in the same language as the user's prompt.
+
+Current character mode: standard.
+This mode does NOT use long-form setting fields.
+
+Editing behavior rules:
+- If current character data is provided, treat this as an edit request by default.
+- Keep unchanged fields consistent unless the user explicitly asks to rewrite them.
+- Do NOT restart from scratch when existing context is present.
+- Improve and extend details while preserving established character identity and tone.
+
+Return ONLY a valid JSON object with these exact fields:
+{
+    "name": "Character's name (max 50 characters)",
+    "persona": "Detailed character description including personality, background, speaking style, and behavior (max 400 characters)",
+    "tagline": "A short, catchy tagline (max 100 characters)",
+    "greeting": "The character's first message to the user (max 200 characters)",
+    "sample_dialogue": "2-3 example conversation lines showing the character's tone (max 200 characters total), formatted as:\nYou: [user message]\nCharacter: [character response]",
+    "long_description": ""
+}
+
+For standard mode, always keep long_description as an empty string.
+
+Hard limits (must never be exceeded):
+- name <= 50 chars
+- persona <= 400 chars
+- tagline <= 100 chars
+- greeting <= 200 chars
+- sample_dialogue <= 200 chars total
+- long_description must be ""
+
+Make the character engaging, consistent, and appropriate. Be creative but stay true to the user's request and current character context."""
+
+
 @router.post("/api/character-assistant", response_model=CharacterAssistantResponse)
 async def generate_character(
     request: CharacterAssistantRequest,
@@ -40,32 +159,13 @@ async def generate_character(
     if not request.prompt or not request.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
-    system_prompt = """You are a creative character designer for a roleplay chat application.
-Generate or refine character information based on the user's request and current character state.
-
-IMPORTANT: Always respond in the same language as the user's prompt.
-
-Editing behavior rules:
-- If current character data is provided, treat this as an edit request by default.
-- Keep unchanged fields consistent unless the user explicitly asks to rewrite them.
-- Do NOT restart from scratch when existing context is present.
-- Improve and extend details while preserving established character identity and tone.
-
-Return ONLY a valid JSON object with these exact fields:
-{
-    "name": "Character's name",
-    "persona": "Detailed character description including personality, background, speaking style, and behavior (up to 400 characters)",
-    "tagline": "A short, catchy tagline (under 100 characters)",
-    "greeting": "The character's first message to the user (under 200 characters)",
-    "sample_dialogue": "2-3 example conversation lines showing the character's tone (under 200 characters total), formatted as:\\nYou: [user message]\\nCharacter: [character response]",
-    "long_description": "Detailed long-form character setting and lore. If context is advanced, provide rich content up to 10000 Chinese characters; otherwise keep concise."
-}
-
-Make the character engaging, consistent, and appropriate. Be creative but stay true to the user's request and current character context."""
+    context_label = _normalize_context_label((request.current_character or {}).get("context_label"))
+    system_prompt = _build_system_prompt(context_label)
 
     user_payload = {
         "user_request": request.prompt,
-        "current_character": request.current_character or {}
+        "current_character": request.current_character or {},
+        "context_label": context_label,
     }
 
     try:
@@ -105,8 +205,10 @@ Make the character engaging, consistent, and appropriate. Be creative but stay t
         for field in required_fields:
             if field not in character_data:
                 raise ValueError(f"Missing required field: {field}")
-        
-        return CharacterAssistantResponse(**character_data)
+
+        sanitized_data = _sanitize_character_output(character_data, context_label)
+
+        return CharacterAssistantResponse(**sanitized_data)
     
     except json.JSONDecodeError as e:
         raise HTTPException(

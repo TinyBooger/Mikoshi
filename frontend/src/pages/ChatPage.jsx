@@ -26,6 +26,29 @@ const WALLPAPER_OPTIONS = [
 const MOBILE_LONG_PRESS_MS = 500;
 const MAX_PINNED_MEMORIES = 10;
 const DEFAULT_BRANCH_ID = 'branch_main';
+const TOKEN_LIMITS_BY_MODEL = {
+  'deepseek-chat': { min: 1, max: 8192, defaultValue: 4096 },
+  'deepseek-reasoner': { min: 1, max: 65536, defaultValue: 32768 },
+};
+const TOKEN_TIERS_BY_MODEL = {
+  'deepseek-chat': [1024, 2048, 4096, 6144, 8192],
+  'deepseek-reasoner': [8192, 16384, 32768, 49152, 65536],
+};
+const getTokenLimits = (modelName) => TOKEN_LIMITS_BY_MODEL[modelName] || TOKEN_LIMITS_BY_MODEL['deepseek-chat'];
+const getTokenTiers = (modelName) => TOKEN_TIERS_BY_MODEL[modelName] || TOKEN_TIERS_BY_MODEL['deepseek-chat'];
+const clamp = (value, min, max, fallback) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+};
+const normalizeTokenTierValue = (modelName, rawValue) => {
+  const tokenLimits = getTokenLimits(modelName);
+  const tiers = getTokenTiers(modelName);
+  const clamped = clamp(rawValue, tokenLimits.min, tokenLimits.max, tokenLimits.defaultValue);
+  return tiers.reduce((nearest, tier) => (
+    Math.abs(tier - clamped) < Math.abs(nearest - clamped) ? tier : nearest
+  ), tiers[0]);
+};
 
 const generateMessageId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -248,7 +271,7 @@ export default function ChatPage() {
     model: 'deepseek-chat',
     temperature: 1.3,
     top_p: 0.9,
-    max_tokens: 250,
+    max_tokens: TOKEN_LIMITS_BY_MODEL['deepseek-chat'].defaultValue,
     presence_penalty: 0,
     frequency_penalty: 0,
     context_window_tier: DEFAULT_CONTEXT_WINDOW_TIER,
@@ -258,12 +281,8 @@ export default function ChatPage() {
       return DEFAULT_ADVANCED_CHAT_CONFIG;
     }
     if (!character) return DEFAULT_ADVANCED_CHAT_CONFIG;
-    const clamp = (value, min, max, fallback) => {
-      const parsed = Number(value);
-      if (!Number.isFinite(parsed)) return fallback;
-      return Math.min(max, Math.max(min, parsed));
-    };
     const model = character.model === 'deepseek-reasoner' ? 'deepseek-reasoner' : 'deepseek-chat';
+    const tokenLimits = getTokenLimits(model);
     const normalizedContextWindowTier = normalizeContextWindowTier(character.context_window_tier, {
       canUseAdvancedConfig: canUseAdvancedChatConfig,
       isProUser,
@@ -272,7 +291,7 @@ export default function ChatPage() {
       model,
       temperature: clamp(character.temperature, 0, 2, DEFAULT_ADVANCED_CHAT_CONFIG.temperature),
       top_p: clamp(character.top_p, 0, 1, DEFAULT_ADVANCED_CHAT_CONFIG.top_p),
-      max_tokens: Math.round(clamp(character.max_tokens, 1, 8192, DEFAULT_ADVANCED_CHAT_CONFIG.max_tokens)),
+      max_tokens: normalizeTokenTierValue(model, clamp(character.max_tokens, tokenLimits.min, tokenLimits.max, tokenLimits.defaultValue)),
       presence_penalty: clamp(character.presence_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty),
       frequency_penalty: clamp(character.frequency_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty),
       context_window_tier: normalizedContextWindowTier,
@@ -287,13 +306,8 @@ export default function ChatPage() {
       return fallback;
     }
 
-    const clamp = (value, min, max, fallbackValue) => {
-      const parsed = Number(value);
-      if (!Number.isFinite(parsed)) return fallbackValue;
-      return Math.min(max, Math.max(min, parsed));
-    };
-
     const model = rawConfig.model === 'deepseek-reasoner' ? 'deepseek-reasoner' : 'deepseek-chat';
+    const tokenLimits = getTokenLimits(model);
     const normalizedContextWindowTier = normalizeContextWindowTier(rawConfig.context_window_tier, {
       canUseAdvancedConfig: canUseAdvancedChatConfig,
       isProUser,
@@ -303,7 +317,7 @@ export default function ChatPage() {
       model,
       temperature: clamp(rawConfig.temperature, 0, 2, fallback.temperature),
       top_p: clamp(rawConfig.top_p, 0, 1, fallback.top_p),
-      max_tokens: Math.round(clamp(rawConfig.max_tokens, 1, 8192, fallback.max_tokens)),
+      max_tokens: normalizeTokenTierValue(model, clamp(rawConfig.max_tokens, tokenLimits.min, tokenLimits.max, fallback.max_tokens)),
       presence_penalty: clamp(rawConfig.presence_penalty, -2, 2, fallback.presence_penalty),
       frequency_penalty: clamp(rawConfig.frequency_penalty, -2, 2, fallback.frequency_penalty),
       context_window_tier: normalizedContextWindowTier,

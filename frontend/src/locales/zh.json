@@ -405,7 +405,7 @@
     "hide": "隐藏助手（对话将被保留）",
     "welcome_message": "👋 您好！我是您的 AI 角色助手。描述您想创建的角色，我会帮您构建它。生成后您也可以要求我修改特定部分！",
     "input_placeholder": "描述您的角色或请求修改...",
-    "thinking": "思考中...",
+    "thinking": "生成人物中，这可能需要几分钟",
     "tip": "按 Enter 发送，Shift+Enter 换行",
     "token_notice": "使用AI助手会消耗token",
     "generated_prefix": "✨ 您的角色已生成！我已自动应用到表单中。",

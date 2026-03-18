@@ -16,7 +16,7 @@ export default function CharacterAssistantModal({
   onGeneratedDataChange
 }) {
   const { t } = useTranslation();
-  const { sessionToken } = useContext(AuthContext);
+  const { sessionToken, refreshUserData } = useContext(AuthContext);
   const toast = useToast();
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -89,6 +89,7 @@ export default function CharacterAssistantModal({
     setMessages(newMessages);
 
     setLoading(true);
+    let shouldRefreshUsage = false;
     try {
       const effectiveCurrentData = generatedData
         ? {
@@ -122,13 +123,21 @@ export default function CharacterAssistantModal({
         })
       });
 
+      // Backend may record token usage even if response is an error payload.
+      shouldRefreshUsage = true;
+
       const data = await response.json();
       
       if (response.ok) {
         setGeneratedData(data);
+
+        const isAdvancedCharacter = effectiveCurrentData.context_label === 'advanced';
+        const longDescriptionSection = isAdvancedCharacter
+          ? `\n\n**${t('character_form.long_description', '详细人物设定')}:**\n${data.long_description || ''}`
+          : '';
         
         // Add assistant response to chat
-        const assistantMessage = `${t('character_assistant.generated_prefix')}\n\n**${t('character_form.name')}:** ${data.name}\n\n**${t('character_form.tagline')}:** ${data.tagline}\n\n**${t('character_form.persona')}:** ${data.persona}\n\n**${t('character_form.greeting')}:** ${data.greeting}\n\n**${t('character_form.sample_dialogue')}:**\n${data.sample_dialogue}\n\n**${t('character_form.long_description', '详细人物设定')}:**\n${data.long_description || ''}`;
+        const assistantMessage = `${t('character_assistant.generated_prefix')}\n\n**${t('character_form.name')}:** ${data.name}\n\n**${t('character_form.tagline')}:** ${data.tagline}\n\n**${t('character_form.persona')}:** ${data.persona}\n\n**${t('character_form.greeting')}:** ${data.greeting}\n\n**${t('character_form.sample_dialogue')}:**\n${data.sample_dialogue}${longDescriptionSection}`;
         
         setMessages([...newMessages, { 
           role: 'assistant', 
@@ -155,6 +164,9 @@ export default function CharacterAssistantModal({
       }]);
       toast.show(errorMsg, { type: 'error' });
     } finally {
+      if (shouldRefreshUsage && refreshUserData) {
+        refreshUserData({ silent: true });
+      }
       setLoading(false);
     }
   };

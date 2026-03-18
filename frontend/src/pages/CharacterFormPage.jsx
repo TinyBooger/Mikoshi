@@ -703,6 +703,9 @@ export default function CharacterFormPage() {
                   resize: 'vertical',
                 }}
               />
+              <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>
+                创建角色时处理详细人物设定会消耗少量的token
+              </small>
               <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
                 {(charData.long_description || '').length}/{ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
               </small>

@@ -63,8 +63,46 @@ export default function CharacterSidebar({
   const [showWallpaperPicker, setShowWallpaperPicker] = React.useState(false);
   const [showMemoryManagement, setShowMemoryManagement] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('chat');
+  const [activeHintKey, setActiveHintKey] = React.useState(null);
   const { t } = useTranslation();
   const isProUser = !!userData?.is_pro;
+  const TOKEN_LIMITS_BY_MODEL = {
+    'deepseek-chat': { min: 1, max: 8192, defaultValue: 4096 },
+    'deepseek-reasoner': { min: 1, max: 65536, defaultValue: 32768 },
+  };
+  const TOKEN_TIERS_BY_MODEL = {
+    'deepseek-chat': [
+      { value: 1024, labelKey: 'short_sentence' },
+      { value: 2048, labelKey: 'paragraph' },
+      { value: 4096, labelKey: 'long' },
+      { value: 6144, labelKey: 'very_long' },
+      { value: 8192, labelKey: 'maximum' },
+    ],
+    'deepseek-reasoner': [
+      { value: 8192, labelKey: 'short_sentence' },
+      { value: 16384, labelKey: 'paragraph' },
+      { value: 32768, labelKey: 'long' },
+      { value: 49152, labelKey: 'very_long' },
+      { value: 65536, labelKey: 'maximum' },
+    ],
+  };
+  const getTokenLimits = (modelName) => TOKEN_LIMITS_BY_MODEL[modelName] || TOKEN_LIMITS_BY_MODEL['deepseek-chat'];
+  const getTokenTiers = (modelName) => TOKEN_TIERS_BY_MODEL[modelName] || TOKEN_TIERS_BY_MODEL['deepseek-chat'];
+  const clampValue = (value, min, max, fallback) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+  };
+  const normalizeTokenTierValue = (modelName, rawValue) => {
+    const tokenLimits = getTokenLimits(modelName);
+    const tiers = getTokenTiers(modelName);
+    const clamped = clampValue(rawValue, tokenLimits.min, tokenLimits.max, tokenLimits.defaultValue);
+    return tiers.reduce((nearest, tier) => (
+      Math.abs(tier.value - clamped) < Math.abs(nearest.value - clamped) ? tier : nearest
+    ), tiers[0]).value;
+  };
+  const selectedTokenLimits = getTokenLimits(advancedChatConfig?.model || 'deepseek-chat');
+  const selectedTokenTiers = getTokenTiers(advancedChatConfig?.model || 'deepseek-chat');
+
   const contextWindowTierOptions = getContextWindowTierOptions({
     canUseAdvancedConfig: canUseAdvancedChatConfig,
     isProUser,
@@ -77,6 +115,66 @@ export default function CharacterSidebar({
     const parsed = Number(value);
     const nextValue = Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
     setAdvancedChatConfig((prev) => ({ ...prev, [key]: nextValue }));
+  };
+  const handleModelChange = (nextModel) => {
+    const nextTokenLimits = getTokenLimits(nextModel);
+    setAdvancedChatConfig((prev) => ({
+      ...prev,
+      model: nextModel,
+      max_tokens: normalizeTokenTierValue(nextModel, nextTokenLimits.defaultValue),
+    }));
+  };
+  const InfoHint = ({ hintKey }) => {
+    const text = t(hintKey);
+    const isOpen = activeHintKey === hintKey;
+    return (
+      <span style={{ marginLeft: 6, display: 'inline-flex', alignItems: 'center', position: 'relative' }}>
+        <button
+          type="button"
+          onClick={() => setActiveHintKey((prev) => (prev === hintKey ? null : hintKey))}
+          title={text}
+          aria-label={text}
+          style={{
+            width: isMobile ? 24 : 18,
+            height: isMobile ? 24 : 18,
+            border: 'none',
+            background: 'transparent',
+            color: '#6b7280',
+            padding: 0,
+            borderRadius: '50%',
+            cursor: 'help',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <i className="bi bi-info-circle" style={{ fontSize: isMobile ? '0.95rem' : '0.85rem' }}></i>
+        </button>
+        {isOpen && (
+          <div
+            role="note"
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 6px)',
+              right: 0,
+              zIndex: 20,
+              minWidth: isMobile ? 220 : 260,
+              maxWidth: isMobile ? 280 : 340,
+              background: '#111827',
+              color: '#f9fafb',
+              borderRadius: 8,
+              padding: '0.45rem 0.55rem',
+              fontSize: '0.72rem',
+              lineHeight: 1.35,
+              boxShadow: '0 6px 18px rgba(0, 0, 0, 0.25)',
+              textAlign: 'left',
+            }}
+          >
+            {text}
+          </div>
+        )}
+      </span>
+    );
   };
   // Fix: Toggle menu for chat history dropdown, prevent event bubbling
   const toggleMenu = (chatId, e) => {
@@ -618,11 +716,12 @@ export default function CharacterSidebar({
 
               <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                 {t('chat.advanced_model')}
+                <InfoHint hintKey="character_form.advanced_help.model" />
               </label>
               <select
                 className="form-select form-select-sm"
                 value={advancedChatConfig?.model || 'deepseek-chat'}
-                onChange={(e) => setAdvancedChatConfig((prev) => ({ ...prev, model: e.target.value }))}
+                onChange={(e) => handleModelChange(e.target.value)}
                 disabled={!canUseAdvancedChatConfig}
                 style={{ marginBottom: 10, borderRadius: 8 }}
               >
@@ -632,6 +731,7 @@ export default function CharacterSidebar({
 
               <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                 {t('chat.advanced_temperature')}: {advancedChatConfig?.temperature ?? 1.3}
+                <InfoHint hintKey="character_form.advanced_help.temperature" />
               </label>
               <input
                 type="range"
@@ -646,6 +746,7 @@ export default function CharacterSidebar({
 
               <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                 {t('chat.advanced_top_p')}: {advancedChatConfig?.top_p ?? 0.9}
+                <InfoHint hintKey="character_form.advanced_help.top_p" />
               </label>
               <input
                 type="range"
@@ -659,18 +760,22 @@ export default function CharacterSidebar({
               />
 
               <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                {t('chat.advanced_max_tokens')}
+                {t('chat.advanced_max_tokens')}: {advancedChatConfig?.max_tokens ?? selectedTokenLimits.defaultValue}
+                <InfoHint hintKey="character_form.advanced_help.max_tokens" />
               </label>
-              <input
-                type="number"
-                className="form-control form-control-sm"
-                min="1"
-                max="8192"
-                value={advancedChatConfig?.max_tokens ?? 250}
-                onChange={(e) => updateConfig('max_tokens', e.target.value, 1, 8192, 250)}
+              <select
+                className="form-select form-select-sm"
+                value={normalizeTokenTierValue(advancedChatConfig?.model || 'deepseek-chat', advancedChatConfig?.max_tokens ?? selectedTokenLimits.defaultValue)}
+                onChange={(e) => setAdvancedChatConfig((prev) => ({ ...prev, max_tokens: Number(e.target.value) }))}
                 disabled={!canUseAdvancedChatConfig}
                 style={{ marginBottom: 10, borderRadius: 8 }}
-              />
+              >
+                {selectedTokenTiers.map((tier) => (
+                  <option key={tier.value} value={tier.value}>
+                    {t(`character_form.advanced_token_tiers.${tier.labelKey}`)} ({tier.value})
+                  </option>
+                ))}
+              </select>
 
               <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                 {t('chat.advanced_context_window')}
@@ -700,33 +805,35 @@ export default function CharacterSidebar({
               </div>
 
               <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                {t('chat.advanced_presence_penalty')}
+                {t('chat.advanced_presence_penalty')}: {advancedChatConfig?.presence_penalty ?? 0}
+                <InfoHint hintKey="character_form.advanced_help.presence_penalty" />
               </label>
               <input
-                type="number"
-                className="form-control form-control-sm"
+                type="range"
                 min="-2"
                 max="2"
                 step="0.1"
                 value={advancedChatConfig?.presence_penalty ?? 0}
                 onChange={(e) => updateConfig('presence_penalty', e.target.value, -2, 2, 0)}
                 disabled={!canUseAdvancedChatConfig}
-                style={{ marginBottom: 10, borderRadius: 8 }}
+                className="form-range"
+                style={{ width: '100%', marginBottom: 10 }}
               />
 
               <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                {t('chat.advanced_frequency_penalty')}
+                {t('chat.advanced_frequency_penalty')}: {advancedChatConfig?.frequency_penalty ?? 0}
+                <InfoHint hintKey="character_form.advanced_help.frequency_penalty" />
               </label>
               <input
-                type="number"
-                className="form-control form-control-sm"
+                type="range"
                 min="-2"
                 max="2"
                 step="0.1"
                 value={advancedChatConfig?.frequency_penalty ?? 0}
                 onChange={(e) => updateConfig('frequency_penalty', e.target.value, -2, 2, 0)}
                 disabled={!canUseAdvancedChatConfig}
-                style={{ marginBottom: 8, borderRadius: 8 }}
+                className="form-range"
+                style={{ width: '100%', marginBottom: 8 }}
               />
 
               <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4 }}>
