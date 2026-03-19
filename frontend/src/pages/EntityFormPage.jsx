@@ -10,6 +10,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import { silentExpGain } from '../utils/expUtils';
+import { getApiErrorMessage } from '../utils/apiErrorUtils';
 
 export default function EntityFormPage() {
   const { t } = useTranslation();
@@ -212,7 +213,7 @@ export default function EntityFormPage() {
         }
         navigate("/profile");
       } else {
-        toast.show(data.message || data.detail || t(`${entityConfig.transactionKeyPrefix}.error`), { type: 'error' });
+        toast.show(getApiErrorMessage(data, t(`${entityConfig.transactionKeyPrefix}.error`), t), { type: 'error' });
       }
     } catch (error) {
       toast.show(t(`${entityConfig.transactionKeyPrefix}.error`), { type: 'error' });

@@ -16,6 +16,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import LevelProgress from '../components/LevelProgress';
 import AvatarFrame from '../components/AvatarFrame';
+import { getApiErrorMessage } from '../utils/apiErrorUtils';
 
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
@@ -506,7 +507,7 @@ export default function ProfilePage() {
       setShowModal(false);
       await refreshUserData();
     } else {
-      toast.show(data.message || data.detail);
+      toast.show(getApiErrorMessage(data, t('profile.update_failed', 'Profile update failed'), t));
     }
   };
 

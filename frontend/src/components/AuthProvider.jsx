@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getApiErrorMessage } from '../utils/apiErrorUtils';
 
 
 export const AuthContext = createContext();
@@ -115,7 +116,7 @@ export function AuthProvider({ children }) {
         setError(null);
         return true;
       } else {
-        setError(result.detail || 'Registration failed');
+        setError(getApiErrorMessage(result, 'Registration failed', t));
         setUserData(null);
         setSessionToken(null);
         localStorage.removeItem('sessionToken');
@@ -250,8 +251,9 @@ export function AuthProvider({ children }) {
         setError(null);
         return { success: true };
       } else {
-        setError(result.detail || 'Registration failed');
-        return { success: false, message: result.detail };
+        const message = getApiErrorMessage(result, 'Registration failed', t);
+        setError(message);
+        return { success: false, message };
       }
     } catch (err) {
       setError('Registration error');

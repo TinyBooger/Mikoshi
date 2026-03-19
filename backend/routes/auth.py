@@ -12,6 +12,7 @@ from utils.sms_utils import send_verification_code, verify_code, create_verified
 from utils.captcha_utils import verify_captcha_param, get_captcha_verifier
 from utils.audit_logger import record_audit
 from utils.request_utils import get_client_ip, get_user_agent, get_request_metadata
+from utils.image_moderation import moderate_image
 import re
 from typing import Optional
 
@@ -164,14 +165,26 @@ def register_user(
             invitation.used_at = datetime.now(UTC)
         db.commit()
 
-    # If an image was uploaded, save it and update the user record
+    # If an image was uploaded, moderate then save it
     if profile_pic:
         try:
+            import io
             from utils.local_storage_utils import save_image
+
+            image_bytes = profile_pic.file.read()
+            is_safe, label = moderate_image(image_bytes)
+            if not is_safe:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Profile image rejected by content moderation ({label})"
+                )
+
             # Need to refresh user to ensure id exists (id is email here)
-            user.profile_pic = save_image(profile_pic.file, 'user', user.id, profile_pic.filename)
+            user.profile_pic = save_image(io.BytesIO(image_bytes), 'user', user.id, profile_pic.filename)
             db.commit()
             db.refresh(user)
+        except HTTPException:
+            raise
         except Exception:
             # Non-fatal: registration succeeded but image saving failed
             pass
@@ -513,13 +526,25 @@ def register_with_phone(
     db.commit()
     db.refresh(user)
     
-    # 如果上传了头像，保存它
+    # 如果上传了头像，先审核再保存
     if profile_pic:
         try:
+            import io
             from utils.local_storage_utils import save_image
-            user.profile_pic = save_image(profile_pic.file, 'user', user.id, profile_pic.filename)
+
+            image_bytes = profile_pic.file.read()
+            is_safe, label = moderate_image(image_bytes)
+            if not is_safe:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Profile image rejected by content moderation ({label})"
+                )
+
+            user.profile_pic = save_image(io.BytesIO(image_bytes), 'user', user.id, profile_pic.filename)
             db.commit()
             db.refresh(user)
+        except HTTPException:
+            raise
         except Exception:
             pass
     

@@ -10,6 +10,7 @@ from database import get_db
 from models import Character, User, Tag, UserLikedCharacter
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
+from utils.image_moderation import moderate_image
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.validators import validate_character_fields
 from utils.content_censor import censor_form_payload
@@ -283,10 +284,20 @@ async def create_character(
     db.refresh(char)
 
     if picture:
-        char.picture = save_image(picture.file, 'character', char.id, picture.filename)
+        image_bytes = await picture.read()
+        is_safe, label = moderate_image(image_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
+        import io
+        char.picture = save_image(io.BytesIO(image_bytes), 'character', char.id, picture.filename)
     if avatar_picture:
+        avatar_bytes = await avatar_picture.read()
+        is_safe, label = moderate_image(avatar_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Avatar image rejected by content moderation ({label})")
+        import io
         char.avatar_picture = save_image(
-            avatar_picture.file,
+            io.BytesIO(avatar_bytes),
             'character',
             char.id,
             avatar_picture.filename,
@@ -432,10 +443,20 @@ async def update_character(
         char.is_forkable = is_forkable
 
     if picture:
-        char.picture = save_image(picture.file, 'character', char.id, picture.filename)
+        image_bytes = await picture.read()
+        is_safe, label = moderate_image(image_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
+        import io
+        char.picture = save_image(io.BytesIO(image_bytes), 'character', char.id, picture.filename)
     if avatar_picture:
+        avatar_bytes = await avatar_picture.read()
+        is_safe, label = moderate_image(avatar_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Avatar image rejected by content moderation ({label})")
+        import io
         char.avatar_picture = save_image(
-            avatar_picture.file,
+            io.BytesIO(avatar_bytes),
             'character',
             char.id,
             avatar_picture.filename,

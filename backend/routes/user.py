@@ -5,6 +5,7 @@ from database import get_db
 from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
+from utils.image_moderation import moderate_image
 from utils.user_utils import build_user_response, enrich_user_with_character_count
 from utils.validators import validate_account_fields
 from utils.level_system import award_exp_with_limits
@@ -125,8 +126,13 @@ async def update_profile(
         current_user.bio = bio
 
     if profile_pic:
-        # Save the uploaded profile picture locally and store the relative path
-        current_user.profile_pic = save_image(profile_pic.file, 'user', current_user.id, profile_pic.filename)
+        # Moderate the image before saving
+        image_bytes = await profile_pic.read()
+        is_safe, label = moderate_image(image_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Profile image rejected by content moderation ({label})")
+        import io
+        current_user.profile_pic = save_image(io.BytesIO(image_bytes), 'user', current_user.id, profile_pic.filename)
 
     db.commit()
     db.refresh(current_user)

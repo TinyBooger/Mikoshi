@@ -6,6 +6,7 @@ from typing import List, Optional
 from database import get_db
 from models import Persona, User, Tag, UserLikedPersona
 from utils.local_storage_utils import save_image
+from utils.image_moderation import moderate_image
 from utils.session import get_current_user
 from datetime import datetime, UTC
 from schemas import PersonaOut, PersonaListOut
@@ -165,7 +166,12 @@ async def create_persona(
     db.commit()
     db.refresh(persona)
     if picture:
-        persona.picture = save_image(picture.file, 'persona', persona.id, picture.filename)
+        image_bytes = await picture.read()
+        is_safe, label = moderate_image(image_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
+        import io
+        persona.picture = save_image(io.BytesIO(image_bytes), 'persona', persona.id, picture.filename)
         db.commit()
         db.refresh(persona)
     
@@ -265,7 +271,12 @@ async def update_persona(
     if is_forkable is not None:
         persona.is_forkable = is_forkable
     if picture:
-        persona.picture = save_image(picture.file, 'persona', persona.id, picture.filename)
+        image_bytes = await picture.read()
+        is_safe, label = moderate_image(image_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
+        import io
+        persona.picture = save_image(io.BytesIO(image_bytes), 'persona', persona.id, picture.filename)
     db.commit()
     db.refresh(persona)
     return JSONResponse(content={

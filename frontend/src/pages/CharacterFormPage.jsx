@@ -11,6 +11,7 @@ import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import CharacterAssistantModal from '../components/CharacterAssistantModal';
 import { silentExpGain } from '../utils/expUtils';
+import { getApiErrorMessage } from '../utils/apiErrorUtils';
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
@@ -351,7 +352,7 @@ export default function CharacterFormPage() {
         }
         navigate(mode === 'edit' ? "/profile" : "/profile");
       } else {
-        toast.show(data.message || data.detail || t('character_form.error'), { type: 'error' });
+        toast.show(getApiErrorMessage(data, t('character_form.error'), t), { type: 'error' });
       }
     } catch (error) {
       toast.show(t('character_form.error'), { type: 'error' });
