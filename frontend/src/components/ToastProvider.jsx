@@ -42,7 +42,7 @@ export function ToastProvider({ children }) {
 const styles = {
   container: {
     position: 'fixed',
-    top: 16,
+    top: 72,
     right: 16,
     zIndex: 3000,
     display: 'flex',

@@ -6,6 +6,7 @@ from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, Use
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image
+from utils.text_moderation import moderate_form_payload
 from utils.user_utils import build_user_response, enrich_user_with_character_count
 from utils.validators import validate_account_fields
 from utils.level_system import award_exp_with_limits
@@ -120,6 +121,16 @@ async def update_profile(
     error = validate_account_fields(name=name)
     if error:
         raise HTTPException(status_code=400, detail=error)
+
+    text_safe, blocked_field, blocked_label = moderate_form_payload({
+        "name": name,
+        "bio": bio,
+    })
+    if not text_safe:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
+        )
 
     current_user.name = name
     if bio is not None:

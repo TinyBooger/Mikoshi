@@ -7,6 +7,7 @@ from database import get_db
 from models import Persona, User, Tag, UserLikedPersona
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image
+from utils.text_moderation import moderate_form_payload
 from utils.session import get_current_user
 from datetime import datetime, UTC
 from schemas import PersonaOut, PersonaListOut
@@ -122,6 +123,19 @@ async def create_persona(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    text_safe, blocked_field, blocked_label = moderate_form_payload({
+        "name": name,
+        "description": description,
+        "intro": intro,
+        "tags": tags,
+        "forked_from_name": forked_from_name,
+    })
+    if not text_safe:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
+        )
+
     censored_payload, content_censored = censor_form_payload({
         "name": name,
         "description": description,
@@ -237,6 +251,18 @@ async def update_persona(
         raise HTTPException(status_code=404, detail="Persona not found")
     if persona.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
+
+    text_safe, blocked_field, blocked_label = moderate_form_payload({
+        "name": name,
+        "description": description,
+        "intro": intro,
+        "tags": tags,
+    })
+    if not text_safe:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
+        )
 
     censored_payload, content_censored = censor_form_payload({
         "name": name,

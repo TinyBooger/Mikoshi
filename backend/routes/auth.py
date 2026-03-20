@@ -13,6 +13,7 @@ from utils.captcha_utils import verify_captcha_param, get_captcha_verifier
 from utils.audit_logger import record_audit
 from utils.request_utils import get_client_ip, get_user_agent, get_request_metadata
 from utils.image_moderation import moderate_image
+from utils.text_moderation import moderate_form_payload
 import re
 from typing import Optional
 
@@ -140,6 +141,17 @@ def register_user(
     # Proceed with user registration
     if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+
+    text_safe, blocked_field, blocked_label = moderate_form_payload({
+        "name": name,
+        "bio": bio,
+    })
+    if not text_safe:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
+        )
+
     error = validate_account_fields(name=name)
     if error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
@@ -497,6 +509,16 @@ def register_with_phone(
             )
     
     # 验证用户名
+    text_safe, blocked_field, blocked_label = moderate_form_payload({
+        "name": name,
+        "bio": bio,
+    })
+    if not text_safe:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
+        )
+
     error = validate_account_fields(name=name)
     if error:
         raise HTTPException(

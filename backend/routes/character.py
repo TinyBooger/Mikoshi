@@ -14,6 +14,7 @@ from utils.image_moderation import moderate_image
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.validators import validate_character_fields
 from utils.content_censor import censor_form_payload
+from utils.text_moderation import moderate_form_payload
 from schemas import CharacterOut, CharacterListOut
 from utils.level_system import award_exp_with_limits
 from utils.llm_client import client
@@ -182,6 +183,22 @@ async def create_character(
 ):
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    text_safe, blocked_field, blocked_label = moderate_form_payload({
+        "name": name,
+        "persona": persona,
+        "tagline": tagline,
+        "tags": tags,
+        "greeting": greeting,
+        "sample_dialogue": sample_dialogue,
+        "long_description": long_description,
+        "forked_from_name": forked_from_name,
+    })
+    if not text_safe:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
+        )
 
     censored_payload, content_censored = censor_form_payload({
         "name": name,
@@ -355,6 +372,21 @@ async def update_character(
     char = db.query(Character).filter(Character.id == id).first()
     if not char or char.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not allowed")
+
+    text_safe, blocked_field, blocked_label = moderate_form_payload({
+        "name": name,
+        "persona": persona,
+        "tagline": tagline,
+        "tags": tags,
+        "greeting": greeting,
+        "sample_dialogue": sample_dialogue,
+        "long_description": long_description,
+    })
+    if not text_safe:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
+        )
 
     censored_payload, content_censored = censor_form_payload({
         "name": name,
