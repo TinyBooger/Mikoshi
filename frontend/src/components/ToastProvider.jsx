@@ -11,7 +11,7 @@ let idCounter = 0;
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
-  const show = useCallback((message, { type = 'info', duration = 4000 } = {}) => {
+  const show = useCallback((message, { type = 'info', duration = 15000 } = {}) => {
     const id = ++idCounter;
     setToasts(prev => [...prev, { id, message, type }]);
     if (duration > 0) {
@@ -72,10 +72,14 @@ const styles = {
   close: {
     position: 'absolute',
     right: 8,
-    top: 6,
-    border: 'none',
-    background: 'transparent',
-    fontSize: 16,
+    top: 8,
+    border: '1px solid #dcdfe3',
+    background: '#ffffff',
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: 600,
+    padding: '2px 8px',
+    lineHeight: 1.2,
     cursor: 'pointer'
   }
 };
