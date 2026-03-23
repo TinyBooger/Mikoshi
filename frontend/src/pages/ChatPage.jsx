@@ -1146,55 +1146,81 @@ export default function ChatPage() {
         throw new Error(getChatErrorMessage(errorPayload));
       }
 
+      if (!response.body) {
+        throw new Error(errorMessage);
+      }
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let accumulatedReply = '';
+      let pendingEventBuffer = '';
+
+      const processEventPayload = (rawPayload) => {
+        const payload = rawPayload
+          .split('\n')
+          .filter((line) => line.startsWith('data: '))
+          .map((line) => line.slice(6))
+          .join('\n');
+
+        if (!payload) {
+          return;
+        }
+
+        const data = JSON.parse(payload);
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        if (data.chunk) {
+          accumulatedReply += data.chunk;
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1] = {
+              role: 'assistant',
+              content: accumulatedReply,
+              message_id: assistantMessageId,
+              is_pinned: false,
+            };
+            return ensureMessageIds(newMessages);
+          });
+        }
+
+        if (data.done) {
+          applyChatLimits(data.limits);
+          if (refreshUserData) {
+            refreshUserData({ silent: true });
+          }
+          if (data.context_window) {
+            setServerContextWindowUsage(data.context_window);
+          }
+          if (data.chat_entry) {
+            const nextChatEntry = upsertChatHistoryEntryLocally(data.chat_entry);
+            setMessages(buildDisplayMessagesForChat(nextChatEntry));
+          } else {
+            setMessages(ensureMessageIds([...nextMessages, { role: 'assistant', content: accumulatedReply, message_id: assistantMessageId, is_pinned: false }]));
+          }
+        }
+      };
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        pendingEventBuffer += decoder.decode(value || new Uint8Array(), { stream: !done });
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        const events = pendingEventBuffer.split('\n\n');
+        pendingEventBuffer = events.pop() || '';
 
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const data = JSON.parse(line.slice(6));
-
-          if (data.error) {
-            throw new Error(data.error);
-          }
-
-          if (data.chunk) {
-            accumulatedReply += data.chunk;
-            setMessages((prev) => {
-              const newMessages = [...prev];
-              newMessages[newMessages.length - 1] = {
-                role: 'assistant',
-                content: accumulatedReply,
-                message_id: assistantMessageId,
-                is_pinned: false,
-              };
-              return ensureMessageIds(newMessages);
-            });
-          }
-
-          if (data.done) {
-            applyChatLimits(data.limits);
-            if (refreshUserData) {
-              refreshUserData({ silent: true });
-            }
-            if (data.context_window) {
-              setServerContextWindowUsage(data.context_window);
-            }
-            if (data.chat_entry) {
-              const nextChatEntry = upsertChatHistoryEntryLocally(data.chat_entry);
-              setMessages(buildDisplayMessagesForChat(nextChatEntry));
-            } else {
-              setMessages(ensureMessageIds([...nextMessages, { role: 'assistant', content: accumulatedReply, message_id: assistantMessageId, is_pinned: false }]));
-            }
-          }
+        for (const eventPayload of events) {
+          processEventPayload(eventPayload);
         }
+
+        if (done) {
+          break;
+        }
+      }
+
+      if (pendingEventBuffer.trim()) {
+        processEventPayload(pendingEventBuffer);
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
