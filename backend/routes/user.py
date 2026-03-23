@@ -12,6 +12,7 @@ from utils.validators import validate_account_fields
 from utils.level_system import award_exp_with_limits
 from utils.badge_system import check_and_award_chat_badges, award_badge
 from utils.sms_utils import send_verification_code, verify_code
+from sqlalchemy import func
 import re
 
 router = APIRouter()
@@ -20,12 +21,39 @@ router = APIRouter()
 
 @router.get("/api/users/browse", response_model=UserListOut)
 def browse_users(
+    sort: str = Query("total_rank", pattern="^(total_rank|recent_hot|recent_updated)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    """Get users sorted by views (descending)"""
-    query = db.query(User).order_by(User.views.desc(), User.level.desc())
+    """Get creators with selectable ranking modes."""
+    query = db.query(User)
+
+    if sort in {"recent_hot", "recent_updated"}:
+        latest_character_upload = (
+            db.query(
+                Character.creator_id.label("creator_id"),
+                func.max(Character.created_time).label("latest_character_created_time"),
+            )
+            .filter(
+                Character.creator_id.isnot(None),
+                Character.is_public == True,
+            )
+            .group_by(Character.creator_id)
+            .subquery()
+        )
+
+        query = (
+            query.join(latest_character_upload, latest_character_upload.c.creator_id == User.id)
+            .order_by(
+                latest_character_upload.c.latest_character_created_time.desc(),
+                User.views.desc(),
+                User.level.desc(),
+            )
+        )
+    else:
+        query = query.order_by(User.views.desc(), User.level.desc())
+
     total = query.count()
     users = query.offset((page - 1) * page_size).limit(page_size).all()
     items = [enrich_user_with_character_count(user, db) for user in users]

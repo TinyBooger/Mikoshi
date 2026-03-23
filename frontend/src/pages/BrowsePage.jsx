@@ -27,6 +27,10 @@ function BrowsePage() {
     { key: 'popular', label: t('browse.popular', 'Popular') },
     { key: 'recent', label: t('browse.recent', 'Recent') },
   ];
+  const USER_SORT_OPTIONS = [
+    { key: 'total_rank', label: t('browse.creator_total_rank', '总排行') },
+    { key: 'recent_updated', label: t('browse.creator_recent_updated', '最近更新') },
+  ];
 
   // State
   const [activeMainTab, setActiveMainTab] = useState('characters');
@@ -42,7 +46,9 @@ function BrowsePage() {
   const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const [showFirstTimeBanner, setShowFirstTimeBanner] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const loadMoreRef = useRef(null);
+  const sortDropdownRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => setViewportWidth(window.innerWidth);
@@ -68,6 +74,7 @@ function BrowsePage() {
 
   const masonryColumnCount = viewportWidth < 768 ? 2 : 5;
   const isMobile = viewportWidth < 768;
+  const currentSortOptions = activeMainTab === 'users' ? USER_SORT_OPTIONS : SUBTABS;
 
   // Distribute items by index so visual reading order is left-to-right, then next row.
   const masonryColumns = useMemo(() => {
@@ -85,7 +92,16 @@ function BrowsePage() {
     let main = 'characters', sub = 'popular';
     if (pathParts[0] === 'browse') {
       if (pathParts[1] && MAIN_TABS.some(t => t.key === pathParts[1])) main = pathParts[1];
-      if (pathParts[2] && SUBTABS.some(t => t.key === pathParts[2])) sub = pathParts[2];
+      if (main === 'users') {
+        sub = 'total_rank';
+        if (pathParts[2] && USER_SORT_OPTIONS.some(option => option.key === pathParts[2])) {
+          sub = pathParts[2];
+        } else if (pathParts[2] === 'recent' || pathParts[2] === 'recent_hot') {
+          sub = 'recent_updated';
+        }
+      } else if (pathParts[2] && SUBTABS.some(t => t.key === pathParts[2])) {
+        sub = pathParts[2];
+      }
     }
     setActiveMainTab(main);
     setActiveSubTab(sub);
@@ -101,7 +117,10 @@ function BrowsePage() {
 
   // Navigation
   const handleMainTab = (tab) => {
-    navigate(`/browse/${tab}/${activeSubTab}`);
+    const nextSubTab = tab === 'users'
+      ? (USER_SORT_OPTIONS.some(option => option.key === activeSubTab) ? activeSubTab : 'total_rank')
+      : (SUBTABS.some(option => option.key === activeSubTab) ? activeSubTab : 'popular');
+    navigate(`/browse/${tab}/${nextSubTab}`);
   };
   const handleSubTab = (sub) => {
     navigate(`/browse/${activeMainTab}/${sub}`);
@@ -130,6 +149,9 @@ function BrowsePage() {
       url = `${window.API_BASE_URL}/api/users/browse`;
     }
     const params = new URLSearchParams({ short: 'false', page: String(page) });
+    if (activeMainTab === 'users') {
+      params.set('sort', activeSubTab);
+    }
     const fetchUrl = `${url}?${params.toString()}`;
     fetch(fetchUrl, { headers: { 'Authorization': sessionToken } })
       .then(res => res.json())
@@ -197,6 +219,20 @@ function BrowsePage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
+        setShowSortDropdown(false);
+      }
+    };
+
+    if (showSortDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showSortDropdown]);
+
   // Title logic
   const getSectionTitle = () => {
     if (activeMainTab === 'characters') {
@@ -212,7 +248,8 @@ function BrowsePage() {
       if (activeSubTab === 'recent') return t('browse.recent_personas', 'Recent Personas');
       if (activeSubTab === 'recommended') return t('browse.recommended_personas', 'Recommended Personas');
     } else if (activeMainTab === 'users') {
-      return t('browse.users_by_views', 'Users');
+      if (activeSubTab === 'recent_updated') return t('browse.creator_recent_updated', '最近更新');
+      return t('browse.creator_total_rank', '总排行');
     }
     return '';
   };
@@ -401,75 +438,132 @@ function BrowsePage() {
         )}
 
         {/* Main Tabs */}
-        <div className="browse-main-tabs d-flex flex-row mb-3 w-100" style={{ gap: 12, justifyContent: 'flex-start' }}>
-          {MAIN_TABS.map(tab => (
-            <PrimaryButton
-            key={tab.key}
-            onClick={() => handleMainTab(tab.key)}
-            style={{
-              background: activeMainTab === tab.key ? '#736B92' : '#f5f6fa',
-              color: activeMainTab === tab.key ? '#fff' : '#232323',
-              borderRadius: 13,
-              fontSize: '1.02rem',
-              padding: '0.48rem 1.2rem',
-              boxShadow: activeMainTab === tab.key ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-              fontWeight: 700,
-            }}
-            onMouseEnter={e => {
-              if (activeMainTab !== tab.key) {
-                e.currentTarget.style.background = '#e9ecef';
-              } else {
-                e.currentTarget.style.background = '#6A6286';
-              }
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = activeMainTab === tab.key ? '#736B92' : '#f5f6fa';
-            }}
-          >
-            {tab.label}
-          </PrimaryButton>
-        ))}
-      </div>
-      {/* Sub Tabs - Hidden for users */}
-      {activeMainTab !== 'users' && (
-      <div className="browse-sub-tabs d-flex flex-row mb-3 w-100" style={{ gap: 12, justifyContent: 'flex-start' }}>
-        {SUBTABS.map(sub => (
-          <button
-            key={sub.key}
-            className="fw-bold border-0 bg-transparent"
-            style={{
-              color: activeSubTab === sub.key ? '#736B92' : '#888',
-              fontWeight: 700,
-              fontSize: '0.86rem',
-              background: 'transparent',
-              borderBottom: activeSubTab === sub.key ? '2px solid #736B92' : '2px solid transparent',
-              borderRadius: 0,
-              outline: 'none',
-              transition: 'color 0.14s, border-bottom 0.14s',
-              padding: '0.4rem 0',
-              minWidth: 72,
-              letterSpacing: '0.16px',
-              cursor: 'pointer',
-            }}
-            onClick={() => handleSubTab(sub.key)}
-            onMouseEnter={e => {
-              if (activeSubTab !== sub.key) {
-                e.currentTarget.style.color = '#736B92';
-                e.currentTarget.style.borderBottom = '2px solid #736B92';
-              }
-            }}
-            onMouseLeave={e => {
-              if (activeSubTab !== sub.key) {
-                e.currentTarget.style.color = '#888';
-                e.currentTarget.style.borderBottom = '2px solid transparent';
-              }
-            }}
-          >
-            {sub.label}
-          </button>
-        ))}
-      </div>
-      )}
+        <div className="browse-main-tabs d-flex flex-row mb-3 w-100 align-items-center" style={{ gap: 12, justifyContent: 'space-between' }}>
+          <div className="d-flex flex-row" style={{ gap: 12 }}>
+            {MAIN_TABS.map(tab => (
+              <PrimaryButton
+              key={tab.key}
+              onClick={() => handleMainTab(tab.key)}
+              style={{
+                background: activeMainTab === tab.key ? '#736B92' : '#f5f6fa',
+                color: activeMainTab === tab.key ? '#fff' : '#232323',
+                borderRadius: 13,
+                fontSize: '1.02rem',
+                padding: '0.48rem 1.2rem',
+                boxShadow: activeMainTab === tab.key ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                fontWeight: 700,
+              }}
+              onMouseEnter={e => {
+                if (activeMainTab !== tab.key) {
+                  e.currentTarget.style.background = '#e9ecef';
+                } else {
+                  e.currentTarget.style.background = '#6A6286';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = activeMainTab === tab.key ? '#736B92' : '#f5f6fa';
+              }}
+            >
+              {tab.label}
+            </PrimaryButton>
+          ))}
+          </div>
+
+          {/* Sort Dropdown */}
+          {currentSortOptions.length > 0 && (
+            <div ref={sortDropdownRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowSortDropdown(!showSortDropdown)}
+                style={{
+                  background: '#f5f6fa',
+                  color: '#232323',
+                  border: 'none',
+                  borderRadius: 13,
+                  fontSize: '1rem',
+                  padding: '0.48rem 1.2rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'background 0.2s, color 0.2s',
+                  whiteSpace: 'nowrap'
+                }}
+                onMouseEnter={e => {
+                  if (!showSortDropdown) {
+                    e.currentTarget.style.background = '#e9ecef';
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!showSortDropdown) {
+                    e.currentTarget.style.background = '#f5f6fa';
+                  } else {
+                    e.currentTarget.style.background = '#e9ecef';
+                  }
+                }}
+              >
+                <i className="bi bi-sort-down" style={{ fontSize: '1.1rem' }}></i>
+                <span style={{ fontSize: '0.95rem' }}>{t('common.sort', 'Sort')}</span>
+              </button>
+
+              {/* Dropdown Menu */}
+              {showSortDropdown && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '8px',
+                    background: '#fff',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+                    zIndex: 1000,
+                    minWidth: '160px',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {currentSortOptions.map((option, index) => (
+                    <button
+                      key={option.key}
+                      onClick={() => {
+                        handleSubTab(option.key);
+                        setShowSortDropdown(false);
+                      }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '10px 16px',
+                        background: activeSubTab === option.key ? 'rgba(115, 107, 146, 0.08)' : '#fff',
+                        border: 'none',
+                        color: activeSubTab === option.key ? '#736B92' : '#232323',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontWeight: activeSubTab === option.key ? 600 : 500,
+                        fontSize: '0.95rem',
+                        transition: 'background 0.2s',
+                        borderBottom: index < currentSortOptions.length - 1 ? '1px solid #f0f0f0' : 'none'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = 'rgba(115, 107, 146, 0.08)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = activeSubTab === option.key ? 'rgba(115, 107, 146, 0.08)' : '#fff';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {activeSubTab === option.key && (
+                          <i className="bi bi-check" style={{ fontSize: '0.9rem', fontWeight: 'bold' }}></i>
+                        )}
+                        <span>{option.label}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      {/* Sub Tabs - Hidden now, using dropdown instead */}
       {/* PC-adapted content wrapper */}
       <div style={{ width: '100%', margin: '0 auto' }}>
         {activeMainTab === 'users' ? (

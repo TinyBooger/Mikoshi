@@ -50,6 +50,8 @@
     "scenes": "场景",
     "personas": "人设",
     "users": "创作者",
+    "creator_total_rank": "总排行",
+    "creator_recent_updated": "最近更新",
     "for_you": "为您推荐",
     "popular": "热门",
     "recent": "最近",
@@ -508,6 +510,7 @@
   "common": {
     "confirm": "确认",
     "cancel": "取消",
+    "sort": "排序",
     "save": "保存",
     "create": "创建",
     "delete": "删除",

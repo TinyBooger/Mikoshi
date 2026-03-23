@@ -50,6 +50,8 @@
     "scenes": "Scenes",
     "personas": "Personas",
     "users": "Users",
+    "creator_total_rank": "Top Ranking",
+    "creator_recent_updated": "Recently Updated",
     "for_you": "For You",
     "popular": "Popular",
     "recent": "Recent",
@@ -500,6 +502,7 @@
   "common": {
     "confirm": "Confirm",
     "cancel": "Cancel",
+    "sort": "Sort",
     "save": "Save",
     "create": "Create",
     "delete": "Delete",
