@@ -41,6 +41,36 @@ const clamp = (value, min, max, fallback) => {
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
 };
+
+const getMessageActionButtonStyle = (disabled) => ({
+  border: 'none',
+  background: 'transparent',
+  color: disabled ? '#d1d5db' : '#9ca3af',
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  width: 26,
+  height: 26,
+  borderRadius: 6,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 0,
+  fontSize: '0.82rem',
+  transition: 'background-color 0.15s ease, color 0.15s ease, transform 0.15s ease',
+});
+
+const handleMessageActionMouseEnter = (event, disabled) => {
+  if (disabled) return;
+  event.currentTarget.style.background = 'rgba(31, 41, 55, 0.08)';
+  event.currentTarget.style.color = '#4b5563';
+  event.currentTarget.style.transform = 'translateY(-1px)';
+};
+
+const handleMessageActionMouseLeave = (event, disabled) => {
+  if (disabled) return;
+  event.currentTarget.style.background = 'transparent';
+  event.currentTarget.style.color = '#9ca3af';
+  event.currentTarget.style.transform = 'none';
+};
 const normalizeTokenTierValue = (modelName, rawValue) => {
   const tokenLimits = getTokenLimits(modelName);
   const tiers = getTokenTiers(modelName);
@@ -1494,6 +1524,47 @@ export default function ChatPage() {
     setEditingMessageText('');
   };
 
+  const buildForkedMessagesFromUserMessage = (messageId, replacementContent = null) => {
+    const originalMessages = ensureMessageIds(messages);
+    const targetIndex = originalMessages.findIndex((message) => message?.message_id === messageId);
+    if (targetIndex < 0) return null;
+
+    const targetMessage = originalMessages[targetIndex];
+    if (targetMessage?.role !== 'user') return null;
+
+    const nextContent = typeof replacementContent === 'string' ? replacementContent : targetMessage.content || '';
+    const forkedMessages = ensureMessageIds(
+      originalMessages.slice(0, targetIndex + 1).map((message) => {
+        if (!message || typeof message !== 'object') return message;
+        if (message.message_id !== messageId) return message;
+        return {
+          ...message,
+          content: nextContent,
+          message_id: generateMessageId(),
+          is_pinned: false,
+        };
+      })
+    );
+
+    return { originalMessages, targetMessage, forkedMessages };
+  };
+
+  const handleResendMessage = async (message) => {
+    if (!message?.message_id || message.role !== 'user' || !selectedCharacter || !!editingMessageId || sending) return;
+
+    const forkData = buildForkedMessagesFromUserMessage(message.message_id);
+    if (!forkData) return;
+
+    setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
+    await sendChatTurn({
+      nextMessages: forkData.forkedMessages,
+      forkFromMessageId: message.message_id,
+      sourceBranchId: selectedChat?.active_branch_id || null,
+      restoreMessagesOnError: forkData.originalMessages,
+      errorMessage: 'Failed to resend from this message.',
+    });
+  };
+
   const handleSaveEditedMessage = async () => {
     if (!editingMessageId || !selectedCharacter || sending) return;
 
@@ -1503,32 +1574,15 @@ export default function ChatPage() {
       return;
     }
 
-    const originalMessages = ensureMessageIds(messages);
-    const targetIndex = originalMessages.findIndex((message) => message?.message_id === editingMessageId);
-    if (targetIndex < 0) return;
-
-    const targetMessage = originalMessages[targetIndex];
-    if (targetMessage?.role !== 'user') return;
-
-    const forkedMessages = ensureMessageIds(
-      originalMessages.slice(0, targetIndex + 1).map((message) => {
-        if (!message || typeof message !== 'object') return message;
-        if (message.message_id !== editingMessageId) return message;
-        return {
-          ...message,
-          content: trimmedContent,
-          message_id: generateMessageId(),
-          is_pinned: false,
-        };
-      })
-    );
+    const forkData = buildForkedMessagesFromUserMessage(editingMessageId, trimmedContent);
+    if (!forkData) return;
 
     handleCancelEditingMessage();
     await sendChatTurn({
-      nextMessages: forkedMessages,
+      nextMessages: forkData.forkedMessages,
       forkFromMessageId: editingMessageId,
       sourceBranchId: selectedChat?.active_branch_id || null,
-      restoreMessagesOnError: originalMessages,
+      restoreMessagesOnError: forkData.originalMessages,
       errorMessage: t('chat.edit_branch_failed') || 'Failed to create a new branch from this message.',
     });
   };
@@ -1992,29 +2046,32 @@ export default function ChatPage() {
                                 </button>
                               </>
                             ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleStartEditingMessage(m)}
-                                disabled={!!editingMessageId || sending}
-                                style={{
-                                  border: 'none',
-                                  background: 'transparent',
-                                  color: '#9ca3af',
-                                  cursor: !!editingMessageId || sending ? 'not-allowed' : 'pointer',
-                                  width: 26,
-                                  height: 26,
-                                  borderRadius: 6,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  padding: 0,
-                                  fontSize: '0.82rem',
-                                }}
-                                title={t('chat.edit_into_branch') || 'Edit into new branch'}
-                                aria-label={t('chat.edit_into_branch') || 'Edit into new branch'}
-                              >
-                                <i className="bi bi-pencil"></i>
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleResendMessage(m)}
+                                  disabled={!!editingMessageId || sending}
+                                  onMouseEnter={(event) => handleMessageActionMouseEnter(event, !!editingMessageId || sending)}
+                                  onMouseLeave={(event) => handleMessageActionMouseLeave(event, !!editingMessageId || sending)}
+                                  style={getMessageActionButtonStyle(!!editingMessageId || sending)}
+                                  title="Resend from this message"
+                                  aria-label="Resend from this message"
+                                >
+                                  <i className="bi bi-arrow-clockwise"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditingMessage(m)}
+                                  disabled={!!editingMessageId || sending}
+                                  onMouseEnter={(event) => handleMessageActionMouseEnter(event, !!editingMessageId || sending)}
+                                  onMouseLeave={(event) => handleMessageActionMouseLeave(event, !!editingMessageId || sending)}
+                                  style={getMessageActionButtonStyle(!!editingMessageId || sending)}
+                                  title={t('chat.edit_into_branch') || 'Edit into new branch'}
+                                  aria-label={t('chat.edit_into_branch') || 'Edit into new branch'}
+                                >
+                                  <i className="bi bi-pencil"></i>
+                                </button>
+                              </>
                             )}
                             {/* Branch navigator — < X / Y > */}
                             {(() => {
