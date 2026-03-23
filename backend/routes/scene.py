@@ -6,8 +6,8 @@ from typing import List, Optional
 from database import get_db
 from models import Scene, User, UserLikedScene
 from utils.local_storage_utils import save_image
-from utils.image_moderation import moderate_image
-from utils.text_moderation import moderate_form_payload
+from utils.image_moderation import moderate_image_with_decision
+from utils.text_moderation import moderate_form_payload_with_review
 from utils.session import get_current_user
 from datetime import datetime, UTC
 from schemas import SceneOut, SceneListOut
@@ -37,7 +37,7 @@ async def create_scene(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    text_safe, blocked_field, blocked_label = moderate_form_payload({
+    text_safe, _, blocked_field, blocked_label, _, _ = moderate_form_payload_with_review({
         "name": name,
         "description": description,
         "intro": intro,
@@ -93,7 +93,7 @@ async def create_scene(
     db.refresh(scene)
     if picture:
         image_bytes = await picture.read()
-        is_safe, label = moderate_image(image_bytes)
+        is_safe, label, _ = moderate_image_with_decision(image_bytes)
         if not is_safe:
             raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
         import io
@@ -269,7 +269,7 @@ def get_scene(scene_id: int, current_user: User = Depends(get_current_user), db:
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
     if not scene.is_public:
-        if not current_user or scene.creator_id != current_user.id:
+        if not current_user or (scene.creator_id != current_user.id and not current_user.is_admin):
             raise HTTPException(status_code=404, detail="Scene not found")
     return scene
 
@@ -293,7 +293,7 @@ async def update_scene(
     if scene.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    text_safe, blocked_field, blocked_label = moderate_form_payload({
+    text_safe, _, blocked_field, blocked_label, _, _ = moderate_form_payload_with_review({
         "name": name,
         "description": description,
         "intro": intro,
@@ -339,7 +339,7 @@ async def update_scene(
         scene.is_forkable = is_forkable
     if picture:
         image_bytes = await picture.read()
-        is_safe, label = moderate_image(image_bytes)
+        is_safe, label, _ = moderate_image_with_decision(image_bytes)
         if not is_safe:
             raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
         import io

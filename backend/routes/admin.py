@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_, and_
 from datetime import datetime, timedelta, UTC
 from database import get_db
-from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger
+from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger, ContentReviewQueue, ProblemReport
 from utils.session import get_current_admin_user
 from utils.security_middleware import get_rate_limit_status
 from utils.user_utils import enrich_user_with_character_count, build_user_response
@@ -42,6 +42,11 @@ class CharacterUpdate(BaseModel):
 
 class TagUpdate(BaseModel):
     name: Optional[str] = None
+
+
+class ContentReviewResolveRequest(BaseModel):
+    action: str
+    notes: Optional[str] = None
 
 
 @router.get("/user-stats")
@@ -353,6 +358,98 @@ def get_all_characters(
         }
         for char in characters
     ]
+
+
+@router.get("/review-queue")
+def get_content_review_queue(
+    status: str = "pending",
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Get content review queue entries - Admin only"""
+    query = db.query(ContentReviewQueue)
+    if status and status != "all":
+        query = query.filter(ContentReviewQueue.status == status)
+
+    items = query.order_by(desc(ContentReviewQueue.created_time)).all()
+    result = []
+
+    for item in items:
+        character = None
+        if item.character_id:
+            character = db.query(Character).filter(Character.id == item.character_id).first()
+
+        linked_report = None
+        if item.triggered_by_report_id:
+            linked_report = db.query(ProblemReport).filter(ProblemReport.id == item.triggered_by_report_id).first()
+
+        result.append({
+            "id": item.id,
+            "character_id": item.character_id,
+            "character_name": (character.name if character else item.character_name),
+            "character_exists": bool(character),
+            "character_is_public": character.is_public if character else None,
+            "character_creator_name": character.creator_name if character else None,
+            "source": item.source,
+            "reason": item.reason,
+            "status": item.status,
+            "triggered_by_report_id": item.triggered_by_report_id,
+            "report_description": linked_report.description if linked_report else None,
+            "created_time": item.created_time,
+            "updated_time": item.updated_time,
+            "resolved_time": item.resolved_time,
+            "resolved_by": item.resolved_by,
+            "resolution_notes": item.resolution_notes,
+        })
+
+    return result
+
+
+@router.patch("/review-queue/{queue_id}")
+def resolve_content_review_queue_item(
+    queue_id: int,
+    payload: ContentReviewResolveRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Resolve review queue entries with an explicit admin action - Admin only"""
+    item = db.query(ContentReviewQueue).filter(ContentReviewQueue.id == queue_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Review queue item not found")
+
+    action = (payload.action or "").strip().lower()
+    if action not in {"keep", "hide", "delete"}:
+        raise HTTPException(status_code=400, detail="Invalid action. Expected keep, hide, or delete")
+
+    character = None
+    if item.character_id:
+        character = db.query(Character).filter(Character.id == item.character_id).first()
+
+    now = datetime.now(UTC)
+
+    if action == "hide" and character:
+        character.is_public = False
+    elif action == "delete" and character:
+        db.delete(character)
+
+    item.status = f"resolved_{action}"
+    item.resolved_time = now
+    item.resolved_by = current_admin.id
+    item.resolution_notes = payload.notes
+    item.updated_time = now
+
+    db.commit()
+    db.refresh(item)
+
+    return {
+        "message": f"Review queue item resolved with action: {action}",
+        "item": {
+            "id": item.id,
+            "status": item.status,
+            "resolved_time": item.resolved_time,
+            "resolution_notes": item.resolution_notes,
+        }
+    }
 
 
 @router.get("/tags")

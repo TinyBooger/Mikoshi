@@ -5,6 +5,7 @@ from database import get_db
 from models import ProblemReport, User
 from schemas import ProblemReportCreate, ProblemReportOut
 from utils.session import get_current_user, get_current_admin_user
+from utils.content_review_queue import enqueue_character_review
 from typing import List, Optional
 from datetime import datetime, UTC
 import os
@@ -40,6 +41,17 @@ def create_problem_report(
     db.add(problem_report)
     db.commit()
     db.refresh(problem_report)
+
+    if target_type == "character" and target_id:
+        reason = f"User report #{problem_report.id}: {(description or '').strip()[:300]}"
+        enqueue_character_review(
+            db,
+            character_id=target_id,
+            source="user_report",
+            reason=reason,
+            triggered_by_report_id=problem_report.id,
+        )
+        db.commit()
     
     return problem_report
 

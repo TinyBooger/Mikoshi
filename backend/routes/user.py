@@ -5,8 +5,8 @@ from database import get_db
 from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
-from utils.image_moderation import moderate_image
-from utils.text_moderation import moderate_form_payload
+from utils.image_moderation import moderate_image_with_decision
+from utils.text_moderation import moderate_form_payload_with_review
 from utils.user_utils import build_user_response, enrich_user_with_character_count
 from utils.validators import validate_account_fields
 from utils.level_system import award_exp_with_limits
@@ -150,7 +150,7 @@ async def update_profile(
     if error:
         raise HTTPException(status_code=400, detail=error)
 
-    text_safe, blocked_field, blocked_label = moderate_form_payload({
+    text_safe, _, blocked_field, blocked_label, _, _ = moderate_form_payload_with_review({
         "name": name,
         "bio": bio,
     })
@@ -167,7 +167,7 @@ async def update_profile(
     if profile_pic:
         # Moderate the image before saving
         image_bytes = await profile_pic.read()
-        is_safe, label = moderate_image(image_bytes)
+        is_safe, label, _ = moderate_image_with_decision(image_bytes)
         if not is_safe:
             raise HTTPException(status_code=400, detail=f"Profile image rejected by content moderation ({label})")
         import io

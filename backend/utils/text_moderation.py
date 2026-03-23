@@ -30,11 +30,11 @@ def _debug_print(message: str) -> None:
     logger.info(message)
 
 
-def _service_error_result(reason: str) -> Tuple[bool, str]:
+def _service_error_decision(reason: str) -> Tuple[str, str]:
     if _fail_closed_enabled():
         _debug_print(f"[text_moderation] fail-closed: blocking submit due to {reason}")
-        return False, "ModerationServiceUnavailable"
-    return True, ""
+        return "block", "ModerationServiceUnavailable"
+    return "pass", ""
 
 
 def _split_text_for_tms(text: str) -> Iterable[str]:
@@ -47,13 +47,13 @@ def _split_text_for_tms(text: str) -> Iterable[str]:
     return chunks
 
 
-def moderate_text(text: str, data_id: str = "") -> Tuple[bool, str]:
+def moderate_text_with_decision(text: str, data_id: str = "") -> Tuple[str, str]:
     if text is None:
-        return True, ""
+        return "pass", ""
 
     text = str(text)
     if not text.strip():
-        return True, ""
+        return "pass", ""
 
     secret_id = os.getenv("TENCENTCLOUD_SECRET_ID")
     secret_key = os.getenv("TENCENTCLOUD_SECRET_KEY")
@@ -64,10 +64,13 @@ def moderate_text(text: str, data_id: str = "") -> Tuple[bool, str]:
             "text_moderation: TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY not set. "
             "Skipping text content moderation."
         )
-        return _service_error_result("missing_credentials")
+        return _service_error_decision("missing_credentials")
 
     region = os.getenv("TENCENTCLOUD_TMS_REGION", "ap-guangzhou")
     biz_type = os.getenv("TENCENTCLOUD_TMS_BIZ_TYPE", "")
+
+    saw_review = False
+    review_label = ""
 
     try:
         cred = credential.Credential(secret_id, secret_key)
@@ -95,7 +98,7 @@ def moderate_text(text: str, data_id: str = "") -> Tuple[bool, str]:
             req.from_json_string(json.dumps(params, ensure_ascii=False))
             resp = client.TextModeration(req)
 
-            suggestion = resp.Suggestion or ""
+            suggestion = (resp.Suggestion or "").strip()
             label = resp.Label or ""
             score = resp.Score if resp.Score is not None else ""
             request_id = resp.RequestId or ""
@@ -105,30 +108,48 @@ def moderate_text(text: str, data_id: str = "") -> Tuple[bool, str]:
             )
 
             if suggestion == "Block":
-                return False, label
+                return "block", label
+            if suggestion == "Review":
+                saw_review = True
+                review_label = label or review_label
 
-        return True, ""
+        if saw_review:
+            return "review", review_label
+        return "pass", ""
 
     except TencentCloudSDKException as exc:
         _debug_print(f"[text_moderation] sdk_error: {exc}")
         logger.error("text_moderation: TencentCloudSDKException: %s", exc)
-        return _service_error_result("sdk_error")
+        return _service_error_decision("sdk_error")
 
 
-def moderate_form_payload(payload: Dict[str, Any]) -> Tuple[bool, str, str]:
+def moderate_form_payload_with_review(payload: Dict[str, Any]) -> Tuple[bool, bool, str, str, str, str]:
+    """
+    Returns:
+        (is_safe, needs_review, blocked_field, blocked_label, review_field, review_label)
+    """
+    review_field = ""
+    review_label = ""
+
     for field_name, field_value in payload.items():
         if isinstance(field_value, str):
-            safe, label = moderate_text(field_value, data_id=f"field_{field_name}")
-            if not safe:
-                return False, field_name, label
+            decision, label = moderate_text_with_decision(field_value, data_id=f"field_{field_name}")
+            if decision == "block":
+                return False, False, field_name, label, "", ""
+            if decision == "review" and not review_field:
+                review_field = field_name
+                review_label = label
             continue
 
         if isinstance(field_value, list):
             for idx, item in enumerate(field_value):
                 if not isinstance(item, str):
                     continue
-                safe, label = moderate_text(item, data_id=f"field_{field_name}_{idx}")
-                if not safe:
-                    return False, field_name, label
+                decision, label = moderate_text_with_decision(item, data_id=f"field_{field_name}_{idx}")
+                if decision == "block":
+                    return False, False, field_name, label, "", ""
+                if decision == "review" and not review_field:
+                    review_field = field_name
+                    review_label = label
 
-    return True, "", ""
+    return True, bool(review_field), "", "", review_field, review_label

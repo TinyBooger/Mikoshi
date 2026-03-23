@@ -10,14 +10,15 @@ from database import get_db
 from models import Character, User, Tag, UserLikedCharacter
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
-from utils.image_moderation import moderate_image
+from utils.image_moderation import moderate_image_with_decision
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.validators import validate_character_fields
 from utils.content_censor import censor_form_payload
-from utils.text_moderation import moderate_form_payload
+from utils.text_moderation import moderate_form_payload_with_review
 from schemas import CharacterOut, CharacterListOut
 from utils.level_system import award_exp_with_limits
 from utils.llm_client import client
+from utils.content_review_queue import enqueue_character_review
 
 router = APIRouter()
 
@@ -184,7 +185,7 @@ async def create_character(
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    text_safe, blocked_field, blocked_label = moderate_form_payload({
+    text_safe, needs_text_review, blocked_field, blocked_label, review_field, review_label = moderate_form_payload_with_review({
         "name": name,
         "persona": persona,
         "tagline": tagline,
@@ -300,18 +301,41 @@ async def create_character(
     db.commit()
     db.refresh(char)
 
+    if needs_text_review:
+        reason = f"Text moderation suggested REVIEW ({review_field}: {review_label or 'Unknown'})"
+        enqueue_character_review(
+            db,
+            character_id=char.id,
+            source="moderation_review",
+            reason=reason,
+        )
+
     if picture:
         image_bytes = await picture.read()
-        is_safe, label = moderate_image(image_bytes)
+        is_safe, label, suggestion = moderate_image_with_decision(image_bytes)
         if not is_safe:
             raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
+        if suggestion == "Review":
+            enqueue_character_review(
+                db,
+                character_id=char.id,
+                source="moderation_review",
+                reason=f"Main image moderation suggested REVIEW ({label or 'Unknown'})",
+            )
         import io
         char.picture = save_image(io.BytesIO(image_bytes), 'character', char.id, picture.filename)
     if avatar_picture:
         avatar_bytes = await avatar_picture.read()
-        is_safe, label = moderate_image(avatar_bytes)
+        is_safe, label, suggestion = moderate_image_with_decision(avatar_bytes)
         if not is_safe:
             raise HTTPException(status_code=400, detail=f"Avatar image rejected by content moderation ({label})")
+        if suggestion == "Review":
+            enqueue_character_review(
+                db,
+                character_id=char.id,
+                source="moderation_review",
+                reason=f"Avatar image moderation suggested REVIEW ({label or 'Unknown'})",
+            )
         import io
         char.avatar_picture = save_image(
             io.BytesIO(avatar_bytes),
@@ -373,7 +397,7 @@ async def update_character(
     if not char or char.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not allowed")
 
-    text_safe, blocked_field, blocked_label = moderate_form_payload({
+    text_safe, needs_text_review, blocked_field, blocked_label, review_field, review_label = moderate_form_payload_with_review({
         "name": name,
         "persona": persona,
         "tagline": tagline,
@@ -476,16 +500,30 @@ async def update_character(
 
     if picture:
         image_bytes = await picture.read()
-        is_safe, label = moderate_image(image_bytes)
+        is_safe, label, suggestion = moderate_image_with_decision(image_bytes)
         if not is_safe:
             raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
+        if suggestion == "Review":
+            enqueue_character_review(
+                db,
+                character_id=char.id,
+                source="moderation_review",
+                reason=f"Main image moderation suggested REVIEW ({label or 'Unknown'})",
+            )
         import io
         char.picture = save_image(io.BytesIO(image_bytes), 'character', char.id, picture.filename)
     if avatar_picture:
         avatar_bytes = await avatar_picture.read()
-        is_safe, label = moderate_image(avatar_bytes)
+        is_safe, label, suggestion = moderate_image_with_decision(avatar_bytes)
         if not is_safe:
             raise HTTPException(status_code=400, detail=f"Avatar image rejected by content moderation ({label})")
+        if suggestion == "Review":
+            enqueue_character_review(
+                db,
+                character_id=char.id,
+                source="moderation_review",
+                reason=f"Avatar image moderation suggested REVIEW ({label or 'Unknown'})",
+            )
         import io
         char.avatar_picture = save_image(
             io.BytesIO(avatar_bytes),
@@ -493,6 +531,15 @@ async def update_character(
             char.id,
             avatar_picture.filename,
             filename_prefix=f"character_avatar_{char.id}",
+        )
+
+    if needs_text_review:
+        reason = f"Text moderation suggested REVIEW ({review_field}: {review_label or 'Unknown'})"
+        enqueue_character_review(
+            db,
+            character_id=char.id,
+            source="moderation_review",
+            reason=reason,
         )
 
     db.commit()
@@ -518,7 +565,7 @@ def get_character(character_id: int, current_user: User = Depends(get_current_us
         raise HTTPException(status_code=404, detail="Character not found")
 
     if not c.is_public:
-        if not current_user or c.creator_id != current_user.id:
+        if not current_user or (c.creator_id != current_user.id and not current_user.is_admin):
             raise HTTPException(status_code=404, detail="Character not found")
     return c
 

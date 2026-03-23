@@ -240,6 +240,23 @@ class ProblemReport(Base):
     resolved_time = Column(DateTime(timezone=True), nullable=True)
     admin_notes = Column(Text, nullable=True)
 
+
+class ContentReviewQueue(Base):
+    __tablename__ = "content_review_queue"
+
+    id = Column(Integer, primary_key=True, index=True)
+    character_id = Column(Integer, ForeignKey('characters.id', ondelete='SET NULL'), nullable=True, index=True)
+    character_name = Column(String, nullable=True)
+    source = Column(String(50), nullable=False, index=True)  # moderation_review | user_report
+    reason = Column(Text, nullable=True)
+    status = Column(String(30), default="pending", nullable=False, index=True)
+    triggered_by_report_id = Column(Integer, ForeignKey('problem_reports.id', ondelete='SET NULL'), nullable=True, index=True)
+    created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    updated_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+    resolved_time = Column(DateTime(timezone=True), nullable=True)
+    resolved_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    resolution_notes = Column(Text, nullable=True)
+
 # System Notification (for alpha updates and announcements)
 class SystemNotification(Base):
     __tablename__ = "system_notifications"

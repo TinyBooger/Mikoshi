@@ -12,8 +12,8 @@ from utils.sms_utils import send_verification_code, verify_code, create_verified
 from utils.captcha_utils import verify_captcha_param, get_captcha_verifier
 from utils.audit_logger import record_audit
 from utils.request_utils import get_client_ip, get_user_agent, get_request_metadata
-from utils.image_moderation import moderate_image
-from utils.text_moderation import moderate_form_payload
+from utils.image_moderation import moderate_image_with_decision
+from utils.text_moderation import moderate_form_payload_with_review
 import re
 from typing import Optional
 
@@ -142,7 +142,7 @@ def register_user(
     if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
-    text_safe, blocked_field, blocked_label = moderate_form_payload({
+    text_safe, _, blocked_field, blocked_label, _, _ = moderate_form_payload_with_review({
         "name": name,
         "bio": bio,
     })
@@ -184,7 +184,7 @@ def register_user(
             from utils.local_storage_utils import save_image
 
             image_bytes = profile_pic.file.read()
-            is_safe, label = moderate_image(image_bytes)
+            is_safe, label, _ = moderate_image_with_decision(image_bytes)
             if not is_safe:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -508,8 +508,7 @@ def register_with_phone(
                 detail="This invitation code has expired"
             )
     
-    # 验证用户名
-    text_safe, blocked_field, blocked_label = moderate_form_payload({
+    text_safe, _, blocked_field, blocked_label, _, _ = moderate_form_payload_with_review({
         "name": name,
         "bio": bio,
     })
@@ -555,7 +554,7 @@ def register_with_phone(
             from utils.local_storage_utils import save_image
 
             image_bytes = profile_pic.file.read()
-            is_safe, label = moderate_image(image_bytes)
+            is_safe, label, _ = moderate_image_with_decision(image_bytes)
             if not is_safe:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
