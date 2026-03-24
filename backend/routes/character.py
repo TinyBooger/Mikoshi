@@ -19,6 +19,8 @@ from schemas import CharacterOut, CharacterListOut
 from utils.level_system import award_exp_with_limits
 from utils.llm_client import client
 from utils.content_review_queue import enqueue_character_review
+from utils.usage_utils import normalize_usage
+from utils.token_usage_ledger import record_token_usage
 
 router = APIRouter()
 
@@ -93,10 +95,11 @@ def _fallback_split_chunks(long_description: str) -> list[dict[str, str]]:
     return chunks
 
 
-def split_long_description_chunks(long_description: str) -> tuple[list[dict[str, str]], bool]:
+def split_long_description_chunks(long_description: str) -> tuple[list[dict[str, str]], bool, dict]:
     source = (long_description or "").strip()
+    empty_usage = normalize_usage(None)
     if not source:
-        return [], True
+        return [], True, empty_usage
     try:
         response = client.chat.completions.create(
             model="deepseek-chat",
@@ -108,14 +111,15 @@ def split_long_description_chunks(long_description: str) -> tuple[list[dict[str,
             temperature=0.2,
             top_p=0.9,
         )
+        usage = normalize_usage(getattr(response, "usage", None))
         raw = response.choices[0].message.content if response and response.choices else ""
         parsed = _extract_json_payload(raw or "")
         chunks = _sanitize_chunks(parsed)
         if chunks:
-            return chunks, True
-        return _fallback_split_chunks(source), False
+            return chunks, True, usage
+        return _fallback_split_chunks(source), False, usage
     except Exception:
-        return _fallback_split_chunks(source), False
+        return _fallback_split_chunks(source), False, empty_usage
 
 
 def normalize_context_label(value: Optional[str]) -> str:
@@ -267,9 +271,12 @@ async def create_character(
     ) if can_use_advanced_config else default_character_chat_config()
     long_description_chunks = []
     if context_label == "advanced" and normalized_long_description:
-        long_description_chunks, split_ok = split_long_description_chunks(normalized_long_description)
+        long_description_chunks, split_ok, split_usage = split_long_description_chunks(normalized_long_description)
         if not split_ok:
             raise HTTPException(status_code=502, detail="Failed to split long description into chunks")
+        if split_usage["total_tokens"] > 0:
+            record_token_usage(db, user_id=current_user.id, usage=split_usage)
+            db.commit()
 
     char = Character(
         name=name,
@@ -460,9 +467,12 @@ async def update_character(
         if not normalized_long_description:
             long_description_chunks = []
         elif long_description_changed:
-            long_description_chunks, split_ok = split_long_description_chunks(normalized_long_description)
+            long_description_chunks, split_ok, split_usage = split_long_description_chunks(normalized_long_description)
             if not split_ok:
                 raise HTTPException(status_code=502, detail="Failed to split long description into chunks")
+            if split_usage["total_tokens"] > 0:
+                record_token_usage(db, user_id=current_user.id, usage=split_usage)
+                db.commit()
         else:
             long_description_chunks = char.long_description_chunks or []
     else:
