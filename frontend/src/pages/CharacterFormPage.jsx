@@ -12,6 +12,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import CharacterAssistantModal from '../components/CharacterAssistantModal';
 import { silentExpGain } from '../utils/expUtils';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
+import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/tokenDisplay';
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
@@ -88,7 +89,7 @@ export default function CharacterFormPage() {
   // Special prompt stored when a character uses an improvising greeting
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
 
-  const { sessionToken, userData } = useContext(AuthContext);
+  const { sessionToken, userData, refreshUserData } = useContext(AuthContext);
   const userLevel = Number(userData?.level || 1);
   const isProUser = !!userData?.is_pro;
   const canUseAdvancedConfig = userLevel >= 3 || isProUser;
@@ -134,6 +135,25 @@ export default function CharacterFormPage() {
   const selectedTokenLimits = getTokenLimits(charData.model || DEFAULT_CHAT_CONFIG.model);
   const selectedTokenTiers = getTokenTiers(charData.model || DEFAULT_CHAT_CONFIG.model);
   const effectiveContextLabel = charData.context_label === 'advanced' ? 'advanced' : 'standard';
+
+  const formatTokenCapError = (payload) => {
+    const tokenPayload = payload?.error === 'TOKEN_CAP_REACHED'
+      ? payload
+      : (payload?.detail?.error === 'TOKEN_CAP_REACHED' ? payload.detail : null);
+
+    if (!tokenPayload) return null;
+
+    const limits = tokenPayload?.token_limits || {};
+    const scopeLabel = getTokenQuotaLabel(limits?.cap_scope);
+    const cap = Number(limits?.token_cap || 0);
+    const remaining = Number(limits?.remaining_tokens || 0);
+
+    if (cap > 0) {
+      return `${tokenPayload.message || '已达到 token 上限。'} (${scopeLabel}: 剩余 ${formatCompactTokenCount(remaining)} / ${formatCompactTokenCount(cap)})`;
+    }
+
+    return tokenPayload.message || '已达到 token 上限。';
+  };
 
   // Enforce level locks on fork/paid options
   useEffect(() => {
@@ -345,6 +365,9 @@ export default function CharacterFormPage() {
       });
       const data = await res.json();
       if (res.ok) {
+        if (refreshUserData) {
+          refreshUserData({ silent: true });
+        }
         toast.show(mode === 'edit' ? t('character_form.updated') : mode === 'fork' ? t('character_form.forked', 'Character forked successfully') : t('character_form.created'));
         // Silently award EXP for character creation (backend handles it but we can trigger refresh)
         if (mode === 'create' || mode === 'fork') {
@@ -352,7 +375,12 @@ export default function CharacterFormPage() {
         }
         navigate(mode === 'edit' ? "/profile" : "/profile");
       } else {
-        toast.show(getApiErrorMessage(data, t('character_form.error'), t), { type: 'error' });
+        const tokenCapMessage = formatTokenCapError(data);
+        if (tokenCapMessage) {
+          toast.show(tokenCapMessage, { type: 'error' });
+        } else {
+          toast.show(getApiErrorMessage(data, t('character_form.error'), t), { type: 'error' });
+        }
       }
     } catch (error) {
       toast.show(t('character_form.error'), { type: 'error' });
@@ -412,6 +440,56 @@ export default function CharacterFormPage() {
   return (
     <PageWrapper>
       <div className="character-form-page" style={{ position: 'relative', width: '100%' }}>
+        {userData?.token_cap !== null && (
+          <div
+            style={{
+              marginBottom: 12,
+              borderRadius: 10,
+              padding: '0.55rem 0.75rem',
+              border: userData?.token_cap_reached ? '1px solid #fecaca' : '1px solid #fde68a',
+              background: userData?.token_cap_reached ? '#fff1f2' : '#fffbeb',
+              color: userData?.token_cap_reached ? '#b91c1c' : '#92400e',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+            }}
+          >
+            {(() => {
+              const scopeLabel = getTokenQuotaLabel(userData?.token_cap_scope);
+              const used = Number(userData?.token_cap_scope === 'monthly' ? userData?.monthly_token_usage : userData?.daily_token_usage) || 0;
+              const cap = Number(userData?.token_cap || 0);
+              const remaining = Number(userData?.remaining_tokens || 0);
+
+              if (userData?.token_cap_reached) {
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
+                    <span>{scopeLabel}已达上限：{formatCompactTokenCount(used)} / {formatCompactTokenCount(cap)}，相关功能将受限。</span>
+                    {userData?.token_cap_scope !== 'monthly' && (
+                      <button
+                        type="button"
+                        onClick={() => navigate('/pro-upgrade')}
+                        style={{
+                          flexShrink: 0,
+                          padding: '0.15rem 0.55rem',
+                          borderRadius: 6,
+                          border: 'none',
+                          background: '#b91c1c',
+                          color: '#fff',
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        升级 Pro
+                      </button>
+                    )}
+                  </div>
+                );
+              }
+
+              return `${scopeLabel}：${formatCompactTokenCount(used)} / ${formatCompactTokenCount(cap)}，剩余 ${formatCompactTokenCount(remaining)}`;
+            })()}
+          </div>
+        )}
         <style>{`
           .character-form-page .form-control::placeholder,
           .character-form-page textarea::placeholder {

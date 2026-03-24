@@ -109,6 +109,13 @@ class UserOut(BaseModel):
     daily_exp_gained: int = 0
     daily_token_usage: int = 0
     monthly_token_usage: int = 0
+    token_cap_scope: Optional[str] = None
+    token_cap: Optional[int] = None
+    remaining_tokens: Optional[int] = None
+    token_cap_reached: bool = False
+    token_reset_at: Optional[Any] = None
+    free_daily_token_cap: int = 3000
+    pro_monthly_token_cap: int = 3000000
     badges: dict[str, Any] = {}
     active_badge: Optional[str] = None
     is_pro: bool = False

@@ -12,6 +12,7 @@ from utils.validators import validate_account_fields
 from utils.level_system import award_exp_with_limits
 from utils.badge_system import check_and_award_chat_badges, award_badge
 from utils.sms_utils import send_verification_code, verify_code
+from utils.token_cap import get_token_cap_info
 from sqlalchemy import func
 import re
 
@@ -111,6 +112,16 @@ def get_recommended_users(
     users = query.offset((page - 1) * page_size).limit(page_size).all()
     items = [enrich_user_with_character_count(user, db) for user in users]
     return UserListOut(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get("/api/token-limits")
+def get_current_user_token_limits(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return get_token_cap_info(current_user, db)
 
 # --- Single User Endpoints (comes AFTER specific routes above) ---
 
@@ -327,8 +338,6 @@ def is_liked_multi(
 
 
 # -------------------------- Increment Views for Multiple Entities --------------------------
-from fastapi import Body
-
 @router.post("/api/views/increment-multi")
 def increment_views_multi(
     payload: dict = Body(...),

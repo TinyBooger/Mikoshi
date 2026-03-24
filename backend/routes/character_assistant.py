@@ -6,6 +6,7 @@ from utils.session import get_current_user
 from utils.llm_client import client
 from utils.usage_utils import normalize_usage
 from utils.token_usage_ledger import record_token_usage
+from utils.token_cap import can_consume_tokens, build_token_cap_reached_payload
 from database import get_db
 from models import User
 import json
@@ -161,6 +162,10 @@ async def generate_character(
 
     context_label = _normalize_context_label((request.current_character or {}).get("context_label"))
     system_prompt = _build_system_prompt(context_label)
+
+    token_check = can_consume_tokens(current_user, db)
+    if token_check["blocked"]:
+        raise HTTPException(status_code=429, detail=build_token_cap_reached_payload(token_check.get("limit") or {}))
 
     user_payload = {
         "user_request": request.prompt,

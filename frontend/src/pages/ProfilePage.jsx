@@ -17,6 +17,7 @@ import SecondaryButton from '../components/SecondaryButton';
 import LevelProgress from '../components/LevelProgress';
 import AvatarFrame from '../components/AvatarFrame';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
+import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/tokenDisplay';
 
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
@@ -993,8 +994,19 @@ export default function ProfilePage() {
                   >
                     <i className="bi bi-lightning-charge" style={{ fontSize: '1.05rem' }}></i>
                     <div className="d-flex flex-column" style={{ lineHeight: 1.15 }}>
-                      <strong style={{ fontSize: '1.05rem' }}>{Number(displayUser?.monthly_token_usage || 0).toLocaleString()}</strong>
-                      <span style={{ fontSize: '0.83rem', color: '#555' }}>{t('profile.monthly_tokens', 'Monthly Tokens')}</span>
+                      <strong style={{ fontSize: '1.05rem' }}>
+                        {(() => {
+                          const scope = displayUser?.token_cap_scope;
+                          const used = Number(scope === 'monthly' ? displayUser?.monthly_token_usage : displayUser?.daily_token_usage) || 0;
+                          const cap = Number(displayUser?.token_cap || 0);
+                          return cap > 0
+                            ? `${formatCompactTokenCount(used)} / ${formatCompactTokenCount(cap)}`
+                            : formatCompactTokenCount(used);
+                        })()}
+                      </strong>
+                      <span style={{ fontSize: '0.83rem', color: '#555' }}>
+                        {getTokenQuotaLabel(displayUser?.token_cap_scope)}
+                      </span>
                     </div>
                   </span>
                 </div>

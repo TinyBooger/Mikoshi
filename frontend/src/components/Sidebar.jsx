@@ -10,6 +10,7 @@ import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import TextButton from './TextButton';
 import AvatarFrame from './AvatarFrame';
+import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/tokenDisplay';
 
 export default function Sidebar({ isMobile, setSidebarVisible }) {
   const navigate = useNavigate();
@@ -681,8 +682,23 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               fontWeight: 600,
             }}
           >
-            <span>{t('sidebar.today_tokens', 'Today')}</span>
-            <span>{`${Number(userData?.daily_token_usage || 0).toLocaleString()} ${t('sidebar.tokens', 'tokens')}`}</span>
+            <span>
+              {getTokenQuotaLabel(userData?.token_cap_scope)}
+            </span>
+            <span>
+              {(() => {
+                const used = Number(
+                  userData?.token_cap_scope === 'monthly'
+                    ? (userData?.monthly_token_usage || 0)
+                    : (userData?.daily_token_usage || 0)
+                );
+                const cap = Number(userData?.token_cap || 0);
+                if (cap > 0) {
+                  return `${formatCompactTokenCount(used)} / ${formatCompactTokenCount(cap)}`;
+                }
+                return formatCompactTokenCount(used);
+              })()}
+            </span>
           </div>
         )}
   {userData ? (

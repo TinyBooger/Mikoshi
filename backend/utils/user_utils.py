@@ -6,9 +6,10 @@ from datetime import datetime, UTC, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from models import Persona, User, Character, UserTokenUsageLedger
+from models import Persona, User, Character
 from schemas import PersonaOut
 from utils.chat_history_utils import fetch_user_chat_history
+from utils.token_cap import get_token_cap_info
 
 
 def get_pro_state(user: User) -> dict[str, Any]:
@@ -30,36 +31,6 @@ def get_pro_state(user: User) -> dict[str, Any]:
         "active": pro_active,
         "days_remaining": pro_days_remaining,
         "status": pro_status,
-    }
-
-
-def _get_user_token_usage(db: Session, user_id: str) -> dict[str, int]:
-    now = datetime.now(UTC)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    month_start = today_start.replace(day=1).date()
-    today_date = today_start.date()
-
-    daily_tokens = (
-        db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
-        .filter(
-            UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date == today_date,
-        )
-        .scalar()
-    ) or 0
-
-    monthly_tokens = (
-        db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
-        .filter(
-            UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date >= month_start,
-        )
-        .scalar()
-    ) or 0
-
-    return {
-        "daily_token_usage": int(daily_tokens),
-        "monthly_token_usage": int(monthly_tokens),
     }
 
 
@@ -122,7 +93,7 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
     # Calculate characters_created by counting characters where creator_id matches user.id
     characters_created = db.query(Character).filter(Character.creator_id == user.id).count()
     pro_state = get_pro_state(user)
-    token_usage = _get_user_token_usage(db, user.id)
+    token_limits = get_token_cap_info(user, db)
 
     return {
         "id": user.id,
@@ -140,8 +111,15 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
         "level": getattr(user, "level", 1) or 1,
         "exp": getattr(user, "exp", 0) or 0,
         "daily_exp_gained": getattr(user, "daily_exp_gained", 0) or 0,
-        "daily_token_usage": token_usage["daily_token_usage"],
-        "monthly_token_usage": token_usage["monthly_token_usage"],
+        "daily_token_usage": token_limits["daily_token_usage"],
+        "monthly_token_usage": token_limits["monthly_token_usage"],
+        "token_cap_scope": token_limits["cap_scope"],
+        "token_cap": token_limits["token_cap"],
+        "remaining_tokens": token_limits["remaining_tokens"],
+        "token_cap_reached": token_limits["cap_reached"],
+        "token_reset_at": token_limits["reset_at"],
+        "free_daily_token_cap": token_limits["free_daily_token_cap"],
+        "pro_monthly_token_cap": token_limits["pro_monthly_token_cap"],
         "default_persona_id": user.default_persona_id,
         "default_persona": default_persona,
         "badges": user.badges or {},

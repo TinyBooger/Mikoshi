@@ -29,6 +29,7 @@ from utils.message_limit import can_send_user_message, increment_user_message_co
 from utils.context_window import compact_conversation_messages, resolve_context_window_settings
 from utils.usage_utils import normalize_usage
 from utils.token_usage_ledger import record_token_usage
+from utils.token_cap import can_consume_tokens, get_token_cap_info, build_token_cap_reached_payload
 
 router = APIRouter()
 
@@ -395,6 +396,14 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             status_code=429,
         )
 
+    token_check = can_consume_tokens(current_user, db)
+    token_limit_info = token_check.get("limit") or {}
+    if token_check["blocked"]:
+        return JSONResponse(
+            content=build_token_cap_reached_payload(token_limit_info),
+            status_code=429,
+        )
+
     prepared_messages, prepared_context_info = compact_conversation_messages(
         messages,
         soft_token_limit=context_window_soft_limit,
@@ -426,6 +435,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             usage=summary_usage,
         )
         db.commit()
+        token_limit_info = get_token_cap_info(current_user, db)
     if not prepared_messages:
         return JSONResponse(content={"error": "Invalid messages after normalization"}, status_code=400)
 
@@ -473,6 +483,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         # Return streaming response
         async def generate():
             accumulated_reply = ""
+            current_token_limit_info = token_limit_info
             response_usage = {
                 "prompt_tokens": 0,
                 "completion_tokens": 0,
@@ -542,6 +553,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             fork_from_message_id=fork_from_message_id,
                         )
                         serialized_entry = serialize_chat_history_entry(entry)
+                        current_token_limit_info = get_token_cap_info(stream_user, db_session)
                     finally:
                         db_session.close()
                 else:
@@ -555,6 +567,8 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         user_id=current_user.id,
                         usage=response_usage,
                     )
+                    db.commit()
+                    current_token_limit_info = get_token_cap_info(current_user, db)
 
                 # Send final metadata
                 done_payload = {
@@ -562,6 +576,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     'chat_id': chat_id,
                     'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
                     'limits': limit_info,
+                    'token_limits': current_token_limit_info,
                     'context_window': {**context_window_info, 'message_count': len(context_messages), 'selected_tier': context_window_tier},
                 }
                 if character_id:
@@ -608,6 +623,8 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             user_id=current_user.id,
             usage=response_usage,
         )
+        db.commit()
+        token_limit_info = get_token_cap_info(current_user, db)
 
         serialized_entry = None
 
@@ -638,6 +655,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 "branch_id": serialized_entry.get("active_branch_id"),
                 "chat_entry": serialized_entry,
                 "limits": limit_info,
+                "token_limits": token_limit_info,
                 "context_window": {
                     **context_window_info,
                     "message_count": len(context_messages),
@@ -648,6 +666,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         return {
             "response": reply,
             "limits": limit_info,
+            "token_limits": token_limit_info,
             "context_window": {
                 **context_window_info,
                 "message_count": len(context_messages),
