@@ -1,13 +1,74 @@
+### Automation (Recommended)
+Automate all backup and retention tasks using cron jobs on your production server. Example crontab entries:
+```
+# Daily backup at 2:00 AM
+0 2 * * * cd /opt/repos/var/www/Mikoshi && bash scripts/backup/backup_prod_postgres.sh daily
+# Weekly backup (Sunday at 3:00 AM)
+0 3 * * 0 cd /opt/repos/var/www/Mikoshi && bash scripts/backup/backup_prod_postgres.sh weekly
+# Prune old backups daily at 4:00 AM
+0 4 * * * cd /opt/repos/var/www/Mikoshi && bash scripts/backup/prune_backups.sh
+```
+To edit the crontab for the current user, run:
+```sh
+crontab -e
+```
+Make sure the user running these jobs has write access to the `backups/` directory and Docker permissions.
+
+#### Troubleshooting Automation
+- If backups are not appearing, check cron logs (`/var/log/cron` or `journalctl -u cron`), and review the log files in `backups/` for errors.
+- For systemd timers, create a `.service` and `.timer` unit for each script if preferred over cron.
 # Admin Portal Guide
 
 Complete documentation for the Mikoshi admin portal, including setup, features, and CRUD operations.
 
-## Table of Contents
-- [Setup & Access](#setup--access)
-- [Dashboard Overview](#dashboard-overview)
-- [CRUD Features](#crud-features)
-- [Security](#security)
-- [API Reference](#api-reference)
+
+- [Database Backup & Restore](#database-backup--restore)
+## Database Backup & Restore
+
+Production database backups are managed via scripts in `scripts/backup/` and stored in `backups/` under the repository root (`/opt/repos/var/www/Mikoshi/backups` on production).
+
+### Backup (Manual)
+Run this from the production host:
+```sh
+bash scripts/backup/backup_prod_postgres.sh daily   # For daily backup
+bash scripts/backup/backup_prod_postgres.sh weekly  # For weekly backup
+```
+Backups are compressed `.sql.gz` files named by class and timestamp.
+
+### Retention (Prune Old Backups)
+Prune old backups according to policy (daily: keep 7 days, weekly: keep 1 month):
+```sh
+bash scripts/backup/prune_backups.sh
+```
+
+### Restore
+To restore a backup to the production database (DANGER: overwrites data!):
+```sh
+bash scripts/backup/restore_prod_postgres.sh backups/daily_backup_YYYYMMDD_HHMMSS.sql.gz
+# Or specify a different target DB as second argument
+```
+You will be prompted to confirm before proceeding.
+
+### Scheduling (Recommended)
+Automate daily and weekly backups using host cron or systemd timer. Example cron entries:
+```
+# Daily backup at 2:00 AM
+0 2 * * * cd /opt/repos/var/www/Mikoshi && bash scripts/backup/backup_prod_postgres.sh daily
+# Weekly backup (Sunday at 3:00 AM)
+0 3 * * 0 cd /opt/repos/var/www/Mikoshi && bash scripts/backup/backup_prod_postgres.sh weekly
+# Prune old backups daily at 4:00 AM
+0 4 * * * cd /opt/repos/var/www/Mikoshi && bash scripts/backup/prune_backups.sh
+```
+Ensure the `backups/` directory is writable by the user running the scripts.
+
+### Verification
+- After backup, check for new files in `backups/` and review the log files for errors.
+- Periodically test restore into a temporary database to verify backup integrity.
+
+### Notes
+- All scripts assume production Docker Postgres. No dev/test support.
+- Secrets can be loaded from `secrets/Mikoshi-production.env` if present.
+- For migration safety, run a manual backup before applying any DB migration scripts.
 
 ---
 
