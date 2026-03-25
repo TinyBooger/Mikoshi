@@ -61,77 +61,84 @@ Automate daily and weekly backups using host cron or systemd timer. Example cron
 ```
 Ensure the `backups/` directory is writable by the user running the scripts.
 
-### Verification
-- After backup, check for new files in `backups/` and review the log files for errors.
-- Periodically test restore into a temporary database to verify backup integrity.
 
-### Notes
-- All scripts assume production Docker Postgres. No dev/test support.
-- Secrets can be loaded from `secrets/Mikoshi-production.env` if present.
-- For migration safety, run a manual backup before applying any DB migration scripts.
+## Database Backup & Restore
+
+This section describes how production Postgres backups are automated, how to restore from backup, and how to verify your backups are working.
+
+### 1. Automated Production Backups
+
+Backups are handled by scripts in `scripts/backup/` and scheduled via cron jobs on the host. All backups are stored in the `backups/` directory at the repo root.
+
+#### a. Backup Scripts
+
+- `backup_prod_postgres.sh`: Runs a logical backup (pg_dump) of the production Postgres database running in Docker. Output is compressed and stored in `backups/daily/` or `backups/weekly/`.
+- `prune_backups.sh`: Prunes old daily/weekly backups according to retention policy.
+- `restore_prod_postgres.sh`: Restores a backup file to a specified database (with confirmation prompt).
+
+See `scripts/backup/README.md` for script usage and requirements.
+
+#### b. Retention Policy
+
+- Daily backups: Keep 7 days
+- Weekly backups: Keep 8 weeks
+
+#### c. Automation (Cron Jobs)
+
+To automate backups and pruning, add the following to your crontab (edit with `crontab -e`):
+
+```
+# Daily backup at 2:00 AM
+0 2 * * * /bin/bash /path/to/repo/scripts/backup/backup_prod_postgres.sh daily
+# Weekly backup (Sunday at 3:00 AM)
+0 3 * * 0 /bin/bash /path/to/repo/scripts/backup/backup_prod_postgres.sh weekly
+# Prune old backups at 4:00 AM
+0 4 * * * /bin/bash /path/to/repo/scripts/backup/prune_backups.sh
+```
+
+**Note:** Replace `/path/to/repo/` with the absolute path to your repo root.
+
+##### How to edit crontab
+
+1. Run `crontab -e` (opens nano by default)
+2. Paste the cron job lines above (edit paths as needed)
+3. Save and exit (Ctrl+O, Enter, Ctrl+X in nano)
+
+#### d. Backup Verification
+
+After cron jobs run, check the `backups/` directory for new backup files. Each backup is timestamped. Review logs in the `scripts/backup/` directory for errors.
 
 ---
 
-## Setup & Access
+### 2. Manual Restore
 
-### 1. Add Admin Column to Database
+To restore a backup, use `scripts/backup/restore_prod_postgres.sh`. The script will prompt for confirmation and require the backup file path and target database name.
 
-Run the migration script:
-```bash
-cd backend
-python migrations/add_is_admin_column.py
+Example:
+
+```
+bash scripts/backup/restore_prod_postgres.sh backups/daily/backup-2026-03-25.sql.gz mikoshi_prod
 ```
 
-This adds the `is_admin` column to the `users` table.
-
-### 2. Grant Admin Access
-
-**Option A: Direct SQL Query**
-```sql
-UPDATE users SET is_admin = TRUE WHERE email = 'your-email@example.com';
-```
-
-**Option B: Edit Migration Script**
-
-Uncomment and modify lines in `backend/migrations/add_is_admin_column.py`:
-```python
-admin_email = "your-admin-email@example.com"  # CHANGE THIS
-conn.execute(text("""
-    UPDATE users 
-    SET is_admin = TRUE 
-    WHERE email = :email;
-"""), {"email": admin_email})
-```
-
-Then run the migration again.
-
-### 3. Access Admin Portal
-
-Once admin privileges are granted:
-
-1. Log in to your account
-2. Click on your profile dropdown in the sidebar
-3. Click "Admin Panel" (only visible to admin users)
-4. You'll be redirected to `/admin`
-
-### Backend Security
-
-**Admin Authentication:**
-- All admin endpoints require valid session token + admin privileges
-- Middleware protection via `get_current_admin_user` dependency
-- Admins cannot delete themselves
-- Admins cannot revoke their own admin status
+**WARNING:** This will overwrite the target database. Only run in a safe environment.
 
 ---
 
-## Dashboard Overview
+### 3. Restore Testing (Recommended)
 
-The admin dashboard (`/admin`) provides real-time statistics and quick access to management pages.
+Periodically test your backups by restoring them to a test database. This ensures your backups are valid and restorable.
 
-### Statistics Display
+**Restore Test Steps:**
 
-**Real-time Counts:**
-- **Users** - Total registered users
+1. Create a new test database (e.g., `mikoshi_restore_test`) in your Postgres instance.
+2. Run the restore script, targeting the test database:
+  ```
+  bash scripts/backup/restore_prod_postgres.sh backups/daily/backup-YYYY-MM-DD.sql.gz mikoshi_restore_test
+  ```
+3. Inspect the test database for expected tables and data.
+4. Drop the test database when done.
+
+**Tip:** Always test restores after major upgrades or changes to backup scripts.
 - **Characters** - Total characters created
 - **Tags** - Total tags in system
 - **Search Terms** - Total search keywords tracked
