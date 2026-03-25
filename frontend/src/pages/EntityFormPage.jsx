@@ -7,6 +7,7 @@ import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from "../components/PageWrapper";
 import { useTranslation } from 'react-i18next';
 import ConfirmModal from '../components/ConfirmModal';
+import UgcPolicyModal from '../components/UgcPolicyModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import { silentExpGain } from '../utils/expUtils';
@@ -81,6 +82,7 @@ export default function EntityFormPage() {
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit' || mode === 'fork');
   const [confirmModal, setConfirmModal] = useState({ show: false });
+  const [showUgcPolicyModal, setShowUgcPolicyModal] = useState(false);
 
   // Enforce level locks
   useEffect(() => {
@@ -176,7 +178,6 @@ export default function EntityFormPage() {
         return;
       }
     }
-
     const formData = new FormData();
     if (mode === 'edit') formData.append("id", id);
     // In fork mode, don't append id - create a new entity
@@ -494,6 +495,19 @@ export default function EntityFormPage() {
             </div>
           </div>
 
+          {mode === 'create' && (
+            <p style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: '1rem' }}>
+              点击创建即视为同意{' '}
+              <button
+                type="button"
+                onClick={() => setShowUgcPolicyModal(true)}
+                style={{ border: 'none', background: 'transparent', color: '#9a5b20', fontSize: '0.82rem', textDecoration: 'underline', padding: 0 }}
+              >
+                《版权与用户生成内容（UGC）发布须知》
+              </button>
+            </p>
+          )}
+
           {/* Action Buttons */}
           <div className="d-flex gap-3 mt-4 justify-content-end">
             <PrimaryButton type="submit">
@@ -536,6 +550,11 @@ export default function EntityFormPage() {
         message={t(`confirm.delete_${entityType}.message`)}
         onConfirm={handleDeleteConfirmed}
         onCancel={() => setConfirmModal({ show: false })}
+      />
+      <UgcPolicyModal
+        show={showUgcPolicyModal}
+        onClose={() => setShowUgcPolicyModal(false)}
+        onAgree={() => setShowUgcPolicyModal(false)}
       />
     </PageWrapper>
   );

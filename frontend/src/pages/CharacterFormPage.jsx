@@ -7,6 +7,7 @@ import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
 import { useTranslation } from 'react-i18next';
 import ConfirmModal from '../components/ConfirmModal';
+import UgcPolicyModal from '../components/UgcPolicyModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import CharacterAssistantModal from '../components/CharacterAssistantModal';
@@ -320,7 +321,6 @@ export default function CharacterFormPage() {
       toast.show(`Long description too long (max ${ADVANCED_MAX_LONG_DESCRIPTION_LENGTH})`, { type: 'error' });
       return;
     }
-
     const formData = new FormData();
     if (mode === 'edit') formData.append("id", id);
     // In fork mode, don't append id - create a new entity
@@ -398,6 +398,7 @@ export default function CharacterFormPage() {
   };
 
   const [confirmModal, setConfirmModal] = useState({ show: false });
+  const [showUgcPolicyModal, setShowUgcPolicyModal] = useState(false);
 
   const handleDeleteConfirmed = async () => {
     setConfirmModal({ show: false });
@@ -1039,6 +1040,19 @@ export default function CharacterFormPage() {
             </div>
           </div>
 
+          {mode === 'create' && (
+            <p style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: '1rem' }}>
+              点击创建即视为同意{' '}
+              <button
+                type="button"
+                onClick={() => setShowUgcPolicyModal(true)}
+                style={{ border: 'none', background: 'transparent', color: '#9a5b20', fontSize: '0.82rem', textDecoration: 'underline', padding: 0 }}
+              >
+                《版权与用户生成内容（UGC）发布须知》
+              </button>
+            </p>
+          )}
+
           <div className="d-flex gap-3 mt-4 justify-content-end">
             <PrimaryButton type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
@@ -1285,6 +1299,12 @@ export default function CharacterFormPage() {
         message={t('confirm.delete_character.message')}
         onConfirm={handleDeleteConfirmed}
         onCancel={() => setConfirmModal({ show: false })}
+      />
+
+      <UgcPolicyModal
+        show={showUgcPolicyModal}
+        onClose={() => setShowUgcPolicyModal(false)}
+        onAgree={() => setShowUgcPolicyModal(false)}
       />
 
       {showAssistant && (
