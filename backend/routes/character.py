@@ -20,7 +20,7 @@ from utils.level_system import award_exp_with_limits
 from utils.llm_client import client
 from utils.content_review_queue import enqueue_character_review
 from utils.usage_utils import normalize_usage
-from utils.token_usage_ledger import record_token_usage
+from utils.token_usage_ledger import apply_token_usage_with_wallet
 from utils.token_cap import can_consume_tokens, get_token_cap_info, build_token_cap_reached_payload
 
 router = APIRouter()
@@ -282,7 +282,17 @@ async def create_character(
         if not split_ok:
             raise HTTPException(status_code=502, detail="Failed to split long description into chunks")
         if split_usage["total_tokens"] > 0:
-            record_token_usage(db, user_id=current_user.id, usage=split_usage)
+            usage_result = apply_token_usage_with_wallet(
+                db,
+                user=current_user,
+                usage=split_usage,
+                source="character_long_description_split",
+            )
+            if not usage_result.get("success"):
+                return JSONResponse(
+                    content=build_token_cap_reached_payload(usage_result.get("limit") or token_check.get("limit") or {}),
+                    status_code=429,
+                )
             db.commit()
 
     char = Character(
@@ -485,7 +495,17 @@ async def update_character(
             if not split_ok:
                 raise HTTPException(status_code=502, detail="Failed to split long description into chunks")
             if split_usage["total_tokens"] > 0:
-                record_token_usage(db, user_id=current_user.id, usage=split_usage)
+                usage_result = apply_token_usage_with_wallet(
+                    db,
+                    user=current_user,
+                    usage=split_usage,
+                    source="character_long_description_split",
+                )
+                if not usage_result.get("success"):
+                    return JSONResponse(
+                        content=build_token_cap_reached_payload(usage_result.get("limit") or token_check.get("limit") or {}),
+                        status_code=429,
+                    )
                 db.commit()
         else:
             long_description_chunks = char.long_description_chunks or []

@@ -68,7 +68,7 @@ def get_token_cap_info(user: User, db: Session) -> dict[str, Any]:
     usage = get_user_token_usage(db, user.id)
 
     free_daily_cap = _get_int_env("FREE_DAILY_TOKEN_CAP", 3000)
-    pro_monthly_cap = _get_int_env("PRO_MONTHLY_TOKEN_CAP", 3_000_000)
+    pro_monthly_cap = _get_int_env("PRO_MONTHLY_TOKEN_CAP", 5_000_000)
 
     now, day_start, month_start = _get_usage_window_bounds()
 
@@ -88,6 +88,8 @@ def get_token_cap_info(user: User, db: Session) -> dict[str, Any]:
     is_limited = cap_value > 0
     remaining_tokens = max(0, cap_value - used_tokens) if is_limited else None
     cap_reached = bool(is_limited and used_tokens >= cap_value)
+    purchased_token_balance = int(getattr(user, "purchased_token_balance", 0) or 0)
+    wallet_available = purchased_token_balance > 0
 
     return {
         "is_pro": pro_active,
@@ -99,6 +101,9 @@ def get_token_cap_info(user: User, db: Session) -> dict[str, Any]:
         "remaining_tokens": remaining_tokens,
         "is_limited": is_limited,
         "cap_reached": cap_reached,
+        "purchased_token_balance": purchased_token_balance,
+        "wallet_available": wallet_available,
+        "wallet_fallback_active": bool(cap_reached and wallet_available),
         "reset_at": reset_at,
         "checked_at": now.isoformat(),
         "free_daily_token_cap": free_daily_cap,
@@ -108,8 +113,11 @@ def get_token_cap_info(user: User, db: Session) -> dict[str, Any]:
 
 def can_consume_tokens(user: User, db: Session) -> dict[str, Any]:
     info = get_token_cap_info(user, db)
+    cap_reached = bool(info.get("cap_reached"))
+    wallet_available = bool(info.get("wallet_available"))
     return {
-        "blocked": bool(info.get("cap_reached")),
+        "blocked": bool(cap_reached and not wallet_available),
+        "consume_from_wallet": bool(cap_reached and wallet_available),
         "limit": info,
     }
 
@@ -119,9 +127,9 @@ def build_token_cap_reached_payload(limit_info: dict[str, Any]) -> dict[str, Any
     cap_scope = str(limit_info.get("cap_scope") or "daily")
 
     if plan == "pro" and cap_scope == "monthly":
-        message = "You have reached your monthly token limit for Pro. Please wait until next month for reset."
+        message = "You have reached your monthly token limit for Pro. Please wait until next month for reset or top up wallet tokens."
     else:
-        message = "You have reached your daily token limit. Upgrade to Pro for a much higher monthly limit."
+        message = "You have reached your daily token limit. Upgrade to Pro for a much higher monthly limit or top up wallet tokens."
 
     return {
         "error": "TOKEN_CAP_REACHED",

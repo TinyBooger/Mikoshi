@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from schemas import UserOut, UserMessageOut
 from utils.audit_logger import AuditLog
 from utils.chat_history_utils import count_chat_history_messages
+from utils.token_wallet import get_token_topup_packages, set_token_topup_packages
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -47,6 +48,17 @@ class TagUpdate(BaseModel):
 class ContentReviewResolveRequest(BaseModel):
     action: str
     notes: Optional[str] = None
+
+
+class TokenTopupPackageItem(BaseModel):
+    id: str
+    tokens: int
+    price_cny: float
+    label: Optional[str] = None
+
+
+class TokenTopupPackagesUpdateRequest(BaseModel):
+    packages: List[TokenTopupPackageItem]
 
 
 @router.get("/user-stats")
@@ -791,3 +803,48 @@ def get_current_rate_limit_status(
     
     status = get_rate_limit_status(ip)
     return status
+
+
+@router.get("/token-topup-packages")
+def get_token_topup_packages_admin(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user),
+):
+    packages = get_token_topup_packages(db)
+    return {
+        "packages": packages,
+    }
+
+
+@router.put("/token-topup-packages")
+def update_token_topup_packages_admin(
+    payload: TokenTopupPackagesUpdateRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user),
+):
+    if not payload.packages:
+        raise HTTPException(status_code=400, detail="At least one package is required")
+
+    raw_packages = [
+        {
+            "id": item.id,
+            "tokens": item.tokens,
+            "price_cny": item.price_cny,
+            "label": item.label,
+        }
+        for item in payload.packages
+    ]
+
+    try:
+        packages = set_token_topup_packages(
+            db,
+            packages=raw_packages,
+            updated_by=current_admin.id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {
+        "message": "Token top-up packages updated successfully",
+        "packages": packages,
+    }

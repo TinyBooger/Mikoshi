@@ -2284,28 +2284,52 @@ export default function ChatPage() {
                 const remaining = Number(tokenLimits?.remaining_tokens || 0);
 
                 if (tokenLimits?.cap_reached) {
+                  const walletBalance = Number(tokenLimits?.purchased_token_balance || 0);
+                  const hasWallet = walletBalance > 0;
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
-                      <span>{scopeLabel}已达上限：{formatCompactTokenCount(used)} / {formatCompactTokenCount(cap)}，请等待重置后继续。</span>
-                      {!tokenLimits?.is_pro && (
+                      <span>
+                        {scopeLabel}已达上限：{formatCompactTokenCount(used)} / {formatCompactTokenCount(cap)}。
+                        {hasWallet
+                          ? ` 当前钱包可用 ${formatCompactTokenCount(walletBalance)} token。`
+                          : ' 可升级Pro或购买Token包继续使用。'}
+                      </span>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                         <button
                           type="button"
-                          onClick={() => navigate('/pro-upgrade')}
+                          onClick={() => navigate('/token-topup')}
                           style={{
-                            flexShrink: 0,
                             padding: '0.15rem 0.55rem',
                             borderRadius: 6,
                             border: 'none',
-                            background: '#b91c1c',
+                            background: '#111827',
                             color: '#fff',
                             fontSize: '0.7rem',
                             fontWeight: 700,
                             cursor: 'pointer',
                           }}
                         >
-                          升级 Pro
+                          充值Token
                         </button>
-                      )}
+                        {!tokenLimits?.is_pro && (
+                          <button
+                            type="button"
+                            onClick={() => navigate('/pro-upgrade')}
+                            style={{
+                              padding: '0.15rem 0.55rem',
+                              borderRadius: 6,
+                              border: 'none',
+                              background: '#b91c1c',
+                              color: '#fff',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            升级 Pro
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 }

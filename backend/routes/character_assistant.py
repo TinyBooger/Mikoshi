@@ -5,7 +5,7 @@ from typing import Optional
 from utils.session import get_current_user
 from utils.llm_client import client
 from utils.usage_utils import normalize_usage
-from utils.token_usage_ledger import record_token_usage
+from utils.token_usage_ledger import apply_token_usage_with_wallet
 from utils.token_cap import can_consume_tokens, build_token_cap_reached_payload
 from database import get_db
 from models import User
@@ -187,11 +187,14 @@ async def generate_character(
 
         usage = normalize_usage(getattr(response, "usage", None))
         if usage["total_tokens"] > 0:
-            record_token_usage(
+            usage_result = apply_token_usage_with_wallet(
                 db,
-                user_id=current_user.id,
+                user=current_user,
                 usage=usage,
+                source="character_assistant",
             )
+            if not usage_result.get("success"):
+                raise HTTPException(status_code=429, detail=build_token_cap_reached_payload(usage_result.get("limit") or {}))
             db.commit()
 
         content = response.choices[0].message.content.strip()

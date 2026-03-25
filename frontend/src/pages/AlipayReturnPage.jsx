@@ -18,6 +18,7 @@ function AlipayReturnPage() {
   const queryKey = useMemo(() => searchParams.toString(), [searchParams]);
   const outTradeNoForView = searchParams.get('out_trade_no');
   const isProUpgradeForView = outTradeNoForView?.startsWith('PRO_');
+  const isTokenTopupForView = outTradeNoForView?.startsWith('TOPUP_');
 
   useEffect(() => {
     if (handledRef.current) {
@@ -59,6 +60,7 @@ function AlipayReturnPage() {
     if (outTradeNo) {
       // 检查是否是Pro升级订单
       const isProUpgrade = outTradeNo.startsWith('PRO_');
+      const isTokenTopup = outTradeNo.startsWith('TOPUP_');
       
       if (isProUpgrade) {
         if (!wasHandled) {
@@ -69,6 +71,15 @@ function AlipayReturnPage() {
             if (refreshUserData) {
               refreshUserData({ silent: true });
             }
+          }
+        });
+      } else if (isTokenTopup) {
+        if (!wasHandled) {
+          toast.show(`Token充值成功！订单号：${outTradeNo}`, { type: 'success' });
+        }
+        verifyReturn().then((result) => {
+          if (isPaymentSuccessStatus(result?.trade_status) && refreshUserData) {
+            refreshUserData({ silent: true });
           }
         });
       } else {
@@ -105,6 +116,28 @@ function AlipayReturnPage() {
                 style={{ minWidth: 132 }}
               >
                 回到首页
+              </SecondaryButton>
+            </div>
+          </>
+        ) : isTokenTopupForView ? (
+          <>
+            <div style={{ fontSize: '2.6rem', marginBottom: 12 }}>💰</div>
+            <h2 style={{ marginBottom: 12 }}>Token充值成功</h2>
+            <p style={{ color: '#666', marginBottom: 24 }}>
+              钱包Token已到账，可在套餐额度用尽后继续使用。
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <PrimaryButton
+                onClick={() => navigate('/token-topup')}
+                style={{ minWidth: 132 }}
+              >
+                继续充值
+              </PrimaryButton>
+              <SecondaryButton
+                onClick={() => navigate('/chat')}
+                style={{ minWidth: 132 }}
+              >
+                去聊天
               </SecondaryButton>
             </div>
           </>

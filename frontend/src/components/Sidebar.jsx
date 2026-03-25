@@ -671,34 +671,60 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       {/* Profile / Login */}
       <div className="mt-auto px-1" style={{ fontSize: '0.8rem', flexShrink: 0 }}>
         {userData && (
-          <div
-            className="d-flex align-items-center justify-content-between rounded-4 mb-2"
-            style={{
-              background: '#fff',
-              border: '1px solid #eef0f3',
-              padding: '0.45rem 0.65rem',
-              color: '#4b5563',
-              fontSize: '0.72rem',
-              fontWeight: 600,
-            }}
-          >
-            <span>
-              {getTokenQuotaLabel(userData?.token_cap_scope)}
-            </span>
-            <span>
-              {(() => {
-                const used = Number(
-                  userData?.token_cap_scope === 'monthly'
-                    ? (userData?.monthly_token_usage || 0)
-                    : (userData?.daily_token_usage || 0)
-                );
-                const cap = Number(userData?.token_cap || 0);
-                if (cap > 0) {
-                  return `${formatCompactTokenCount(used)} / ${formatCompactTokenCount(cap)}`;
-                }
-                return formatCompactTokenCount(used);
-              })()}
-            </span>
+          <div className="rounded-4 mb-2" style={{ background: '#fff', border: '1px solid #eef0f3', padding: '0.45rem 0.65rem' }}>
+            <div
+              className="d-flex align-items-center justify-content-between"
+              style={{
+                color: '#4b5563',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+              }}
+            >
+              <span>
+                {getTokenQuotaLabel(userData?.token_cap_scope)}
+              </span>
+              <span>
+                {(() => {
+                  const used = Number(
+                    userData?.token_cap_scope === 'monthly'
+                      ? (userData?.monthly_token_usage || 0)
+                      : (userData?.daily_token_usage || 0)
+                  );
+                  const cap = Number(userData?.token_cap || 0);
+                  if (cap > 0) {
+                    return `${formatCompactTokenCount(used)} / ${formatCompactTokenCount(cap)}`;
+                  }
+                  return formatCompactTokenCount(used);
+                })()}
+              </span>
+            </div>
+            <div
+              className="d-flex align-items-center justify-content-between mt-1"
+              style={{
+                color: '#334155',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+              }}
+            >
+              <span>钱包Token</span>
+              <span>{formatCompactTokenCount(Number(userData?.purchased_token_balance || 0))}</span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm w-100 mt-2"
+              onClick={() => handleNavigate('/token-topup')}
+              style={{
+                borderRadius: 8,
+                background: '#111827',
+                color: '#fff',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                padding: '0.28rem 0.45rem',
+                border: 'none',
+              }}
+            >
+              充值 Token
+            </button>
           </div>
         )}
   {userData ? (

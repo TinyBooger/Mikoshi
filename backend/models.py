@@ -68,6 +68,11 @@ class User(Base):
     last_exp_reset_date = Column(DateTime(timezone=True), nullable=True)  # Last daily reset
     daily_action_counts = Column(JSONB, default={}, nullable=False)  # Track daily action counts
 
+    # Purchased token wallet
+    purchased_token_balance = Column(Integer, default=0, nullable=False)
+    purchased_tokens_bought_total = Column(Integer, default=0, nullable=False)
+    purchased_tokens_consumed_total = Column(Integer, default=0, nullable=False)
+
     # liked_characters, liked_scenes, liked_personas removed; now handled by junction tables
     liked_tags = Column(ARRAY(Text), default=[])
     
@@ -95,6 +100,21 @@ class UserTokenUsageLedger(Base):
     __table_args__ = (
         UniqueConstraint('user_id', 'usage_date', name='uix_user_token_usage_ledger_user_date'),
     )
+
+
+class UserTokenWalletLedger(Base):
+    __tablename__ = "user_token_wallet_ledger"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    transaction_type = Column(String(20), nullable=False, index=True)
+    token_amount = Column(Integer, nullable=False)
+    balance_after = Column(Integer, nullable=False)
+    source = Column(String(50), nullable=True)
+    source_order_no = Column(String(128), nullable=True, index=True)
+    idempotency_key = Column(String(160), nullable=True, unique=True, index=True)
+    wallet_meta = Column(JSONB, default={}, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
 
 class ChatHistory(Base):

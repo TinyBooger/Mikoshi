@@ -28,7 +28,7 @@ from utils.level_system import award_exp_with_limits
 from utils.message_limit import can_send_user_message, increment_user_message_count
 from utils.context_window import compact_conversation_messages, resolve_context_window_settings
 from utils.usage_utils import normalize_usage
-from utils.token_usage_ledger import record_token_usage
+from utils.token_usage_ledger import apply_token_usage_with_wallet
 from utils.token_cap import can_consume_tokens, get_token_cap_info, build_token_cap_reached_payload
 
 router = APIRouter()
@@ -429,11 +429,18 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         summary_usage["total_tokens"] += context_summary_usage["total_tokens"]
 
     if summary_usage["total_tokens"] > 0:
-        record_token_usage(
+        summary_usage_result = apply_token_usage_with_wallet(
             db,
-            user_id=current_user.id,
+            user=current_user,
             usage=summary_usage,
+            source="chat_context_summary",
+            metadata={"chat_id": chat_id},
         )
+        if not summary_usage_result.get("success"):
+            return JSONResponse(
+                content=build_token_cap_reached_payload(summary_usage_result.get("limit") or token_limit_info),
+                status_code=429,
+            )
         db.commit()
         token_limit_info = get_token_cap_info(current_user, db)
     if not prepared_messages:
@@ -531,11 +538,18 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             db_session,
                             limit_check["is_user_request"],
                         ) or (limit_check.get("limit") or {})
-                        record_token_usage(
+                        usage_result = apply_token_usage_with_wallet(
                             db_session,
-                            user_id=stream_user.id,
+                            user=stream_user,
                             usage=response_usage,
+                            source="chat_stream",
+                            source_order_no=chat_id,
+                            metadata={"stream": True, "character_id": character_id},
                         )
+                        if not usage_result.get("success"):
+                            db_session.rollback()
+                            yield f"data: {json.dumps({'error': 'TOKEN_CAP_REACHED', 'token_limits': usage_result.get('limit') or {}})}\n\n"
+                            return
                         entry = _persist_chat_history_turn(
                             db_session,
                             current_user_id=current_user.id,
@@ -562,11 +576,18 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         db,
                         limit_check["is_user_request"],
                     ) or (limit_check.get("limit") or {})
-                    record_token_usage(
+                    usage_result = apply_token_usage_with_wallet(
                         db,
-                        user_id=current_user.id,
+                        user=current_user,
                         usage=response_usage,
+                        source="chat_stream",
+                        source_order_no=chat_id,
+                        metadata={"stream": True, "character_id": character_id},
                     )
+                    if not usage_result.get("success"):
+                        db.rollback()
+                        yield f"data: {json.dumps({'error': 'TOKEN_CAP_REACHED', 'token_limits': usage_result.get('limit') or {}})}\n\n"
+                        return
                     db.commit()
                     current_token_limit_info = get_token_cap_info(current_user, db)
 
@@ -618,11 +639,20 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             db,
             limit_check["is_user_request"],
         ) or (limit_check.get("limit") or {})
-        record_token_usage(
+        usage_result = apply_token_usage_with_wallet(
             db,
-            user_id=current_user.id,
+            user=current_user,
             usage=response_usage,
+            source="chat_non_stream",
+            source_order_no=chat_id,
+            metadata={"stream": False, "character_id": character_id},
         )
+        if not usage_result.get("success"):
+            db.rollback()
+            return JSONResponse(
+                content=build_token_cap_reached_payload(usage_result.get("limit") or token_limit_info),
+                status_code=429,
+            )
         db.commit()
         token_limit_info = get_token_cap_info(current_user, db)
 

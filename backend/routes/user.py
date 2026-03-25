@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Q
 from schemas import UserOut, UserListOut
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona
+from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona, UserTokenWalletLedger
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
@@ -122,6 +122,37 @@ def get_current_user_token_limits(
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
     return get_token_cap_info(current_user, db)
+
+
+@router.get("/api/wallet/history")
+def get_wallet_history(
+    limit: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(UserTokenWalletLedger)
+        .filter(UserTokenWalletLedger.user_id == current_user.id)
+        .order_by(UserTokenWalletLedger.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        "items": [
+            {
+                "id": row.id,
+                "transaction_type": row.transaction_type,
+                "token_amount": int(row.token_amount or 0),
+                "balance_after": int(row.balance_after or 0),
+                "source": row.source,
+                "source_order_no": row.source_order_no,
+                "wallet_meta": row.wallet_meta or {},
+                "created_at": row.created_at,
+            }
+            for row in rows
+        ]
+    }
 
 # --- Single User Endpoints (comes AFTER specific routes above) ---
 

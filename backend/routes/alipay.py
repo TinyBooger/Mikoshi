@@ -17,6 +17,13 @@ from sqlalchemy.exc import IntegrityError
 from utils.payment_provider import get_active_payment_provider
 from utils.session import verify_session_token, get_current_admin_user
 from utils.user_utils import upgrade_to_pro
+from utils.token_wallet import (
+    get_token_topup_packages,
+    get_token_topup_package_by_id,
+    get_token_topup_package_by_amount,
+    credit_wallet_tokens,
+    reverse_wallet_tokens_for_refund,
+)
 from database import get_db
 from models import User, PaymentOrder
 from utils.audit_logger import AuditLog
@@ -28,6 +35,7 @@ router = APIRouter(prefix="/api/alipay", tags=["alipay"])
 PRO_UPGRADE_PRICE_CNY = float(os.getenv("PRO_UPGRADE_PRICE_CNY", "29"))
 PRO_UPGRADE_DURATION_DAYS = int(os.getenv("PRO_UPGRADE_DURATION_DAYS", "30"))
 PRO_AMOUNT_TOLERANCE = 0.01
+TOKEN_TOPUP_AMOUNT_TOLERANCE = 0.01
 
 
 def _get_payment_provider():
@@ -67,6 +75,14 @@ def _is_valid_pro_upgrade_amount(total_amount: Optional[str | float | int]) -> b
         return abs(amount - PRO_UPGRADE_PRICE_CNY) <= PRO_AMOUNT_TOLERANCE
     except (TypeError, ValueError):
         return False
+
+
+def _resolve_order_type_from_out_trade_no(out_trade_no: str) -> str:
+    if out_trade_no.startswith("PRO_"):
+        return "pro_upgrade"
+    if out_trade_no.startswith("TOPUP_"):
+        return "token_topup"
+    return "unknown"
 
 
 def _build_notify_url() -> Optional[str]:
@@ -311,6 +327,171 @@ def _handle_pro_upgrade(
         logger.error(f"升级Pro会员失败: {e}")
 
 
+def _handle_token_topup(
+    db,
+    out_trade_no: str,
+    trade_no: Optional[str],
+    total_amount: Optional[str],
+    source: str,
+):
+    if not out_trade_no.startswith("TOPUP_"):
+        return
+
+    user_id = _extract_user_id(out_trade_no)
+
+    payment_order = _claim_payment_order(
+        db=db,
+        out_trade_no=out_trade_no,
+        order_type="token_topup",
+        user_id=user_id,
+        trade_no=trade_no,
+        total_amount=total_amount,
+        source=source,
+    )
+    if payment_order is None:
+        existing = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
+        existing_status = existing.status if existing else "unknown"
+        logger.info(f"充值订单已处理或处理中，跳过: {out_trade_no}, status={existing_status}")
+        return
+
+    try:
+        paid_amount = float(total_amount or 0)
+    except (TypeError, ValueError):
+        paid_amount = -1
+
+    package = get_token_topup_package_by_amount(db, paid_amount, TOKEN_TOPUP_AMOUNT_TOLERANCE)
+    if not package:
+        _finalize_payment_order(
+            db=db,
+            payment_order=payment_order,
+            status="failure",
+            error_message="invalid_topup_amount",
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+        )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="token_topup",
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            status="failure",
+            error_message="invalid_topup_amount",
+        )
+        return
+
+    if not user_id:
+        _finalize_payment_order(
+            db=db,
+            payment_order=payment_order,
+            status="failure",
+            error_message="missing_user_id",
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+        )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="token_topup",
+            user_id=None,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            status="failure",
+            error_message="missing_user_id",
+        )
+        return
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        _finalize_payment_order(
+            db=db,
+            payment_order=payment_order,
+            status="failure",
+            error_message="user_not_found",
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+        )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="token_topup",
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            status="failure",
+            error_message="user_not_found",
+        )
+        return
+
+    try:
+        credit_wallet_tokens(
+            db,
+            user_id=user_id,
+            tokens=int(package["tokens"]),
+            source="alipay_topup",
+            source_order_no=out_trade_no,
+            idempotency_key=f"credit:{out_trade_no}",
+            metadata={
+                "package_id": package["id"],
+                "price_cny": package["price_cny"],
+                "trade_no": trade_no,
+            },
+        )
+        payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
+        if payment_order:
+            _finalize_payment_order(
+                db=db,
+                payment_order=payment_order,
+                status="success",
+                trade_no=trade_no,
+                total_amount=total_amount,
+                source=source,
+            )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="token_topup",
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            status="success",
+        )
+        logger.info(f"用户 {user_id} 充值成功，token +{package['tokens']}")
+    except Exception as e:
+        db.rollback()
+        payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
+        if payment_order:
+            _finalize_payment_order(
+                db=db,
+                payment_order=payment_order,
+                status="error",
+                error_message=str(e),
+                trade_no=trade_no,
+                total_amount=total_amount,
+                source=source,
+            )
+        _record_order_result(
+            db,
+            out_trade_no=out_trade_no,
+            order_type="token_topup",
+            user_id=user_id,
+            trade_no=trade_no,
+            total_amount=total_amount,
+            source=source,
+            status="error",
+            error_message=str(e),
+        )
+        logger.error(f"充值token失败: {e}")
+
+
 # 请求模型
 class CreateOrderRequest(BaseModel):
     """创建订单请求"""
@@ -321,6 +502,7 @@ class CreateOrderRequest(BaseModel):
     timeout_express: Optional[str] = None  # 超时时间: 30m、2h、1d等 (沙箱环境不超过15小时)
     order_type: Optional[str] = None  # 订单类型: pro_upgrade等
     user_id: Optional[str] = None  # 用户ID (Firebase UID是字符串)
+    package_id: Optional[str] = None  # 充值包ID（token_topup专用）
 
 
 class QueryOrderRequest(BaseModel):
@@ -354,6 +536,7 @@ async def create_order(
                    f"payment_type={request.payment_type}, order_type={request.order_type}, user_id={request.user_id}")
 
         resolved_user_id: Optional[str] = None
+        topup_package: Optional[dict] = None
         if request.order_type == "pro_upgrade":
             if not _is_valid_pro_upgrade_amount(request.total_amount):
                 raise HTTPException(status_code=400, detail=f"Pro升级金额必须为 {PRO_UPGRADE_PRICE_CNY:.2f}")
@@ -370,18 +553,40 @@ async def create_order(
                 raise HTTPException(status_code=403, detail="不能为其他用户创建Pro升级订单")
 
             resolved_user_id = authed_user_id
+        elif request.order_type == "token_topup":
+            authed_user_id = verify_session_token(session_token)
+            if not authed_user_id:
+                raise HTTPException(status_code=401, detail="Token充值订单需要登录")
+
+            if request.user_id and request.user_id != authed_user_id:
+                raise HTTPException(status_code=403, detail="不能为其他用户创建充值订单")
+
+            if not request.package_id:
+                raise HTTPException(status_code=400, detail="缺少充值包ID")
+
+            topup_package = get_token_topup_package_by_id(db, request.package_id)
+            if not topup_package:
+                raise HTTPException(status_code=400, detail="无效的充值包")
+
+            expected_amount = float(topup_package["price_cny"])
+            if abs(float(request.total_amount) - expected_amount) > TOKEN_TOPUP_AMOUNT_TOLERANCE:
+                raise HTTPException(status_code=400, detail="充值金额与充值包不匹配")
+
+            resolved_user_id = authed_user_id
         elif request.order_type:
             raise HTTPException(status_code=400, detail="Unsupported order type")
         
         # 生成唯一订单号，包含订单类型前缀以便后续识别
         if request.order_type == "pro_upgrade":
             prefix = "PRO_"
+        elif request.order_type == "token_topup":
+            prefix = "TOPUP_"
         else:
             prefix = "MK"
         out_trade_no = f"{prefix}{datetime.now().strftime('%Y%m%d%H%M%S')}{uuid.uuid4().hex[:8]}"
         
         # 如果是Pro升级订单，将user_id附加到订单号末尾
-        if request.order_type == "pro_upgrade" and resolved_user_id:
+        if request.order_type in {"pro_upgrade", "token_topup"} and resolved_user_id:
             out_trade_no = f"{out_trade_no}_U{resolved_user_id}"
         
         # 构造回调URL（使用完整URL以确保支付宝可以正确跳转）
@@ -420,13 +625,23 @@ async def create_order(
             trade_no_values = parse_qs(parsed_url.query).get("trade_no") or []
             mock_trade_no = trade_no_values[0] if trade_no_values else f"MOCK_{uuid.uuid4().hex[:24]}"
             total_amount = f"{request.total_amount:.2f}"
-            _handle_pro_upgrade(
-                db=db,
-                out_trade_no=out_trade_no,
-                trade_no=mock_trade_no,
-                total_amount=total_amount,
-                source="mock_create_order",
-            )
+            resolved_order_type = _resolve_order_type_from_out_trade_no(out_trade_no)
+            if resolved_order_type == "pro_upgrade":
+                _handle_pro_upgrade(
+                    db=db,
+                    out_trade_no=out_trade_no,
+                    trade_no=mock_trade_no,
+                    total_amount=total_amount,
+                    source="mock_create_order",
+                )
+            elif resolved_order_type == "token_topup":
+                _handle_token_topup(
+                    db=db,
+                    out_trade_no=out_trade_no,
+                    trade_no=mock_trade_no,
+                    total_amount=total_amount,
+                    source="mock_create_order",
+                )
         
         logger.info(f"创建支付订单: {out_trade_no}, 金额: {request.total_amount}, provider={provider.provider_name}")
         
@@ -436,6 +651,8 @@ async def create_order(
             "out_trade_no": out_trade_no,
             "total_amount": request.total_amount,
             "subject": request.subject,
+            "order_type": request.order_type,
+            "package": topup_package,
             "provider": provider.provider_name,
         }
 
@@ -481,13 +698,23 @@ async def alipay_notify(request: Request, db: Session = Depends(get_db)):
         # 支付成功
         if trade_status == "TRADE_SUCCESS" or trade_status == "TRADE_FINISHED":
             logger.info(f"订单支付成功: {out_trade_no}, 支付宝交易号: {trade_no}, 金额: {total_amount}")
-            _handle_pro_upgrade(
-                db=db,
-                out_trade_no=out_trade_no or "",
-                trade_no=trade_no,
-                total_amount=total_amount,
-                source="notify",
-            )
+            resolved_order_type = _resolve_order_type_from_out_trade_no(out_trade_no or "")
+            if resolved_order_type == "pro_upgrade":
+                _handle_pro_upgrade(
+                    db=db,
+                    out_trade_no=out_trade_no or "",
+                    trade_no=trade_no,
+                    total_amount=total_amount,
+                    source="notify",
+                )
+            elif resolved_order_type == "token_topup":
+                _handle_token_topup(
+                    db=db,
+                    out_trade_no=out_trade_no or "",
+                    trade_no=trade_no,
+                    total_amount=total_amount,
+                    source="notify",
+                )
             return "success"
         
         # 其他状态
@@ -530,13 +757,23 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
         if provider.provider_name == "mock":
             trade_status = data.get("trade_status") or "TRADE_SUCCESS"
             query_code = "10000"
-            _handle_pro_upgrade(
-                db=db,
-                out_trade_no=out_trade_no or "",
-                trade_no=trade_no,
-                total_amount=total_amount,
-                source="return_query",
-            )
+            resolved_order_type = _resolve_order_type_from_out_trade_no(out_trade_no or "")
+            if resolved_order_type == "pro_upgrade":
+                _handle_pro_upgrade(
+                    db=db,
+                    out_trade_no=out_trade_no or "",
+                    trade_no=trade_no,
+                    total_amount=total_amount,
+                    source="return_query",
+                )
+            elif resolved_order_type == "token_topup":
+                _handle_token_topup(
+                    db=db,
+                    out_trade_no=out_trade_no or "",
+                    trade_no=trade_no,
+                    total_amount=total_amount,
+                    source="return_query",
+                )
         elif out_trade_no or trade_no:
             try:
                 query_result = provider.query_order(out_trade_no=out_trade_no, trade_no=trade_no)
@@ -545,13 +782,23 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
                 logger.warning(f"查询订单状态失败: {e}")
 
         if query_code == "10000" and trade_status in ("TRADE_SUCCESS", "TRADE_FINISHED"):
-            _handle_pro_upgrade(
-                db=db,
-                out_trade_no=out_trade_no or "",
-                trade_no=trade_no,
-                total_amount=total_amount,
-                source="return_query",
-            )
+            resolved_order_type = _resolve_order_type_from_out_trade_no(out_trade_no or "")
+            if resolved_order_type == "pro_upgrade":
+                _handle_pro_upgrade(
+                    db=db,
+                    out_trade_no=out_trade_no or "",
+                    trade_no=trade_no,
+                    total_amount=total_amount,
+                    source="return_query",
+                )
+            elif resolved_order_type == "token_topup":
+                _handle_token_topup(
+                    db=db,
+                    out_trade_no=out_trade_no or "",
+                    trade_no=trade_no,
+                    total_amount=total_amount,
+                    source="return_query",
+                )
         return {
             "success": True,
             "message": "支付结果已接收",
@@ -689,6 +936,7 @@ async def close_order(
 @router.post("/refund")
 async def refund_order(
     request: RefundRequest,
+    db: Session = Depends(get_db),
     _current_admin_user: User = Depends(get_current_admin_user),
 ):
     """
@@ -701,12 +949,31 @@ async def refund_order(
             refund_amount=request.refund_amount,
             refund_reason=request.refund_reason
         )
+
+        payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == request.out_trade_no).first()
+        refund_reversal = None
+        if payment_order and payment_order.order_type == "token_topup" and payment_order.user_id:
+            try:
+                paid_amount = float(payment_order.total_amount or 0)
+            except (TypeError, ValueError):
+                paid_amount = -1
+            package = get_token_topup_package_by_amount(db, paid_amount, TOKEN_TOPUP_AMOUNT_TOLERANCE)
+            if package:
+                refund_reversal = reverse_wallet_tokens_for_refund(
+                    db,
+                    user_id=payment_order.user_id,
+                    tokens=int(package["tokens"]),
+                    source_order_no=payment_order.out_trade_no,
+                    idempotency_key=f"refund_reverse:{payment_order.out_trade_no}",
+                )
+                db.commit()
         
         logger.info(f"退款结果: {result}")
         
         return {
             "success": True,
-            "data": result
+            "data": result,
+            "wallet_refund_reversal": refund_reversal,
         }
 
     except HTTPException:
@@ -730,4 +997,13 @@ async def get_config(_current_admin_user: User = Depends(get_current_admin_user)
         "is_configured": provider.is_configured,
         "provider": provider.provider_name,
         "environment": os.getenv("ENVIRONMENT", "development"),
+    }
+
+
+@router.get("/token-packages")
+async def get_token_packages(db: Session = Depends(get_db)):
+    packages = get_token_topup_packages(db)
+    return {
+        "success": True,
+        "packages": packages,
     }
