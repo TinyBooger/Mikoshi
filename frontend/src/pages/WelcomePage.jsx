@@ -41,7 +41,7 @@ export default function LoginPage() {
     const safePwd = pwd || '';
 
     if (!safeEmail || !safePwd) {
-      const msg = t('welcome.invalid_credentials', 'Invalid email or password');
+      const msg = t('welcome.invalid_credentials');
       setError(msg);
       if (toast && toast.show) toast.show(msg, { type: 'error' });
       return;
@@ -50,7 +50,7 @@ export default function LoginPage() {
     if (success) {
       navigate('/');
     } else {
-      const msg = t('welcome.invalid_credentials', 'Invalid email or password');
+      const msg = t('welcome.invalid_credentials');
       setError(msg);
       if (toast && toast.show) toast.show(msg, { type: 'error' });
       setPasswordCaptchaVerified(false);
@@ -64,7 +64,7 @@ export default function LoginPage() {
     if (loading) return;
 
     if (!email.trim() || !password.trim()) {
-      const msg = t('welcome.invalid_credentials', 'Invalid email or password');
+      const msg = t('welcome.invalid_credentials');
       setError(msg);
       toast?.show(msg, { type: 'error' });
       return;

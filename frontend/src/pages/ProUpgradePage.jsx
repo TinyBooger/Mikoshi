@@ -13,71 +13,28 @@ export default function ProUpgradePage() {
   if (!userData) return null;
 
   return (
-    <PageWrapper title={t('pro_upgrade.title', '升级为Pro用户')}>
+    <PageWrapper title={t('pro_upgrade.title')}>
       <div className="container py-5">
         <div className="row justify-content-center">
           <div className="col-12 col-lg-10 col-xl-8">
             {/* Header Section */}
             <div className="text-center mb-5">
               <h1 className="fw-bold mb-3" style={{ color: '#232323', fontSize: '2.2rem' }}>
-                {t('pro_upgrade.title', '升级为Pro用户')}
+                {t('pro_upgrade.title')}
               </h1>
               <p className="text-muted" style={{ fontSize: '1.05rem' }}>
-                {t('pro_upgrade.subtitle', '解锁更多功能，提升您的体验')}
+                {t('pro_upgrade.subtitle')}
               </p>
-            </div>
-
-            {/* Features Grid */}
-            <div className="row g-4 mb-5">
-              {[
-                { icon: '🚀', title: '更快的响应速度', desc: '优先处理您的请求' },
-                { icon: '💎', title: '专属功能', desc: '访问Pro用户专属的高级功能' },
-                { icon: '🎨', title: '更多创作自由', desc: '创建更多角色和场景' },
-                { icon: '⭐', title: '专属徽章', desc: '展示您的Pro身份' },
-                { icon: '🔒', title: '优先支持', desc: '获得更快的客服响应' },
-                { icon: '📊', title: '高级统计', desc: '查看详细的使用数据分析' }
-              ].map((feature, idx) => (
-                <div key={idx} className="col-md-6">
-                  <div 
-                    className="h-100 p-4 rounded-4 border"
-                    style={{
-                      background: '#fff',
-                      borderColor: '#e9ecef !important',
-                      transition: 'transform 0.2s, box-shadow 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-4px)';
-                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <div className="d-flex align-items-start gap-3">
-                      <div style={{ fontSize: '2rem' }}>{feature.icon}</div>
-                      <div>
-                        <h5 className="fw-bold mb-2" style={{ color: '#232323' }}>
-                          {t(`pro_upgrade.feature_${idx}_title`, feature.title)}
-                        </h5>
-                        <p className="text-muted mb-0" style={{ fontSize: '0.9rem' }}>
-                          {t(`pro_upgrade.feature_${idx}_desc`, feature.desc)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
             </div>
 
             {/* Comparison Table */}
             <div className="mb-5">
               <div className="text-center mb-4">
                 <h3 className="fw-bold" style={{ color: '#232323' }}>
-                  {t('pro_upgrade.comparison_title', '普通用户 vs Pro用户')}
+                  {t('pro_upgrade.comparison_title')}
                 </h3>
                 <p className="text-muted mb-0" style={{ fontSize: '0.95rem' }}>
-                  {t('pro_upgrade.comparison_subtitle', '关键权益对比一目了然')}
+                  {t('pro_upgrade.comparison_subtitle')}
                 </p>
               </div>
               <div
@@ -93,13 +50,13 @@ export default function ProUpgradePage() {
                     <thead>
                       <tr>
                         <th style={{ width: '40%', color: '#6c757d', fontSize: '0.85rem' }}>
-                          {t('pro_upgrade.comparison_aspect', '权益项')}
+                          {t('pro_upgrade.comparison_aspect')}
                         </th>
                         <th style={{ width: '30%', color: '#6c757d', fontSize: '0.85rem' }}>
-                          {t('pro_upgrade.comparison_regular', '普通用户')}
+                          {t('pro_upgrade.comparison_regular')}
                         </th>
                         <th style={{ width: '30%', color: '#6c757d', fontSize: '0.85rem' }}>
-                          {t('pro_upgrade.comparison_pro', 'Pro用户')}
+                          {t('pro_upgrade.comparison_pro')}
                         </th>
                       </tr>
                     </thead>
@@ -107,21 +64,27 @@ export default function ProUpgradePage() {
                       {[
                         {
                           key: 'chat_limit',
-                          label: t('pro_upgrade.compare_chat_limit', '对话量限制'),
-                          regular: t('pro_upgrade.compare_chat_limit_regular', '待公布'),
-                          pro: t('pro_upgrade.compare_chat_limit_pro', '待公布')
+                          label: t('pro_upgrade.compare_chat_limit'),
+                          regular: t('pro_upgrade.compare_chat_limit_regular'),
+                          pro: t('pro_upgrade.compare_chat_limit_pro')
                         },
                         {
                           key: 'context_length',
-                          label: t('pro_upgrade.compare_context_length', '前后文长度'),
-                          regular: t('pro_upgrade.compare_context_length_regular', '待公布'),
-                          pro: t('pro_upgrade.compare_context_length_pro', '待公布')
+                          label: t('pro_upgrade.compare_context_length'),
+                          regular: t('pro_upgrade.compare_context_length_regular'),
+                          pro: t('pro_upgrade.compare_context_length_pro')
                         },
                         {
-                          key: 'daily_create',
-                          label: t('pro_upgrade.compare_daily_create', '每日可创作角色数量'),
-                          regular: t('pro_upgrade.compare_daily_create_regular', '待公布'),
-                          pro: t('pro_upgrade.compare_daily_create_pro', '待公布')
+                          key: 'chat_setting',
+                          label: t('pro_upgrade.compare_chat_setting'),
+                          regular: t('pro_upgrade.compare_chat_setting_regular'),
+                          pro: t('pro_upgrade.compare_chat_setting_pro')
+                        },
+                        {
+                          key: 'character_create',
+                          label: t('pro_upgrade.compare_character_create'),
+                          regular: t('pro_upgrade.compare_character_create_regular'),
+                          pro: t('pro_upgrade.compare_character_create_pro')
                         }
                       ].map((row, idx) => (
                         <tr key={row.key} style={{ borderTop: idx === 0 ? '1px solid #e9ecef' : '1px solid #f1f3f5' }}>
@@ -162,11 +125,11 @@ export default function ProUpgradePage() {
                     ¥29
                   </span>
                   <span className="text-muted" style={{ fontSize: '1.1rem' }}>
-                    {t('pro_upgrade.per_month', '/月')}
+                    {t('pro_upgrade.per_month')}
                   </span>
                 </div>
                 <p className="text-muted mb-4" style={{ fontSize: '0.9rem' }}>
-                  {t('pro_upgrade.cancel_anytime', '随时可以取消')}
+                  {t('pro_upgrade.cancel_anytime')}
                 </p>
                 
                 <button
@@ -189,7 +152,7 @@ export default function ProUpgradePage() {
                   }}
                   onClick={async () => {
                     if (!userData) {
-                      toast.show(t('sidebar.login_first', '请先登录'), { type: 'info' });
+                      toast.show(t('sidebar.login_first'), { type: 'info' });
                       return;
                     }
                     
@@ -255,10 +218,10 @@ export default function ProUpgradePage() {
                   {loading ? (
                     <>
                       <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                      {t('common.loading', '加载中...')}
+                      {t('common.loading')}
                     </>
                   ) : (
-                    t('pro_upgrade.upgrade_now', '立即升级')
+                    t('pro_upgrade.upgrade_now')
                   )}
                 </button>
               </div>
@@ -267,7 +230,7 @@ export default function ProUpgradePage() {
             {/* FAQ Section */}
             <div className="mt-5">
               <h3 className="fw-bold text-center mb-4" style={{ color: '#232323' }}>
-                {t('pro_upgrade.faq_title', '常见问题')}
+                {t('pro_upgrade.faq_title')}
               </h3>
               <div className="accordion" id="faqAccordion">
                 {[
@@ -297,12 +260,12 @@ export default function ProUpgradePage() {
                           fontSize: '1rem'
                         }}
                       >
-                        {t(`pro_upgrade.faq_${idx}_q`, faq.q)}
+                        {t(`pro_upgrade.faq_${idx}_q`)}
                       </button>
                     </h2>
                     <div id={`faq${idx}`} className="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                       <div className="accordion-body" style={{ color: '#6c757d' }}>
-                        {t(`pro_upgrade.faq_${idx}_a`, faq.a)}
+                        {t(`pro_upgrade.faq_${idx}_a`)}
                       </div>
                     </div>
                   </div>
@@ -313,14 +276,14 @@ export default function ProUpgradePage() {
             {/* Footer Note */}
             <div className="text-center mt-5 pt-5" style={{ borderTop: '1px solid #e9ecef' }}>
               <p className="text-muted" style={{ fontSize: '0.9rem' }}>
-                {t('pro_upgrade.footer_note', '升级到Pro会员即表示您同意我们的')}
+                {t('pro_upgrade.footer_note')}
                 {' '}
                 <a href="/terms-of-service" className="text-decoration-none" style={{ color: '#667eea' }}>
-                  {t('pro_upgrade.terms', '服务条款')}
+                  {t('pro_upgrade.terms')}
                 </a>
-                {' '}{t('common.and', '和')}{' '}
+                {' '}{t('common.and')}{' '}
                 <a href="/privacy-policy" className="text-decoration-none" style={{ color: '#667eea' }}>
-                  {t('pro_upgrade.privacy', '隐私政策')}
+                  {t('pro_upgrade.privacy')}
                 </a>
               </p>
             </div>

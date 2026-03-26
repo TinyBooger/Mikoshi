@@ -17,19 +17,19 @@ function BrowsePage() {
   const { sidebarVisible, setSidebarVisible } = useOutletContext() || {};
   // Tabs
   const MAIN_TABS = [
-    { key: 'characters', label: t('browse.characters', 'Characters') },
-    { key: 'scenes', label: t('browse.scenes', 'Scenes') },
-    { key: 'personas', label: t('browse.personas', 'Personas') },
-    { key: 'users', label: t('browse.users', 'Users') },
+    { key: 'characters', label: t('browse.characters') },
+    { key: 'scenes', label: t('browse.scenes') },
+    { key: 'personas', label: t('browse.personas') },
+    { key: 'users', label: t('browse.users') },
   ];
   const SUBTABS = [
-    { key: 'recommended', label: t('browse.for_you', 'For You') },
-    { key: 'popular', label: t('browse.popular', 'Popular') },
-    { key: 'recent', label: t('browse.recent', 'Recent') },
+    { key: 'recommended', label: t('browse.for_you') },
+    { key: 'popular', label: t('browse.popular') },
+    { key: 'recent', label: t('browse.recent') },
   ];
   const USER_SORT_OPTIONS = [
-    { key: 'total_rank', label: t('browse.creator_total_rank', '总排行') },
-    { key: 'recent_updated', label: t('browse.creator_recent_updated', '最近更新') },
+    { key: 'total_rank', label: t('browse.creator_total_rank') },
+    { key: 'recent_updated', label: t('browse.creator_recent_updated') },
   ];
 
   // State
@@ -236,20 +236,20 @@ function BrowsePage() {
   // Title logic
   const getSectionTitle = () => {
     if (activeMainTab === 'characters') {
-      if (activeSubTab === 'popular') return t('browse.popular_characters', 'Popular Characters');
-      if (activeSubTab === 'recent') return t('browse.recently_uploaded', 'Recently Uploaded');
-      if (activeSubTab === 'recommended') return t('browse.recommended_for_you', 'Recommended for You');
+      if (activeSubTab === 'popular') return t('browse.popular_characters');
+      if (activeSubTab === 'recent') return t('browse.recently_uploaded');
+      if (activeSubTab === 'recommended') return t('browse.recommended_for_you');
     } else if (activeMainTab === 'scenes') {
-      if (activeSubTab === 'popular') return t('browse.popular_scenes', 'Popular Scenes');
-      if (activeSubTab === 'recent') return t('browse.recent_scenes', 'Recent Scenes');
-      if (activeSubTab === 'recommended') return t('browse.recommended_scenes', 'Recommended Scenes');
+      if (activeSubTab === 'popular') return t('browse.popular_scenes');
+      if (activeSubTab === 'recent') return t('browse.recent_scenes');
+      if (activeSubTab === 'recommended') return t('browse.recommended_scenes');
     } else if (activeMainTab === 'personas') {
-      if (activeSubTab === 'popular') return t('browse.popular_personas', 'Popular Personas');
-      if (activeSubTab === 'recent') return t('browse.recent_personas', 'Recent Personas');
-      if (activeSubTab === 'recommended') return t('browse.recommended_personas', 'Recommended Personas');
+      if (activeSubTab === 'popular') return t('browse.popular_personas');
+      if (activeSubTab === 'recent') return t('browse.recent_personas');
+      if (activeSubTab === 'recommended') return t('browse.recommended_personas');
     } else if (activeMainTab === 'users') {
-      if (activeSubTab === 'recent_updated') return t('browse.creator_recent_updated', '最近更新');
-      return t('browse.creator_total_rank', '总排行');
+      if (activeSubTab === 'recent_updated') return t('browse.creator_recent_updated');
+      return t('browse.creator_total_rank');
     }
     return '';
   };
@@ -503,7 +503,7 @@ function BrowsePage() {
                 }}
               >
                 <i className="bi bi-sort-down" style={{ fontSize: '1.1rem' }}></i>
-                <span style={{ fontSize: '0.95rem' }}>{t('common.sort', 'Sort')}</span>
+                <span style={{ fontSize: '0.95rem' }}>{t('common.sort')}</span>
               </button>
 
               {/* Dropdown Menu */}
@@ -576,7 +576,7 @@ function BrowsePage() {
           ) : entities.length === 0 ? (
             <div className="text-center my-5">
               <div className="alert alert-info">
-                {t('browse.no_results', 'No results found.')}
+                {t('browse.no_results')}
               </div>
             </div>
           ) : (
@@ -615,15 +615,15 @@ function BrowsePage() {
                   }}>
                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💡</div>
                     <h5 className="fw-bold mb-3" style={{ color: '#736B92' }}>
-                      {t('browse.no_recommendations_title', 'No Recommendations Yet')}
+                      {t('browse.no_recommendations_title')}
                     </h5>
                     <p className="text-muted mb-0" style={{ fontSize: '0.95rem', lineHeight: '1.6' }}>
-                      {t('browse.no_recommendations', 'No recommendations yet. Please like more characters to unlock personalized suggestions.')}
+                      {t('browse.no_recommendations')}
                     </p>
                   </div>
                 ) : (
                   <div className="alert alert-info">
-                    {t('browse.no_results', 'No results found.')}
+                    {t('browse.no_results')}
                   </div>
                 )}
               </div>
@@ -663,7 +663,7 @@ function BrowsePage() {
 
       <button
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        aria-label={t('common.back_to_top', 'Back to top')}
+        aria-label={t('common.back_to_top')}
         style={{
           position: 'fixed',
           right: isMobile ? '12px' : '20px',

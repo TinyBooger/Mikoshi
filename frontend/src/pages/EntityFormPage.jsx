@@ -208,7 +208,7 @@ export default function EntityFormPage() {
       );
       const data = await res.json();
       if (res.ok) {
-        toast.show(mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.updated`) : mode === 'fork' ? t(`${entityConfig.transactionKeyPrefix}.forked`, `${entityType.charAt(0).toUpperCase() + entityType.slice(1)} forked successfully`) : t(`${entityConfig.transactionKeyPrefix}.created`));
+        toast.show(mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.updated`) : mode === 'fork' ? t(`${entityConfig.transactionKeyPrefix}.forked`) : t(`${entityConfig.transactionKeyPrefix}.created`));
         if (mode === 'create' || mode === 'fork') {
           silentExpGain(entityConfig.expGainAction, null, sessionToken).catch(() => {});
         }
@@ -258,7 +258,7 @@ export default function EntityFormPage() {
         margin: '0 auto',
       }}>
         <h2 className="fw-bold text-dark mb-2" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>
-          {mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.edit_title`) : mode === 'fork' ? t(`${entityConfig.transactionKeyPrefix}.fork_title`, `Fork ${entityType.charAt(0).toUpperCase() + entityType.slice(1)}`) : t(`${entityConfig.transactionKeyPrefix}.create_title`)}
+          {mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.edit_title`) : mode === 'fork' ? t(`${entityConfig.transactionKeyPrefix}.fork_title`) : t(`${entityConfig.transactionKeyPrefix}.create_title`)}
         </h2>
         {mode === 'create' && (
           <p className="text-muted mb-4" style={{ fontSize: '0.98rem', lineHeight: 1.65 }}>
@@ -271,7 +271,7 @@ export default function EntityFormPage() {
           {entityData.forked_from_id && entityData.forked_from_name && (
             <div className="alert alert-info mb-4" role="alert">
               <i className="bi bi-code-fork me-2"></i>
-              {t(`${entityConfig.transactionKeyPrefix}.forked_from`, 'This is a fork based on')} <strong>{entityData.forked_from_name}</strong>
+              {t(`${entityConfig.transactionKeyPrefix}.forked_from`)} <strong>{entityData.forked_from_name}</strong>
             </div>
           )}
           {/* Name */}
@@ -405,7 +405,7 @@ export default function EntityFormPage() {
                     </div>
                     {!canPrivate && !entityData.is_public && (
                       <div className="text-danger" style={{ fontSize: '0.75rem' }}>
-                        {t(`${entityConfig.transactionKeyPrefix}.level_lock_notice`, { level: 2 }) || 'This function will be available at level 2'}
+                        {t(`${entityConfig.transactionKeyPrefix}.level_lock_notice`, { level: 2 })}
                       </div>
                     )}
                   </div>
@@ -438,7 +438,7 @@ export default function EntityFormPage() {
                     </div>
                     {!canFork && (
                       <div className="text-danger" style={{ fontSize: '0.75rem' }}>
-                        {t(`${entityConfig.transactionKeyPrefix}.level_lock_notice`, { level: 2 }) || 'This function will be available at level 2'}
+                        {t(`${entityConfig.transactionKeyPrefix}.level_lock_notice`, { level: 2 })}
                       </div>
                     )}
                   </div>

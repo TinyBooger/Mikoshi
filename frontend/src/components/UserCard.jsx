@@ -135,26 +135,26 @@ export default function UserCard({ user, onClick, disableClick = false }) {
               overflow: 'hidden',
             }}
           >
-            {bio || <span style={{ opacity: 0.5, fontStyle: 'italic' }}>{t('user_card.no_bio', 'No bio yet')}</span>}
+            {bio || <span style={{ opacity: 0.5, fontStyle: 'italic' }}>{t('user_card.no_bio')}</span>}
           </p>
         </div>
 
         {/* Stats */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexShrink: 0 }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.25rem' }}>{t('user_card.chats', 'Chats')}</div>
+            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.25rem' }}>{t('user_card.chats')}</div>
             <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#232323' }}>
               {typeof views === 'number' ? views.toLocaleString() : 0}
             </div>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.25rem' }}>{t('user_card.likes', 'Likes')}</div>
+            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.25rem' }}>{t('user_card.likes')}</div>
             <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#232323' }}>
               {typeof likes === 'number' ? likes.toLocaleString() : 0}
             </div>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.25rem' }}>{t('user_card.characters_created', 'Characters')}</div>
+            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.25rem' }}>{t('user_card.characters_created')}</div>
             <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#232323' }}>
               {typeof characters_created === 'number' ? characters_created.toLocaleString() : 0}
             </div>
@@ -165,7 +165,7 @@ export default function UserCard({ user, onClick, disableClick = false }) {
       {displayedRecentCharacters.length > 0 && (
         <div style={{ marginTop: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
           <div style={{ fontSize: '0.72rem', color: '#888', marginBottom: '0.35rem', fontWeight: 600 }}>
-            {t('user_card.recent_characters', 'Recent Characters')}
+            {t('user_card.recent_characters')}
           </div>
           <div
             style={{

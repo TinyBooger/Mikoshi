@@ -68,7 +68,7 @@ export default function EntityDetailPage() {
       })
       .catch(err => {
         console.error(err);
-        toast.show(t('entity_detail.fetch_error', 'Failed to load entity'), { type: 'error' });
+        toast.show(t('entity_detail.fetch_error'), { type: 'error' });
         navigate('/');
       });
   }, [type, id, sessionToken, navigate]);
@@ -119,6 +119,7 @@ export default function EntityDetailPage() {
     } catch (err) {
       console.error(err);
       toast.show(t('entity_detail.like_error', 'Failed to like'), { type: 'error' });
+        toast.show(t('entity_detail.like_error'), { type: 'error' });
     }
   };
 
@@ -134,6 +135,7 @@ export default function EntityDetailPage() {
 
   const handleDelete = async () => {
     if (!window.confirm(t('entity_detail.confirm_delete', 'Are you sure you want to delete this?'))) {
+      if (!window.confirm(t('entity_detail.confirm_delete'))) {
       return;
     }
 
@@ -153,14 +155,18 @@ export default function EntityDetailPage() {
       });
       if (res.ok) {
         toast.show(t('entity_detail.delete_success', 'Deleted successfully'), { type: 'success' });
+          toast.show(t('entity_detail.delete_success'), { type: 'success' });
         navigate('/');
       } else {
         toast.show(t('entity_detail.delete_error', 'Failed to delete'), { type: 'error' });
+          toast.show(t('entity_detail.delete_error'), { type: 'error' });
       }
     } catch (err) {
       console.error(err);
       toast.show(t('entity_detail.delete_error', 'Failed to delete'), { type: 'error' });
+        toast.show(t('entity_detail.delete_error'), { type: 'error' });
     }
+    };
   };
 
   const handleChat = () => {
@@ -174,6 +180,7 @@ export default function EntityDetailPage() {
   const handleFork = () => {
     if (!entity.is_forkable) {
       toast.show(t('entity_detail.not_forkable', 'This entity is not forkable'), { type: 'error' });
+        toast.show(t('entity_detail.not_forkable'), { type: 'error' });
       return;
     }
 
@@ -267,18 +274,18 @@ export default function EntityDetailPage() {
                   {entity.name}
                 </h1>
                 <p className="text-muted mb-2">
-                  {t('entity_detail.by', 'by')} {entity.creator_name || t('entity_detail.unknown', 'Unknown')}
+                  {t('entity_detail.by')} {entity.creator_name || t('entity_detail.unknown')}
                 </p>
                 {/* Display forked_from information */}
                 {entity.forked_from_id && entity.forked_from_name && (
                   <p className="text-muted mb-2" style={{ fontSize: '0.9rem' }}>
                     <i className="bi bi-code-fork me-1"></i>
-                    {t('entity_detail.forked_from', 'Forked from')} {entity.forked_from_name}
+                    {t('entity_detail.forked_from')} {entity.forked_from_name}
                   </p>
                 )}
               </div>
               {!entity.is_public && (
-                <span className="badge bg-secondary">{t('entity_detail.private', 'Private')}</span>
+                <span className="badge bg-secondary">{t('entity_detail.private')}</span>
               )}
             </div>
 
@@ -293,10 +300,12 @@ export default function EntityDetailPage() {
               <div>
                 <i className="bi bi-eye me-1"></i>
                 <span>{entity.views || 0} {t('entity_detail.views', 'views')}</span>
+                {/* Only one span needed after fallback removal */}
               </div>
               <div>
                 <i className="bi bi-heart-fill me-1"></i>
                 <span>{entity.likes || 0} {t('entity_detail.likes', 'likes')}</span>
+                {/* Only one span needed after fallback removal */}
               </div>
             </div>
 
@@ -330,17 +339,21 @@ export default function EntityDetailPage() {
                 <PrimaryButton onClick={handleChat}>
                   <i className="bi bi-chat-dots me-2"></i>
                   {t('entity_detail.start_chat', 'Start Chat')}
+                    {t('entity_detail.start_chat')}
                 </PrimaryButton>
               ) : type === 'scene' ? (
                 <PrimaryButton onClick={handleChat}>
                   <i className="bi bi-chat-dots me-2"></i>
                   {t('entity_detail.start_chat', 'Start Chat')}
+                    {t('entity_detail.start_chat')}
                 </PrimaryButton>
               ) : null}
               
               <SecondaryButton onClick={handleLike}>
                 <i className={`bi ${liked ? 'bi-heart-fill' : 'bi-heart'} me-2`}></i>
                 {liked ? t('entity_detail.unlike', 'Unlike') : t('entity_detail.like', 'Like')}
+                  {liked ? t('entity_detail.unlike') : t('entity_detail.like')}
+                  {liked ? t('entity_detail.unlike') : t('entity_detail.like')}
               </SecondaryButton>
 
               {entity.is_forkable && (canFork || disableForkForFreeAdvanced) && (
@@ -352,6 +365,7 @@ export default function EntityDetailPage() {
                 >
                   <i className="bi bi-code-fork me-2"></i>
                   {t('entity_detail.fork', 'Fork')}
+                    {t('entity_detail.fork')}
                 </SecondaryButton>
               )}
 
@@ -366,10 +380,12 @@ export default function EntityDetailPage() {
                   <SecondaryButton onClick={handleEdit}>
                     <i className="bi bi-pencil me-2"></i>
                     {t('entity_detail.edit', 'Edit')}
+                      {t('entity_detail.edit')}
                   </SecondaryButton>
                   <SecondaryButton onClick={handleDelete} className="text-danger">
                     <i className="bi bi-trash me-2"></i>
                     {t('entity_detail.delete', 'Delete')}
+                      {t('entity_detail.delete')}
                   </SecondaryButton>
                 </>
               )}
@@ -380,7 +396,7 @@ export default function EntityDetailPage() {
               {entity.is_forkable && (
                 <span className="badge bg-info me-2">
                   <i className="bi bi-code-fork me-1"></i>
-                  {t('entity_detail.forkable', 'Forkable')}
+                  {t('entity_detail.forkable')}
                 </span>
               )}
             </div>
@@ -393,8 +409,8 @@ export default function EntityDetailPage() {
             <div className="card-body">
               <h3 className="card-title mb-3">
                 {type === 'character' 
-                  ? t('entity_detail.persona', 'Persona') 
-                  : t('entity_detail.description', 'Description')}
+                  ? t('entity_detail.persona') 
+                  : t('entity_detail.description')}
               </h3>
               <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
                 {description}
@@ -411,6 +427,7 @@ export default function EntityDetailPage() {
                 <div className="card-body">
                   <h3 className="card-title mb-3">
                     {t('entity_detail.greeting', 'Greeting')}
+                      {t('entity_detail.greeting')}
                   </h3>
                   <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
                     {entity.greeting}
@@ -424,6 +441,7 @@ export default function EntityDetailPage() {
                 <div className="card-body">
                   <h3 className="card-title mb-3">
                     {t('entity_detail.sample_dialogue', 'Sample Dialogue')}
+                      {t('entity_detail.sample_dialogue')}
                   </h3>
                   <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
                     {entity.example_messages}
@@ -437,6 +455,7 @@ export default function EntityDetailPage() {
                 <div className="card-body">
                   <h3 className="card-title mb-3">
                     {t('entity_detail.long_description', '详细人物设定')}
+                      {t('entity_detail.long_description')}
                   </h3>
                   <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
                     {entity.long_description}
@@ -450,6 +469,7 @@ export default function EntityDetailPage() {
                 <div className="card-body">
                   <h3 className="card-title mb-3">
                     {t('entity_detail.long_description_chunks', '详细设定分段')}
+                      {t('entity_detail.long_description_chunks')}
                   </h3>
                   <div className="d-flex flex-column gap-3">
                     {longDescriptionChunks.map((chunkText, index) => (
@@ -463,7 +483,7 @@ export default function EntityDetailPage() {
                         }}
                       >
                         <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.4rem' }}>
-                          {t('entity_detail.chunk_priority', '优先级')} {index + 1}
+                          {t('entity_detail.chunk_priority')} {index + 1}
                         </div>
                         <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
                           {chunkText}

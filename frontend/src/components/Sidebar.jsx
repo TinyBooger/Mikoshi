@@ -628,7 +628,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               backgroundSize: '300% 100%',
               animation: 'rainbow-slide 4s linear infinite'
             }}
-            title={t('sidebar.upgrade_to_pro_tooltip', '升级到Pro会员解锁更多功能')}
+            title={t('sidebar.upgrade_to_pro_tooltip')}
           >
             <button
               className="fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center"
@@ -661,7 +661,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               tabIndex={0}
             >
               <span className="d-flex align-items-center justify-content-center w-100">
-                <i className="bi bi-star-fill me-2"></i> {t('sidebar.upgrade_to_pro', '升级为Pro用户')}
+                <i className="bi bi-star-fill me-2"></i> {t('sidebar.upgrade_to_pro')}
               </span>
             </button>
           </div>

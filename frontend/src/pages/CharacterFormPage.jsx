@@ -368,7 +368,7 @@ export default function CharacterFormPage() {
         if (refreshUserData) {
           refreshUserData({ silent: true });
         }
-        toast.show(mode === 'edit' ? t('character_form.updated') : mode === 'fork' ? t('character_form.forked', 'Character forked successfully') : t('character_form.created'));
+        toast.show(mode === 'edit' ? t('character_form.updated') : mode === 'fork' ? t('character_form.forked') : t('character_form.created'));
         // Silently award EXP for character creation (backend handles it but we can trigger refresh)
         if (mode === 'create' || mode === 'fork') {
           silentExpGain('create_character', null, sessionToken).catch(() => {});
@@ -507,14 +507,14 @@ export default function CharacterFormPage() {
           padding: '2.5rem 2rem',
           margin: '0 auto',
         }}>
-          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? t('character_form.edit_title') : mode === 'fork' ? t('character_form.fork_title', 'Fork Character') : t('character_form.create_title')}</h2>
+          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? t('character_form.edit_title') : mode === 'fork' ? t('character_form.fork_title') : t('character_form.create_title')}</h2>
 
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           {/* Forked From - Display only */}
           {charData.forked_from_id && charData.forked_from_name && (
             <div className="alert alert-info mb-4" role="alert">
               <i className="bi bi-code-fork me-2"></i>
-              {t('character_form.forked_from', 'This is a fork based on')} <strong>{charData.forked_from_name}</strong>
+              {t('character_form.forked_from')} <strong>{charData.forked_from_name}</strong>
             </div>
           )}
 
@@ -758,9 +758,9 @@ export default function CharacterFormPage() {
           {effectiveContextLabel === 'advanced' && (
             <div className="mb-4 position-relative">
               <label className="form-label fw-bold" style={{ color: '#232323' }}>
-                {t('character_form.long_description', '详细人物设定')}
+                {t('character_form.long_description')}
                 <small className="text-muted" style={{ marginLeft: 8 }}>
-                  {t('character_form.notes.long_description', '仅高级角色可用，最多10000字')}
+                  {t('character_form.notes.long_description')}
                 </small>
               </label>
               <textarea
@@ -768,7 +768,7 @@ export default function CharacterFormPage() {
                 rows={Math.max(6, Math.min(30, Math.ceil((charData.long_description || '').length / 80)))}
                 value={charData.long_description || ''}
                 maxLength={ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
-                placeholder={t('character_form.placeholders.long_description', '在此填写角色的详细背景设定（最多10000字）...')}
+                placeholder={t('character_form.placeholders.long_description')}
                 onChange={e => handleChange('long_description', e.target.value)}
                 style={{
                   background: '#f5f6fa',
@@ -1058,7 +1058,7 @@ export default function CharacterFormPage() {
               {isSubmitting ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  {t('character_form.processing', '正在处理角色，请稍候...')}
+                  {t('character_form.processing')}
                 </>
               ) : (
                 <>
@@ -1118,10 +1118,10 @@ export default function CharacterFormPage() {
           >
             <div className="spinner-border" role="status" aria-hidden="true" style={{ width: '2.2rem', height: '2.2rem', color: '#736B92' }}></div>
             <div style={{ marginTop: '0.9rem', fontWeight: 700, color: '#1f2937', fontSize: '1rem' }}>
-              {t('character_form.processing', '正在处理角色，请稍候...')}
+              {t('character_form.processing')}
             </div>
             <div style={{ marginTop: '0.45rem', color: '#4b5563', fontSize: '0.9rem', lineHeight: 1.5 }}>
-              {t('character_form.processing_tip', '正在创建/更新角色，并处理详细设定分段。请不要关闭页面。')}
+              {t('character_form.processing_tip')}
             </div>
           </div>
         </div>,

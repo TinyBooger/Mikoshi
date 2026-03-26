@@ -175,7 +175,7 @@ export default function CharacterAssistantModal({
 
         const isAdvancedCharacter = effectiveCurrentData.context_label === 'advanced';
         const longDescriptionSection = isAdvancedCharacter
-          ? `\n\n**${t('character_form.long_description', '详细人物设定')}:**\n${data.long_description || ''}`
+          ? `\n\n**${t('character_form.long_description')}:**\n${data.long_description || ''}`
           : '';
 
         const assistantMessage = `${t('character_assistant.generated_prefix')}\n\n**${t('character_form.name')}:** ${data.name}\n\n**${t('character_form.tagline')}:** ${data.tagline}\n\n**${t('character_form.persona')}:** ${data.persona}\n\n**${t('character_form.greeting')}:** ${data.greeting}\n\n**${t('character_form.sample_dialogue')}:**\n${data.sample_dialogue}${longDescriptionSection}`;
@@ -552,7 +552,7 @@ export default function CharacterAssistantModal({
             {t('character_assistant.tip')}
           </small>
           <small className="d-block" style={{ fontSize: '0.8rem', color: '#b45309', marginTop: 4 }}>
-            {t('character_assistant.token_notice', '使用AI助手会消耗token')}
+            {t('character_assistant.token_notice')}
           </small>
         </div>
       </div>

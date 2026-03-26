@@ -70,7 +70,7 @@ export default function ErrorLogsPage() {
   };
 
   const handleDeleteOld = async () => {
-    const days = prompt('Delete error logs older than how many days?', '30');
+    const days = prompt('Delete error logs older than how many days?');
     if (days) {
       const result = await errorLogger.deleteOldLogs(parseInt(days));
       if (result) {

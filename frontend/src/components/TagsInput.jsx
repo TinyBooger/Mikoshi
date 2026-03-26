@@ -97,10 +97,10 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
           onMouseDown={(e) => e.preventDefault()}
           onClick={addTagFromInput}
           disabled={!trimmedInput}
-          aria-label={t('common.add_tag_aria', 'Add tag')}
+          aria-label={t('common.add_tag_aria')}
           style={{ whiteSpace: 'nowrap' }}
         >
-          {t('common.add_tag_button', 'Add')}
+          {t('common.add_tag_button')}
         </button>
         {showSuggestions && suggestions.length > 0 && (
           <div

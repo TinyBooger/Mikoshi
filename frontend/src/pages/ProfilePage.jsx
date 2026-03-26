@@ -508,7 +508,7 @@ export default function ProfilePage() {
       setShowModal(false);
       await refreshUserData();
     } else {
-      toast.show(getApiErrorMessage(data, t('profile.update_failed', 'Profile update failed'), t));
+      toast.show(getApiErrorMessage(data, t('profile.update_failed'), t));
     }
   };
 
@@ -1208,7 +1208,7 @@ export default function ProfilePage() {
           {activeSubtab === SUBTAB_TYPES.CHARACTERS && (
             <div className="d-flex align-items-center" style={{ marginTop: 4, gap: 10 }}>
               <span style={{ color: '#555', fontSize: '0.88rem', fontWeight: 600 }}>
-                {t('browse.sort_by', 'Sort by')}
+                {t('browse.sort_by')}
               </span>
               <div className="d-flex" style={{ gap: 8 }}>
                 <button
@@ -1223,7 +1223,7 @@ export default function ProfilePage() {
                   }}
                   onClick={() => setCharacterSort(ENTITY_SORTS.RECENT)}
                 >
-                  {t('browse.recent', 'Recent')}
+                  {t('browse.recent')}
                 </button>
                 <button
                   type="button"
@@ -1237,7 +1237,7 @@ export default function ProfilePage() {
                   }}
                   onClick={() => setCharacterSort(ENTITY_SORTS.POPULAR)}
                 >
-                  {t('browse.popular', 'Popular')}
+                  {t('browse.popular')}
                 </button>
               </div>
             </div>
@@ -1245,7 +1245,7 @@ export default function ProfilePage() {
           {activeSubtab === SUBTAB_TYPES.SCENES && (
             <div className="d-flex align-items-center" style={{ marginTop: 4, gap: 10 }}>
               <span style={{ color: '#555', fontSize: '0.88rem', fontWeight: 600 }}>
-                {t('browse.sort_by', 'Sort by')}
+                {t('browse.sort_by')}
               </span>
               <div className="d-flex" style={{ gap: 8 }}>
                 <button
@@ -1260,7 +1260,7 @@ export default function ProfilePage() {
                   }}
                   onClick={() => setSceneSort(ENTITY_SORTS.RECENT)}
                 >
-                  {t('browse.recent', 'Recent')}
+                  {t('browse.recent')}
                 </button>
                 <button
                   type="button"
@@ -1274,7 +1274,7 @@ export default function ProfilePage() {
                   }}
                   onClick={() => setSceneSort(ENTITY_SORTS.POPULAR)}
                 >
-                  {t('browse.popular', 'Popular')}
+                  {t('browse.popular')}
                 </button>
               </div>
             </div>
@@ -1282,7 +1282,7 @@ export default function ProfilePage() {
           {activeSubtab === SUBTAB_TYPES.PERSONAS && (
             <div className="d-flex align-items-center" style={{ marginTop: 4, gap: 10 }}>
               <span style={{ color: '#555', fontSize: '0.88rem', fontWeight: 600 }}>
-                {t('browse.sort_by', 'Sort by')}
+                {t('browse.sort_by')}
               </span>
               <div className="d-flex" style={{ gap: 8 }}>
                 <button
@@ -1297,7 +1297,7 @@ export default function ProfilePage() {
                   }}
                   onClick={() => setPersonaSort(ENTITY_SORTS.RECENT)}
                 >
-                  {t('browse.recent', 'Recent')}
+                  {t('browse.recent')}
                 </button>
                 <button
                   type="button"
@@ -1311,7 +1311,7 @@ export default function ProfilePage() {
                   }}
                   onClick={() => setPersonaSort(ENTITY_SORTS.POPULAR)}
                 >
-                  {t('browse.popular', 'Popular')}
+                  {t('browse.popular')}
                 </button>
               </div>
             </div>

@@ -952,6 +952,7 @@ async def refund_order(
 
         payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == request.out_trade_no).first()
         refund_reversal = None
+        # Handle token top-up refund: reverse tokens
         if payment_order and payment_order.order_type == "token_topup" and payment_order.user_id:
             try:
                 paid_amount = float(payment_order.total_amount or 0)
@@ -967,6 +968,14 @@ async def refund_order(
                     idempotency_key=f"refund_reverse:{payment_order.out_trade_no}",
                 )
                 db.commit()
+
+        # Handle pro_upgrade refund: downgrade user
+        if payment_order and payment_order.order_type == "pro_upgrade" and payment_order.user_id:
+            user = db.query(User).filter(User.id == payment_order.user_id).first()
+            if user and user.is_pro:
+                from utils.user_utils import downgrade_from_pro
+                downgrade_from_pro(user, db)
+                logger.info(f"用户 {user.id} 已因退款降级为普通用户")
         
         logger.info(f"退款结果: {result}")
         
