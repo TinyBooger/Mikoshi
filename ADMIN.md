@@ -114,13 +114,14 @@ After cron jobs run, check the `backups/` directory for new backup files. Each b
 
 To restore a backup, use `scripts/backup/restore_prod_postgres.sh`. The script will prompt for confirmation and require the backup file path and target database name.
 
+
 Example:
 
 ```
-bash scripts/backup/restore_prod_postgres.sh backups/daily/backup-2026-03-25.sql.gz mikoshi_prod
+bash scripts/backup/restore_prod_postgres.sh backups/daily/backup-2026-03-25.sql.gz mydb
 ```
 
-**WARNING:** This will overwrite the target database. Only run in a safe environment.
+**WARNING:** This will overwrite the target database (default: mydb). Only run in a safe environment.
 
 ---
 
