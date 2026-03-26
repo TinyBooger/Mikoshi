@@ -115,13 +115,20 @@ After cron jobs run, check the `backups/` directory for new backup files. Each b
 To restore a backup, use `scripts/backup/restore_prod_postgres.sh`. The script will prompt for confirmation and require the backup file path and target database name.
 
 
-Example:
+
+Example (standard restore, does not remove new data):
 
 ```
 bash scripts/backup/restore_prod_postgres.sh backups/daily/backup-2026-03-25.sql.gz mydb
 ```
 
-**WARNING:** This will overwrite the target database (default: mydb). Only run in a safe environment.
+Example (clean restore, removes all new data):
+
+```
+bash scripts/backup/restore_prod_postgres.sh backups/daily/backup-2026-03-25.sql.gz mydb --drop-first
+```
+
+**WARNING:** The --drop-first option will drop and recreate the target database before restoring. This deletes ALL existing data in the database. Use with extreme caution and only when you want a true rollback to the backup state.
 
 ---
 
@@ -129,15 +136,36 @@ bash scripts/backup/restore_prod_postgres.sh backups/daily/backup-2026-03-25.sql
 
 Periodically test your backups by restoring them to a test database. This ensures your backups are valid and restorable.
 
-**Restore Test Steps:**
 
-1. Create a new test database (e.g., `mikoshi_restore_test`) in your Postgres instance.
-2. Run the restore script, targeting the test database:
-  ```
-  bash scripts/backup/restore_prod_postgres.sh backups/daily/backup-YYYY-MM-DD.sql.gz mikoshi_restore_test
-  ```
-3. Inspect the test database for expected tables and data.
-4. Drop the test database when done.
+**Restore Test Steps (Recommended):**
+
+1. Create a new test database (e.g., mikoshi_restore_test) in your Postgres instance:
+   - Command:
+     ```
+     docker exec -it mikoshi-postgres-1 psql -U user -d postgres -c "CREATE DATABASE mikoshi_restore_test;"
+     ```
+   - If the database already exists and you want a clean restore, use the --drop-first option.
+   - Example (clean test restore):
+     ```
+     bash scripts/backup/restore_prod_postgres.sh backups/daily/backup-YYYY-MM-DD.sql.gz mikoshi_restore_test --drop-first
+     ```
+   - If you get an error about active sessions, disconnect them with:
+     ```
+     docker exec -it mikoshi-postgres-1 psql -U user -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'mikoshi_restore_test' AND pid <> pg_backend_pid();"
+     ```
+2. Inspect the test database for expected tables and data:
+   - Example command to list tables:
+     ```
+     docker exec -it mikoshi-postgres-1 psql -U user -d mikoshi_restore_test -c "\dt"
+     ```
+   - To query data from a table (replace tablename):
+     ```
+     docker exec -it mikoshi-postgres-1 psql -U user -d mikoshi_restore_test -c "SELECT * FROM tablename LIMIT 10;"
+     ```
+3. Drop the test database when done (optional):
+   ```
+   docker exec -it mikoshi-postgres-1 psql -U user -d postgres -c "DROP DATABASE mikoshi_restore_test;"
+   ```
 
 **Tip:** Always test restores after major upgrades or changes to backup scripts.
 - **Characters** - Total characters created
