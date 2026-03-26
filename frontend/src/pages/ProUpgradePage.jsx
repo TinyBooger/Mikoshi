@@ -1,4 +1,5 @@
 import React, { useState, useContext } from 'react';
+import RefundPolicyModal from '../components/RefundPolicyModal';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
@@ -9,6 +10,7 @@ export default function ProUpgradePage() {
   const { userData, sessionToken } = useContext(AuthContext);
   const toast = useToast();
   const [loading, setLoading] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
 
   if (!userData) return null;
 
@@ -233,20 +235,21 @@ export default function ProUpgradePage() {
                 {t('pro_upgrade.faq_title')}
               </h3>
               <div className="accordion" id="faqAccordion">
-                {[
-                  { 
-                    q: '如何支付？', 
-                    a: '我们支持支付宝支付，安全便捷。' 
-                  },
-                  { 
-                    q: '可以随时取消吗？', 
-                    a: '是的，您可以随时在设置中取消订阅。' 
-                  },
-                  { 
-                    q: '有退款政策吗？', 
-                    a: '在购买后7天内，如果您不满意，可以申请全额退款。' 
-                  }
-                ].map((faq, idx) => (
+                {[{
+                  q: '如何支付？',
+                  a: '我们支持支付宝支付，安全便捷。'
+                }, {
+                  q: '可以随时取消吗？',
+                  a: '是的，您可以随时在设置中取消订阅。'
+                }, {
+                  q: '有退款政策吗？',
+                  a: <>
+                    在购买后7天内，如果您不满意，可以申请全额退款。
+                    <button className="btn btn-link p-0 ms-2" style={{ fontSize: '0.98em' }} onClick={() => setShowRefundModal(true)}>
+                      查看详情
+                    </button>
+                  </>
+                }].map((faq, idx) => (
                   <div key={idx} className="accordion-item border-0 mb-3 rounded-4 overflow-hidden" style={{ background: '#fff' }}>
                     <h2 className="accordion-header">
                       <button
@@ -260,18 +263,21 @@ export default function ProUpgradePage() {
                           fontSize: '1rem'
                         }}
                       >
-                        {t(`pro_upgrade.faq_${idx}_q`)}
+                        {faq.q}
                       </button>
                     </h2>
                     <div id={`faq${idx}`} className="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                       <div className="accordion-body" style={{ color: '#6c757d' }}>
-                        {t(`pro_upgrade.faq_${idx}_a`)}
+                        {faq.a}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+
+            {/* Refund Policy Modal */}
+            <RefundPolicyModal show={showRefundModal} onClose={() => setShowRefundModal(false)} policyType="pro" />
 
             {/* Footer Note */}
             <div className="text-center mt-5 pt-5" style={{ borderTop: '1px solid #e9ecef' }}>

@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
+import RefundPolicyModal from '../components/RefundPolicyModal';
 import { useNavigate } from 'react-router';
 import PageWrapper from '../components/PageWrapper';
 import { AuthContext } from '../components/AuthProvider';
@@ -12,6 +13,7 @@ export default function TokenTopUpPage() {
   const [packages, setPackages] = useState([]);
   const [loadingPackages, setLoadingPackages] = useState(true);
   const [payingPackageId, setPayingPackageId] = useState(null);
+  const [showRefundModal, setShowRefundModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,7 +119,12 @@ export default function TokenTopUpPage() {
             <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
               <div>
                 <h1 className="fw-bold mb-1" style={{ fontSize: '2rem', color: '#1f2937' }}>Token充值</h1>
-                <p className="text-muted mb-0">套餐会充值到钱包，套餐额度用完后自动抵扣钱包Token。</p>
+                <p className="text-muted mb-0">
+                  套餐会充值到钱包，套餐额度用完后自动抵扣钱包Token。
+                  <button className="btn btn-link p-0 ms-2" style={{ fontSize: '0.98em' }} onClick={() => setShowRefundModal(true)}>
+                    退款政策
+                  </button>
+                </p>
               </div>
               <div
                 className="px-3 py-2 rounded-3"
@@ -215,6 +222,8 @@ export default function TokenTopUpPage() {
           </div>
         </div>
       </div>
+      {/* Refund Policy Modal */}
+      <RefundPolicyModal show={showRefundModal} onClose={() => setShowRefundModal(false)} policyType="token" />
     </PageWrapper>
   );
 }

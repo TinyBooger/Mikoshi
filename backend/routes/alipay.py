@@ -952,7 +952,7 @@ async def refund_order(
 
         payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == request.out_trade_no).first()
         refund_reversal = None
-        # Handle token top-up refund: reverse tokens
+        # Handle token top-up refund: only if tokens unused
         if payment_order and payment_order.order_type == "token_topup" and payment_order.user_id:
             try:
                 paid_amount = float(payment_order.total_amount or 0)
@@ -960,6 +960,11 @@ async def refund_order(
                 paid_amount = -1
             package = get_token_topup_package_by_amount(db, paid_amount, TOKEN_TOPUP_AMOUNT_TOLERANCE)
             if package:
+                user = db.query(User).filter(User.id == payment_order.user_id).first()
+                if not user:
+                    raise HTTPException(status_code=400, detail="用户不存在，无法退款")
+                if int(user.purchased_token_balance or 0) < int(package["tokens"]):
+                    raise HTTPException(status_code=400, detail="充值包已部分使用，无法退款")
                 refund_reversal = reverse_wallet_tokens_for_refund(
                     db,
                     user_id=payment_order.user_id,
@@ -969,13 +974,20 @@ async def refund_order(
                 )
                 db.commit()
 
-        # Handle pro_upgrade refund: downgrade user
+        # Handle pro_upgrade refund: only if within 7 days of pro_start_date
         if payment_order and payment_order.order_type == "pro_upgrade" and payment_order.user_id:
             user = db.query(User).filter(User.id == payment_order.user_id).first()
-            if user and user.is_pro:
-                from utils.user_utils import downgrade_from_pro
-                downgrade_from_pro(user, db)
-                logger.info(f"用户 {user.id} 已因退款降级为普通用户")
+            if not user:
+                raise HTTPException(status_code=400, detail="用户不存在，无法退款")
+            if not user.is_pro or not user.pro_start_date:
+                raise HTTPException(status_code=400, detail="用户当前不是Pro会员，无法退款")
+            from datetime import datetime, UTC, timedelta
+            now = datetime.now(UTC)
+            if (now - user.pro_start_date).days > 7:
+                raise HTTPException(status_code=400, detail="Pro会员已超过7天，无法退款")
+            from utils.user_utils import downgrade_from_pro
+            downgrade_from_pro(user, db)
+            logger.info(f"用户 {user.id} 已因退款降级为普通用户")
         
         logger.info(f"退款结果: {result}")
         
