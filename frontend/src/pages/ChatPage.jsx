@@ -2597,6 +2597,26 @@ export default function ChatPage() {
         onUnpinMemory={(messageId) => handleTogglePin(messageId, false)}
         isMobile={isMobile}
         setPersonaModalShow={() => setPersonaModal({ show: true })}
+        onShareChatLink={(toast) => {
+          try {
+            const url = window.location.href;
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(url);
+              toast.show('聊天链接已复制到剪贴板', { type: 'success' });
+            } else {
+              // fallback
+              const input = document.createElement('input');
+              input.value = url;
+              document.body.appendChild(input);
+              input.select();
+              document.execCommand('copy');
+              document.body.removeChild(input);
+              toast.show('聊天链接已复制到剪贴板', { type: 'success' });
+            }
+          } catch {
+            toast.show('复制失败，请手动复制链接', { type: 'error' });
+          }
+        }}
       />
       <CharacterModal
         show={characterModal.show}

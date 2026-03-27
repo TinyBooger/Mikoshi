@@ -11,7 +11,7 @@ export const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [sessionToken, setSessionToken] = useState(() => localStorage.getItem('sessionToken'));
   const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { t } = useTranslation();
 
@@ -19,6 +19,7 @@ export function AuthProvider({ children }) {
   const fetchUserData = useCallback(async ({ silent = false } = {}) => {
     if (!sessionToken) {
       setUserData(null);
+      setLoading(false);
       return;
     }
     if (!silent) {

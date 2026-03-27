@@ -9,6 +9,7 @@ import {
   getContextWindowTierOptions,
   normalizeContextWindowTier,
 } from '../utils/contextWindow';
+import { useToast } from '../components/ToastProvider';
 
 
 // Accept all required props for the sidebar
@@ -55,9 +56,11 @@ export default function CharacterSidebar({
   onJumpToPinnedMemory,
   onUnpinMemory,
   isMobile = false, // allow parent to pass isMobile, default false
-  setPersonaModalShow // <-- new prop to open PersonaModal
+  setPersonaModalShow, // <-- new prop to open PersonaModal
+  onShareChatLink // <-- handler for share button
 }) {
   const [creatorHover, setCreatorHover] = React.useState(false);
+  const toast = useToast();
   const [showFullTagline, setShowFullTagline] = React.useState(false);
   const [showProblemReport, setShowProblemReport] = React.useState(false);
   const [showWallpaperPicker, setShowWallpaperPicker] = React.useState(false);
@@ -289,9 +292,35 @@ export default function CharacterSidebar({
               setShowFullTagline={setShowFullTagline}
               isPlaceholder={!selectedCharacter && !selectedScene}
             />
-            {/* Report button */}
+            {/* Share and Report buttons in one row */}
             {(selectedCharacter || selectedScene) && (
-              <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0 12px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, margin: '16px 0 12px 0' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onShareChatLink) {
+                      onShareChatLink(toast);
+                    }
+                  }}
+                  aria-label="分享当前聊天链接"
+                  title="分享当前聊天链接"
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#2563eb',
+                    cursor: 'pointer',
+                    borderRadius: 6,
+                    width: 28,
+                    height: 28,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.1rem',
+                    transition: 'background 0.14s',
+                  }}
+                >
+                  <i className="bi bi-share" style={{ fontSize: '1.1rem' }}></i>
+                </button>
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-danger"

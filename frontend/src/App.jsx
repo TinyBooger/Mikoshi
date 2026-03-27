@@ -40,22 +40,28 @@ import TokenTopUpPage from './pages/TokenTopUpPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 function AppRootLayout() {
-  const { userData } = useContext(AuthContext);
+  const { userData, loading } = useContext(AuthContext);
+  if (loading) {
+    return null; // Or a loading spinner
+  }
   return userData ? <Layout /> : <AuthLayout />;
 }
 
 function ProtectedPage({ children }) {
-  const { userData } = useContext(AuthContext);
+  const { userData, loading } = useContext(AuthContext);
+  if (loading) return null; // or a spinner if you prefer
   return userData ? children : <Navigate to="/" replace />;
 }
 
 function PublicOnlyPage({ children }) {
-  const { userData } = useContext(AuthContext);
+  const { userData, loading } = useContext(AuthContext);
+  if (loading) return null; // or a spinner if you prefer
   return userData ? <Navigate to="/browse" replace /> : children;
 }
 
 function RootIndexPage() {
-  const { userData } = useContext(AuthContext);
+  const { userData, loading } = useContext(AuthContext);
+  if (loading) return null; // or a spinner if you prefer
   return userData ? <Navigate to="/browse" replace /> : <WelcomePage />;
 }
 
