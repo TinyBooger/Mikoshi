@@ -324,6 +324,7 @@ class PaymentOrder(Base):
     total_amount = Column(String(32), nullable=True)
     source = Column(String(32), nullable=True)
     status = Column(String(20), nullable=False, default="processing", index=True)
+    refund_status = Column(String(20), nullable=True, default=None, index=True)  # "pending", "success", "failed", etc.
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)

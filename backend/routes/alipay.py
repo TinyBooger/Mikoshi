@@ -934,69 +934,104 @@ async def close_order(
 
 
 @router.post("/refund")
+
 async def refund_order(
     request: RefundRequest,
     db: Session = Depends(get_db),
-    _current_admin_user: User = Depends(get_current_admin_user),
+    session_token: Optional[str] = Header(None, alias="Authorization"),
 ):
     """
     申请退款
     """
-    try:
-        provider = _get_payment_provider()
-        result = provider.refund(
-            out_trade_no=request.out_trade_no,
-            refund_amount=request.refund_amount,
-            refund_reason=request.refund_reason
-        )
+    # 用户必须登录，且只能为自己的订单退款
+    authed_user_id = verify_session_token(session_token)
+    if not authed_user_id:
+        raise HTTPException(status_code=401, detail="请先登录")
 
+    try:
         payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == request.out_trade_no).first()
+        if not payment_order:
+            raise HTTPException(status_code=404, detail="订单不存在")
+        if payment_order.user_id != authed_user_id:
+            raise HTTPException(status_code=403, detail="只能为自己的订单退款")
+
         refund_reversal = None
-        # Handle token top-up refund: only if tokens unused
-        if payment_order and payment_order.order_type == "token_topup" and payment_order.user_id:
+        provider = _get_payment_provider()
+
+        # Set refund_status to pending
+        payment_order.refund_status = "pending"
+        db.commit()
+
+        # Token top-up: only if tokens unused
+        if payment_order.order_type == "token_topup":
             try:
                 paid_amount = float(payment_order.total_amount or 0)
             except (TypeError, ValueError):
                 paid_amount = -1
             package = get_token_topup_package_by_amount(db, paid_amount, TOKEN_TOPUP_AMOUNT_TOLERANCE)
-            if package:
-                user = db.query(User).filter(User.id == payment_order.user_id).first()
-                if not user:
-                    raise HTTPException(status_code=400, detail="用户不存在，无法退款")
-                if int(user.purchased_token_balance or 0) < int(package["tokens"]):
-                    raise HTTPException(status_code=400, detail="充值包已部分使用，无法退款")
-                refund_reversal = reverse_wallet_tokens_for_refund(
-                    db,
-                    user_id=payment_order.user_id,
-                    tokens=int(package["tokens"]),
-                    source_order_no=payment_order.out_trade_no,
-                    idempotency_key=f"refund_reverse:{payment_order.out_trade_no}",
-                )
+            if not package:
+                payment_order.refund_status = "failed"
                 db.commit()
-
-        # Handle pro_upgrade refund: only if within 7 days of pro_start_date
-        if payment_order and payment_order.order_type == "pro_upgrade" and payment_order.user_id:
+                raise HTTPException(status_code=400, detail="充值包信息无效")
             user = db.query(User).filter(User.id == payment_order.user_id).first()
             if not user:
+                payment_order.refund_status = "failed"
+                db.commit()
+                raise HTTPException(status_code=400, detail="用户不存在，无法退款")
+            if int(user.purchased_token_balance or 0) < int(package["tokens"]):
+                payment_order.refund_status = "failed"
+                db.commit()
+                raise HTTPException(status_code=400, detail="充值包已部分使用，无法退款")
+            refund_reversal = reverse_wallet_tokens_for_refund(
+                db,
+                user_id=payment_order.user_id,
+                tokens=int(package["tokens"]),
+                source_order_no=payment_order.out_trade_no,
+                idempotency_key=f"refund_reverse:{payment_order.out_trade_no}",
+            )
+            db.commit()
+
+        # Pro upgrade: only if within 7 days and tokens unused
+        if payment_order.order_type == "pro_upgrade":
+            user = db.query(User).filter(User.id == payment_order.user_id).first()
+            if not user:
+                payment_order.refund_status = "failed"
+                db.commit()
                 raise HTTPException(status_code=400, detail="用户不存在，无法退款")
             if not user.is_pro or not user.pro_start_date:
+                payment_order.refund_status = "failed"
+                db.commit()
                 raise HTTPException(status_code=400, detail="用户当前不是Pro会员，无法退款")
             from datetime import datetime, UTC, timedelta
             now = datetime.now(UTC)
             if (now - user.pro_start_date).days > 7:
+                payment_order.refund_status = "failed"
+                db.commit()
                 raise HTTPException(status_code=400, detail="Pro会员已超过7天，无法退款")
             from utils.user_utils import downgrade_from_pro
             downgrade_from_pro(user, db)
             logger.info(f"用户 {user.id} 已因退款降级为普通用户")
-        
+
+        # 发起退款
+        try:
+            result = provider.refund(
+                out_trade_no=request.out_trade_no,
+                refund_amount=request.refund_amount,
+                refund_reason=request.refund_reason
+            )
+            payment_order.refund_status = "success"
+            db.commit()
+        except Exception as e:
+            payment_order.refund_status = "failed"
+            db.commit()
+            logger.error(f"退款失败: {e}")
+            raise HTTPException(status_code=500, detail=f"退款失败: {str(e)}")
         logger.info(f"退款结果: {result}")
-        
         return {
             "success": True,
             "data": result,
             "wallet_refund_reversal": refund_reversal,
         }
-
     except HTTPException:
         raise
     except Exception as e:

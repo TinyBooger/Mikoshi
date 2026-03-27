@@ -13,6 +13,7 @@ import CharacterFormPage from './pages/CharacterFormPage';
 import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage.jsx';
+import OrderDetailPage from './pages/OrderDetailPage.jsx';
 import SearchPage from "./pages/SearchPage";
 import { AuthContext } from './components/AuthProvider';
 import DashboardPage from "./admin/pages/DashboardPage";
@@ -83,6 +84,7 @@ const router = createBrowserRouter([
       { path: 'profile', element: <ProtectedPage><ProfilePage /></ProtectedPage> },
       { path: 'profile/:userId', element: <ProtectedPage><ProfilePage publicView={true} /></ProtectedPage> },
       { path: 'settings', element: <ProtectedPage><SettingsPage /></ProtectedPage> },
+      { path: 'order/:orderId', element: <ProtectedPage><OrderDetailPage /></ProtectedPage> },
       { path: 'search', element: <ProtectedPage><SearchPage /></ProtectedPage> },
       { path: 'alipay/test', element: <ProtectedPage><AlipayTestPage /></ProtectedPage> },
       { path: 'alipay/return', element: <ProtectedPage><AlipayReturnPage /></ProtectedPage> },

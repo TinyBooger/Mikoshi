@@ -124,33 +124,35 @@ def get_current_user_token_limits(
     return get_token_cap_info(current_user, db)
 
 
-@router.get("/api/wallet/history")
-def get_wallet_history(
-    limit: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
+
+# --- Universal Payment Order History ---
+from models import PaymentOrder
+
+@router.get("/api/payment/orders")
+def get_payment_orders(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    rows = (
-        db.query(UserTokenWalletLedger)
-        .filter(UserTokenWalletLedger.user_id == current_user.id)
-        .order_by(UserTokenWalletLedger.created_at.desc())
-        .limit(limit)
+    orders = (
+        db.query(PaymentOrder)
+        .filter(PaymentOrder.user_id == current_user.id)
+        .order_by(PaymentOrder.created_at.desc())
         .all()
     )
-
     return {
         "items": [
             {
-                "id": row.id,
-                "transaction_type": row.transaction_type,
-                "token_amount": int(row.token_amount or 0),
-                "balance_after": int(row.balance_after or 0),
-                "source": row.source,
-                "source_order_no": row.source_order_no,
-                "wallet_meta": row.wallet_meta or {},
-                "created_at": row.created_at,
+                "out_trade_no": o.out_trade_no,
+                "order_type": o.order_type,
+                "trade_no": o.trade_no,
+                "total_amount": o.total_amount,
+                "status": o.status,
+                "created_at": o.created_at,
+                "error_message": o.error_message,
+                "source": o.source,
+                "refund_status": getattr(o, "refund_status", None),
             }
-            for row in rows
+            for o in orders
         ]
     }
 

@@ -1,4 +1,5 @@
 import React, { useContext, useState } from 'react';
+import OrderHistoryTab from './OrderHistoryTab.jsx';
 import PageWrapper from '../components/PageWrapper';
 import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
@@ -13,6 +14,7 @@ export default function SettingsPage() {
   const { t, i18n } = useTranslation();
 
   const [activeSection, setActiveSection] = useState('account');
+  const [activeTab, setActiveTab] = useState('account');
 
   const [changingPassword, setChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -38,14 +40,21 @@ export default function SettingsPage() {
   const [resendTimer, setResendTimer] = useState(0);
 
   const [confirmDelete, setConfirmDelete] = useState({ show: false });
-  const [lang, setLang] = useState(i18n.language === 'zh' ? 'zh' : 'en');
+  const [lang, setLang] = useState('zh');
 
+  // Set default language to Chinese
+  React.useEffect(() => {
+    if (i18n.language !== 'zh') {
+      i18n.changeLanguage('zh');
+      setLang('zh');
+    }
+  }, [i18n]);
   if (!userData) return null;
 
   const handleLangToggle = (newLang) => {
     i18n.changeLanguage(newLang);
     setLang(newLang);
-    toast.show(newLang === 'zh' ? '语言已切换到中文' : 'Language switched to English', { type: 'info' });
+    toast.show('语言已切换到中文', { type: 'info' });
   };
 
   const doChangePassword = async (e) => {
@@ -267,7 +276,7 @@ export default function SettingsPage() {
   return (
     <PageWrapper>
       <div className="container mt-4">
-        <h2>{t('settings.title')}</h2>
+        <h2>设置</h2>
         <div style={{ display: 'flex', gap: 24, marginTop: 24 }}>
           {/* Sidebar Navigator */}
           <div style={{ 
@@ -312,6 +321,32 @@ export default function SettingsPage() {
                 账号
               </button>
               <button
+                onClick={() => setActiveSection('orderHistory')}
+                style={{
+                  padding: '12px 16px',
+                  border: 'none',
+                  background: activeSection === 'orderHistory' ? '#f0eef7' : 'transparent',
+                  color: activeSection === 'orderHistory' ? '#736B92' : '#6c757d',
+                  borderRadius: 8,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontWeight: activeSection === 'orderHistory' ? 600 : 400,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  if (activeSection !== 'orderHistory') {
+                    e.currentTarget.style.background = '#f8f9fa';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeSection !== 'orderHistory') {
+                    e.currentTarget.style.background = 'transparent';
+                  }
+                }}
+              >
+                订单历史
+              </button>
+              <button
                 onClick={() => setActiveSection('language')}
                 style={{
                   padding: '12px 16px',
@@ -341,37 +376,37 @@ export default function SettingsPage() {
           </div>
 
           {/* Main Content Area */}
-          <div style={{ flex: 1, maxWidth: 720 }}>
+          <div style={{ flex: 1, maxWidth: 1100, minWidth: 0 }}>
             {/* Account Settings Section */}
             {activeSection === 'account' && (
               <>
                 {/* Change Password */}
                 <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
-                  <h4>{t('settings.security')}</h4>
+                  <h4>安全设置</h4>
                   {!showPasswordForm ? (
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <PrimaryButton onClick={() => setShowPasswordForm(true)}>{t('settings.change_password')}</PrimaryButton>
+                      <PrimaryButton onClick={() => setShowPasswordForm(true)}>修改密码</PrimaryButton>
                     </div>
                   ) : (
                     <form onSubmit={doChangePassword}>
                       <div className="mb-2">
-                        <label className="form-label">{t('settings.current_password')}</label>
+                        <label className="form-label">当前密码</label>
                         <input type="password" className="form-control" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
                       </div>
                       <div className="mb-2">
-                        <label className="form-label">{t('settings.new_password')}</label>
+                        <label className="form-label">新密码</label>
                         <input type="password" className="form-control" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
                       </div>
                       <div className="mb-2">
-                        <label className="form-label">{t('settings.confirm_new_password')}</label>
+                        <label className="form-label">确认新密码</label>
                         <input type="password" className="form-control" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} required />
                       </div>
                       {passwordError && (
                         <div className="text-danger mb-2" style={{ fontSize: '0.95rem' }}>{passwordError}</div>
                       )}
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <PrimaryButton type="submit" disabled={changingPassword}>{t('settings.change_password')}</PrimaryButton>
-                        <SecondaryButton type="button" onClick={() => { setShowPasswordForm(false); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); }}>{t('common.cancel')}</SecondaryButton>
+                        <PrimaryButton type="submit" disabled={changingPassword}>修改密码</PrimaryButton>
+                        <SecondaryButton type="button" onClick={() => { setShowPasswordForm(false); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); }}>取消</SecondaryButton>
                       </div>
                     </form>
                   )}
@@ -379,21 +414,21 @@ export default function SettingsPage() {
 
                 {/* Change Email */}
                 <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
-                  <h4>{t('settings.change_email')}</h4>
-                  <p>{t('settings.current_email')} <strong>{userData.email || '当前未绑定邮箱'}</strong></p>
+                  <h4>修改邮箱</h4>
+                  <p>当前邮箱 <strong>{userData.email || '当前未绑定邮箱'}</strong></p>
                   {!showEmailForm ? (
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <PrimaryButton onClick={() => setShowEmailForm(true)}>{t('settings.change_email')}</PrimaryButton>
+                      <PrimaryButton onClick={() => setShowEmailForm(true)}>修改邮箱</PrimaryButton>
                     </div>
                   ) : (
                     <form onSubmit={doChangeEmail}>
                       <div className="mb-2">
-                        <label className="form-label">{t('welcome.email') || 'New email'}</label>
+                        <label className="form-label">新邮箱</label>
                         <input type="email" className="form-control" value={newEmail} onChange={e => setNewEmail(e.target.value)} required />
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <PrimaryButton type="submit" disabled={changingEmail}>{t('settings.change_email')}</PrimaryButton>
-                        <SecondaryButton type="button" onClick={() => { setShowEmailForm(false); setNewEmail(''); setEmailError(''); }}>{t('common.cancel')}</SecondaryButton>
+                        <PrimaryButton type="submit" disabled={changingEmail}>修改邮箱</PrimaryButton>
+                        <SecondaryButton type="button" onClick={() => { setShowEmailForm(false); setNewEmail(''); setEmailError(''); }}>取消</SecondaryButton>
                       </div>
                       {emailError && (
                         <div className="text-danger mt-2" style={{ fontSize: '0.95rem' }}>{emailError}</div>
@@ -405,15 +440,15 @@ export default function SettingsPage() {
                 {/* Change Phone Number */}
                 {userData.phone_number && (
                   <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
-                    <h4>{t('settings.change_phone')}</h4>
+                    <h4>修改手机号</h4>
                     <p>
-                      {t('settings.current_phone')} <strong>
+                      当前手机号 <strong>
                         {userData.phone_number.substring(0, 3)}****{userData.phone_number.substring(7)}
                       </strong>
                     </p>
                     {!showPhoneForm ? (
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <PrimaryButton onClick={startPhoneChange}>{t('settings.change_phone')}</PrimaryButton>
+                        <PrimaryButton onClick={startPhoneChange}>修改手机号</PrimaryButton>
                       </div>
                     ) : (
                       <div>
@@ -433,12 +468,12 @@ export default function SettingsPage() {
                         {/* Step 1: Verify Current Phone */}
                         {phoneChangeStep === 1 && (
                           <div>
-                            <h5 style={{ marginBottom: 8, fontSize: '1rem' }}>{t('settings.phone_change_step1')}</h5>
+                            <h5 style={{ marginBottom: 8, fontSize: '1rem' }}>第一步：验证当前手机号</h5>
                             <p style={{ color: '#6c757d', fontSize: '0.9rem', marginBottom: 16 }}>
-                              {t('settings.phone_change_desc_step1')}
+                              我们将向您当前绑定的手机号发送验证码，请输入收到的验证码。
                             </p>
                             <div className="mb-3">
-                              <label className="form-label">{t('settings.verification_code')}</label>
+                              <label className="form-label">验证码</label>
                               <div style={{ display: 'flex', gap: 8 }}>
                                 <input 
                                   type="text" 
@@ -453,9 +488,9 @@ export default function SettingsPage() {
                                   disabled={sendingCode || resendTimer > 0}
                                   style={{ minWidth: 120 }}
                                 >
-                                  {sendingCode ? t('settings.sending') : 
-                                   resendTimer > 0 ? `${resendTimer}${t('settings.resend_in')}` : 
-                                   t('settings.send_code')}
+                                  {sendingCode ? '发送中...' : 
+                                   resendTimer > 0 ? `${resendTimer}秒后可重发` : 
+                                   '发送验证码'}
                                 </PrimaryButton>
                               </div>
                             </div>
@@ -464,9 +499,9 @@ export default function SettingsPage() {
                             )}
                             <div style={{ display: 'flex', gap: 8 }}>
                               <PrimaryButton onClick={verifyCurrentPhone} disabled={verifyingCode || !currentPhoneCode}>
-                                {verifyingCode ? t('settings.sending') : t('settings.next_step')}
+                                {verifyingCode ? '发送中...' : '下一步'}
                               </PrimaryButton>
-                              <SecondaryButton onClick={cancelPhoneChange}>{t('common.cancel')}</SecondaryButton>
+                              <SecondaryButton onClick={cancelPhoneChange}>取消</SecondaryButton>
                             </div>
                           </div>
                         )}
@@ -474,9 +509,9 @@ export default function SettingsPage() {
                         {/* Step 2: Enter New Phone */}
                         {phoneChangeStep === 2 && (
                           <div>
-                            <h5 style={{ marginBottom: 8, fontSize: '1rem' }}>{t('settings.phone_change_step2')}</h5>
+                            <h5 style={{ marginBottom: 8, fontSize: '1rem' }}>第二步：输入新手机号</h5>
                             <p style={{ color: '#6c757d', fontSize: '0.9rem', marginBottom: 16 }}>
-                              {t('settings.phone_change_desc_step2')}
+                              请输入您要绑定的新手机号。
                             </p>
                             <div style={{ 
                               padding: 12, 
@@ -486,10 +521,10 @@ export default function SettingsPage() {
                               marginBottom: 16,
                               fontSize: '0.9rem'
                             }}>
-                              {t('settings.phone_change_warning')}
+                              更换手机号后，原手机号将无法用于登录。
                             </div>
                             <div className="mb-3">
-                              <label className="form-label">{t('settings.new_phone')}</label>
+                              <label className="form-label">新手机号</label>
                               <input 
                                 type="tel" 
                                 className="form-control" 
@@ -504,9 +539,9 @@ export default function SettingsPage() {
                             )}
                             <div style={{ display: 'flex', gap: 8 }}>
                               <PrimaryButton onClick={sendCodeToNewPhone} disabled={sendingCode || !newPhoneNumber}>
-                                {sendingCode ? t('settings.sending') : t('settings.next_step')}
+                                {sendingCode ? '发送中...' : '下一步'}
                               </PrimaryButton>
-                              <SecondaryButton onClick={cancelPhoneChange}>{t('common.cancel')}</SecondaryButton>
+                              <SecondaryButton onClick={cancelPhoneChange}>取消</SecondaryButton>
                             </div>
                           </div>
                         )}
@@ -514,12 +549,12 @@ export default function SettingsPage() {
                         {/* Step 3: Verify New Phone */}
                         {phoneChangeStep === 3 && (
                           <div>
-                            <h5 style={{ marginBottom: 8, fontSize: '1rem' }}>{t('settings.phone_change_step3')}</h5>
+                            <h5 style={{ marginBottom: 8, fontSize: '1rem' }}>第三步：验证新手机号</h5>
                             <p style={{ color: '#6c757d', fontSize: '0.9rem', marginBottom: 16 }}>
-                              {t('settings.phone_change_desc_step3')}
+                              我们将向新手机号发送验证码，请输入收到的验证码完成更换。
                             </p>
                             <div className="mb-3">
-                              <label className="form-label">{t('settings.verification_code')}</label>
+                              <label className="form-label">验证码</label>
                               <div style={{ display: 'flex', gap: 8 }}>
                                 <input 
                                   type="text" 
@@ -534,9 +569,9 @@ export default function SettingsPage() {
                                   disabled={sendingCode || resendTimer > 0}
                                   style={{ minWidth: 120 }}
                                 >
-                                  {sendingCode ? t('settings.sending') : 
-                                   resendTimer > 0 ? `${resendTimer}${t('settings.resend_in')}` : 
-                                   t('settings.resend_code')}
+                                  {sendingCode ? '发送中...' : 
+                                   resendTimer > 0 ? `${resendTimer}秒后可重发` : 
+                                   '重新发送验证码'}
                                 </PrimaryButton>
                               </div>
                             </div>
@@ -545,9 +580,9 @@ export default function SettingsPage() {
                             )}
                             <div style={{ display: 'flex', gap: 8 }}>
                               <PrimaryButton onClick={confirmPhoneChange} disabled={verifyingCode || !newPhoneCode}>
-                                {verifyingCode ? t('settings.sending') : t('settings.confirm_change')}
+                                {verifyingCode ? '发送中...' : '确认更换'}
                               </PrimaryButton>
-                              <SecondaryButton onClick={cancelPhoneChange}>{t('common.cancel')}</SecondaryButton>
+                              <SecondaryButton onClick={cancelPhoneChange}>取消</SecondaryButton>
                             </div>
                           </div>
                         )}
@@ -558,8 +593,8 @@ export default function SettingsPage() {
 
                 {/* Delete Account - Danger Zone */}
                 <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
-                  <h4 className="text-danger">{t('settings.danger_zone')}</h4>
-                  <p className="text-muted">{t('settings.delete_account_confirm')}</p>
+                  <h4 className="text-danger">危险操作</h4>
+                  <p className="text-muted">此操作将永久删除您的账号，数据无法恢复。请谨慎操作！</p>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <PrimaryButton 
                       onClick={() => setConfirmDelete({ show: true })}
@@ -567,30 +602,24 @@ export default function SettingsPage() {
                       onMouseEnter={e => { e.currentTarget.style.background = '#b71c1c'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = '#d32f2f'; }}
                     >
-                      {t('settings.delete_account')}
+                      删除账号
                     </PrimaryButton>
                   </div>
                 </section>
               </>
             )}
 
+            {/* Order History Tab */}
+            {activeSection === 'orderHistory' && (
+              <OrderHistoryTab />
+            )}
+
             {/* Language Settings Section */}
             {activeSection === 'language' && (
               <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
-                <h4>{t('settings.language') || 'Language'}</h4>
-                <p>{t('settings.current_language') || 'Current language:'} <strong>{lang === 'zh' ? '中文' : 'English'}</strong></p>
+                <h4>语言</h4>
+                <p>当前语言: <strong>中文</strong></p>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <PrimaryButton 
-                    onClick={() => handleLangToggle('en')}
-                    disabled={lang === 'en'}
-                    style={{ 
-                      background: lang === 'en' ? '#736B92' : '#e9ecef',
-                      color: lang === 'en' ? '#fff' : '#6c757d',
-                      cursor: lang === 'en' ? 'default' : 'pointer'
-                    }}
-                  >
-                    English
-                  </PrimaryButton>
                   <PrimaryButton 
                     onClick={() => handleLangToggle('zh')}
                     disabled={lang === 'zh'}
@@ -608,7 +637,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-      <ConfirmModal show={confirmDelete.show} title={t('settings.delete_account')} message={t('settings.delete_account_confirm')} onCancel={() => setConfirmDelete({ show: false })} onConfirm={() => { setConfirmDelete({ show: false }); doDeleteAccount(); }} confirmText={t('common.delete')} cancelText={t('common.cancel')} />
+      <ConfirmModal show={confirmDelete.show} title="删除账号" message="此操作将永久删除您的账号，数据无法恢复。请谨慎操作！" onCancel={() => setConfirmDelete({ show: false })} onConfirm={() => { setConfirmDelete({ show: false }); doDeleteAccount(); }} confirmText="删除" cancelText="取消" />
     </PageWrapper>
   );
 }
