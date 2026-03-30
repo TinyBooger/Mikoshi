@@ -54,8 +54,10 @@ function SystemSettingsPage() {
     try {
       const res = await fetch(`${window.API_BASE_URL}/api/admin/system-settings/${encodeURIComponent(editKey)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': sessionToken
+        },
         body: JSON.stringify({ value: editValue }),
       });
       if (!res.ok) throw new Error('Failed to update setting');
