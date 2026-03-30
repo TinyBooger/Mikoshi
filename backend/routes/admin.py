@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_, and_
 from datetime import datetime, timedelta, UTC
 from database import get_db
-from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger, ContentReviewQueue, ProblemReport
+from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger, ContentReviewQueue, ProblemReport, SystemSettings
 from utils.session import get_current_admin_user
 from utils.security_middleware import get_rate_limit_status
 from utils.user_utils import enrich_user_with_character_count, build_user_response
@@ -848,3 +848,58 @@ def update_token_topup_packages_admin(
         "message": "Token top-up packages updated successfully",
         "packages": packages,
     }
+
+
+# --- System Settings Admin API ---
+class SystemSettingOut(BaseModel):
+    key: str
+    value: str
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[str] = None
+
+class SystemSettingUpdateRequest(BaseModel):
+    value: str
+
+@router.get("/system-settings", response_model=List[SystemSettingOut])
+def list_system_settings(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user),
+    key: Optional[str] = None
+):
+    """List all system settings or filter by key."""
+    query = db.query(SystemSettings)
+    if key:
+        query = query.filter(SystemSettings.key == key)
+    settings = query.all()
+    return [SystemSettingOut(
+        key=s.key,
+        value=s.value,
+        updated_at=s.updated_at,
+        updated_by=s.updated_by
+    ) for s in settings]
+
+@router.put("/system-settings/{key}", response_model=SystemSettingOut)
+def update_system_setting(
+    key: str,
+    req: SystemSettingUpdateRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Update a system setting by key."""
+    setting = db.query(SystemSettings).filter(SystemSettings.key == key).first()
+    if not setting:
+        setting = SystemSettings(key=key, value=req.value, updated_by=current_admin.id)
+        db.add(setting)
+    else:
+        setting.value = req.value
+        setting.updated_by = current_admin.id
+    setting.updated_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(setting)
+    return SystemSettingOut(
+        key=setting.key,
+        value=setting.value,
+        updated_at=setting.updated_at,
+        updated_by=setting.updated_by
+    )
+# --- End System Settings Admin API ---

@@ -20,6 +20,7 @@ export default function AdminSidebar({ mobileOpen = false }) {
         <li><Link className="nav-link text-white" to="/admin/notifications">Notifications</Link></li>
         <li><Link className="nav-link text-white" to="/admin/error-logs">Error Logs</Link></li>
         <li><Link className="nav-link text-white" to="/admin/audit-logs">Audit Logs</Link></li>
+        <li><Link className="nav-link text-white" to="/admin/system-settings">System Settings</Link></li>
         <li className="mt-3 pt-3 border-top border-secondary">
           <Link className="nav-link text-white-50" to="/">
             <i className="bi bi-arrow-left me-2"></i>Back to Site

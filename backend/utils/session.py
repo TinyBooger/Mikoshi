@@ -45,13 +45,3 @@ def get_current_admin_user(
             detail="Access forbidden: Admin privileges required"
         )
     return current_user
-
-# def get_current_user(request: Request, db: Session = Depends(get_db)):
-#     token = request.cookies.get("session_token")
-#     user_id = verify_session_token(token)
-#     if not user_id:
-#         raise HTTPException(status_code=401, detail="Not logged in")
-#     user = db.query(User).filter(User.id == user_id).first()
-#     if not user:
-#         raise HTTPException(status_code=404, detail="User not found")
-#     return user

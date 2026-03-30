@@ -8627,3 +8627,23 @@ WHERE chat_histories.user_id = %(user_id_1)s ORDER BY chat_histories.last_update
 2026-03-17 11:42:40 - utils.error_logger - ERROR - [UnhandledPromiseRejection] Cannot read properties of undefined (reading 'nodeName') | Endpoint: None http://localhost:3000/admin | User: HAeAnts3IJW6bfPHgyjKfcurWfE2
 2026-03-17 11:42:40 - utils.error_logger - ERROR - [UnhandledPromiseRejection] Cannot read properties of undefined (reading 'nodeName') | Endpoint: None http://localhost:3000/admin | User: HAeAnts3IJW6bfPHgyjKfcurWfE2
 2026-03-17 15:15:50 - utils.error_logger - CRITICAL - [HTTPError] HTTP 500 error | Endpoint: POST /api/character-assistant
+2026-03-30 17:40:43 - utils.error_logger - ERROR - [UnhandledPromiseRejection] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. | Endpoint: None http://localhost:3000/admin/system-settings | User: HAeAnts3IJW6bfPHgyjKfcurWfE2
+2026-03-30 17:40:43 - utils.error_logger - ERROR - [UnhandledPromiseRejection] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. | Endpoint: None http://localhost:3000/admin/system-settings | User: HAeAnts3IJW6bfPHgyjKfcurWfE2
+2026-03-30 17:40:50 - utils.error_logger - ERROR - [UnhandledPromiseRejection] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. | Endpoint: None http://localhost:3000/admin/system-settings | User: HAeAnts3IJW6bfPHgyjKfcurWfE2
+2026-03-30 17:40:50 - utils.error_logger - ERROR - [UnhandledPromiseRejection] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. | Endpoint: None http://localhost:3000/admin/system-settings | User: HAeAnts3IJW6bfPHgyjKfcurWfE2
