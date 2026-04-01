@@ -14,6 +14,9 @@ from utils.security_middleware import (
     ErrorLoggingMiddleware
 )
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 print(f"Current working directory: {os.getcwd()}")
 
 # Only load .env if it exists (for local dev); skip on Render

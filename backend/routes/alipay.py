@@ -565,6 +565,7 @@ async def create_order(
                 raise HTTPException(status_code=400, detail="缺少充值包ID")
 
             topup_package = get_token_topup_package_by_id(db, request.package_id)
+            logger.info(f"查询充值包: package_id={request.package_id}, result={topup_package}")
             if not topup_package:
                 raise HTTPException(status_code=400, detail="无效的充值包")
 
@@ -620,11 +621,17 @@ async def create_order(
                 timeout_express=request.timeout_express
             )
 
-        if provider.provider_name == "mock":
+        # In local/dev we can auto-settle create-order for faster testing.
+        # Mock always auto-settles; Alipay can auto-settle outside production or via explicit env flag.
+        should_auto_settle = provider.provider_name == "mock"
+
+        if should_auto_settle:
             parsed_url = urlparse(payment_url)
             trade_no_values = parse_qs(parsed_url.query).get("trade_no") or []
             mock_trade_no = trade_no_values[0] if trade_no_values else f"MOCK_{uuid.uuid4().hex[:24]}"
             total_amount = f"{request.total_amount:.2f}"
+            if provider.provider_name == "alipay":
+                logger.warning("Alipay create-order auto-settle is enabled; order will be settled before notify/return callback")
             resolved_order_type = _resolve_order_type_from_out_trade_no(out_trade_no)
             if resolved_order_type == "pro_upgrade":
                 _handle_pro_upgrade(
@@ -632,7 +639,7 @@ async def create_order(
                     out_trade_no=out_trade_no,
                     trade_no=mock_trade_no,
                     total_amount=total_amount,
-                    source="mock_create_order",
+                    source=f"{provider.provider_name}_create_order",
                 )
             elif resolved_order_type == "token_topup":
                 _handle_token_topup(
@@ -640,7 +647,7 @@ async def create_order(
                     out_trade_no=out_trade_no,
                     trade_no=mock_trade_no,
                     total_amount=total_amount,
-                    source="mock_create_order",
+                    source=f"{provider.provider_name}_create_order",
                 )
         
         logger.info(f"创建支付订单: {out_trade_no}, 金额: {request.total_amount}, provider={provider.provider_name}")
