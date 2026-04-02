@@ -23,13 +23,73 @@ from urllib.parse import unquote
 logger = logging.getLogger(__name__)
 
 
+def _normalize_rsa_private_key(key_str: str) -> str:
+    """
+    Normalize a private key to the bare base64 PKCS#1 RSA format that the
+    Alipay SDK expects.  The SDK itself wraps the value with:
+        -----BEGIN RSA PRIVATE KEY-----  /  -----END RSA PRIVATE KEY-----
+    so we must return only the raw base64 body — no headers.
+
+    Alipay's key-generation tool produces PKCS#8 keys.  When those are fed
+    into the SDK's PKCS#1 parser an ASN.1 Sequence ends up where an INTEGER
+    is expected, causing:
+        int() argument must be a string … not 'Sequence'
+    This function detects PKCS#8 input (with or without PEM headers) and
+    converts it to PKCS#1 via the `cryptography` library.
+    """
+    from cryptography.hazmat.primitives.serialization import (
+        load_pem_private_key, Encoding, PrivateFormat, NoEncryption
+    )
+
+    key_str = key_str.strip()
+    if not key_str:
+        return key_str
+
+    # Already bare PKCS#1: no headers, and the raw bytes decode to a PKCS#1
+    # structure.  The SDK will add the markers itself, so return as-is.
+    if "BEGIN RSA PRIVATE KEY" in key_str:
+        # Has PKCS#1 PEM headers — strip them and return bare base64.
+        lines = key_str.splitlines()
+        return "".join(ln for ln in lines if not ln.startswith("-----"))
+
+    # Build a PEM block so `cryptography` can load it.
+    if "BEGIN PRIVATE KEY" in key_str:
+        # Already has PKCS#8 PEM headers.
+        pem = key_str.encode()
+    else:
+        # Raw base64 — assume PKCS#8 (Alipay's default output format).
+        pem = f"-----BEGIN PRIVATE KEY-----\n{key_str}\n-----END PRIVATE KEY-----".encode()
+
+    try:
+        private_key = load_pem_private_key(pem, password=None)
+    except Exception as exc:
+        logger.warning(f"私钥格式转换失败，原样使用: {exc}")
+        # Return the bare base64 unchanged; let the SDK try.
+        lines = key_str.splitlines()
+        return "".join(ln for ln in lines if not ln.startswith("-----")) or key_str
+
+    pkcs1_pem = private_key.private_bytes(
+        Encoding.PEM,
+        PrivateFormat.TraditionalOpenSSL,  # → BEGIN RSA PRIVATE KEY
+        NoEncryption(),
+    ).decode()
+
+    # Strip the PEM headers; the SDK adds its own.
+    lines = pkcs1_pem.strip().splitlines()
+    return "".join(ln for ln in lines if not ln.startswith("-----"))
+
+
 class AlipayClient:
     """支付宝客户端封装"""
     
     def __init__(self):
         # 从环境变量获取支付宝配置
         self.app_id = os.getenv("ALIPAY_APP_ID", "")
-        self.app_private_key = os.getenv("ALIPAY_APP_PRIVATE_KEY", "")
+        # Normalize private key from PKCS#8 (Alipay tool default) to the PKCS#1
+        # bare-base64 format that this SDK's signing path requires.
+        self.app_private_key = _normalize_rsa_private_key(
+            os.getenv("ALIPAY_APP_PRIVATE_KEY", "")
+        )
         self.alipay_public_key = os.getenv("ALIPAY_PUBLIC_KEY", "")
         
         # 是否为沙盒环境
