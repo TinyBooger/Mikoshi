@@ -32,9 +32,16 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/alipay", tags=["alipay"])
 
-PRO_UPGRADE_PRICE_CNY = float(os.getenv("PRO_UPGRADE_PRICE_CNY", "29"))
-PRO_UPGRADE_DURATION_DAYS = int(os.getenv("PRO_UPGRADE_DURATION_DAYS", "30"))
 PRO_AMOUNT_TOLERANCE = 0.01
+
+# Maps accepted payment amounts to Pro membership duration in days.
+# Prices: 1 month = ¥15, 3 months = ¥40 (9折), 6 months = ¥72 (8折), 1 year = ¥120 (6.7折)
+PRO_UPGRADE_PLANS = [
+    {"amount": 15.0,  "days": 30},
+    {"amount": 40.0,  "days": 90},
+    {"amount": 72.0,  "days": 180},
+    {"amount": 120.0, "days": 365},
+]
 TOKEN_TOPUP_AMOUNT_TOLERANCE = 0.01
 
 
@@ -67,14 +74,22 @@ def _get_trade_status(result: dict) -> Tuple[Optional[str], Optional[str]]:
     return payload.get("trade_status"), payload.get("code")
 
 
-def _is_valid_pro_upgrade_amount(total_amount: Optional[str | float | int]) -> bool:
+def _get_pro_upgrade_plan(total_amount) -> Optional[dict]:
+    """Return the matching Pro plan dict, or None if the amount is not a valid plan price."""
     try:
         if total_amount is None:
-            return False
+            return None
         amount = float(total_amount)
-        return abs(amount - PRO_UPGRADE_PRICE_CNY) <= PRO_AMOUNT_TOLERANCE
+        for plan in PRO_UPGRADE_PLANS:
+            if abs(amount - plan["amount"]) <= PRO_AMOUNT_TOLERANCE:
+                return plan
+        return None
     except (TypeError, ValueError):
-        return False
+        return None
+
+
+def _is_valid_pro_upgrade_amount(total_amount) -> bool:
+    return _get_pro_upgrade_plan(total_amount) is not None
 
 
 def _resolve_order_type_from_out_trade_no(out_trade_no: str) -> str:
@@ -278,7 +293,9 @@ def _handle_pro_upgrade(
         return
 
     try:
-        upgrade_to_pro(user, db, duration_days=PRO_UPGRADE_DURATION_DAYS)
+        plan = _get_pro_upgrade_plan(total_amount)
+        duration_days = plan["days"] if plan else 30
+        upgrade_to_pro(user, db, duration_days=duration_days)
         payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
         if payment_order:
             _finalize_payment_order(
@@ -539,7 +556,8 @@ async def create_order(
         topup_package: Optional[dict] = None
         if request.order_type == "pro_upgrade":
             if not _is_valid_pro_upgrade_amount(request.total_amount):
-                raise HTTPException(status_code=400, detail=f"Pro升级金额必须为 {PRO_UPGRADE_PRICE_CNY:.2f}")
+                valid_prices = ", ".join(f"¥{p['amount']:.0f}" for p in PRO_UPGRADE_PLANS)
+                raise HTTPException(status_code=400, detail=f"Pro升级金额无效，有效金额为: {valid_prices}")
 
             authed_user_id = verify_session_token(session_token)
             if not authed_user_id:

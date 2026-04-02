@@ -12,7 +12,9 @@ export default function TokenTopUpPage() {
   const { userData, sessionToken, refreshUserData } = useContext(AuthContext);
   const [packages, setPackages] = useState([]);
   const [loadingPackages, setLoadingPackages] = useState(true);
+  const [selectedPackageId, setSelectedPackageId] = useState(null);
   const [payingPackageId, setPayingPackageId] = useState(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('alipay');
   const [showRefundModal, setShowRefundModal] = useState(false);
 
   useEffect(() => {
@@ -46,6 +48,13 @@ export default function TokenTopUpPage() {
     };
   }, [toast]);
 
+  useEffect(() => {
+    if (packages.length > 0 && selectedPackageId === null) {
+      const sorted = [...packages].sort((a, b) => Number(a.tokens || 0) - Number(b.tokens || 0));
+      setSelectedPackageId(sorted[0]?.id ?? null);
+    }
+  }, [packages, selectedPackageId]);
+
   const sortedPackages = useMemo(
     () => [...packages].sort((a, b) => Number(a.tokens || 0) - Number(b.tokens || 0)),
     [packages]
@@ -64,12 +73,25 @@ export default function TokenTopUpPage() {
     return label;
   };
 
-  const handleBuyPackage = async (pkg) => {
+  const handlePurchase = async () => {
     if (!userData || !sessionToken) {
       toast.show('请先登录', { type: 'info' });
       navigate('/');
       return;
     }
+
+    if (!selectedPackageId) {
+      toast.show('请先选择充值套餐', { type: 'info' });
+      return;
+    }
+
+    if (selectedPaymentMethod !== 'alipay') {
+      toast.show('当前仅支持支付宝支付', { type: 'info' });
+      return;
+    }
+
+    const pkg = sortedPackages.find((p) => p.id === selectedPackageId);
+    if (!pkg) return;
 
     setPayingPackageId(pkg.id);
     try {
@@ -144,15 +166,26 @@ export default function TokenTopUpPage() {
                 {sortedPackages.map((pkg) => {
                   const isPopular = Number(pkg.tokens) === 2000000;
                   const isStandard = Number(pkg.tokens) === 1000000;
+                  const isSelected = selectedPackageId === pkg.id;
                   return (
                     <div key={pkg.id} className="col-12 col-md-6 col-lg-4">
                       <div
                         className="h-100 p-4 rounded-4"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedPackageId(pkg.id)}
+                        onKeyDown={(e) => e.key === 'Enter' && setSelectedPackageId(pkg.id)}
                         style={{
                           background: '#fff',
-                          border: isPopular ? '2px solid #f59e0b' : '1px solid #e5e7eb',
-                          boxShadow: isPopular ? '0 10px 30px rgba(245,158,11,0.18)' : '0 8px 20px rgba(15,23,42,0.06)',
+                          border: isSelected
+                            ? '2px solid #667eea'
+                            : '1px solid #e5e7eb',
+                          boxShadow: isSelected
+                            ? '0 6px 18px rgba(102, 126, 234, 0.18)'
+                            : '0 8px 20px rgba(15,23,42,0.06)',
                           position: 'relative',
+                          cursor: 'pointer',
+                          transition: 'border 0.15s, box-shadow 0.15s',
                         }}
                       >
                         {isPopular && (
@@ -198,21 +231,6 @@ export default function TokenTopUpPage() {
                         <div className="mb-4" style={{ fontWeight: 800, color: '#16a34a', fontSize: '1.35rem' }}>
                           ¥{Number(pkg.price_cny || 0).toFixed(2)}
                         </div>
-
-                        <button
-                          className="btn w-100 fw-bold"
-                          style={{
-                            background: isPopular ? '#f59e0b' : '#111827',
-                            color: '#fff',
-                            borderRadius: 10,
-                            border: 'none',
-                            padding: '0.65rem 0.8rem',
-                          }}
-                          disabled={payingPackageId === pkg.id}
-                          onClick={() => handleBuyPackage(pkg)}
-                        >
-                          {payingPackageId === pkg.id ? '处理中...' : '立即购买'}
-                        </button>
                       </div>
                     </div>
                   );
@@ -220,6 +238,101 @@ export default function TokenTopUpPage() {
               </div>
             )}
           </div>
+            {/* Payment Methods */}
+            <div className="mt-4 mb-3">
+              <div className="mb-2" style={{ color: '#6c757d', fontSize: '0.82rem', fontWeight: 700 }}>
+                支付方式
+              </div>
+              <div className="d-flex flex-row flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn d-flex align-items-center gap-2"
+                  onClick={() => setSelectedPaymentMethod('alipay')}
+                  style={{
+                    background: '#fff',
+                    border: selectedPaymentMethod === 'alipay' ? '2px solid #1677ff' : '1px solid #d9e2ec',
+                    borderRadius: '12px',
+                    padding: '0.6rem 1rem',
+                    boxShadow: selectedPaymentMethod === 'alipay' ? '0 4px 12px rgba(22, 119, 255, 0.15)' : 'none',
+                  }}
+                >
+                  <img
+                    src="/alipay/支付宝logo-方形.png"
+                    alt="支付宝logo"
+                    style={{ width: 22, height: 22, objectFit: 'contain' }}
+                  />
+                  <span style={{ color: '#232323', fontWeight: 700, fontSize: '0.9rem' }}>支付宝</span>
+                  <img
+                    src="/alipay/推荐.png"
+                    alt="推荐"
+                    style={{ height: 18, objectFit: 'contain' }}
+                  />
+                  <input
+                    type="radio"
+                    readOnly
+                    checked={selectedPaymentMethod === 'alipay'}
+                    aria-label="选择支付宝支付"
+                    style={{ accentColor: '#1677ff' }}
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  className="btn d-flex align-items-center gap-2"
+                  onClick={() => setSelectedPaymentMethod('coming_soon')}
+                  style={{
+                    background: '#f8f9fa',
+                    border: selectedPaymentMethod === 'coming_soon' ? '2px solid #adb5bd' : '1px solid #dee2e6',
+                    borderRadius: '12px',
+                    padding: '0.6rem 1rem',
+                    color: '#6c757d',
+                  }}
+                >
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>更多支付方式（即将支持）</span>
+                  <input
+                    type="radio"
+                    readOnly
+                    checked={selectedPaymentMethod === 'coming_soon'}
+                    aria-label="选择更多支付方式"
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Purchase Button */}
+            <div className="text-center mt-4 mb-5">
+              <button
+                className="btn btn-lg fw-bold px-5 py-3 shadow"
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  color: '#fff',
+                  borderRadius: '16px',
+                  fontSize: '1.1rem',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 12px 32px rgba(102, 126, 234, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.3)';
+                }}
+                onClick={handlePurchase}
+                disabled={!!payingPackageId || !selectedPackageId || selectedPaymentMethod !== 'alipay'}
+              >
+                {payingPackageId ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    处理中...
+                  </>
+                ) : (
+                  '立即购买'
+                )}
+              </button>
+            </div>
+
         </div>
       </div>
       {/* Refund Policy Modal */}
