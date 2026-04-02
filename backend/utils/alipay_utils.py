@@ -109,7 +109,7 @@ class AlipayClient:
             return response
             
         except Exception as e:
-            logger.error(f"创建支付订单失败: {e}")
+            logger.exception(f"创建支付订单失败: {e}")
             raise
     
     def create_wap_pay(self, out_trade_no: str, total_amount: float, subject: str,
@@ -161,7 +161,7 @@ class AlipayClient:
             return response
             
         except Exception as e:
-            logger.error(f"创建手机支付订单失败: {e}")
+            logger.exception(f"创建手机支付订单失败: {e}")
             raise
     
     def verify_notify(self, data: dict):

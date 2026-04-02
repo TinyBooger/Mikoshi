@@ -666,7 +666,7 @@ async def create_order(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"创建支付订单失败: {e}")
+        logger.exception(f"创建支付订单失败: {e}")
         raise HTTPException(status_code=500, detail=f"创建支付订单失败: {str(e)}")
 
 
