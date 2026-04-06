@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import logo from '../assets/images/logo.png';
 import { AuthContext } from '../components/AuthProvider';
@@ -10,6 +10,8 @@ import TextButton from '../components/TextButton';
 export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || null;
   const [activeTab, setActiveTab] = useState('phone');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,7 +50,7 @@ export default function LoginPage() {
     }
     const success = await login(safeEmail, safePwd);
     if (success) {
-      navigate('/');
+      navigate(from || '/', { replace: true });
     } else {
       const msg = t('welcome.invalid_credentials');
       setError(msg);
@@ -218,7 +220,7 @@ export default function LoginPage() {
       const result = await verifyPhone(phoneNumber, verificationCode, captchaParam);
       if (result.success) {
         if (result.status === 'existing_user') {
-          navigate('/');
+          navigate(from || '/', { replace: true });
         } else if (result.status === 'new_user') {
           navigate(`/sign-up?phone_token=${result.verifiedPhoneToken}&phone=${result.phoneNumber}`);
         }

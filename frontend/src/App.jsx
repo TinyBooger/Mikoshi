@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
+import { createBrowserRouter, Navigate, RouterProvider, useLocation } from 'react-router';
 import AuthLayout from './components/AuthLayout';
 import AdminApp from './admin/AdminApp.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
@@ -50,8 +50,9 @@ function AppRootLayout() {
 
 function ProtectedPage({ children }) {
   const { userData, loading } = useContext(AuthContext);
+  const location = useLocation();
   if (loading) return null; // or a spinner if you prefer
-  return userData ? children : <Navigate to="/" replace />;
+  return userData ? children : <Navigate to="/" replace state={{ from: location.pathname + location.search }} />;
 }
 
 function PublicOnlyPage({ children }) {
