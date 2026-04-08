@@ -23,11 +23,6 @@ export default function ProUpgradePage() {
           <div className="col-12 col-lg-10 col-xl-8">
             {/* Header Section */}
             <div className="text-center mb-5">
-              <img
-                src="/alipay/支付宝logo-方形.png"
-                alt="支付宝"
-                style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: '0.75rem' }}
-              />
               <h1 className="fw-bold mb-3" style={{ color: '#232323', fontSize: '2.2rem' }}>
                 {t('pro_upgrade.title')}
               </h1>
