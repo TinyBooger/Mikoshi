@@ -18,11 +18,10 @@ export default function ProUpgradePage() {
 
   return (
     <PageWrapper title={t('pro_upgrade.title')}>
-      <div className="container py-5">
         <div className="row justify-content-center">
           <div className="col-12 col-lg-10 col-xl-8">
             {/* Header Section */}
-            <div className="text-center mb-5">
+            <div className="text-center mb-3">
               <h1 className="fw-bold mb-3" style={{ color: '#232323', fontSize: '2.2rem' }}>
                 {t('pro_upgrade.title')}
               </h1>
@@ -32,15 +31,7 @@ export default function ProUpgradePage() {
             </div>
 
             {/* Comparison Table */}
-            <div className="mb-5">
-              <div className="text-center mb-4">
-                <h3 className="fw-bold" style={{ color: '#232323' }}>
-                  {t('pro_upgrade.comparison_title')}
-                </h3>
-                <p className="text-muted mb-0" style={{ fontSize: '0.95rem' }}>
-                  {t('pro_upgrade.comparison_subtitle')}
-                </p>
-              </div>
+            <div className="mb-3">
               <div
                 className="rounded-4 p-3 p-md-4"
                 style={{
@@ -104,7 +95,7 @@ export default function ProUpgradePage() {
             </div>
 
             {/* Plan Selection */}
-            <div className="mb-5">
+            <div className="mb-3">
               <div className="row g-3">
                 {[
                   { id: '1month', label: '1个月', price: 15, unit: '/月', discount: null },
@@ -242,7 +233,7 @@ export default function ProUpgradePage() {
             </div>
 
             {/* Purchase Button */}
-            <div className="text-center mb-5">
+            <div className="text-center mb-3">
               <button
                 className="btn btn-lg fw-bold px-5 py-3 shadow"
                 style={{
@@ -350,73 +341,23 @@ export default function ProUpgradePage() {
               </button>
             </div>
 
-            {/* FAQ Section */}
-            <div className="mt-5">
-              <h3 className="fw-bold text-center mb-4" style={{ color: '#232323' }}>
-                {t('pro_upgrade.faq_title')}
-              </h3>
-              <div className="accordion" id="faqAccordion">
-                {[{
-                  q: '如何支付？',
-                  a: '我们支持支付宝支付，安全便捷。'
-                }, {
-                  q: '可以随时取消吗？',
-                  a: '是的，您可以随时在设置中取消订阅。'
-                }, {
-                  q: '有退款政策吗？',
-                  a: <>
-                    在购买后7天内，如果您不满意，可以申请全额退款。
-                    <button className="btn btn-link p-0 ms-2" style={{ fontSize: '0.98em' }} onClick={() => setShowRefundModal(true)}>
-                      查看详情
-                    </button>
-                  </>
-                }].map((faq, idx) => (
-                  <div key={idx} className="accordion-item border-0 mb-3 rounded-4 overflow-hidden" style={{ background: '#fff' }}>
-                    <h2 className="accordion-header">
-                      <button
-                        className="accordion-button collapsed fw-bold"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target={`#faq${idx}`}
-                        style={{
-                          background: '#f8f9fa',
-                          color: '#232323',
-                          fontSize: '1rem'
-                        }}
-                      >
-                        {faq.q}
-                      </button>
-                    </h2>
-                    <div id={`faq${idx}`} className="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                      <div className="accordion-body" style={{ color: '#6c757d' }}>
-                        {faq.a}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Refund Policy Modal */}
             <RefundPolicyModal show={showRefundModal} onClose={() => setShowRefundModal(false)} policyType="pro" />
 
             {/* Footer Note */}
-            <div className="text-center mt-5 pt-5" style={{ borderTop: '1px solid #e9ecef' }}>
-              <p className="text-muted" style={{ fontSize: '0.9rem' }}>
-                {t('pro_upgrade.footer_note')}
-                {' '}
-                <a href="/terms-of-service" className="text-decoration-none" style={{ color: '#667eea' }}>
-                  {t('pro_upgrade.terms')}
-                </a>
-                {' '}{t('common.and')}{' '}
-                <a href="/privacy-policy" className="text-decoration-none" style={{ color: '#667eea' }}>
-                  {t('pro_upgrade.privacy')}
-                </a>
-              </p>
-            </div>
+            <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+              {t('pro_upgrade.footer_note')}
+              {' '}
+              <a href="/terms-of-service" className="text-decoration-none" style={{ color: '#667eea' }}>
+                {t('pro_upgrade.terms')}
+              </a>
+              {' '}{t('common.and')}{' '}
+              <a href="/privacy-policy" className="text-decoration-none" style={{ color: '#667eea' }}>
+                {t('pro_upgrade.privacy')}
+              </a>
+            </p>
           </div>
         </div>
-      </div>
     </PageWrapper>
   );
 }

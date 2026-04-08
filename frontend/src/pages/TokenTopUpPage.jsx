@@ -5,8 +5,10 @@ import PageWrapper from '../components/PageWrapper';
 import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
 import { formatCompactTokenCount } from '../utils/tokenDisplay';
+import { useTranslation } from 'react-i18next';
 
 export default function TokenTopUpPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const toast = useToast();
   const { userData, sessionToken, refreshUserData } = useContext(AuthContext);
@@ -300,7 +302,7 @@ export default function TokenTopUpPage() {
             </div>
 
             {/* Purchase Button */}
-            <div className="text-center mt-4 mb-5">
+            <div className="text-center mt-4 mb-3">
               <button
                 className="btn btn-lg fw-bold px-5 py-3 shadow"
                 style={{
@@ -337,6 +339,18 @@ export default function TokenTopUpPage() {
       </div>
       {/* Refund Policy Modal */}
       <RefundPolicyModal show={showRefundModal} onClose={() => setShowRefundModal(false)} policyType="token" />
+      {/* Footer Note */}
+      <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+        {t('pro_upgrade.footer_note')}
+        {' '}
+        <a href="/terms-of-service" className="text-decoration-none" style={{ color: '#667eea' }}>
+          {t('pro_upgrade.terms')}
+        </a>
+        {' '}{t('common.and')}{' '}
+        <a href="/privacy-policy" className="text-decoration-none" style={{ color: '#667eea' }}>
+          {t('pro_upgrade.privacy')}
+        </a>
+      </p>
     </PageWrapper>
   );
 }
