@@ -1,4 +1,5 @@
-import React, { useContext, useEffect, useState, useMemo } from 'react';
+import React, { useContext, useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation, useOutletContext } from 'react-router';
 import { AuthContext } from './AuthProvider.jsx'; // Import the AuthContext
@@ -48,7 +49,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
 
     for (const chat of sorted) {
       const isScene = !!chat.scene_id;
-      const key = isScene ? `scene:${chat.scene_id}` : (chat.character_id ? `character:${chat.character_id}` : null);
+      const key = isScene ? `scene:${chat.scene_id}_character:${chat.character_id}` : (chat.character_id ? `character:${chat.character_id}` : null);
       if (!key) continue;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -82,6 +83,39 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   }, [userData?.chat_history]);
 
   const [chatMenuOpenId, setChatMenuOpenId] = useState(null);
+  const [chatMenuPosition, setChatMenuPosition] = useState(null);
+  const chatMenuButtonRefs = useRef(new Map());
+
+  const activeChatMenuItem = useMemo(
+    () => recentChats.find((item) => item.chat_id === chatMenuOpenId) || null,
+    [recentChats, chatMenuOpenId]
+  );
+
+  const updateChatMenuPosition = (chatId) => {
+    if (!chatId) {
+      setChatMenuPosition(null);
+      return;
+    }
+
+    const triggerButton = chatMenuButtonRefs.current.get(chatId);
+    if (!triggerButton) {
+      setChatMenuPosition(null);
+      return;
+    }
+
+    const rect = triggerButton.getBoundingClientRect();
+    const menuWidth = 172;
+    const viewportPadding = 8;
+
+    setChatMenuPosition({
+      top: rect.bottom - 2,
+      left: Math.min(
+        Math.max(viewportPadding, rect.right - menuWidth),
+        window.innerWidth - menuWidth - viewportPadding
+      ),
+      minWidth: menuWidth,
+    });
+  };
 
   const handleToggleRecentChatPin = async (chatItem) => {
     const chatId = chatItem?.chat_id;
@@ -228,11 +262,40 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   useEffect(() => {
     if (!chatMenuOpenId) return;
     const handleClick = (e) => {
-      if (!e.target.closest('.recent-chat-menu-area')) setChatMenuOpenId(null);
+      if (!e.target.closest('.recent-chat-menu-area') && !e.target.closest('.recent-chat-context-menu')) {
+        setChatMenuOpenId(null);
+      }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [chatMenuOpenId]);
+
+  useEffect(() => {
+    if (!chatMenuOpenId) {
+      setChatMenuPosition(null);
+      return;
+    }
+
+    updateChatMenuPosition(chatMenuOpenId);
+
+    const handleViewportChange = () => updateChatMenuPosition(chatMenuOpenId);
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
+
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
+    };
+  }, [chatMenuOpenId, recentChats]);
+
+  useEffect(() => {
+    if (!chatMenuOpenId) return;
+    const stillExists = recentChats.some((item) => item.chat_id === chatMenuOpenId);
+    if (!stillExists) {
+      setChatMenuOpenId(null);
+      setChatMenuPosition(null);
+    }
+  }, [recentChats, chatMenuOpenId]);
 
   // Width is now controlled entirely by parent Layout; child fills available space.
   // (Bug fix) Removed internal fixed width that prevented desktop toggle from hiding the sidebar.
@@ -298,11 +361,19 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             }
 
             .recent-chats-scroll {
-              scrollbar-width: thin;
+              scrollbar-width: none;
               scrollbar-color: rgba(35, 35, 35, 0.18) transparent;
             }
 
+            .recent-chats-scroll:hover {
+              scrollbar-width: thin;
+            }
+
             .recent-chats-scroll::-webkit-scrollbar {
+              width: 0;
+            }
+
+            .recent-chats-scroll:hover::-webkit-scrollbar {
               width: 6px;
             }
 
@@ -410,7 +481,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
 
       {/* Recent chats */}
       <div className="recent-chats-scroll mb-3 d-flex flex-column" style={{ minHeight: 0, flex: '1 1 auto', overflowX: 'hidden', overflowY: 'auto' }}>
-  <h6 className="fw-bold mb-1" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px', flexShrink: 0 }}>{t('sidebar.recent_chats')}</h6>
+        <h6 className="fw-bold mb-1" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px', flexShrink: 0 }}>{t('sidebar.recent_chats')}</h6>
         <div className="list-group rounded-4" style={{ background: 'transparent', boxShadow: 'none', minHeight: 0 }}>
           {recentChats.length === 0 ? (
             <div className="rounded-4 p-3" style={{ 
@@ -529,6 +600,13 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                       )}
                     </button>
                     <button
+                      ref={(element) => {
+                        if (element) {
+                          chatMenuButtonRefs.current.set(item.chat_id, element);
+                        } else {
+                          chatMenuButtonRefs.current.delete(item.chat_id);
+                        }
+                      }}
                       type="button"
                       onMouseDown={(event) => {
                         event.preventDefault();
@@ -537,7 +615,15 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                       onClick={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
-                        setChatMenuOpenId((prev) => (prev === item.chat_id ? null : item.chat_id));
+                        setChatMenuOpenId((prev) => {
+                          const nextId = prev === item.chat_id ? null : item.chat_id;
+                          if (nextId) {
+                            updateChatMenuPosition(nextId);
+                          } else {
+                            setChatMenuPosition(null);
+                          }
+                          return nextId;
+                        });
                       }}
                       style={{
                         border: 'none',
@@ -563,58 +649,60 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                       <i className="bi bi-three-dots"></i>
                     </button>
                   </div>
-
-                  {chatMenuOpenId && chatMenuOpenId === item.chat_id && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 'calc(100% - 2px)',
-                        right: 0,
-                        minWidth: 160,
-                        background: '#fff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: 10,
-                        boxShadow: '0 10px 24px rgba(0,0,0,0.14)',
-                        zIndex: 2100,
-                        padding: 6,
-                      }}
-                    >
-                      <button
-                        type="button"
-                        className="dropdown-item"
-                        style={{ borderRadius: 8, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 8 }}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          handleToggleRecentChatPin(item);
-                        }}
-                      >
-                        <i className={item.is_pinned ? 'bi bi-pin-angle' : 'bi bi-pin-angle-fill'}></i>
-                        {item.is_pinned
-                          ? (t('sidebar.unpin_chat') || 'Unpin chat')
-                          : (t('sidebar.pin_chat') || 'Pin chat')}
-                      </button>
-                      <button
-                        type="button"
-                        className="dropdown-item text-danger"
-                        style={{ borderRadius: 8, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 8 }}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          handleDeleteRecentChat(item);
-                        }}
-                      >
-                        <i className="bi bi-trash"></i>
-                        {t('sidebar.delete_chat') || 'Delete chat'}
-                      </button>
-                    </div>
-                  )}
                 </div>
               ))}
             </>
           )}
         </div>
       </div>
+
+      {chatMenuOpenId && activeChatMenuItem && chatMenuPosition && createPortal(
+        <div
+          className="recent-chat-context-menu"
+          style={{
+            position: 'fixed',
+            top: chatMenuPosition.top,
+            left: chatMenuPosition.left,
+            minWidth: chatMenuPosition.minWidth,
+            background: '#fff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 10,
+            boxShadow: '0 10px 24px rgba(0,0,0,0.14)',
+            zIndex: 5000,
+            padding: 6,
+          }}
+        >
+          <button
+            type="button"
+            className="dropdown-item"
+            style={{ borderRadius: 8, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 8 }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              handleToggleRecentChatPin(activeChatMenuItem);
+            }}
+          >
+            <i className={activeChatMenuItem.is_pinned ? 'bi bi-pin-angle' : 'bi bi-pin-angle-fill'}></i>
+            {activeChatMenuItem.is_pinned
+              ? (t('sidebar.unpin_chat') || 'Unpin chat')
+              : (t('sidebar.pin_chat') || 'Pin chat')}
+          </button>
+          <button
+            type="button"
+            className="dropdown-item text-danger"
+            style={{ borderRadius: 8, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 8 }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              handleDeleteRecentChat(activeChatMenuItem);
+            }}
+          >
+            <i className="bi bi-trash"></i>
+            {t('sidebar.delete_chat') || 'Delete chat'}
+          </button>
+        </div>,
+        document.body
+      )}
 
       {/* Pro Upgrade Button */}
       {userData && !userData?.pro_active && (

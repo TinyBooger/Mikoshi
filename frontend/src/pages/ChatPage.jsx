@@ -964,6 +964,7 @@ export default function ChatPage() {
 
     if (sessionToken && sceneId && !initModal) {
       handleSceneEntry();
+      return;
     }
 
     if (sessionToken && characterId) {
