@@ -75,6 +75,18 @@ function BrowsePage() {
   const masonryColumnCount = viewportWidth < 768 ? 2 : 5;
   const isMobile = viewportWidth < 768;
   const currentSortOptions = activeMainTab === 'users' ? USER_SORT_OPTIONS : SUBTABS;
+  const activeSortOption = currentSortOptions.find(option => option.key === activeSubTab);
+  const sortIconMap = {
+    popular: '🔥',
+    recommended: '✨',
+    recent: '🕒',
+    total_rank: '🏆',
+    recent_updated: '🆕'
+  };
+  const activeSortIcon = sortIconMap[activeSubTab] || '🔎';
+  const activeSortLabel = activeMainTab !== 'users'
+    ? ({ popular: '热门', recommended: '为您推荐', recent: '最近' }[activeSubTab] || activeSortOption?.label || t('common.sort'))
+    : (activeSortOption?.label || t('common.sort'));
 
   // Distribute items by index so visual reading order is left-to-right, then next row.
   const masonryColumns = useMemo(() => {
@@ -475,35 +487,49 @@ function BrowsePage() {
               <button
                 onClick={() => setShowSortDropdown(!showSortDropdown)}
                 style={{
-                  background: '#f5f6fa',
-                  color: '#232323',
-                  border: 'none',
-                  borderRadius: 13,
+                  background: showSortDropdown
+                    ? 'linear-gradient(135deg, #FF8A3D 0%, #FF5A7A 100%)'
+                    : 'linear-gradient(135deg, #FFE2B8 0%, #FFD0DB 100%)',
+                  color: showSortDropdown ? '#fff' : '#5A3241',
+                  border: showSortDropdown ? 'none' : '1px solid rgba(255, 122, 144, 0.3)',
+                  borderRadius: 14,
                   fontSize: '1rem',
-                  padding: '0.48rem 1.2rem',
+                  padding: '0.5rem 1rem',
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  transition: 'background 0.2s, color 0.2s',
-                  whiteSpace: 'nowrap'
+                  transition: 'background 0.22s ease, color 0.22s ease, transform 0.18s ease, box-shadow 0.22s ease',
+                  boxShadow: showSortDropdown
+                    ? '0 8px 20px rgba(255, 90, 122, 0.35)'
+                    : '0 5px 14px rgba(255, 138, 61, 0.2)',
+                  whiteSpace: 'nowrap',
+                  transform: showSortDropdown ? 'translateY(-1px)' : 'translateY(0)'
                 }}
                 onMouseEnter={e => {
                   if (!showSortDropdown) {
-                    e.currentTarget.style.background = '#e9ecef';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #FFD59A 0%, #FFC0CF 100%)';
+                    e.currentTarget.style.boxShadow = '0 8px 18px rgba(255, 122, 144, 0.28)';
                   }
+                  e.currentTarget.style.transform = 'translateY(-1px)';
                 }}
                 onMouseLeave={e => {
                   if (!showSortDropdown) {
-                    e.currentTarget.style.background = '#f5f6fa';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #FFE2B8 0%, #FFD0DB 100%)';
+                    e.currentTarget.style.boxShadow = '0 5px 14px rgba(255, 138, 61, 0.2)';
                   } else {
-                    e.currentTarget.style.background = '#e9ecef';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #FF8A3D 0%, #FF5A7A 100%)';
+                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(255, 90, 122, 0.35)';
                   }
+                  e.currentTarget.style.transform = showSortDropdown ? 'translateY(-1px)' : 'translateY(0)';
                 }}
               >
                 <i className="bi bi-sort-down" style={{ fontSize: '1.1rem' }}></i>
-                <span style={{ fontSize: '0.95rem' }}>{t('common.sort')}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem' }}>
+                  <span aria-hidden="true" style={{ fontSize: '0.95rem', lineHeight: 1 }}>{activeSortIcon}</span>
+                  <span>{activeSortLabel}</span>
+                </span>
               </button>
 
               {/* Dropdown Menu */}
@@ -554,6 +580,9 @@ function BrowsePage() {
                         {activeSubTab === option.key && (
                           <i className="bi bi-check" style={{ fontSize: '0.9rem', fontWeight: 'bold' }}></i>
                         )}
+                        <span aria-hidden="true" style={{ fontSize: '0.95rem', lineHeight: 1 }}>
+                          {sortIconMap[option.key] || '🔎'}
+                        </span>
                         <span>{option.label}</span>
                       </div>
                     </button>
@@ -593,9 +622,6 @@ function BrowsePage() {
           )
         ) : (
           <section className="popular-characters-section">
-            <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>
-              {getSectionTitle()}
-            </h2>
             {isLoading ? (
               <div className="text-center my-5">
                 <div className="spinner-border text-primary" role="status">
