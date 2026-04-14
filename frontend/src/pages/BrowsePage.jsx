@@ -7,6 +7,9 @@ import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
 import PrimaryButton from '../components/PrimaryButton';
 import OnboardingTour from '../components/OnboardingTour';
+import UpdateNotificationModal from '../components/UpdateNotificationModal';
+import ProblemReportModal from '../components/ProblemReportModal';
+import logo from '../assets/images/logo.png';
 
 
 function BrowsePage() {
@@ -47,6 +50,12 @@ function BrowsePage() {
   const [showFirstTimeBanner, setShowFirstTimeBanner] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [showUpdateNotification, setShowUpdateNotification] = useState(false);
+  const [showProblemReport, setShowProblemReport] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
   const loadMoreRef = useRef(null);
   const sortDropdownRef = useRef(null);
 
@@ -71,6 +80,42 @@ function BrowsePage() {
       if (timer) clearTimeout(timer);
     };
   }, [userData]);
+
+  useEffect(() => {
+    if (sessionToken) {
+      setShowUpdateNotification(true);
+    }
+  }, [sessionToken]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!sessionToken) return;
+      if (searchQuery.trim() === '') {
+        fetch(`${window.API_BASE_URL}/api/search-suggestions/popular`, {
+          headers: { Authorization: sessionToken }
+        })
+          .then(res => res.json())
+          .then(setSearchSuggestions)
+          .catch(() => setSearchSuggestions([]));
+      } else {
+        fetch(`${window.API_BASE_URL}/api/search-suggestions?q=${encodeURIComponent(searchQuery.trim())}`, {
+          headers: { Authorization: sessionToken }
+        })
+          .then(res => res.json())
+          .then(setSearchSuggestions)
+          .catch(() => setSearchSuggestions([]));
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, sessionToken]);
+
+  const handleSearch = (q = searchQuery) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+    setShowSearchSuggestions(false);
+  };
 
   const masonryColumnCount = viewportWidth < 768 ? 2 : 5;
   const isMobile = viewportWidth < 768;
@@ -284,6 +329,138 @@ function BrowsePage() {
           margin: '0 auto',
         }}
       >
+        <section
+          className="mb-3 w-100"
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 100,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.5rem 0',
+            background: 'linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.7), rgba(255,255,255,0))',
+            backdropFilter: 'blur(6px)'
+          }}
+        >
+          <a
+            href="/"
+            aria-label="Home"
+            title="Home"
+            style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/');
+            }}
+          >
+            <img src={logo} alt="Logo" style={{ height: '1.75rem', width: 'auto', objectFit: 'contain', display: 'block' }} />
+          </a>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+            <div style={{ width: 'clamp(200px, 30vw, 480px)', position: 'relative', marginLeft: 'auto' }}>
+            <div
+              className="input-group rounded-pill"
+              style={{
+                background: '#f5f6fa',
+                borderRadius: 24,
+                border: `2px solid ${searchFocused ? '#736B92' : 'transparent'}`,
+                boxShadow: searchFocused ? '0 0 0 4px rgba(115,107,146,0.16)' : 'none',
+                transition: 'box-shadow 120ms ease, border-color 120ms ease'
+              }}
+            >
+              <input
+                type="text"
+                className="form-control border-0 rounded-pill"
+                style={{ background: 'transparent', fontSize: '0.92rem', paddingLeft: 14, color: '#232323', outline: 'none', boxShadow: 'none' }}
+                placeholder={t('topbar.search_placeholder')}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
+                onFocus={() => { setShowSearchSuggestions(true); setSearchFocused(true); }}
+                onBlur={() => setTimeout(() => { setShowSearchSuggestions(false); setSearchFocused(false); }, 100)}
+                aria-autocomplete="list"
+                aria-haspopup="true"
+              />
+              <button
+                className="btn rounded-pill px-3"
+                style={{ fontSize: '0.92rem', background: '#736B92', color: '#fff', borderColor: '#736B92', outline: 'none', boxShadow: 'none' }}
+                onClick={() => handleSearch()}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 100)}
+              >
+                <i className="bi bi-search"></i>
+              </button>
+            </div>
+            {showSearchSuggestions && searchSuggestions.length > 0 && (
+              <ul
+                className="list-group position-absolute w-100 shadow rounded-4"
+                style={{ top: '100%', zIndex: 1040, maxHeight: 176, overflowY: 'auto', background: '#fff', color: '#232323', border: 'none', fontSize: '0.8rem' }}
+              >
+                {searchSuggestions.map(({ keyword, count }) => (
+                  <li
+                    key={keyword}
+                    className="list-group-item list-group-item-action rounded-3"
+                    style={{ cursor: 'pointer', transition: 'background 0.16s', background: 'transparent', color: '#232323', border: 'none', fontSize: '0.8rem' }}
+                    onClick={() => handleSearch(keyword)}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#232323'; e.currentTarget.style.color = '#fff'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
+                  >
+                    <span className="fw-semibold">{keyword}</span> <small className="text-muted">{t('topbar.suggestion_count', { count })}</small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <button
+            onClick={() => setShowUpdateNotification(true)}
+            aria-label={t('topbar.updates')}
+            title={t('topbar.updates')}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: '#736B92',
+              fontSize: '1.2rem',
+              padding: '0.35rem 0.55rem',
+              borderRadius: 8,
+              cursor: 'pointer',
+              transition: 'background 0.16s, color 0.16s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            <i className="bi bi-megaphone" style={{ fontSize: '1.2rem' }}></i>
+          </button>
+
+          <button
+            onClick={() => setShowProblemReport(true)}
+            aria-label={t('topbar.report_problem')}
+            title={t('topbar.report_problem')}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: '#736B92',
+              fontSize: '1.2rem',
+              padding: '0.35rem 0.55rem',
+              borderRadius: 8,
+              cursor: 'pointer',
+              transition: 'background 0.16s, color 0.16s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            <i className="bi bi-flag" style={{ fontSize: '1.2rem' }}></i>
+          </button>
+          </div>
+        </section>
+
         {showFirstTimeBanner ? (
           <section className="mb-4 w-100">
             <div
@@ -716,6 +893,8 @@ function BrowsePage() {
       >
         <i className="bi bi-arrow-up" style={{ fontSize: isMobile ? '1rem' : '1.1rem' }}></i>
       </button>
+      <UpdateNotificationModal show={showUpdateNotification} onClose={() => setShowUpdateNotification(false)} />
+      <ProblemReportModal show={showProblemReport} onClose={() => setShowProblemReport(false)} />
       </div>
     </PageWrapper>
   );

@@ -366,12 +366,24 @@ export default function ChatPage() {
 
   // Mobile detection state
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [showChatSettingsHint, setShowChatSettingsHint] = useState(false);
   // Update isMobile on window resize
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setShowChatSettingsHint(false);
+      return;
+    }
+
+    setShowChatSettingsHint(true);
+    const hideTimer = setTimeout(() => setShowChatSettingsHint(false), 3000);
+    return () => clearTimeout(hideTimer);
+  }, [isMobile]);
 
   // Cleanup: abort any ongoing streaming request on unmount
   useEffect(() => {
@@ -1837,6 +1849,77 @@ export default function ChatPage() {
       width: '100%',
       overflow: 'hidden'
       }}>
+      {!characterSidebarVisible && (
+        <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 1200 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          {showChatSettingsHint && isMobile && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 0.5rem)',
+                right: '-0.35rem',
+                transform: 'translateY(0)',
+                background: '#232323',
+                color: '#fff',
+                borderRadius: 8,
+                padding: '0.4rem 0.6rem',
+                fontSize: '0.78rem',
+                lineHeight: 1.25,
+                width: 'clamp(170px, 48vw, 230px)',
+                maxWidth: 'calc(100vw - 1rem)',
+                whiteSpace: 'normal',
+                boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)',
+                zIndex: 1200,
+              }}
+            >
+              点击这里打开聊天设置
+              <span
+                style={{
+                  position: 'absolute',
+                  width: 0,
+                  height: 0,
+                  borderStyle: 'solid',
+                  top: '-7px',
+                  right: '12px',
+                  borderWidth: '0 7px 7px 7px',
+                  borderColor: 'transparent transparent #232323 transparent',
+                }}
+              />
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowChatSettingsHint(false);
+              onToggleCharacterSidebar();
+            }}
+            aria-label={characterSidebarVisible ? t('topbar.hide_character_sidebar') : t('topbar.show_character_sidebar')}
+            style={{
+              border: 'none',
+              background: 'none',
+              padding: 0,
+              margin: 0,
+              color: '#232323',
+              fontSize: '1.4rem',
+              cursor: 'pointer',
+              outline: 'none',
+              boxShadow: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'color 0.15s',
+              lineHeight: 1,
+            }}
+          >
+            <i
+              className={`bi ${characterSidebarVisible ? 'bi-chat-square-text-fill' : 'bi-chat-square-text'}`}
+              style={{ fontSize: '1.4rem', pointerEvents: 'none' }}
+            ></i>
+          </button>
+          </div>
+        </div>
+      )}
       {/* Main Chat Area */}
       <div style={{ 
         flex: 1, 
@@ -1849,9 +1932,9 @@ export default function ChatPage() {
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        borderRadius: isMobile ? '0' : '1.5rem', 
-        margin: isMobile ? '0' : '0 0.5rem 0 0.5rem', 
-        boxShadow: '0 2px 16px rgba(0,0,0,0.04)', 
+        borderRadius: 0,
+        margin: 0,
+        boxShadow: 'none',
         overflow: 'hidden', 
         height: 'auto',
         }}>

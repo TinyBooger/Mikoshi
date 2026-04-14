@@ -192,11 +192,11 @@ export default function CharacterSidebar({
   const sidebarStyle = isMobile
     ? {
         position: 'fixed',
-        top: '7dvh', // Place below the topbar
+        top: 0,
         right: 0,
         width: '90vw',
         maxWidth: '19rem', // Reduced max width for mobile
-        height: 'calc(100dvh - 7dvh)',
+        height: '100dvh',
         zIndex: 1000,
         background: 'rgba(255, 255, 255, 0.98)',
         boxShadow: '2px 0 8px rgba(0,0,0,0.1)',
@@ -209,12 +209,12 @@ export default function CharacterSidebar({
         overflow: 'hidden',
         pointerEvents: characterSidebarVisible ? 'auto' : 'none',
         opacity: characterSidebarVisible ? 1 : 0,
-        borderRadius: '1.5rem',
+        borderRadius: 0,
       }
     : {
         position: 'relative',
         width: '19rem', // Reduced width for desktop
-        height: 'calc(100dvh - 7dvh)',
+      height: '100dvh',
         transform: characterSidebarVisible ? 'translateX(0)' : 'translateX(19rem)',
         marginLeft: characterSidebarVisible ? '0' : '-19rem', // Pull back the reserved space
         transition: 'transform 0.35s ease, margin-left 0.35s ease',
@@ -228,7 +228,7 @@ export default function CharacterSidebar({
         opacity: characterSidebarVisible ? 1 : 0,
         flexShrink: 0,
         background: 'rgba(255, 255, 255, 0.98)',
-        borderRadius: '1.5rem',
+        borderRadius: 0,
       };
 
   return (
@@ -239,10 +239,10 @@ export default function CharacterSidebar({
           onClick={() => onToggleCharacterSidebar()}
           style={{
             position: 'fixed',
-            top: '7dvh',
+            top: 0,
             left: 0,
             width: '100vw',
-            height: 'calc(100dvh - 7dvh)',
+            height: '100dvh',
             background: 'rgba(0,0,0,0.3)',
             zIndex: 999,
             cursor: 'pointer',
@@ -251,7 +251,82 @@ export default function CharacterSidebar({
         />
       )}
       <div style={sidebarStyle}>
-        <aside style={{ width: '100%', minHeight: 0, maxHeight: '100%', background: 'transparent', borderRadius: '1.2rem', margin: 0, boxShadow: 'none', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', boxSizing: 'border-box', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
+        <aside style={{ width: '100%', minHeight: 0, maxHeight: '100%', background: 'transparent', borderRadius: 0, margin: 0, boxShadow: 'none', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', boxSizing: 'border-box', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
+          {/* CharacterSidebar Header: collapse toggle left, share + report right */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            height: '2.5rem',
+            marginBottom: '0.75rem',
+            flexShrink: 0,
+          }}>
+            <button
+              type="button"
+              onClick={() => onToggleCharacterSidebar()}
+              aria-label={t('topbar.hide_character_sidebar')}
+              title={t('topbar.hide_character_sidebar')}
+              style={{
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                margin: 0,
+                color: '#232323',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 1,
+              }}
+            >
+              <i className="bi bi-chevron-right" style={{ pointerEvents: 'none' }}></i>
+            </button>
+            {(selectedCharacter || selectedScene) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => { if (onShareChatLink) onShareChatLink(toast); }}
+                  aria-label="分享当前聊天链接"
+                  title="分享当前聊天链接"
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    padding: 0,
+                    color: '#2563eb',
+                    cursor: 'pointer',
+                    fontSize: '1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    lineHeight: 1,
+                  }}
+                >
+                  <i className="bi bi-share" style={{ pointerEvents: 'none' }}></i>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowProblemReport(true)}
+                  title={t('topbar.report_problem')}
+                  aria-label={t('topbar.report_problem')}
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    padding: 0,
+                    color: '#dc3545',
+                    cursor: 'pointer',
+                    fontSize: '1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    lineHeight: 1,
+                  }}
+                >
+                  <i className="bi bi-flag" style={{ pointerEvents: 'none' }}></i>
+                </button>
+              </div>
+            )}
+          </div>
           {/* Main Entity InfoCard */}
           <div style={{
             background: '#fff',
@@ -292,47 +367,7 @@ export default function CharacterSidebar({
               setShowFullTagline={setShowFullTagline}
               isPlaceholder={!selectedCharacter && !selectedScene}
             />
-            {/* Share and Report buttons in one row */}
-            {(selectedCharacter || selectedScene) && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, margin: '16px 0 12px 0' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onShareChatLink) {
-                      onShareChatLink(toast);
-                    }
-                  }}
-                  aria-label="分享当前聊天链接"
-                  title="分享当前聊天链接"
-                  style={{
-                    border: 'none',
-                    background: 'transparent',
-                    color: '#2563eb',
-                    cursor: 'pointer',
-                    borderRadius: 6,
-                    width: 28,
-                    height: 28,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.1rem',
-                    transition: 'background 0.14s',
-                  }}
-                >
-                  <i className="bi bi-share" style={{ fontSize: '1.1rem' }}></i>
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-danger"
-                  onClick={() => setShowProblemReport(true)}
-                  title={t('topbar.report_problem')}
-                  aria-label={t('topbar.report_problem')}
-                  style={{ borderRadius: '50%', width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <i className="bi bi-flag" style={{ fontSize: '14px' }}></i>
-                </button>
-              </div>
-            )}
+
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>

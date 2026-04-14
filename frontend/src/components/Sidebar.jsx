@@ -6,7 +6,6 @@ import { AuthContext } from './AuthProvider.jsx'; // Import the AuthContext
 import { useToast } from './ToastProvider.jsx';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
-import logo from '../assets/images/logo.png';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import TextButton from './TextButton';
@@ -20,6 +19,10 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   const { t } = useTranslation();
   const toast = useToast();
   const isActivePro = Boolean(userData?.pro_active);
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
   
   // Helper function to close sidebar and navigate immediately
   const handleNavigate = (path) => {
@@ -29,6 +32,39 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
     }
     navigate(path);
   };
+
+  const handleSearch = (q = query) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    if (isMobile && setSidebarVisible) {
+      setSidebarVisible(false);
+    }
+    navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+    setShowSuggestions(false);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!sessionToken) return;
+      if (query.trim() === '') {
+        fetch(`${window.API_BASE_URL}/api/search-suggestions/popular`, {
+          headers: { Authorization: sessionToken },
+        })
+          .then((res) => res.json())
+          .then(setSuggestions)
+          .catch(() => setSuggestions([]));
+      } else {
+        fetch(`${window.API_BASE_URL}/api/search-suggestions?q=${encodeURIComponent(query.trim())}`, {
+          headers: { Authorization: sessionToken },
+        })
+          .then((res) => res.json())
+          .then(setSuggestions)
+          .catch(() => setSuggestions([]));
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [query, sessionToken]);
 
   // Derive recent chats mixed (scene and character) in time order
   const recentChats = useMemo(() => {
@@ -309,25 +345,164 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         color: '#232323',
         borderRight: '1.2px solid #e9ecef',
         fontFamily: 'Inter, sans-serif',
-        borderRadius: '1.5rem',
+        borderRadius: 0,
         width: '100%',
         maxWidth: '100%',
         padding: isMobile ? '0.75rem' : '1rem',
         overflow: 'visible',
+        position: 'relative',
       }}
     >
-      {/* Logo at top */}
-      <div className="mb-3 d-flex align-items-center justify-content-center" style={{ minHeight: isMobile ? 100 : 144 }}>
-        <a 
-          href="/" 
-          style={{ display: 'inline-block' }}
+      {/* Sidebar Header: logo left, collapse toggle right */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        height: '2.5rem',
+        marginBottom: '0.75rem',
+        flexShrink: 0,
+      }}>
+        <a
+          href="/"
+          aria-label={t('sidebar.home')}
+          title={t('sidebar.home')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            color: '#232323',
+            textDecoration: 'none',
+            fontSize: '1.35rem',
+            lineHeight: 1,
+          }}
           onClick={(e) => {
             e.preventDefault();
             handleNavigate('/');
           }}
         >
-          <img src={logo} alt="Logo" style={{ height: isMobile ? 90 : 138, width: 'auto', objectFit: 'contain', display: 'block', maxWidth: isMobile ? 120 : 160 }} />
+          <i className="bi bi-house-door-fill" style={{ pointerEvents: 'none' }}></i>
         </a>
+        <button
+          type="button"
+          onClick={() => setSidebarVisible?.(false)}
+          aria-label={t('topbar.hide_sidebar')}
+          title={t('topbar.hide_sidebar')}
+          style={{
+            border: 'none',
+            background: 'none',
+            padding: 0,
+            margin: 0,
+            color: '#232323',
+            fontSize: '1.5rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            lineHeight: 1,
+          }}
+        >
+          <i className="bi bi-chevron-left" style={{ pointerEvents: 'none' }}></i>
+        </button>
+      </div>
+      <div className="mb-2" style={{ position: 'relative' }}>
+        <div
+          className="input-group rounded-pill"
+          style={{
+            background: '#f5f6fa',
+            borderRadius: 20,
+            border: `1.2px solid ${searchFocused ? '#736B92' : 'transparent'}`,
+            boxShadow: searchFocused ? '0 0 0 3px rgba(115,107,146,0.14)' : 'none',
+            transition: 'box-shadow 120ms ease, border-color 120ms ease',
+          }}
+        >
+          <input
+            type="text"
+            className="form-control border-0 rounded-pill"
+            style={{
+              background: 'transparent',
+              fontSize: '0.85rem',
+              paddingLeft: 12,
+              color: '#232323',
+              outline: 'none',
+              boxShadow: 'none',
+            }}
+            placeholder={t('topbar.search_placeholder')}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSearch();
+            }}
+            onFocus={() => {
+              setShowSuggestions(true);
+              setSearchFocused(true);
+            }}
+            onBlur={() => setTimeout(() => {
+              setShowSuggestions(false);
+              setSearchFocused(false);
+            }, 100)}
+            aria-autocomplete="list"
+            aria-haspopup="true"
+          />
+          <button
+            className="btn rounded-pill px-2"
+            style={{
+              fontSize: '0.85rem',
+              background: '#736B92',
+              color: '#fff',
+              borderColor: '#736B92',
+              outline: 'none',
+              boxShadow: 'none',
+            }}
+            onClick={() => handleSearch()}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setTimeout(() => setSearchFocused(false), 100)}
+          >
+            <i className="bi bi-search"></i>
+          </button>
+        </div>
+        {showSuggestions && suggestions.length > 0 && (
+          <ul
+            className="list-group position-absolute w-100 shadow rounded-4"
+            style={{
+              top: '100%',
+              zIndex: 2100,
+              maxHeight: 176,
+              overflowY: 'auto',
+              background: '#fff',
+              color: '#232323',
+              border: 'none',
+              fontSize: '0.78rem',
+            }}
+          >
+            {suggestions.map(({ keyword, count }) => (
+              <li
+                key={keyword}
+                className="list-group-item list-group-item-action rounded-3"
+                style={{
+                  cursor: 'pointer',
+                  transition: 'background 0.16s',
+                  background: 'transparent',
+                  color: '#232323',
+                  border: 'none',
+                  fontSize: '0.78rem',
+                }}
+                onClick={() => handleSearch(keyword)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#232323';
+                  e.currentTarget.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#232323';
+                }}
+              >
+                <span className="fw-semibold">{keyword}</span>{' '}
+                <small className="text-muted">{t('topbar.suggestion_count', { count })}</small>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       {/* Top navigation */}
       <div className="d-flex flex-column gap-2 mb-1 position-relative">
