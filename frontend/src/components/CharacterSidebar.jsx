@@ -67,6 +67,8 @@ export default function CharacterSidebar({
   const [showMemoryManagement, setShowMemoryManagement] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('chat');
   const [activeHintKey, setActiveHintKey] = React.useState(null);
+  const [shareIconFocused, setShareIconFocused] = React.useState(false);
+  const [reportIconFocused, setReportIconFocused] = React.useState(false);
   const { t } = useTranslation();
   const isProUser = !!userData?.is_pro;
   const TOKEN_LIMITS_BY_MODEL = {
@@ -188,6 +190,7 @@ export default function CharacterSidebar({
   // Priority: Scene > Character > None (mutually exclusive states)
   const isSceneMode = !!selectedScene;
   const isCharacterMode = !isSceneMode && !!selectedCharacter;
+  const sidebarMotion = '0.35s cubic-bezier(.4,0,.2,1)';
   // Sidebar animation style for both mobile and desktop
   const sidebarStyle = isMobile
     ? {
@@ -201,7 +204,7 @@ export default function CharacterSidebar({
         background: 'rgba(255, 255, 255, 0.98)',
         boxShadow: '2px 0 8px rgba(0,0,0,0.1)',
         transform: characterSidebarVisible ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 0.35s cubic-bezier(.4,0,.2,1)',
+        transition: `transform ${sidebarMotion}, opacity ${sidebarMotion}`,
         overscrollBehavior: 'contain',
         WebkitOverflowScrolling: 'touch',
         display: 'flex',
@@ -217,7 +220,7 @@ export default function CharacterSidebar({
       height: '100dvh',
         transform: characterSidebarVisible ? 'translateX(0)' : 'translateX(19rem)',
         marginLeft: characterSidebarVisible ? '0' : '-19rem', // Pull back the reserved space
-        transition: 'transform 0.35s ease, margin-left 0.35s ease',
+        transition: `transform ${sidebarMotion}, margin-left ${sidebarMotion}, opacity ${sidebarMotion}`,
         boxShadow: '2px 0 8px rgba(0,0,0,0.05)',
         overscrollBehavior: 'contain',
         WebkitOverflowScrolling: 'touch',
@@ -268,8 +271,8 @@ export default function CharacterSidebar({
               title={t('topbar.hide_character_sidebar')}
               style={{
                 border: 'none',
-                background: 'none',
-                padding: 0,
+                background: 'transparent',
+                padding: '0.2rem',
                 margin: 0,
                 color: '#232323',
                 fontSize: '1.5rem',
@@ -278,7 +281,11 @@ export default function CharacterSidebar({
                 alignItems: 'center',
                 justifyContent: 'center',
                 lineHeight: 1,
+                borderRadius: 8,
+                transition: 'background 0.16s',
               }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
               <i className="bi bi-chevron-right" style={{ pointerEvents: 'none' }}></i>
             </button>
@@ -301,8 +308,12 @@ export default function CharacterSidebar({
                     justifyContent: 'center',
                     lineHeight: 1,
                   }}
+                  onMouseEnter={() => setShareIconFocused(true)}
+                  onMouseLeave={() => setShareIconFocused(false)}
+                  onFocus={() => setShareIconFocused(true)}
+                  onBlur={() => setShareIconFocused(false)}
                 >
-                  <i className="bi bi-share" style={{ pointerEvents: 'none' }}></i>
+                  <i className={`bi ${shareIconFocused ? 'bi-share-fill' : 'bi-share'}`} style={{ pointerEvents: 'none' }}></i>
                 </button>
                 <button
                   type="button"
@@ -321,8 +332,12 @@ export default function CharacterSidebar({
                     justifyContent: 'center',
                     lineHeight: 1,
                   }}
+                  onMouseEnter={() => setReportIconFocused(true)}
+                  onMouseLeave={() => setReportIconFocused(false)}
+                  onFocus={() => setReportIconFocused(true)}
+                  onBlur={() => setReportIconFocused(false)}
                 >
-                  <i className="bi bi-flag" style={{ pointerEvents: 'none' }}></i>
+                  <i className={`bi ${reportIconFocused ? 'bi-flag-fill' : 'bi-flag'}`} style={{ pointerEvents: 'none' }}></i>
                 </button>
               </div>
             )}

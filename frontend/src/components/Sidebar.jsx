@@ -23,6 +23,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [homeIconFocused, setHomeIconFocused] = useState(false);
   
   // Helper function to close sidebar and navigate immediately
   const handleNavigate = (path) => {
@@ -380,8 +381,12 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             e.preventDefault();
             handleNavigate('/');
           }}
+          onMouseEnter={() => setHomeIconFocused(true)}
+          onMouseLeave={() => setHomeIconFocused(false)}
+          onFocus={() => setHomeIconFocused(true)}
+          onBlur={() => setHomeIconFocused(false)}
         >
-          <i className="bi bi-house-door-fill" style={{ pointerEvents: 'none' }}></i>
+          <i className={`bi ${homeIconFocused ? 'bi-house-door-fill' : 'bi-house-door'}`} style={{ pointerEvents: 'none' }}></i>
         </a>
         <button
           type="button"
@@ -390,8 +395,8 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
           title={t('topbar.hide_sidebar')}
           style={{
             border: 'none',
-            background: 'none',
-            padding: 0,
+            background: 'transparent',
+            padding: '0.2rem',
             margin: 0,
             color: '#232323',
             fontSize: '1.5rem',
@@ -400,7 +405,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             alignItems: 'center',
             justifyContent: 'center',
             lineHeight: 1,
+            borderRadius: 8,
+            transition: 'background 0.16s',
           }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
         >
           <i className="bi bi-chevron-left" style={{ pointerEvents: 'none' }}></i>
         </button>

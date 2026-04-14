@@ -9,7 +9,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import OnboardingTour from '../components/OnboardingTour';
 import UpdateNotificationModal from '../components/UpdateNotificationModal';
 import ProblemReportModal from '../components/ProblemReportModal';
-import logo from '../assets/images/logo.png';
+import textLogo from '../assets/images/logo_text.png';
 
 
 function BrowsePage() {
@@ -47,7 +47,6 @@ function BrowsePage() {
   const [hasMore, setHasMore] = useState(true);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
-  const [showFirstTimeBanner, setShowFirstTimeBanner] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showUpdateNotification, setShowUpdateNotification] = useState(false);
@@ -68,13 +67,10 @@ function BrowsePage() {
   useEffect(() => {
     let timer;
     if (userData && (!userData.chat_history || userData.chat_history.length === 0)) {
-      setShowFirstTimeBanner(true);
       const onboardingCompleted = localStorage.getItem('onboarding_completed');
       if (!onboardingCompleted) {
         timer = setTimeout(() => setShowOnboarding(true), 500);
       }
-    } else {
-      setShowFirstTimeBanner(false);
     }
     return () => {
       if (timer) clearTimeout(timer);
@@ -340,7 +336,7 @@ function BrowsePage() {
             alignItems: 'center',
             gap: '0.5rem',
             padding: '0.5rem 0',
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.7), rgba(255,255,255,0))',
+            background: 'rgba(255,255,255,1)',
             backdropFilter: 'blur(6px)'
           }}
         >
@@ -354,7 +350,7 @@ function BrowsePage() {
               navigate('/');
             }}
           >
-            <img src={logo} alt="Logo" style={{ height: '1.75rem', width: 'auto', objectFit: 'contain', display: 'block' }} />
+            <img src={textLogo} alt="Logo" style={{ height: '2.2rem', width: 'auto', objectFit: 'contain', display: 'block' }} />
           </a>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', flex: 1, minWidth: 0 }}>
@@ -412,7 +408,29 @@ function BrowsePage() {
               </ul>
             )}
           </div>
-
+          <button
+            onClick={() => setShowOnboarding(true)}
+            aria-label={t('onboarding.replay_tour')}
+            title={t('onboarding.replay_tour')}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: '#736B92',
+              fontSize: '1.1rem',
+              padding: '0.35rem 0.45rem',
+              borderRadius: 8,
+              cursor: 'pointer',
+              transition: 'background 0.16s, color 0.16s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            <i className="bi bi-play-circle" style={{ fontSize: '1.05rem' }}></i>
+          </button>
           <button
             onClick={() => setShowUpdateNotification(true)}
             aria-label={t('topbar.updates')}
@@ -460,171 +478,6 @@ function BrowsePage() {
           </button>
           </div>
         </section>
-
-        {showFirstTimeBanner ? (
-          <section className="mb-4 w-100">
-            <div
-              className="position-relative"
-              style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderRadius: isMobile ? '16px' : '24px',
-                color: '#fff',
-                boxShadow: '0 8px 24px rgba(102, 126, 234, 0.25)',
-                overflow: 'hidden',
-                padding: isMobile ? '1.5rem 1rem' : '1.5rem 1.5rem'
-              }}
-            >
-              <div style={{
-                position: 'absolute',
-                top: '-30px',
-                right: '-30px',
-                width: isMobile ? '100px' : '150px',
-                height: isMobile ? '100px' : '150px',
-                background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)',
-                borderRadius: '50%',
-                pointerEvents: 'none'
-              }} />
-              <div style={{
-                position: 'absolute',
-                bottom: '-40px',
-                left: '-40px',
-                width: isMobile ? '120px' : '180px',
-                height: isMobile ? '120px' : '180px',
-                background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-                borderRadius: '50%',
-                pointerEvents: 'none'
-              }} />
-
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                  <h3 className="fw-bold mb-0" style={{ fontSize: isMobile ? '1.25rem' : '1.5rem' }}>
-                    {t('home.first_time_banner_title')}
-                  </h3>
-                  <button
-                    onClick={() => setShowFirstTimeBanner(false)}
-                    style={{
-                      background: 'rgba(255,255,255,0.2)',
-                      border: 'none',
-                      borderRadius: '50%',
-                      width: isMobile ? '28px' : '32px',
-                      height: isMobile ? '28px' : '32px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fff',
-                      cursor: 'pointer',
-                      transition: 'background 0.2s',
-                      flexShrink: 0
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-                  >
-                    <i className="bi bi-x-lg" style={{ fontSize: isMobile ? '0.85rem' : '1rem' }}></i>
-                  </button>
-                </div>
-                <p className="mb-3" style={{ fontSize: isMobile ? '0.9rem' : '1rem', opacity: 0.95 }}>
-                  {t('home.first_time_banner_subtitle')}
-                </p>
-                <div className="row g-2">
-                  {[1, 2, 3, 4].map(step => (
-                    <div key={step} className="col-12 col-md-6">
-                      <div className="d-flex align-items-start gap-2 p-2" style={{
-                        background: 'rgba(255,255,255,0.1)',
-                        borderRadius: isMobile ? '8px' : '12px',
-                        backdropFilter: 'blur(10px)'
-                      }}>
-                        <span style={{ fontSize: isMobile ? '1rem' : '1.2rem', lineHeight: 1, marginTop: '2px' }}>→</span>
-                        <span style={{ fontSize: isMobile ? '0.85rem' : '0.9rem', lineHeight: 1.4 }}>
-                          {t(`home.first_time_step${step}`)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setShowOnboarding(true)}
-                  style={{
-                    background: 'rgba(255,255,255,0.25)',
-                    border: '1px solid rgba(255,255,255,0.3)',
-                    borderRadius: isMobile ? '10px' : '12px',
-                    color: '#fff',
-                    padding: isMobile ? '8px 16px' : '10px 20px',
-                    fontSize: isMobile ? '0.85rem' : '0.9rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    marginTop: '16px',
-                    transition: 'all 0.2s',
-                    backdropFilter: 'blur(10px)',
-                    width: isMobile ? '100%' : 'auto'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.35)';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
-                  }}
-                >
-                  <i className="bi bi-play-circle me-2"></i>
-                  {t('onboarding.replay_tour')}
-                </button>
-              </div>
-            </div>
-          </section>
-        ) : (
-          <section className="mb-3 w-100">
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(115, 107, 146, 0.06) 0%, rgba(155, 143, 184, 0.08) 100%)',
-              border: '1px solid rgba(115, 107, 146, 0.15)',
-              borderRadius: '12px',
-              padding: '12px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '16px',
-              flexWrap: 'wrap'
-            }}>
-              <div className="d-flex align-items-center gap-2">
-                <span style={{ fontSize: '0.9rem', color: '#736B92', fontWeight: 600 }}>
-                  {t('home.hero_title')}
-                </span>
-                <span style={{ fontSize: '0.85rem', color: '#9B8FB8', fontWeight: 400 }}>
-                  {t('home.hero_subtitle')}
-                </span>
-              </div>
-              <button
-                onClick={() => setShowFirstTimeBanner(true)}
-                style={{
-                  background: 'rgba(115, 107, 146, 0.1)',
-                  border: '1px solid rgba(115, 107, 146, 0.25)',
-                  borderRadius: '8px',
-                  color: '#736B92',
-                  padding: '6px 12px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  whiteSpace: 'nowrap'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(115, 107, 146, 0.18)';
-                  e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.4)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'rgba(115, 107, 146, 0.1)';
-                  e.currentTarget.style.borderColor = 'rgba(115, 107, 146, 0.25)';
-                }}
-              >
-                <i className="bi bi-lightbulb" style={{ fontSize: '0.85rem' }}></i>
-                <span>{t('home.show_guidance')}</span>
-              </button>
-            </div>
-          </section>
-        )}
 
         {/* Main Tabs */}
         <div className="browse-main-tabs d-flex flex-row mb-3 w-100 align-items-center" style={{ gap: 12, justifyContent: 'space-between' }}>

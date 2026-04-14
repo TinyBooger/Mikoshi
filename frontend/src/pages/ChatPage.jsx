@@ -9,6 +9,7 @@ import CharacterSidebar from '../components/CharacterSidebar';
 import PersonaModal from '../components/PersonaModal';
 import SceneCharacterSelectModal from '../components/SceneCharacterSelectModal';
 import ConfirmModal from '../components/ConfirmModal';
+import PageWrapper from '../components/PageWrapper';
 import { useToast } from '../components/ToastProvider';
 import {
   DEFAULT_CONTEXT_WINDOW_TIER,
@@ -1839,7 +1840,19 @@ export default function ChatPage() {
   const pieCircumference = 2 * Math.PI * pieRadius;
   const pieStrokeOffset = pieCircumference * (1 - contextUsageRatio);
 
+  // Centered content rail — keeps messages, avatars and input fixed-width and centered
+  // regardless of sidebar toggle state. Baseline: both sidebars open = left nav (15rem)
+  // + character sidebar (19rem) + message area side-padding (1.2rem × 2) = 36.4rem.
+  const chatContentRailStyle = {
+    width: '100%',
+    maxWidth: isMobile ? '100%' : 'min(calc(100vw - 36.4rem), 100%)',
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    boxSizing: 'border-box',
+  };
+
   return (
+    <PageWrapper>
     <div style={{ 
       display: 'flex', 
       height: '100%', 
@@ -1897,7 +1910,9 @@ export default function ChatPage() {
             aria-label={characterSidebarVisible ? t('topbar.hide_character_sidebar') : t('topbar.show_character_sidebar')}
             style={{
               border: 'none',
-              background: 'none',
+              background: 'transparent',
+              width: '2.35rem',
+              height: '2.35rem',
               padding: 0,
               margin: 0,
               color: '#232323',
@@ -1908,9 +1923,12 @@ export default function ChatPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'color 0.15s',
+              transition: 'background 0.16s, color 0.15s',
               lineHeight: 1,
+              borderRadius: '50%',
             }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
           >
             <i
               className={`bi ${characterSidebarVisible ? 'bi-chat-square-text-fill' : 'bi-chat-square-text'}`}
@@ -1949,6 +1967,7 @@ export default function ChatPage() {
             minHeight: 0,
           }}
         >
+          <div style={chatContentRailStyle}>
           {(() => {
             const nonSystem = messages.filter(m => m.role !== 'system');
             // Show welcome only when starting a new chat (isNewChat.current)
@@ -2294,6 +2313,7 @@ export default function ChatPage() {
               </>
             );
           })()}
+          </div>
         </div>
 
         {messageMenu.open && activeMessageForMenu && (
@@ -2342,11 +2362,11 @@ export default function ChatPage() {
             paddingBottom: isMobile
               ? 'calc(0.8rem + env(safe-area-inset-bottom, 0px))'
               : '0.8rem',
-            background: selectedWallpaper?.url ? 'rgba(248, 249, 250, 0.9)' : '#f8f9fa',
-            borderTop: '1.2px solid #e9ecef',
+            background: selectedWallpaper?.url ? 'rgba(255, 255, 255, 0.76)' : '#fff',
             flexShrink: 0
           }}
         >
+          <div style={chatContentRailStyle}>
           {tokenLimits?.is_limited && (
             <div
               style={{
@@ -2617,6 +2637,7 @@ export default function ChatPage() {
               )}
             </div>
           </div>
+          </div>
         </form>
       </div>
 
@@ -2730,5 +2751,6 @@ export default function ChatPage() {
         onCancel={() => setConfirmModal({ show: false, chatId: null })}
       />
     </div>
+    </PageWrapper>
   );
 }

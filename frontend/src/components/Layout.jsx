@@ -17,6 +17,8 @@ export default function Layout() {
   // Character sidebar state for ChatPage
   const [characterSidebarVisible, setCharacterSidebarVisible] = useState(!initialMobile);
 
+  const sidebarMotion = '0.35s cubic-bezier(.4,0,.2,1)';
+
   const mainContentRef = useRef(null);
   const lastPathnameRef = useRef(location.pathname);
 
@@ -101,7 +103,7 @@ export default function Layout() {
         zIndex: 1000,
         background: 'transparent',
         transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.35s cubic-bezier(.4,0,.2,1)',
+        transition: `transform ${sidebarMotion}`,
       }
     : {
         position: 'fixed', // CHANGED from 'relative' to 'fixed'
@@ -112,7 +114,7 @@ export default function Layout() {
         zIndex: 1000,
         background: 'transparent',
         transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'width 0.35s cubic-bezier(.4,0,.2,1)',
+        transition: `transform ${sidebarMotion}`,
       };
 
   return (
@@ -166,7 +168,7 @@ export default function Layout() {
             width: isMobile ? '100%' : `calc(100% - ${sidebarVisible ? '15rem' : '0px'})`,
             marginLeft: !isMobile && sidebarVisible ? '15rem' : '0',
             zIndex: 1,
-            transition: 'margin-left 0.35s cubic-bezier(.4,0,.2,1), width 0.35s cubic-bezier(.4,0,.2,1)',
+            transition: `margin-left ${sidebarMotion}, width ${sidebarMotion}`,
             background: 'transparent',
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
@@ -198,7 +200,9 @@ export default function Layout() {
             left: '1rem',
             zIndex: 1300,
             border: 'none',
-            background: 'none',
+            background: 'transparent',
+            width: '2.35rem',
+            height: '2.35rem',
             padding: 0,
             margin: 0,
             color: '#232323',
@@ -208,7 +212,11 @@ export default function Layout() {
             alignItems: 'center',
             justifyContent: 'center',
             lineHeight: 1,
+            borderRadius: '50%',
+            transition: 'background 0.16s',
           }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
         >
           <i className="bi bi-layout-sidebar" style={{ pointerEvents: 'none' }}></i>
         </button>,
