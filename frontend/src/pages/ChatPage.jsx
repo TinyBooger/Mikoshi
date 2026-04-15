@@ -2474,9 +2474,16 @@ export default function ChatPage() {
               })()}
             </div>
           )}
-          <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'flex-end' }}>
+          <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'center' }}>
             <div
-              style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flexShrink: 0, marginBottom: 7 }}
+              style={{
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                height: `${CHAT_INPUT_BASE_HEIGHT}px`,
+              }}
               onMouseEnter={() => setShowContextDetails(true)}
               onMouseLeave={() => setShowContextDetails(false)}
             >
@@ -2489,11 +2496,13 @@ export default function ChatPage() {
                 style={{
                   border: 'none',
                   background: 'transparent',
-                  padding: 0,
+                  height: `${CHAT_INPUT_BASE_HEIGHT}px`,
+                  padding: '0 0.2rem',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: showContextDetails ? 6 : 0,
                   color: '#6b7280',
+                  transition: 'gap 0.16s ease',
                   cursor: 'pointer'
                 }}
               >
@@ -2512,7 +2521,17 @@ export default function ChatPage() {
                     transform="rotate(-90 9 9)"
                   />
                 </svg>
-                <span>{contextUsagePercent}%</span>
+                <span
+                  style={{
+                    maxWidth: showContextDetails ? 48 : 0,
+                    opacity: showContextDetails ? 1 : 0,
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    transition: 'max-width 0.18s ease, opacity 0.14s ease',
+                  }}
+                >
+                  {contextUsagePercent}%
+                </span>
               </button>
 
               {showContextDetails && (
@@ -2562,15 +2581,17 @@ export default function ChatPage() {
               )}
             </div>
 
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '0.64rem', alignItems: 'flex-end' }}>
+            <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex', alignItems: 'center' }}>
               <textarea
                 ref={textareaRef}
                 style={{
                   flex: 1,
-                  borderRadius: '1.2rem',
+                  width: '100%',
+                  borderRadius: `${CHAT_INPUT_BASE_HEIGHT / 2}px`,
                   border: '1.2px solid #e9ecef',
                   background: '#fff',
                   padding: '0.6rem 0.96rem',
+                  paddingRight: '2.3rem',
                   fontSize: '0.82rem',
                   outline: 'none',
                   color: '#232323',
@@ -2613,12 +2634,15 @@ export default function ChatPage() {
                     }
                   }}
                   style={{
+                    position: 'absolute',
+                    right: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
+                    bottom: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
                     background: '#dc3545',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '50%',
-                    width: 32,
-                    height: 32,
+                    width: 38,
+                    height: 38,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -2639,12 +2663,15 @@ export default function ChatPage() {
                 <button
                   type="submit"
                   style={{
+                    position: 'absolute',
+                    right: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
+                    bottom: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
                     background: sending ? '#888' : '#18191a',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '50%',
-                    width: 32,
-                    height: 32,
+                    width: 38,
+                    height: 38,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
