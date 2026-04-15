@@ -7,6 +7,40 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
+import ProblemReportModal from '../components/ProblemReportModal';
+
+function HelpFaqItem({ question, answer }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ borderBottom: '1px solid #f0eef7', marginBottom: 0 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%',
+          background: 'none',
+          border: 'none',
+          textAlign: 'left',
+          padding: '12px 4px',
+          cursor: 'pointer',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontWeight: 600,
+          color: '#3d3558',
+          fontSize: '0.97rem'
+        }}
+      >
+        {question}
+        <i className={`bi bi-chevron-${open ? 'up' : 'down'}`} style={{ color: '#736B92', flexShrink: 0, marginLeft: 8 }}></i>
+      </button>
+      {open && (
+        <div style={{ padding: '0 4px 12px 4px', color: '#6c757d', fontSize: '0.92rem', lineHeight: 1.6 }}>
+          {answer}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const { userData, sessionToken, refreshUserData, logout } = useContext(AuthContext);
@@ -41,6 +75,7 @@ export default function SettingsPage() {
 
   const [confirmDelete, setConfirmDelete] = useState({ show: false });
   const [lang, setLang] = useState('zh');
+  const [showProblemReport, setShowProblemReport] = useState(false);
 
   // Set default language to Chinese
   React.useEffect(() => {
@@ -372,6 +407,32 @@ export default function SettingsPage() {
               >
                 语言
               </button>
+              <button
+                onClick={() => setActiveSection('help')}
+                style={{
+                  padding: '12px 16px',
+                  border: 'none',
+                  background: activeSection === 'help' ? '#f0eef7' : 'transparent',
+                  color: activeSection === 'help' ? '#736B92' : '#6c757d',
+                  borderRadius: 8,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontWeight: activeSection === 'help' ? 600 : 400,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  if (activeSection !== 'help') {
+                    e.currentTarget.style.background = '#f8f9fa';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeSection !== 'help') {
+                    e.currentTarget.style.background = 'transparent';
+                  }
+                }}
+              >
+                帮助
+              </button>
             </nav>
           </div>
 
@@ -614,6 +675,60 @@ export default function SettingsPage() {
               <OrderHistoryTab />
             )}
 
+            {/* Help / Support Section */}
+            {activeSection === 'help' && (
+              <>
+                {/* FAQ */}
+                <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
+                  <h4>常见问题</h4>
+
+                  {[
+                    {
+                      q: '如何修改密码？',
+                      a: '前往「设置 → 账号 → 安全设置」，点击「修改密码」按钮，按照提示输入当前密码和新密码即可完成修改。'
+                    },
+                    {
+                      q: '如何修改邮箱或手机号？',
+                      a: '前往「设置 → 账号」，找到「修改邮箱」或「修改手机号」区域进行操作。'
+                    },
+                    {
+                      q: '忘记密码怎么办？',
+                      a: '在登录页面点击「忘记密码」，通过绑定的邮箱或手机号验证身份后即可重置密码。'
+                    },
+                    {
+                      q: 'Token 余额不足怎么办？',
+                      a: '前往「充值」页面购买 Token，或升级为专业版（Pro）用户以获得更多额度。'
+                    },
+                    {
+                      q: '订单支付遇到问题怎么办？',
+                      a: '请先确认支付是否已从账户扣款。若已扣款但余额未到账，可在下方提交问题报告，并附上截图，我们会尽快处理。'
+                    },
+                    {
+                      q: '如何申请退款？',
+                      a: '请在「设置 → 订单历史」中找到对应订单，查看退款政策并提交退款申请；或通过下方的「提交问题」联系我们。'
+                    },
+                    {
+                      q: '如何删除账号？',
+                      a: '前往「设置 → 账号 → 危险操作」，点击「删除账号」。请注意，此操作不可逆，账号及相关数据将被永久删除。'
+                    },
+                  ].map(({ q, a }, i) => (
+                    <HelpFaqItem key={i} question={q} answer={a} />
+                  ))}
+                </section>
+
+                {/* Problem Report */}
+                <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
+                  <h4>提交问题</h4>
+                  <p className="text-muted" style={{ marginBottom: 12 }}>
+                    遇到其他问题？请向我们提交详细描述，方便我们更快地帮助您。
+                  </p>
+                  <PrimaryButton onClick={() => setShowProblemReport(true)}>
+                    <i className="bi bi-send me-2"></i>提交问题报告
+                  </PrimaryButton>
+                </section>
+              </>
+            )}
+
             {/* Language Settings Section */}
             {activeSection === 'language' && (
               <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
@@ -638,6 +753,7 @@ export default function SettingsPage() {
         </div>
       </div>
       <ConfirmModal show={confirmDelete.show} title="删除账号" message="此操作将永久删除您的账号，数据无法恢复。请谨慎操作！" onCancel={() => setConfirmDelete({ show: false })} onConfirm={() => { setConfirmDelete({ show: false }); doDeleteAccount(); }} confirmText="删除" cancelText="取消" />
+      <ProblemReportModal show={showProblemReport} onClose={() => setShowProblemReport(false)} />
     </PageWrapper>
   );
 }
