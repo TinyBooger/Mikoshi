@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, useOutletContext } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import defaultPic from '../assets/images/default-picture.png';
@@ -284,6 +285,7 @@ export default function ChatPage() {
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [messageMenu, setMessageMenu] = useState({ open: false, messageId: null, x: 0, y: 0 });
+  const [hoveredMessageId, setHoveredMessageId] = useState(null);
 
   // Whether the welcome notice has been dismissed (show only once per new chat)
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
@@ -843,13 +845,12 @@ export default function ChatPage() {
   const openMessageMenu = (event, messageId) => {
     event.preventDefault();
     event.stopPropagation();
-    const clientX = Number(event.clientX || 0);
-    const clientY = Number(event.clientY || 0);
+    const rect = event.currentTarget.getBoundingClientRect();
     setMessageMenu({
       open: true,
       messageId,
-      x: clientX,
-      y: clientY,
+      x: rect.left,
+      y: rect.bottom,
     });
   };
 
@@ -2106,63 +2107,101 @@ export default function ChatPage() {
                       onTouchEnd={stopMessageLongPress}
                       onTouchCancel={stopMessageLongPress}
                     >
-                      {/* Column: avatar+bubble row, then below-bubble controls */}
+                      {/* Main row: avatar + content column */}
                       <div style={{
                         display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+                        flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
+                        gap: '0.64rem',
+                        alignItems: 'flex-start',
                         maxWidth: editingMessageId === m.message_id && m.role === 'user'
                           ? (isMobile ? '96%' : '92%')
                           : '80%',
-                      }}>
-                        {/* Avatar + bubble row */}
+                      }}
+                      onMouseEnter={() => setHoveredMessageId(m.message_id)}
+                      onMouseLeave={() => setHoveredMessageId(null)}
+                      >
+                        {/* Avatar */}
+                        <img
+                          src={
+                            m.role === 'user'
+                              ? (userData?.profile_pic
+                                  ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}`
+                                  : defaultPic)
+                                : ((selectedCharacter?.avatar_picture || selectedCharacter?.picture)
+                                  ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(selectedCharacter.avatar_picture || selectedCharacter.picture).replace(/^\//, '')}`
+                                  : defaultPic)
+                          }
+                          alt={m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
+                          style={{ width: 77, height: 77, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef', flexShrink: 0 }}
+                        />
+
+                        {/* Content column: name, bubble+button row, controls */}
                         <div style={{
                           display: 'flex',
-                          alignItems: 'flex-end',
-                          flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
+                          flexDirection: 'column',
+                          alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+                          minWidth: 0,
+                          flex: 1,
                         }}>
-                          <img
-                            src={
-                              m.role === 'user'
-                                ? (userData?.profile_pic
-                                    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}`
-                                    : defaultPic)
-                                  : ((selectedCharacter?.avatar_picture || selectedCharacter?.picture)
-                                    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(selectedCharacter.avatar_picture || selectedCharacter.picture).replace(/^\//, '')}`
-                                    : defaultPic)
-                            }
-                            alt={m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
-                            style={{ width: 77, height: 77, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef' }}
-                          />
+                          {/* Name header */}
+                          <div style={{ fontWeight: 600, fontSize: '0.76rem', opacity: 0.7, marginBottom: 6 }}>
+                            {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
+                            {m.is_pinned && (
+                              <span style={{ marginLeft: 8, fontSize: '0.72rem', color: '#334155' }}>
+                                <i className="bi bi-pin-angle-fill" style={{ marginRight: 4 }}></i>
+                                {t('chat.pinned_memory') || 'Pinned'}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Bubble + 3dots button row */}
                           <div style={{
-                            margin: m.role === 'user' ? '0 0.4rem 0 0.88rem' : '0 0.88rem 0 0.4rem',
-                            background: '#f5f6fa',
-                            color: '#232323',
-                            borderRadius: '0.88rem',
-                            padding: '0.68rem 0.96rem',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                            fontSize: '0.82rem',
-                            minWidth: 0,
-                            wordBreak: 'break-word',
-                            maxWidth: '100%',
-                            width: editingMessageId === m.message_id && m.role === 'user'
-                              ? (isMobile ? '100%' : 'min(70vw, 760px)')
-                              : 'auto',
+                            display: 'flex',
+                            flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
+                            alignItems: 'flex-start',
+                            gap: '0.4rem',
                           }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
-                              <div style={{ fontWeight: 600, fontSize: '0.76rem', opacity: 0.7 }}>
-                                {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
-                                {m.is_pinned && (
-                                  <span style={{ marginLeft: 8, fontSize: '0.72rem', color: '#334155' }}>
-                                    <i className="bi bi-pin-angle-fill" style={{ marginRight: 4 }}></i>
-                                    {t('chat.pinned_memory') || 'Pinned'}
-                                  </span>
-                                )}
-                              </div>
+                            {/* Bubble */}
+                            <div style={{
+                              background: '#f5f6fa',
+                              color: '#232323',
+                              borderRadius: '0.88rem',
+                              padding: '0.68rem 0.96rem',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                              fontSize: '0.82rem',
+                              minWidth: 0,
+                              wordBreak: 'break-word',
+                              maxWidth: '100%',
+                              width: editingMessageId === m.message_id && m.role === 'user'
+                                ? (isMobile ? '100%' : 'min(70vw, 760px)')
+                                : 'auto',
+                            }}>
+                              {editingMessageId === m.message_id && m.role === 'user' ? (
+                                <textarea
+                                  value={editingMessageText}
+                                  onChange={(event) => setEditingMessageText(event.target.value)}
+                                  rows={4}
+                                  autoFocus
+                                  style={{
+                                    width: '100%',
+                                    borderRadius: 10,
+                                    border: '1px solid #d1d5db',
+                                    padding: '0.7rem 0.8rem',
+                                    fontSize: '0.82rem',
+                                    resize: 'vertical',
+                                    minHeight: 96,
+                                  }}
+                                />
+                              ) : (
+                                <div>{renderMessageContent(m.content)}</div>
+                              )}
+                            </div>
+
+                            {/* 3-dots button beside bubble with opacity transition */}
+                            {m?.message_id && (
                               <button
                                 type="button"
                                 onClick={(event) => {
-                                  if (!m?.message_id) return;
                                   openMessageMenu(event, m.message_id);
                                 }}
                                 style={{
@@ -2178,132 +2217,124 @@ export default function ChatPage() {
                                   justifyContent: 'center',
                                   padding: 0,
                                   flexShrink: 0,
+                                  opacity: hoveredMessageId === m.message_id ? 1 : 0,
+                                  transition: 'opacity 0.15s ease',
+                                  marginTop: 2,
                                 }}
                                 aria-label={t('chat.message_options') || 'Message options'}
                                 title={t('chat.message_options') || 'Message options'}
                               >
                                 <i className="bi bi-three-dots"></i>
                               </button>
-                            </div>
-                            {editingMessageId === m.message_id && m.role === 'user' ? (
-                              <textarea
-                                value={editingMessageText}
-                                onChange={(event) => setEditingMessageText(event.target.value)}
-                                rows={4}
-                                autoFocus
-                                style={{
-                                  width: '100%',
-                                  borderRadius: 10,
-                                  border: '1px solid #d1d5db',
-                                  padding: '0.7rem 0.8rem',
-                                  fontSize: '0.82rem',
-                                  resize: 'vertical',
-                                  minHeight: 96,
-                                }}
-                              />
-                            ) : (
-                              <div>{renderMessageContent(m.content)}</div>
                             )}
                           </div>
-                        </div>
 
-                        {/* Below-bubble controls — only for user messages */}
-                        {m.role === 'user' && m?.message_id && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                            {/* Edit pencil button / Cancel + Save when editing */}
-                            {editingMessageId === m.message_id ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-secondary"
-                                  onClick={handleCancelEditingMessage}
-                                  disabled={sending}
-                                >
-                                  取消
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-dark"
-                                  onClick={handleSaveEditedMessage}
-                                  disabled={sending || !editingMessageText.trim()}
-                                >
-                                  发送
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleResendMessage(m)}
-                                  disabled={!!editingMessageId || sending}
-                                  onMouseEnter={(event) => handleMessageActionMouseEnter(event, !!editingMessageId || sending)}
-                                  onMouseLeave={(event) => handleMessageActionMouseLeave(event, !!editingMessageId || sending)}
-                                  style={getMessageActionButtonStyle(!!editingMessageId || sending)}
-                                  title="Resend from this message"
-                                  aria-label="Resend from this message"
-                                >
-                                  <i className="bi bi-arrow-clockwise"></i>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartEditingMessage(m)}
-                                  disabled={!!editingMessageId || sending}
-                                  onMouseEnter={(event) => handleMessageActionMouseEnter(event, !!editingMessageId || sending)}
-                                  onMouseLeave={(event) => handleMessageActionMouseLeave(event, !!editingMessageId || sending)}
-                                  style={getMessageActionButtonStyle(!!editingMessageId || sending)}
-                                  title={t('chat.edit_into_branch') || 'Edit into new branch'}
-                                  aria-label={t('chat.edit_into_branch') || 'Edit into new branch'}
-                                >
-                                  <i className="bi bi-pencil"></i>
-                                </button>
-                              </>
-                            )}
-                            {/* Branch navigator — < X / Y > */}
-                            {(() => {
-                              const nav = forkNavMap.get(m.message_id);
-                              if (!nav) return null;
-                              const prevIdx = (nav.currentIdx - 1 + nav.options.length) % nav.options.length;
-                              const nextIdx = (nav.currentIdx + 1) % nav.options.length;
-                              const navBtnStyle = {
-                                border: 'none',
-                                background: 'transparent',
-                                color: '#374151',
-                                borderRadius: 6,
-                                width: 24,
-                                height: 24,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                padding: 0,
-                                cursor: branchSelectionPending || sending ? 'not-allowed' : 'pointer',
-                                opacity: branchSelectionPending || sending ? 0.5 : 1,
-                                fontSize: '0.9rem',
-                                lineHeight: 1,
-                              };
-                              return (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {/* Below-bubble controls — only for user messages */}
+                          {m.role === 'user' && m?.message_id && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', width: '100%' }}>
+                              {/* Edit pencil button / Cancel + Save when editing */}
+                              {editingMessageId === m.message_id ? (
+                                <>
                                   <button
                                     type="button"
-                                    style={navBtnStyle}
-                                    disabled={branchSelectionPending || sending}
-                                    onClick={() => handleSelectBranch(nav.options[prevIdx].branch_id)}
-                                    title={nav.options[prevIdx]?.label || `Branch ${prevIdx + 1}`}
-                                  >‹</button>
-                                  <span style={{ fontSize: '0.74rem', color: '#6b7280', minWidth: 36, textAlign: 'center', userSelect: 'none' }}>
-                                    {nav.currentIdx + 1}&nbsp;/&nbsp;{nav.options.length}
-                                  </span>
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={handleCancelEditingMessage}
+                                    disabled={sending}
+                                  >
+                                    取消
+                                  </button>
                                   <button
                                     type="button"
-                                    style={navBtnStyle}
-                                    disabled={branchSelectionPending || sending}
-                                    onClick={() => handleSelectBranch(nav.options[nextIdx].branch_id)}
-                                    title={nav.options[nextIdx]?.label || `Branch ${nextIdx + 1}`}
-                                  >›</button>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        )}
+                                    className="btn btn-sm btn-dark"
+                                    onClick={handleSaveEditedMessage}
+                                    disabled={sending || !editingMessageText.trim()}
+                                  >
+                                    发送
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleResendMessage(m)}
+                                    disabled={!!editingMessageId || sending}
+                                    onMouseEnter={(event) => handleMessageActionMouseEnter(event, !!editingMessageId || sending)}
+                                    onMouseLeave={(event) => handleMessageActionMouseLeave(event, !!editingMessageId || sending)}
+                                    style={{
+                                      ...getMessageActionButtonStyle(!!editingMessageId || sending),
+                                      opacity: hoveredMessageId === m.message_id ? 1 : 0,
+                                      transition: 'opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.15s ease',
+                                    }}
+                                    title="Resend from this message"
+                                    aria-label="Resend from this message"
+                                  >
+                                    <i className="bi bi-arrow-clockwise"></i>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEditingMessage(m)}
+                                    disabled={!!editingMessageId || sending}
+                                    onMouseEnter={(event) => handleMessageActionMouseEnter(event, !!editingMessageId || sending)}
+                                    onMouseLeave={(event) => handleMessageActionMouseLeave(event, !!editingMessageId || sending)}
+                                    style={{
+                                      ...getMessageActionButtonStyle(!!editingMessageId || sending),
+                                      opacity: hoveredMessageId === m.message_id ? 1 : 0,
+                                      transition: 'opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.15s ease',
+                                    }}
+                                    title={t('chat.edit_into_branch') || 'Edit into new branch'}
+                                    aria-label={t('chat.edit_into_branch') || 'Edit into new branch'}
+                                  >
+                                    <i className="bi bi-pencil"></i>
+                                  </button>
+                                </>
+                              )}
+                              {/* Branch navigator — < X / Y > */}
+                              {(() => {
+                                const nav = forkNavMap.get(m.message_id);
+                                if (!nav) return null;
+                                const prevIdx = (nav.currentIdx - 1 + nav.options.length) % nav.options.length;
+                                const nextIdx = (nav.currentIdx + 1) % nav.options.length;
+                                const navBtnStyle = {
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#374151',
+                                  borderRadius: 6,
+                                  width: 24,
+                                  height: 24,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: 0,
+                                  cursor: branchSelectionPending || sending ? 'not-allowed' : 'pointer',
+                                  opacity: branchSelectionPending || sending ? 0.5 : 1,
+                                  fontSize: '0.9rem',
+                                  lineHeight: 1,
+                                };
+                                return (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <button
+                                      type="button"
+                                      style={navBtnStyle}
+                                      disabled={branchSelectionPending || sending}
+                                      onClick={() => handleSelectBranch(nav.options[prevIdx].branch_id)}
+                                      title={nav.options[prevIdx]?.label || `Branch ${prevIdx + 1}`}
+                                    >‹</button>
+                                    <span style={{ fontSize: '0.74rem', color: '#6b7280', minWidth: 36, textAlign: 'center', userSelect: 'none' }}>
+                                      {nav.currentIdx + 1}&nbsp;/&nbsp;{nav.options.length}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      style={navBtnStyle}
+                                      disabled={branchSelectionPending || sending}
+                                      onClick={() => handleSelectBranch(nav.options[nextIdx].branch_id)}
+                                      title={nav.options[nextIdx]?.label || `Branch ${nextIdx + 1}`}
+                                    >›</button>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))
@@ -2316,13 +2347,13 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {messageMenu.open && activeMessageForMenu && (
+        {messageMenu.open && activeMessageForMenu && createPortal(
           <div
             ref={messageMenuRef}
             style={{
               position: 'fixed',
-              top: Math.max(8, messageMenu.y + 8),
-              left: Math.max(8, Math.min(window.innerWidth - 200, messageMenu.x - 20)),
+              top: Math.max(8, messageMenu.y + 4),
+              left: Math.max(8, Math.min(window.innerWidth - 200, messageMenu.x)),
               width: 190,
               background: '#ffffff',
               border: '1px solid #e5e7eb',
@@ -2349,7 +2380,8 @@ export default function ChatPage() {
                 ? (t('chat.unpin_memory') || 'Unpin memory')
                 : (t('chat.pin_memory') || 'Pin as memory')}
             </button>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Input Area (no form) */}
