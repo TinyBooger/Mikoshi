@@ -348,7 +348,7 @@ export default function CharacterSidebar({
             borderRadius: '1.2rem',
             boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
             marginBottom: 18,
-            paddingTop: '1.2rem',
+            padding: '1.2rem',
             zIndex: 1,
             position: 'relative',
           }}>
