@@ -6,6 +6,7 @@ from typing import Optional
 from urllib.parse import urlencode
 
 from utils.alipay_utils import alipay_client
+from utils.wechat_pay_utils import wechat_pay_client
 
 logger = logging.getLogger(__name__)
 
@@ -211,16 +212,165 @@ _alipay_provider = AlipayProvider()
 _mock_provider = MockPaymentProvider()
 
 
+def _resolve_payment_mode() -> str:
+    """
+    PAYMENT_PROVIDER unified semantics:
+    - mock: use simulated providers for all payment channels
+    - real: use real providers for all payment channels
+
+    Backward compatibility:
+    - alipay / wechat are treated as real
+    """
+    raw = os.getenv("PAYMENT_PROVIDER", "mock").strip().lower()
+    if raw in {"real", "mock"}:
+        return raw
+    if raw in {"alipay", "wechat"}:
+        logger.warning("PAYMENT_PROVIDER=%s 为旧配置，已兼容映射为 real；建议改为 PAYMENT_PROVIDER=real", raw)
+        return "real"
+    logger.warning("未知 PAYMENT_PROVIDER=%s，默认按 mock 处理", raw)
+    return "mock"
+
+
 def get_active_payment_provider() -> BasePaymentProvider:
     environment = os.getenv("ENVIRONMENT", "development").strip().lower()
-    provider = os.getenv("PAYMENT_PROVIDER", "mock").strip().lower()
+    payment_mode = _resolve_payment_mode()
 
     if environment == "production":
-        if provider != "alipay":
-            logger.warning("生产环境强制使用AlipayProvider，忽略 PAYMENT_PROVIDER=%s", provider)
+        if payment_mode != "real":
+            logger.warning("生产环境强制使用真实支付网关，忽略 PAYMENT_PROVIDER=%s", payment_mode)
         return _alipay_provider
 
-    if provider == "alipay":
+    if payment_mode == "real":
         return _alipay_provider
 
     return _mock_provider
+
+
+# ─────────────────────────────────────────────
+# WeChat Pay providers
+# ─────────────────────────────────────────────
+
+class WeChatPayProvider:
+    @property
+    def provider_name(self) -> str:
+        return "wechat"
+
+    @property
+    def is_configured(self) -> bool:
+        return wechat_pay_client.is_configured
+
+    def create_native_order(
+        self,
+        out_trade_no: str,
+        total_amount: float,
+        description: str,
+        notify_url: Optional[str] = None,
+        time_expire: Optional[str] = None,
+    ) -> str:
+        return wechat_pay_client.create_native_order(
+            out_trade_no=out_trade_no,
+            total_amount_yuan=total_amount,
+            description=description,
+            notify_url=notify_url,
+            time_expire=time_expire,
+        )
+
+    def query_order(self, out_trade_no: str) -> dict:
+        return wechat_pay_client.query_order(out_trade_no=out_trade_no)
+
+    def close_order(self, out_trade_no: str) -> dict:
+        return wechat_pay_client.close_order(out_trade_no=out_trade_no)
+
+    def refund(
+        self,
+        out_trade_no: str,
+        refund_amount: float,
+        total_amount: float,
+        reason: Optional[str] = None,
+    ) -> dict:
+        return wechat_pay_client.refund(
+            out_trade_no=out_trade_no,
+            refund_amount_yuan=refund_amount,
+            total_amount_yuan=total_amount,
+            reason=reason,
+        )
+
+    def verify_notify(self, headers: dict, body: str) -> dict:
+        return wechat_pay_client.verify_notify(headers=headers, body=body)
+
+
+class MockWeChatPayProvider:
+    def __init__(self):
+        self._order_map: dict[str, str] = {}  # out_trade_no → mock transaction_id
+
+    @property
+    def provider_name(self) -> str:
+        return "mock_wechat"
+
+    @property
+    def is_configured(self) -> bool:
+        return True
+
+    def _get_transaction_id(self, out_trade_no: str) -> str:
+        if out_trade_no not in self._order_map:
+            self._order_map[out_trade_no] = f"MOCKWX_{uuid.uuid4().hex[:24]}"
+        return self._order_map[out_trade_no]
+
+    def create_native_order(
+        self,
+        out_trade_no: str,
+        total_amount: float,
+        description: str,
+        notify_url: Optional[str] = None,
+        time_expire: Optional[str] = None,
+    ) -> str:
+        logger.info(f"Mock微信支付创建Native订单: {out_trade_no}, amount={total_amount}")
+        # Return a placeholder code_url for testing; the QR code just encodes this string.
+        return f"weixin://wxpay/bizpayurl?pr=MOCK_{out_trade_no}"
+
+    def query_order(self, out_trade_no: str) -> dict:
+        return {
+            "trade_state": "SUCCESS",
+            "transaction_id": self._get_transaction_id(out_trade_no),
+            "out_trade_no": out_trade_no,
+            "amount": {"total": 0},
+        }
+
+    def close_order(self, out_trade_no: str) -> dict:
+        return {"_http_code": 204}
+
+    def refund(
+        self,
+        out_trade_no: str,
+        refund_amount: float,
+        total_amount: float,
+        reason: Optional[str] = None,
+    ) -> dict:
+        return {
+            "out_refund_no": f"RF_MOCK_{out_trade_no}",
+            "out_trade_no": out_trade_no,
+            "status": "SUCCESS",
+        }
+
+    def verify_notify(self, headers: dict, body: str) -> dict:
+        import json
+        return json.loads(body)
+
+
+_wechat_provider = WeChatPayProvider()
+_mock_wechat_provider = MockWeChatPayProvider()
+
+
+def get_wechat_payment_provider():
+    environment = os.getenv("ENVIRONMENT", "development").strip().lower()
+    payment_mode = _resolve_payment_mode()
+
+    if environment == "production":
+        if payment_mode != "real":
+            logger.warning("生产环境微信支付强制使用真实网关，忽略 PAYMENT_PROVIDER=%s", payment_mode)
+        return _wechat_provider
+
+    if payment_mode == "real":
+        return _wechat_provider
+
+    return _mock_wechat_provider

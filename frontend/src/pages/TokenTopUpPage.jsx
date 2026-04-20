@@ -6,6 +6,7 @@ import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
 import { formatCompactTokenCount } from '../utils/tokenDisplay';
 import { useTranslation } from 'react-i18next';
+import WeChatPayModal from '../components/WeChatPayModal';
 
 export default function TokenTopUpPage() {
   const { t } = useTranslation();
@@ -18,6 +19,7 @@ export default function TokenTopUpPage() {
   const [payingPackageId, setPayingPackageId] = useState(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('alipay');
   const [showRefundModal, setShowRefundModal] = useState(false);
+  const [wechatQrData, setWechatQrData] = useState(null); // { codeUrl, outTradeNo, amount }
 
   useEffect(() => {
     let cancelled = false;
@@ -88,12 +90,43 @@ export default function TokenTopUpPage() {
     }
 
     if (selectedPaymentMethod !== 'alipay') {
-      toast.show('当前仅支持支付宝支付', { type: 'info' });
-      return;
     }
 
     const pkg = sortedPackages.find((p) => p.id === selectedPackageId);
     if (!pkg) return;
+
+    if (selectedPaymentMethod === 'wechat') {
+      setPayingPackageId(pkg.id);
+      try {
+        const res = await fetch(`${window.API_BASE_URL}/api/wechat/create-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: sessionToken },
+          body: JSON.stringify({
+            total_amount: Number(pkg.price_cny),
+            subject: `Token充值 ${formatCompactTokenCount(Number(pkg.tokens || 0))}`,
+            body: `购买${formatCompactTokenCount(Number(pkg.tokens || 0))} tokens`,
+            order_type: 'token_topup',
+            user_id: userData.id,
+            package_id: pkg.id,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.success || !data?.code_url) {
+          throw new Error(data?.detail || '创建订单失败');
+        }
+        setWechatQrData({ codeUrl: data.code_url, outTradeNo: data.out_trade_no, amount: Number(pkg.price_cny) });
+      } catch (err) {
+        toast.show(err?.message || '创建微信支付订单失败', { type: 'error' });
+      } finally {
+        setPayingPackageId(null);
+      }
+      return;
+    }
+
+    if (selectedPaymentMethod !== 'alipay') {
+      toast.show('请选择支付方式', { type: 'info' });
+      return;
+    }
 
     setPayingPackageId(pkg.id);
     try {
@@ -281,21 +314,23 @@ export default function TokenTopUpPage() {
                 <button
                   type="button"
                   className="btn d-flex align-items-center gap-2"
-                  onClick={() => setSelectedPaymentMethod('coming_soon')}
+                  onClick={() => setSelectedPaymentMethod('wechat')}
                   style={{
-                    background: '#f8f9fa',
-                    border: selectedPaymentMethod === 'coming_soon' ? '2px solid #adb5bd' : '1px solid #dee2e6',
+                    background: '#fff',
+                    border: selectedPaymentMethod === 'wechat' ? '2px solid #07c160' : '1px solid #d9e2ec',
                     borderRadius: '12px',
                     padding: '0.6rem 1rem',
-                    color: '#6c757d',
+                    boxShadow: selectedPaymentMethod === 'wechat' ? '0 4px 12px rgba(7,193,96,0.15)' : 'none',
                   }}
                 >
-                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>更多支付方式（即将支持）</span>
+                  <i className="bi bi-wechat" style={{ color: '#07c160', fontSize: '1.3rem' }} />
+                  <span style={{ color: '#232323', fontWeight: 700, fontSize: '0.9rem' }}>微信支付</span>
                   <input
                     type="radio"
                     readOnly
-                    checked={selectedPaymentMethod === 'coming_soon'}
-                    aria-label="选择更多支付方式"
+                    checked={selectedPaymentMethod === 'wechat'}
+                    aria-label="选择微信支付"
+                    style={{ accentColor: '#07c160' }}
                   />
                 </button>
               </div>
@@ -322,7 +357,7 @@ export default function TokenTopUpPage() {
                   e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.3)';
                 }}
                 onClick={handlePurchase}
-                disabled={!!payingPackageId || !selectedPackageId || selectedPaymentMethod !== 'alipay'}
+                disabled={!!payingPackageId || !selectedPackageId || (selectedPaymentMethod !== 'alipay' && selectedPaymentMethod !== 'wechat')}
               >
                 {payingPackageId ? (
                   <>
@@ -339,6 +374,21 @@ export default function TokenTopUpPage() {
       </div>
       {/* Refund Policy Modal */}
       <RefundPolicyModal show={showRefundModal} onClose={() => setShowRefundModal(false)} policyType="token" />
+      {/* WeChat Pay QR Modal */}
+      {wechatQrData && (
+        <WeChatPayModal
+          codeUrl={wechatQrData.codeUrl}
+          outTradeNo={wechatQrData.outTradeNo}
+          orderType="token_topup"
+          amount={wechatQrData.amount}
+          onSuccess={() => {
+            setWechatQrData(null);
+            toast.show('Token充值成功！', { type: 'success' });
+            if (refreshUserData) refreshUserData({ silent: true });
+          }}
+          onCancel={() => setWechatQrData(null)}
+        />
+      )}
       {/* Footer Note */}
       <p className="text-muted" style={{ fontSize: '0.9rem' }}>
         {t('pro_upgrade.footer_note')}

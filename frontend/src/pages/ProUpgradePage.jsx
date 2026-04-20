@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
 import PageWrapper from '../components/PageWrapper';
+import WeChatPayModal from '../components/WeChatPayModal';
 
 export default function ProUpgradePage() {
   const { t } = useTranslation();
@@ -13,6 +14,7 @@ export default function ProUpgradePage() {
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('alipay');
   const [selectedPlan, setSelectedPlan] = useState('1month');
+  const [wechatQrData, setWechatQrData] = useState(null); // { codeUrl, outTradeNo, amount }
 
   if (!userData) return null;
 
@@ -212,21 +214,23 @@ export default function ProUpgradePage() {
                 <button
                   type="button"
                   className="btn d-flex align-items-center gap-2"
-                  onClick={() => setSelectedPaymentMethod('coming_soon')}
+                  onClick={() => setSelectedPaymentMethod('wechat')}
                   style={{
-                    background: '#f8f9fa',
-                    border: selectedPaymentMethod === 'coming_soon' ? '2px solid #adb5bd' : '1px solid #dee2e6',
+                    background: '#fff',
+                    border: selectedPaymentMethod === 'wechat' ? '2px solid #07c160' : '1px solid #d9e2ec',
                     borderRadius: '12px',
                     padding: '0.6rem 1rem',
-                    color: '#6c757d',
+                    boxShadow: selectedPaymentMethod === 'wechat' ? '0 4px 12px rgba(7,193,96,0.15)' : 'none',
                   }}
                 >
-                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>更多支付方式（即将支持）</span>
+                  <i className="bi bi-wechat" style={{ color: '#07c160', fontSize: '1.3rem' }} />
+                  <span style={{ color: '#232323', fontWeight: 700, fontSize: '0.9rem' }}>微信支付</span>
                   <input
                     type="radio"
                     readOnly
-                    checked={selectedPaymentMethod === 'coming_soon'}
-                    aria-label="选择更多支付方式"
+                    checked={selectedPaymentMethod === 'wechat'}
+                    aria-label="选择微信支付"
+                    style={{ accentColor: '#07c160' }}
                   />
                 </button>
               </div>
@@ -259,7 +263,44 @@ export default function ProUpgradePage() {
                   }
 
                   if (selectedPaymentMethod !== 'alipay') {
-                    toast.show('当前仅支持支付宝支付', { type: 'info' });
+                  }
+
+                  if (selectedPaymentMethod === 'wechat') {
+                    const planDetails = {
+                      '1month':  { amount: 15,  subject: 'Pro会员1个月', body: 'Pro会员30天订阅' },
+                      '3months': { amount: 40,  subject: 'Pro会员3个月', body: 'Pro会员90天订阅' },
+                      '6months': { amount: 72,  subject: 'Pro会员6个月', body: 'Pro会员180天订阅' },
+                      '1year':   { amount: 120, subject: 'Pro会员1年',   body: 'Pro会员365天订阅' },
+                    };
+                    const plan = planDetails[selectedPlan];
+                    setLoading(true);
+                    try {
+                      const res = await fetch(`${window.API_BASE_URL}/api/wechat/create-order`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: sessionToken },
+                        body: JSON.stringify({
+                          total_amount: plan.amount,
+                          subject: plan.subject,
+                          body: plan.body,
+                          order_type: 'pro_upgrade',
+                          user_id: userData.id,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok || !data?.success || !data?.code_url) {
+                        throw new Error(data?.detail || '创建订单失败');
+                      }
+                      setWechatQrData({ codeUrl: data.code_url, outTradeNo: data.out_trade_no, amount: plan.amount });
+                    } catch (err) {
+                      toast.show(err?.message || '创建微信支付订单失败', { type: 'error' });
+                    } finally {
+                      setLoading(false);
+                    }
+                    return;
+                  }
+
+                  if (selectedPaymentMethod !== 'alipay') {
+                    toast.show('请选择支付方式', { type: 'info' });
                     return;
                   }
 
@@ -328,7 +369,7 @@ export default function ProUpgradePage() {
                     setLoading(false);
                   }
                 }}
-                disabled={loading || selectedPaymentMethod !== 'alipay'}
+                disabled={loading || (selectedPaymentMethod !== 'alipay' && selectedPaymentMethod !== 'wechat')}
               >
                 {loading ? (
                   <>
@@ -343,6 +384,21 @@ export default function ProUpgradePage() {
 
             {/* Refund Policy Modal */}
             <RefundPolicyModal show={showRefundModal} onClose={() => setShowRefundModal(false)} policyType="pro" />
+
+            {/* WeChat Pay QR Modal */}
+            {wechatQrData && (
+              <WeChatPayModal
+                codeUrl={wechatQrData.codeUrl}
+                outTradeNo={wechatQrData.outTradeNo}
+                orderType="pro_upgrade"
+                amount={wechatQrData.amount}
+                onSuccess={() => {
+                  setWechatQrData(null);
+                  toast.show('Pro会员开通成功！', { type: 'success' });
+                }}
+                onCancel={() => setWechatQrData(null)}
+              />
+            )}
 
             {/* Footer Note */}
             <p className="text-muted" style={{ fontSize: '0.9rem' }}>
