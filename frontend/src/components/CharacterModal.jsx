@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import EntityCard from './EntityCard';
 
@@ -45,7 +46,7 @@ export default function CharacterModal({ show, onClose, onSelect }) {
 
   if (!show) return null;
 
-  return (
+  const modalContent = (
     <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
       <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? '98vw' : undefined }}>
         <div className="modal-content" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
@@ -98,4 +99,6 @@ export default function CharacterModal({ show, onClose, onSelect }) {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

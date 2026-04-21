@@ -287,9 +287,6 @@ export default function ChatPage() {
   const [messageMenu, setMessageMenu] = useState({ open: false, messageId: null, x: 0, y: 0 });
   const [hoveredMessageId, setHoveredMessageId] = useState(null);
 
-  // Whether the welcome notice has been dismissed (show only once per new chat)
-  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
-
   // Ref for textarea auto-resize
   const textareaRef = useRef(null);
   // Ref for messages container to enable auto-scrolling
@@ -480,7 +477,6 @@ export default function ChatPage() {
     setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
     setServerContextWindowUsage(null);
     isNewChat.current = true;
-    setWelcomeDismissed(false);
     setInitModal(false);
     initialized.current = false;
   }, [searchParams]);
@@ -991,7 +987,6 @@ export default function ChatPage() {
   // Reusable function to start chat with current selections (used by modal and direct entry)
   const startChatWithSelectedEntities = async () => {
     isNewChat.current = true;
-    setWelcomeDismissed(false);
     setInitModal(false);
     setInitLoading(true);
     try {
@@ -1185,7 +1180,6 @@ export default function ChatPage() {
         nextMessages: [sys],
         sourceBranchId: null,
         restoreMessagesOnError: [sys],
-        shouldDismissWelcome: false,
         errorMessage: t('chat.error_generating_greeting') || 'Failed to generate greeting.',
         characterOverride: character,
         sceneOverride: scene,
@@ -1212,18 +1206,12 @@ export default function ChatPage() {
     forkFromMessageId = null,
     sourceBranchId = selectedChat?.active_branch_id || null,
     restoreMessagesOnError = nextMessages,
-    shouldDismissWelcome = true,
     errorMessage = 'Failed to send message. Please try again.',
     characterOverride = selectedCharacter,
     sceneOverride = selectedScene,
     personaOverride = selectedPersona,
   }) => {
     if (!characterOverride) return;
-
-    if (shouldDismissWelcome && isNewChat.current && !welcomeDismissed) {
-      setWelcomeDismissed(true);
-      isNewChat.current = false;
-    }
 
     setSending(true);
     setIsStreaming(true);
@@ -1404,7 +1392,6 @@ export default function ChatPage() {
     setEditingMessageId(null);
     setEditingMessageText('');
     isNewChat.current = true;
-    setWelcomeDismissed(false);
 
     if (sceneId || selectedScene) {
       setSelectedCharacter(null);
@@ -1549,9 +1536,8 @@ export default function ChatPage() {
       setMessages(buildDisplayMessagesForChat(normalizedLoadedChat, character, scene, persona));
       setSelectedChat(normalizedLoadedChat);
       
-      // Mark as existing chat, dismiss welcome
+      // Mark as existing chat so the welcome block is not shown for persisted threads
       isNewChat.current = false;
-      setWelcomeDismissed(true);
       setShowChatHistory(false);
     } catch (error) {
       console.error('Error loading chat:', error);
@@ -1971,10 +1957,8 @@ export default function ChatPage() {
           <div style={chatContentRailStyle}>
           {(() => {
             const nonSystem = messages.filter(m => m.role !== 'system');
-            // Show welcome only when starting a new chat (isNewChat.current)
-            // This ensures we still show welcome when nonSystem.length === 0 (no character greeting),
-            // but only once per new chat session.
-            const showWelcome = isNewChat.current && !welcomeDismissed;
+            // Show welcome for the full lifetime of a new chat so it scrolls with the conversation.
+            const showWelcome = isNewChat.current;
 
             return (
               <>

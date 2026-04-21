@@ -50,6 +50,7 @@
     "scenes": "场景",
     "personas": "人设",
     "users": "创作者",
+    "sort_by": "排序方式",
     "creator_total_rank": "总排行",
     "creator_recent_updated": "最近更新",
     "for_you": "为您推荐",
@@ -329,6 +330,9 @@
     "tagline": "标语",
     "tags": "标签",
     "greeting": "问候语",
+    "advanced_options": "高级选项",
+    "expand_advanced": "展开",
+    "collapse_advanced": "收起",
     "improvise_greeting": "即兴问候",
     "greeting_improvising_placeholder": "开始对话时会动态生成问候语",
     "notes": {
@@ -374,6 +378,8 @@
     "updated": "角色已更新！",
     "created": "角色已创建！",
     "deleted": "已删除角色",
+    "processing": "处理中...",
+    "processing_tip": "角色正在处理中，请稍候。",
     "error": "发生错误。",
     "tags_required": "请至少添加一个标签。",
     "placeholders": {
@@ -437,6 +443,8 @@
     "updated": "人设已更新！",
     "created": "人设已创建！",
     "deleted": "已删除人设",
+    "processing": "处理中...",
+    "processing_tip": "人设正在处理中，请稍候。",
     "error": "发生错误。",
     "tags_required": "请至少添加一个标签。",
     "notes": {
@@ -480,9 +488,12 @@
     "missing_id": "缺少场景 ID",
     "not_logged_in": "您需要登录才能操作。",
     "name_required": "名称和描述为必填项。",
+    "description_required": "描述为必填项。",
     "updated": "场景已更新！",
     "created": "场景已创建！",
     "deleted": "已删除场景",
+    "processing": "处理中...",
+    "processing_tip": "场景正在处理中，请稍候。",
     "error": "发生错误。",
     "tags_required": "请至少添加一个标签。",
     "notes": {

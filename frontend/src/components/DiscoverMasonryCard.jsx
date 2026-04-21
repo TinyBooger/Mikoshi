@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
+import './DiscoverMasonryCard.css';
 
 export default function DiscoverMasonryCard({ type, entity, onClick, disableClick = false }) {
   const { t } = useTranslation();
@@ -356,16 +357,14 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
         </div>
 
         <p
-          className="mb-0 text-secondary"
+          className="mb-0 text-secondary discover-masonry-description"
           style={{
             fontSize: '0.76rem',
             lineHeight: 1.18,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             display: '-webkit-box',
-            WebkitLineClamp: 4,
             WebkitBoxOrient: 'vertical',
-            maxHeight: '3.6rem',
           }}
         >
           {description || t('entity_card.no_description')}

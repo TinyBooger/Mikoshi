@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import EntityCard from './EntityCard';
@@ -21,7 +22,7 @@ export default function SceneCharacterSelectModal({
   if (!show) return null;
 
   if (loading) {
-    return (
+    const loadingContent = (
       <div
         className="modal"
         tabIndex="-1"
@@ -51,6 +52,7 @@ export default function SceneCharacterSelectModal({
         </div>
       </div>
     );
+    return createPortal(loadingContent, document.body);
   }
 
   const sceneImg = selectedScene?.picture
@@ -96,7 +98,7 @@ export default function SceneCharacterSelectModal({
     transition: 'background 0.15s',
   };
 
-  return (
+  const modalContent = (
     <div
       className="modal"
       tabIndex="-1"
@@ -223,4 +225,6 @@ export default function SceneCharacterSelectModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

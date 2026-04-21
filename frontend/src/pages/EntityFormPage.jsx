@@ -81,6 +81,7 @@ export default function EntityFormPage() {
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit' || mode === 'fork');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ show: false });
   const [showUgcPolicyModal, setShowUgcPolicyModal] = useState(false);
 
@@ -165,6 +166,7 @@ export default function EntityFormPage() {
 
   const handleSubmit = async e => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!sessionToken) {
       toast.show(t(`${entityConfig.transactionKeyPrefix}.not_logged_in`), { type: 'error' });
       navigate("/");
@@ -195,6 +197,7 @@ export default function EntityFormPage() {
     formData.append("is_forkable", String(!!entityData.is_forkable));
     if (picture) formData.append("picture", picture);
 
+    setIsSubmitting(true);
     try {
       const res = await fetch(
         mode === 'edit'
@@ -218,6 +221,8 @@ export default function EntityFormPage() {
       }
     } catch (error) {
       toast.show(t(`${entityConfig.transactionKeyPrefix}.error`), { type: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -510,12 +515,22 @@ export default function EntityFormPage() {
 
           {/* Action Buttons */}
           <div className="d-flex gap-3 mt-4 justify-content-end">
-            <PrimaryButton type="submit">
-              <i className="bi bi-save me-2"></i>{mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.save`) : t(`${entityConfig.transactionKeyPrefix}.create`)}
+            <PrimaryButton type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  {t(`${entityConfig.transactionKeyPrefix}.processing`)}
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-save me-2"></i>{mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.save`) : t(`${entityConfig.transactionKeyPrefix}.create`)}
+                </>
+              )}
             </PrimaryButton>
             {mode === 'edit' && (
               <PrimaryButton
                 type="button"
+                disabled={isSubmitting}
                 style={{
                   background: '#d32f2f',
                   color: '#fff'
@@ -534,6 +549,43 @@ export default function EntityFormPage() {
           </div>
         </form>
       </div>
+
+      {isSubmitting && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.55)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 11000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 460,
+              background: '#ffffff',
+              borderRadius: 18,
+              boxShadow: '0 16px 48px rgba(0,0,0,0.25)',
+              padding: '1.25rem 1.2rem',
+              textAlign: 'center',
+            }}
+          >
+            <div className="spinner-border" role="status" aria-hidden="true" style={{ width: '2.2rem', height: '2.2rem', color: '#736B92' }}></div>
+            <div style={{ marginTop: '0.9rem', fontWeight: 700, color: '#1f2937', fontSize: '1rem' }}>
+              {t(`${entityConfig.transactionKeyPrefix}.processing`)}
+            </div>
+            <div style={{ marginTop: '0.45rem', color: '#4b5563', fontSize: '0.9rem', lineHeight: 1.5 }}>
+              {t(`${entityConfig.transactionKeyPrefix}.processing_tip`)}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {showCrop && rawSelectedFile && createPortal(
         <ImageCropModal

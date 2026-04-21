@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
@@ -7,7 +8,7 @@ export default function ConfirmModal({ show, title = 'Confirm', message = '', on
   const { t } = useTranslation();
   if (!show) return null;
 
-  return (
+  const modalContent = (
     <div style={styles.overlay} role="dialog" aria-modal="true">
       <div style={styles.modal}>
         <div style={styles.header}>
@@ -21,6 +22,8 @@ export default function ConfirmModal({ show, title = 'Confirm', message = '', on
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
 
 const styles = {

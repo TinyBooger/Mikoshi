@@ -131,6 +131,7 @@ export default function CharacterFormPage() {
   const [loading, setLoading] = useState(mode === 'edit' || mode === 'fork');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAssistant, setShowAssistant] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [assistantMessages, setAssistantMessages] = useState(null);
   const [assistantGeneratedData, setAssistantGeneratedData] = useState(null);
   const selectedTokenLimits = getTokenLimits(charData.model || DEFAULT_CHAT_CONFIG.model);
@@ -694,221 +695,248 @@ export default function CharacterFormPage() {
             </small>
           </div>
 
-          {/* Context Label */}
           <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.5rem', display: 'block' }}>
-              角色类型
-            </label>
-            <div style={{ display: 'flex', gap: 0, borderRadius: 12, overflow: 'hidden', border: '1.5px solid #e9ecef', width: 'fit-content' }}>
-              <button
-                type="button"
-                onClick={() => handleChange('context_label', 'standard')}
-                style={{
-                  padding: '0.5rem 1.4rem',
-                  fontSize: '1rem',
-                  fontWeight: effectiveContextLabel === 'standard' ? 700 : 400,
-                  background: effectiveContextLabel === 'standard' ? '#232323' : '#f5f6fa',
-                  color: effectiveContextLabel === 'standard' ? '#fff' : '#555',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s, color 0.15s',
-                }}
-              >
-                标准
-              </button>
-              <button
-                type="button"
-                onClick={() => canUseAdvancedCharacter && handleChange('context_label', 'advanced')}
-                disabled={!canUseAdvancedCharacter}
-                title={!canUseAdvancedCharacter ? '升级为Pro用户后可用' : ''}
-                style={{
-                  padding: '0.5rem 1.4rem',
-                  fontSize: '1rem',
-                  fontWeight: effectiveContextLabel === 'advanced' ? 700 : 400,
-                  background: effectiveContextLabel === 'advanced' ? '#7c3aed' : '#f5f6fa',
-                  color: effectiveContextLabel === 'advanced' ? '#fff' : (!canUseAdvancedCharacter ? '#bbb' : '#555'),
-                  border: 'none',
-                  cursor: canUseAdvancedCharacter ? 'pointer' : 'not-allowed',
-                  transition: 'background 0.15s, color 0.15s',
-                  opacity: !canUseAdvancedCharacter ? 0.7 : 1,
-                }}
-              >
-                高级
-                {!canUseAdvancedCharacter && (
-                  <span style={{ marginLeft: 4, fontSize: '0.75rem' }}>🔒</span>
-                )}
-              </button>
-            </div>
-            {!canUseAdvancedCharacter ? (
-              <small style={{ display: 'block', marginTop: 8, color: '#9333ea' }}>
-                升级为Pro用户可以增加最多10000字的详细人物设定
-              </small>
-            ) : effectiveContextLabel === 'advanced' ? (
-              <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>
-                高级角色可填写最多10000字的详细人物设定，用于构建更丰富的角色背景
-              </small>
-            ) : (
-              <small style={{ display: 'block', marginTop: 8, color: '#888' }}>
-                选择「高级」后可额外填写最多10000字的详细人物设定
-              </small>
-            )}
+            <button
+              type="button"
+              className="w-100 d-flex align-items-center justify-content-between"
+              onClick={() => setShowAdvancedOptions(prev => !prev)}
+              aria-expanded={showAdvancedOptions}
+              style={{
+                background: '#f8f9fa',
+                border: '1px solid #e9ecef',
+                borderRadius: 14,
+                color: '#232323',
+                padding: '0.9rem 1rem',
+                fontWeight: 700,
+              }}
+            >
+              <span>{t('character_form.advanced_options')}</span>
+              <span className="d-inline-flex align-items-center gap-2" style={{ color: '#6b7280', fontWeight: 500, fontSize: '0.92rem' }}>
+                {showAdvancedOptions ? t('character_form.collapse_advanced') : t('character_form.expand_advanced')}
+                <i className={`bi ${showAdvancedOptions ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i>
+              </span>
+            </button>
           </div>
 
-          {/* Long Description (advanced only) */}
-          {effectiveContextLabel === 'advanced' && (
-            <div className="mb-4 position-relative">
-              <label className="form-label fw-bold" style={{ color: '#232323' }}>
-                {t('character_form.long_description')}
-                <small className="text-muted" style={{ marginLeft: 8 }}>
-                  {t('character_form.notes.long_description')}
-                </small>
-              </label>
-              <textarea
-                className="form-control"
-                rows={Math.max(6, Math.min(30, Math.ceil((charData.long_description || '').length / 80)))}
-                value={charData.long_description || ''}
-                maxLength={ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
-                placeholder={t('character_form.placeholders.long_description')}
-                onChange={e => handleChange('long_description', e.target.value)}
-                style={{
-                  background: '#f5f6fa',
-                  color: '#18191a',
-                  border: '1.5px solid #e9ecef',
-                  borderRadius: 16,
-                  fontSize: '1.08rem',
-                  padding: '0.7rem 1.2rem',
-                  boxShadow: 'none',
-                  outline: 'none',
-                  paddingRight: '3rem',
-                  resize: 'vertical',
-                }}
-              />
-              <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>
-                创建角色时处理详细人物设定会消耗少量的token
-              </small>
-              <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-                {(charData.long_description || '').length}/{ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
-              </small>
-            </div>
-          )}
-
-          {/* Advanced Chat Config */}
-          <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.75rem' }}>
-              {t('character_form.advanced.title')}
-            </label>
-            <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
-              <div className="mb-3">
-                <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                  {t('character_form.advanced.model')}
-                  <InfoHint text={t('character_form.advanced_help.model')} />
+          {showAdvancedOptions && (
+            <>
+              {/* Context Label */}
+              <div className="mb-4">
+                <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.5rem', display: 'block' }}>
+                  角色类型
                 </label>
-                <select
-                  className="form-select"
-                  value={charData.model || DEFAULT_CHAT_CONFIG.model}
-                  onChange={e => handleModelChange(e.target.value)}
-                  disabled={!canUseAdvancedConfig}
-                  style={{ borderRadius: 12 }}
-                >
-                  <option value="deepseek-chat">deepseek-chat</option>
-                  <option value="deepseek-reasoner">deepseek-reasoner</option>
-                </select>
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                  {t('character_form.advanced.temperature')}: {charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature}
-                  <InfoHint text={t('character_form.advanced_help.temperature')} />
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="2"
-                  step="0.1"
-                  className="form-range"
-                  value={charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature}
-                  onChange={e => updateConfig('temperature', e.target.value, 0, 2, DEFAULT_CHAT_CONFIG.temperature)}
-                  disabled={!canUseAdvancedConfig}
-                />
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                  {t('character_form.advanced.top_p')}: {charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p}
-                  <InfoHint text={t('character_form.advanced_help.top_p')} />
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  className="form-range"
-                  value={charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p}
-                  onChange={e => updateConfig('top_p', e.target.value, 0, 1, DEFAULT_CHAT_CONFIG.top_p)}
-                  disabled={!canUseAdvancedConfig}
-                />
-              </div>
-
-              <div className="row g-3">
-                <div className="col-md-4">
-                  <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                    {t('character_form.advanced.max_tokens')}: {charData.max_tokens ?? selectedTokenLimits.defaultValue}
-                    <InfoHint text={t('character_form.advanced_help.max_tokens')} />
-                  </label>
-                  <select
-                    className="form-select"
-                    value={normalizeTokenTierValue(charData.model || DEFAULT_CHAT_CONFIG.model, charData.max_tokens ?? selectedTokenLimits.defaultValue)}
-                    onChange={e => handleChange('max_tokens', Number(e.target.value))}
-                    disabled={!canUseAdvancedConfig}
-                    style={{ borderRadius: 12 }}
+                <div style={{ display: 'flex', gap: 0, borderRadius: 12, overflow: 'hidden', border: '1.5px solid #e9ecef', width: 'fit-content' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleChange('context_label', 'standard')}
+                    style={{
+                      padding: '0.5rem 1.4rem',
+                      fontSize: '1rem',
+                      fontWeight: effectiveContextLabel === 'standard' ? 700 : 400,
+                      background: effectiveContextLabel === 'standard' ? '#232323' : '#f5f6fa',
+                      color: effectiveContextLabel === 'standard' ? '#fff' : '#555',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s, color 0.15s',
+                    }}
                   >
-                    {selectedTokenTiers.map(tier => (
-                      <option key={tier.value} value={tier.value}>
-                        {t(`character_form.advanced_token_tiers.${tier.labelKey}`)} ({tier.value})
-                      </option>
-                    ))}
-                  </select>
+                    标准
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => canUseAdvancedCharacter && handleChange('context_label', 'advanced')}
+                    disabled={!canUseAdvancedCharacter}
+                    title={!canUseAdvancedCharacter ? '升级为Pro用户后可用' : ''}
+                    style={{
+                      padding: '0.5rem 1.4rem',
+                      fontSize: '1rem',
+                      fontWeight: effectiveContextLabel === 'advanced' ? 700 : 400,
+                      background: effectiveContextLabel === 'advanced' ? '#7c3aed' : '#f5f6fa',
+                      color: effectiveContextLabel === 'advanced' ? '#fff' : (!canUseAdvancedCharacter ? '#bbb' : '#555'),
+                      border: 'none',
+                      cursor: canUseAdvancedCharacter ? 'pointer' : 'not-allowed',
+                      transition: 'background 0.15s, color 0.15s',
+                      opacity: !canUseAdvancedCharacter ? 0.7 : 1,
+                    }}
+                  >
+                    高级
+                    {!canUseAdvancedCharacter && (
+                      <span style={{ marginLeft: 4, fontSize: '0.75rem' }}>🔒</span>
+                    )}
+                  </button>
                 </div>
-                <div className="col-md-4">
-                  <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                    {t('character_form.advanced.presence_penalty')}: {charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty}
-                    <InfoHint text={t('character_form.advanced_help.presence_penalty')} />
-                  </label>
-                  <input
-                    type="range"
-                    min="-2"
-                    max="2"
-                    step="0.1"
-                    className="form-range"
-                    value={charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty}
-                    onChange={e => updateConfig('presence_penalty', e.target.value, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty)}
-                    disabled={!canUseAdvancedConfig}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                    {t('character_form.advanced.frequency_penalty')}: {charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty}
-                    <InfoHint text={t('character_form.advanced_help.frequency_penalty')} />
-                  </label>
-                  <input
-                    type="range"
-                    min="-2"
-                    max="2"
-                    step="0.1"
-                    className="form-range"
-                    value={charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty}
-                    onChange={e => updateConfig('frequency_penalty', e.target.value, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty)}
-                    disabled={!canUseAdvancedConfig}
-                  />
-                </div>
+                {!canUseAdvancedCharacter ? (
+                  <small style={{ display: 'block', marginTop: 8, color: '#9333ea' }}>
+                    升级为Pro用户可以增加最多10000字的详细人物设定
+                  </small>
+                ) : effectiveContextLabel === 'advanced' ? (
+                  <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>
+                    高级角色可填写最多10000字的详细人物设定，用于构建更丰富的角色背景
+                  </small>
+                ) : (
+                  <small style={{ display: 'block', marginTop: 8, color: '#888' }}>
+                    选择「高级」后可额外填写最多10000字的详细人物设定
+                  </small>
+                )}
               </div>
-              {!canUseAdvancedConfig && (
-                <div className="mt-2" style={{ fontSize: '0.82rem', color: '#b45309' }}>
-                  {t('character_form.advanced.locked_notice')}
+
+              {/* Long Description (advanced only) */}
+              {effectiveContextLabel === 'advanced' && (
+                <div className="mb-4 position-relative">
+                  <label className="form-label fw-bold" style={{ color: '#232323' }}>
+                    {t('character_form.long_description')}
+                    <small className="text-muted" style={{ marginLeft: 8 }}>
+                      {t('character_form.notes.long_description')}
+                    </small>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows={Math.max(6, Math.min(30, Math.ceil((charData.long_description || '').length / 80)))}
+                    value={charData.long_description || ''}
+                    maxLength={ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
+                    placeholder={t('character_form.placeholders.long_description')}
+                    onChange={e => handleChange('long_description', e.target.value)}
+                    style={{
+                      background: '#f5f6fa',
+                      color: '#18191a',
+                      border: '1.5px solid #e9ecef',
+                      borderRadius: 16,
+                      fontSize: '1.08rem',
+                      padding: '0.7rem 1.2rem',
+                      boxShadow: 'none',
+                      outline: 'none',
+                      paddingRight: '3rem',
+                      resize: 'vertical',
+                    }}
+                  />
+                  <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>
+                    创建角色时处理详细人物设定会消耗少量的token
+                  </small>
+                  <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+                    {(charData.long_description || '').length}/{ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
+                  </small>
                 </div>
               )}
-            </div>
-          </div>
+
+              {/* Advanced Chat Config */}
+              <div className="mb-4">
+                <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.75rem' }}>
+                  {t('character_form.advanced.title')}
+                </label>
+                <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+                  <div className="mb-3">
+                    <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                      {t('character_form.advanced.model')}
+                      <InfoHint text={t('character_form.advanced_help.model')} />
+                    </label>
+                    <select
+                      className="form-select"
+                      value={charData.model || DEFAULT_CHAT_CONFIG.model}
+                      onChange={e => handleModelChange(e.target.value)}
+                      disabled={!canUseAdvancedConfig}
+                      style={{ borderRadius: 12 }}
+                    >
+                      <option value="deepseek-chat">deepseek-chat</option>
+                      <option value="deepseek-reasoner">deepseek-reasoner</option>
+                    </select>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                      {t('character_form.advanced.temperature')}: {charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature}
+                      <InfoHint text={t('character_form.advanced_help.temperature')} />
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="0.1"
+                      className="form-range"
+                      value={charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature}
+                      onChange={e => updateConfig('temperature', e.target.value, 0, 2, DEFAULT_CHAT_CONFIG.temperature)}
+                      disabled={!canUseAdvancedConfig}
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                      {t('character_form.advanced.top_p')}: {charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p}
+                      <InfoHint text={t('character_form.advanced_help.top_p')} />
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      className="form-range"
+                      value={charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p}
+                      onChange={e => updateConfig('top_p', e.target.value, 0, 1, DEFAULT_CHAT_CONFIG.top_p)}
+                      disabled={!canUseAdvancedConfig}
+                    />
+                  </div>
+
+                  <div className="row g-3">
+                    <div className="col-md-4">
+                      <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                        {t('character_form.advanced.max_tokens')}: {charData.max_tokens ?? selectedTokenLimits.defaultValue}
+                        <InfoHint text={t('character_form.advanced_help.max_tokens')} />
+                      </label>
+                      <select
+                        className="form-select"
+                        value={normalizeTokenTierValue(charData.model || DEFAULT_CHAT_CONFIG.model, charData.max_tokens ?? selectedTokenLimits.defaultValue)}
+                        onChange={e => handleChange('max_tokens', Number(e.target.value))}
+                        disabled={!canUseAdvancedConfig}
+                        style={{ borderRadius: 12 }}
+                      >
+                        {selectedTokenTiers.map(tier => (
+                          <option key={tier.value} value={tier.value}>
+                            {t(`character_form.advanced_token_tiers.${tier.labelKey}`)} ({tier.value})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                        {t('character_form.advanced.presence_penalty')}: {charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty}
+                        <InfoHint text={t('character_form.advanced_help.presence_penalty')} />
+                      </label>
+                      <input
+                        type="range"
+                        min="-2"
+                        max="2"
+                        step="0.1"
+                        className="form-range"
+                        value={charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty}
+                        onChange={e => updateConfig('presence_penalty', e.target.value, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty)}
+                        disabled={!canUseAdvancedConfig}
+                      />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                        {t('character_form.advanced.frequency_penalty')}: {charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty}
+                        <InfoHint text={t('character_form.advanced_help.frequency_penalty')} />
+                      </label>
+                      <input
+                        type="range"
+                        min="-2"
+                        max="2"
+                        step="0.1"
+                        className="form-range"
+                        value={charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty}
+                        onChange={e => updateConfig('frequency_penalty', e.target.value, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty)}
+                        disabled={!canUseAdvancedConfig}
+                      />
+                    </div>
+                  </div>
+                  {!canUseAdvancedConfig && (
+                    <div className="mt-2" style={{ fontSize: '0.82rem', color: '#b45309' }}>
+                      {t('character_form.advanced.locked_notice')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Visibility & Options */}
           <div className="mb-4">

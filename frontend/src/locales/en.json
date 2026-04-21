@@ -50,6 +50,7 @@
     "scenes": "Scenes",
     "personas": "Personas",
     "users": "Users",
+    "sort_by": "Sort by",
     "creator_total_rank": "Top Ranking",
     "creator_recent_updated": "Recently Updated",
     "for_you": "For You",
@@ -321,6 +322,9 @@
     "tagline": "Tagline",
     "tags": "Tags",
     "greeting": "Greeting",
+    "advanced_options": "Advanced options",
+    "expand_advanced": "Show",
+    "collapse_advanced": "Hide",
     "improvise_greeting": "Improvise greeting",
     "greeting_improvising_placeholder": "Greeting will be generated dynamically when starting the chat",
     "notes": {
@@ -366,6 +370,8 @@
     "updated": "Character updated!",
     "created": "Character created!",
     "deleted": "Character deleted",
+    "processing": "Processing...",
+    "processing_tip": "Your character is being processed. This may take a moment.",
     "error": "An error occurred.",
     "tags_required": "Please add at least one tag.",
     "placeholders": {
@@ -429,6 +435,8 @@
     "updated": "Persona updated!",
     "created": "Persona created!",
     "deleted": "Persona deleted",
+    "processing": "Processing...",
+    "processing_tip": "Your persona is being processed. This may take a moment.",
     "error": "An error occurred.",
     "tags_required": "Please add at least one tag.",
     "notes": {
@@ -472,9 +480,12 @@
     "missing_id": "Missing scene ID",
     "not_logged_in": "You need to be logged in.",
     "name_required": "Name and description are required.",
+    "description_required": "Description is required.",
     "updated": "Scene updated!",
     "created": "Scene created!",
     "deleted": "Scene deleted",
+    "processing": "Processing...",
+    "processing_tip": "Your scene is being processed. This may take a moment.",
     "error": "An error occurred.",
     "tags_required": "Please add at least one tag.",
     "notes": {
