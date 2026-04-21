@@ -6,6 +6,7 @@ import { AuthContext } from './AuthProvider.jsx'; // Import the AuthContext
 import { useToast } from './ToastProvider.jsx';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
+import textLogo from '../assets/images/logo_text.png';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import TextButton from './TextButton';
@@ -354,7 +355,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         position: 'relative',
       }}
     >
-      {/* Sidebar Header: logo left, collapse toggle right */}
+      {/* Sidebar Header: text logo left, home + collapse toggle right */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -363,56 +364,79 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         marginBottom: '0.75rem',
         flexShrink: 0,
       }}>
+        {/* Text logo on far left */}
         <a
           href="/"
           aria-label={t('sidebar.home')}
-          title={t('sidebar.home')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'center',
             height: '100%',
-            color: '#232323',
             textDecoration: 'none',
-            fontSize: '1.35rem',
-            lineHeight: 1,
           }}
           onClick={(e) => {
             e.preventDefault();
             handleNavigate('/');
           }}
-          onMouseEnter={() => setHomeIconFocused(true)}
-          onMouseLeave={() => setHomeIconFocused(false)}
-          onFocus={() => setHomeIconFocused(true)}
-          onBlur={() => setHomeIconFocused(false)}
         >
-          <i className={`bi ${homeIconFocused ? 'bi-house-door-fill' : 'bi-house-door'}`} style={{ pointerEvents: 'none' }}></i>
+          <img src={textLogo} alt="Logo" style={{ height: '1.6rem', width: 'auto', objectFit: 'contain', display: 'block' }} />
         </a>
-        <button
-          type="button"
-          onClick={() => setSidebarVisible?.(false)}
-          aria-label={t('topbar.hide_sidebar')}
-          title={t('topbar.hide_sidebar')}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            padding: '0.2rem',
-            margin: 0,
-            color: '#232323',
-            fontSize: '1.5rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            lineHeight: 1,
-            borderRadius: 8,
-            transition: 'background 0.16s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-        >
-          <i className="bi bi-chevron-left" style={{ pointerEvents: 'none' }}></i>
-        </button>
+        {/* Right side: home icon + close sidebar button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
+          <a
+            href="/"
+            aria-label={t('sidebar.home')}
+            title={t('sidebar.home')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '2rem',
+              width: '2rem',
+              color: '#232323',
+              textDecoration: 'none',
+              fontSize: '1.35rem',
+              lineHeight: 1,
+              borderRadius: 8,
+              transition: 'background 0.16s',
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              handleNavigate('/');
+            }}
+            onMouseEnter={(e) => { setHomeIconFocused(true); e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+            onMouseLeave={(e) => { setHomeIconFocused(false); e.currentTarget.style.background = 'transparent'; }}
+            onFocus={() => setHomeIconFocused(true)}
+            onBlur={() => setHomeIconFocused(false)}
+          >
+            <i className={`bi ${homeIconFocused ? 'bi-house-door-fill' : 'bi-house-door'}`} style={{ pointerEvents: 'none' }}></i>
+          </a>
+          <button
+            type="button"
+            onClick={() => setSidebarVisible?.(false)}
+            aria-label={t('topbar.hide_sidebar')}
+            title={t('topbar.hide_sidebar')}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              padding: '0.2rem',
+              margin: 0,
+              color: '#232323',
+              fontSize: '1.5rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: 1,
+              borderRadius: 8,
+              transition: 'background 0.16s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            <i className="bi bi-chevron-left" style={{ pointerEvents: 'none' }}></i>
+          </button>
+        </div>
       </div>
       <div className="mb-2" style={{ position: 'relative' }}>
         <div
