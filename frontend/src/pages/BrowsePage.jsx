@@ -5,7 +5,6 @@ import DiscoverMasonryCard from '../components/DiscoverMasonryCard';
 import UserCard from '../components/UserCard';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
-import PrimaryButton from '../components/PrimaryButton';
 import OnboardingTour from '../components/OnboardingTour';
 import UpdateNotificationModal from '../components/UpdateNotificationModal';
 import ProblemReportModal from '../components/ProblemReportModal';
@@ -57,6 +56,10 @@ function BrowsePage() {
   const [searchFocused, setSearchFocused] = useState(false);
   const loadMoreRef = useRef(null);
   const sortDropdownRef = useRef(null);
+  const activePillRef = useRef(null);
+  const gooTrailRef = useRef(null);
+  const previousMainTabIndexRef = useRef(0);
+  const [pillTranslatePercent, setPillTranslatePercent] = useState(0);
 
   useEffect(() => {
     const handleResize = () => setViewportWidth(window.innerWidth);
@@ -128,6 +131,8 @@ function BrowsePage() {
   const activeSortLabel = activeMainTab !== 'users'
     ? ({ popular: '热门', recommended: '为您推荐', recent: '最近' }[activeSubTab] || activeSortOption?.label || t('common.sort'))
     : (activeSortOption?.label || t('common.sort'));
+  const activeMainTabIndex = Math.max(0, MAIN_TABS.findIndex(tab => tab.key === activeMainTab));
+  const isPopularSortActive = activeSubTab === 'popular';
 
   // Distribute items by index so visual reading order is left-to-right, then next row.
   const masonryColumns = useMemo(() => {
@@ -159,6 +164,75 @@ function BrowsePage() {
     setActiveMainTab(main);
     setActiveSubTab(sub);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const fromIndex = previousMainTabIndexRef.current;
+    const toIndex = activeMainTabIndex;
+    const pillEl = activePillRef.current;
+    const trailEl = gooTrailRef.current;
+
+    if (!pillEl) {
+      previousMainTabIndexRef.current = toIndex;
+      setPillTranslatePercent(toIndex * 100);
+      return;
+    }
+
+    if (fromIndex === toIndex) {
+      setPillTranslatePercent(toIndex * 100);
+      return;
+    }
+
+    const fromPercent = fromIndex * 100;
+    const toPercent = toIndex * 100;
+    const midPercent = (fromPercent + toPercent) / 2;
+    const distance = Math.abs(toIndex - fromIndex);
+    const stretchScale = Math.min(1.4, 1.2 + distance * 0.1);
+    const overshoot = (toPercent > fromPercent ? 1 : -1) * Math.min(16, 6 + distance * 3);
+
+    const pillAnimation = pillEl.animate(
+      [
+        { transform: `translateX(${fromPercent}%) scaleX(1) scaleY(1)`, borderRadius: '12px' },
+        { transform: `translateX(${fromPercent + (toPercent - fromPercent) * 0.22}%) scaleX(${stretchScale}) scaleY(0.92)`, borderRadius: '16px', offset: 0.26 },
+        { transform: `translateX(${midPercent}%) scaleX(${stretchScale + 0.12}) scaleY(0.9)`, borderRadius: '18px', offset: 0.5 },
+        { transform: `translateX(${toPercent + overshoot}%) scaleX(1.08) scaleY(1.04)`, borderRadius: '14px', offset: 0.78 },
+        { transform: `translateX(${toPercent}%) scaleX(0.94) scaleY(1.03)`, borderRadius: '13px', offset: 0.9 },
+        { transform: `translateX(${toPercent}%) scaleX(1) scaleY(1)`, borderRadius: '12px' }
+      ],
+      {
+        duration: 560,
+        easing: 'cubic-bezier(0.2, 0.95, 0.25, 1)',
+        fill: 'forwards'
+      }
+    );
+
+    let trailAnimation;
+    if (trailEl) {
+      trailAnimation = trailEl.animate(
+        [
+          { transform: `translateX(${fromPercent}%) scaleX(1) scaleY(1)`, opacity: 0.35 },
+          { transform: `translateX(${fromPercent + (toPercent - fromPercent) * 0.18}%) scaleX(${stretchScale + 0.28}) scaleY(0.8)`, opacity: 0.5, offset: 0.34 },
+          { transform: `translateX(${midPercent}%) scaleX(${stretchScale + 0.38}) scaleY(0.78)`, opacity: 0.44, offset: 0.55 },
+          { transform: `translateX(${toPercent + overshoot * 0.65}%) scaleX(1.16) scaleY(0.94)`, opacity: 0.3, offset: 0.82 },
+          { transform: `translateX(${toPercent}%) scaleX(1) scaleY(1)`, opacity: 0.35 }
+        ],
+        {
+          duration: 620,
+          easing: 'cubic-bezier(0.18, 0.95, 0.25, 1)',
+          fill: 'forwards'
+        }
+      );
+    }
+
+    pillAnimation.onfinish = () => {
+      setPillTranslatePercent(toPercent);
+      previousMainTabIndexRef.current = toIndex;
+    };
+
+    return () => {
+      pillAnimation.cancel();
+      if (trailAnimation) trailAnimation.cancel();
+    };
+  }, [activeMainTabIndex]);
 
   // Reset page when tabs change
   useEffect(() => {
@@ -309,6 +383,13 @@ function BrowsePage() {
 
   return (
     <PageWrapper>
+      <style>{`
+        @keyframes browseFlamePulse {
+          0% { filter: saturate(1) brightness(1); }
+          50% { filter: saturate(1.35) brightness(1.16); }
+          100% { filter: saturate(1) brightness(1); }
+        }
+      `}</style>
       <OnboardingTour
         isOpen={showOnboarding}
         onClose={() => setShowOnboarding(false)}
@@ -480,34 +561,99 @@ function BrowsePage() {
         </section>
 
         {/* Main Tabs */}
-        <div className="browse-main-tabs d-flex flex-row mb-3 w-100 align-items-center" style={{ gap: 12, justifyContent: 'space-between' }}>
-          <div className="d-flex flex-row" style={{ gap: 12 }}>
+        <div
+          className="browse-main-tabs d-flex flex-row mb-3 w-100 align-items-center"
+          style={{
+            gap: isMobile ? 8 : 12,
+            justifyContent: 'space-between'
+          }}
+        >
+          <div
+            style={{
+              position: 'relative',
+              display: 'grid',
+              gridTemplateColumns: `repeat(${MAIN_TABS.length}, minmax(0, 1fr))`,
+              alignItems: 'center',
+              flex: 1,
+              minWidth: 0,
+              maxWidth: isMobile ? 'none' : 720,
+              borderRadius: 16,
+              padding: 4,
+              background: 'rgba(255, 255, 255, 0.42)',
+              border: '1px solid rgba(255, 255, 255, 0.7)',
+              boxShadow: '0 10px 28px rgba(114, 124, 150, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              overflow: 'hidden'
+            }}
+          >
+            <div
+              aria-hidden="true"
+              ref={gooTrailRef}
+              style={{
+                position: 'absolute',
+                left: 4,
+                top: 6,
+                bottom: 6,
+                width: `calc((100% - 8px) / ${MAIN_TABS.length})`,
+                borderRadius: 14,
+                background: 'radial-gradient(120% 90% at 50% 50%, rgba(214, 200, 238, 0.62) 0%, rgba(214, 200, 238, 0.2) 62%, rgba(214, 200, 238, 0) 100%)',
+                filter: 'blur(4px)',
+                opacity: 0.35,
+                transform: `translateX(${pillTranslatePercent}%) scaleX(1) scaleY(1)`,
+                transition: 'none',
+                transformOrigin: 'center center',
+                pointerEvents: 'none',
+                willChange: 'transform, opacity'
+              }}
+            />
+            <div
+              aria-hidden="true"
+              ref={activePillRef}
+              style={{
+                position: 'absolute',
+                left: 4,
+                top: 4,
+                bottom: 4,
+                width: `calc((100% - 8px) / ${MAIN_TABS.length})`,
+                borderRadius: 12,
+                background: 'linear-gradient(180deg, #f3eef9 0%, #ebe5f1 100%)',
+                boxShadow: '0 8px 18px rgba(124, 109, 158, 0.2), inset 0 1px 0 rgba(255,255,255,0.82), inset 0 -1px 2px rgba(124,109,158,0.06)',
+                transform: `translateX(${pillTranslatePercent}%) scaleX(1)`,
+                transition: 'none',
+                transformOrigin: 'center center',
+                willChange: 'transform'
+              }}
+            />
             {MAIN_TABS.map(tab => (
-              <PrimaryButton
+              <button
               key={tab.key}
               onClick={() => handleMainTab(tab.key)}
               style={{
-                background: activeMainTab === tab.key ? '#736B92' : '#f5f6fa',
-                color: activeMainTab === tab.key ? '#fff' : '#232323',
-                borderRadius: 13,
-                fontSize: '1.02rem',
-                padding: '0.48rem 1.2rem',
-                boxShadow: activeMainTab === tab.key ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                fontWeight: 700,
+                position: 'relative',
+                zIndex: 1,
+                border: 'none',
+                background: 'transparent',
+                color: activeMainTab === tab.key ? '#5C5178' : '#52515B',
+                borderRadius: 12,
+                fontSize: isMobile ? '0.9rem' : '0.98rem',
+                padding: isMobile ? '0.42rem 0.3rem' : '0.5rem 0.35rem',
+                fontWeight: activeMainTab === tab.key ? 700 : 600,
+                cursor: 'pointer',
+                transition: 'color 180ms ease, opacity 180ms ease',
+                whiteSpace: 'nowrap'
               }}
               onMouseEnter={e => {
                 if (activeMainTab !== tab.key) {
-                  e.currentTarget.style.background = '#e9ecef';
-                } else {
-                  e.currentTarget.style.background = '#6A6286';
+                  e.currentTarget.style.color = '#3F3D48';
                 }
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.background = activeMainTab === tab.key ? '#736B92' : '#f5f6fa';
+                e.currentTarget.style.color = activeMainTab === tab.key ? '#5C5178' : '#52515B';
               }}
             >
               {tab.label}
-            </PrimaryButton>
+            </button>
           ))}
           </div>
 
@@ -517,47 +663,60 @@ function BrowsePage() {
               <button
                 onClick={() => setShowSortDropdown(!showSortDropdown)}
                 style={{
-                  background: showSortDropdown
-                    ? 'linear-gradient(135deg, #FF8A3D 0%, #FF5A7A 100%)'
-                    : 'linear-gradient(135deg, #FFE2B8 0%, #FFD0DB 100%)',
-                  color: showSortDropdown ? '#fff' : '#5A3241',
-                  border: showSortDropdown ? 'none' : '1px solid rgba(255, 122, 144, 0.3)',
+                  background: showSortDropdown ? '#F0ECFA' : '#F8F6FC',
+                  color: showSortDropdown ? '#4C4463' : '#5F5778',
+                  border: '1px solid rgba(231, 226, 244, 0.95)',
                   borderRadius: 14,
-                  fontSize: '1rem',
-                  padding: '0.5rem 1rem',
-                  fontWeight: 700,
+                  fontSize: isMobile ? '0.86rem' : '0.98rem',
+                  padding: isMobile ? '0.42rem 0.72rem' : '0.5rem 0.95rem',
+                  fontWeight: 650,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  transition: 'background 0.22s ease, color 0.22s ease, transform 0.18s ease, box-shadow 0.22s ease',
+                  gap: isMobile ? '4px' : '8px',
+                  transition: 'background 0.22s ease, color 0.22s ease, transform 0.18s ease, box-shadow 0.22s ease, border-color 0.22s ease',
                   boxShadow: showSortDropdown
-                    ? '0 8px 20px rgba(255, 90, 122, 0.35)'
-                    : '0 5px 14px rgba(255, 138, 61, 0.2)',
+                    ? '0 8px 16px rgba(141, 125, 176, 0.22), inset 0 1px 0 rgba(255,255,255,0.85)'
+                    : '0 5px 12px rgba(141, 125, 176, 0.14), 0 1px 0 rgba(255,255,255,0.75) inset',
                   whiteSpace: 'nowrap',
                   transform: showSortDropdown ? 'translateY(-1px)' : 'translateY(0)'
                 }}
                 onMouseEnter={e => {
                   if (!showSortDropdown) {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #FFD59A 0%, #FFC0CF 100%)';
-                    e.currentTarget.style.boxShadow = '0 8px 18px rgba(255, 122, 144, 0.28)';
+                    e.currentTarget.style.background = '#F2EEFA';
+                    e.currentTarget.style.borderColor = 'rgba(220, 212, 238, 0.95)';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(141, 125, 176, 0.2), inset 0 1px 0 rgba(255,255,255,0.88)';
                   }
                   e.currentTarget.style.transform = 'translateY(-1px)';
                 }}
                 onMouseLeave={e => {
                   if (!showSortDropdown) {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #FFE2B8 0%, #FFD0DB 100%)';
-                    e.currentTarget.style.boxShadow = '0 5px 14px rgba(255, 138, 61, 0.2)';
+                    e.currentTarget.style.background = '#F8F6FC';
+                    e.currentTarget.style.borderColor = 'rgba(231, 226, 244, 0.95)';
+                    e.currentTarget.style.boxShadow = '0 5px 12px rgba(141, 125, 176, 0.14), 0 1px 0 rgba(255,255,255,0.75) inset';
                   } else {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #FF8A3D 0%, #FF5A7A 100%)';
-                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(255, 90, 122, 0.35)';
+                    e.currentTarget.style.background = '#F0ECFA';
+                    e.currentTarget.style.borderColor = 'rgba(223, 216, 238, 0.95)';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(141, 125, 176, 0.22), inset 0 1px 0 rgba(255,255,255,0.85)';
                   }
                   e.currentTarget.style.transform = showSortDropdown ? 'translateY(-1px)' : 'translateY(0)';
                 }}
               >
                 <i className="bi bi-sort-down" style={{ fontSize: '1.1rem' }}></i>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem' }}>
-                  <span aria-hidden="true" style={{ fontSize: '0.95rem', lineHeight: 1 }}>{activeSortIcon}</span>
+                  {!isMobile && (
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        fontSize: '0.95rem',
+                        lineHeight: 1,
+                        animation: isPopularSortActive ? 'browseFlamePulse 2.8s ease-in-out infinite' : 'none',
+                        transformOrigin: '50% 60%'
+                      }}
+                    >
+                      {activeSortIcon}
+                    </span>
+                  )}
                   <span>{activeSortLabel}</span>
                 </span>
               </button>
