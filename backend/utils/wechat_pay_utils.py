@@ -28,6 +28,8 @@ class WeChatPayClient:
         self.cert_serial_no = ""
         self.private_key = ""
         self.notify_url = ""
+        self.public_key = ""
+        self.public_key_id = ""
         self._client = None
         self._initialize_client()
 
@@ -38,6 +40,8 @@ class WeChatPayClient:
         self.cert_serial_no = os.getenv("WECHAT_CERT_SERIAL_NO", "")
         self.private_key = os.getenv("WECHAT_API_PRIVATE_KEY", "")
         self.notify_url = os.getenv("WECHAT_NOTIFY_URL", "")
+        self.public_key = os.getenv("WECHAT_PUBLIC_KEY", "")
+        self.public_key_id = os.getenv("WECHAT_PUBLIC_KEY_ID", "")
 
     @property
     def missing_config_fields(self) -> list[str]:
@@ -63,7 +67,7 @@ class WeChatPayClient:
             return False
 
         try:
-            from wechatpay import WeChatPay, WeChatPayType
+            from wechatpayv3 import WeChatPay, WeChatPayType
 
             self._client = WeChatPay(
                 wechatpay_type=WeChatPayType.NATIVE,
@@ -73,7 +77,13 @@ class WeChatPayClient:
                 appid=self.appid,
                 apiv3_key=self.apiv3_key,
                 notify_url=self.notify_url,
+                public_key=(self._normalize_public_key(self.public_key) if self.public_key else None),
+                public_key_id=(self.public_key_id or None),
             )
+
+            if bool(self.public_key) ^ bool(self.public_key_id):
+                logger.warning("WECHAT_PUBLIC_KEY 与 WECHAT_PUBLIC_KEY_ID 需要同时配置；当前仅配置了一项，已回退平台证书模式")
+
             logger.info("微信支付客户端初始化成功")
             return True
         except Exception as e:
@@ -98,6 +108,14 @@ class WeChatPayClient:
         if "BEGIN PRIVATE KEY" not in key_str and "BEGIN RSA PRIVATE KEY" not in key_str:
             # 裸 base64，补充 PKCS#8 头尾
             key_str = f"-----BEGIN PRIVATE KEY-----\n{key_str}\n-----END PRIVATE KEY-----"
+        return key_str
+
+    @staticmethod
+    def _normalize_public_key(key_str: str) -> str:
+        """确保公钥格式正确（含 PEM 头尾）"""
+        key_str = key_str.strip().replace("\\n", "\n")
+        if "BEGIN PUBLIC KEY" not in key_str:
+            key_str = f"-----BEGIN PUBLIC KEY-----\n{key_str}\n-----END PUBLIC KEY-----"
         return key_str
 
     @property
