@@ -564,6 +564,8 @@ async def create_order(
             detail = "微信支付尚未正确配置，请检查服务端环境变量"
             if missing:
                 detail = f"微信支付尚未正确配置，缺失: {', '.join(missing)}"
+            elif wechat_pay_client.last_init_error:
+                detail = f"微信支付初始化失败: {wechat_pay_client.last_init_error}"
             raise HTTPException(status_code=503, detail=detail)
 
         notify_url = _build_notify_url() if provider.provider_name == "wechat" else None

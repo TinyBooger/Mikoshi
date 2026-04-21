@@ -5,6 +5,7 @@ import os
 import uuid
 import json
 import logging
+from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,10 @@ class WeChatPayClient:
         self.notify_url = ""
         self.public_key = ""
         self.public_key_id = ""
+        self.cert_dir = ""
+        self.platform_cert = ""
         self._client = None
+        self._last_init_error = ""
         self._initialize_client()
 
     def _load_config(self):
@@ -42,6 +46,29 @@ class WeChatPayClient:
         self.notify_url = os.getenv("WECHAT_NOTIFY_URL", "")
         self.public_key = os.getenv("WECHAT_PUBLIC_KEY", "")
         self.public_key_id = os.getenv("WECHAT_PUBLIC_KEY_ID", "")
+        self.cert_dir = os.getenv("WECHAT_CERT_DIR", "").strip()
+        self.platform_cert = os.getenv("WECHAT_PLATFORM_CERT", "")
+
+    @property
+    def last_init_error(self) -> str:
+        return self._last_init_error
+
+    def _resolve_cert_dir(self) -> str:
+        if self.cert_dir:
+            return self.cert_dir
+        # Default to a writable app-local directory.
+        return str((Path(__file__).resolve().parents[1] / "certs" / "wechatpay").resolve())
+
+    def _seed_platform_certificate(self, cert_dir: str):
+        if not self.platform_cert:
+            return
+        normalized = self._normalize_certificate(self.platform_cert)
+        os.makedirs(cert_dir, exist_ok=True)
+        serial = (self.public_key_id or "manual").replace("/", "_").replace("\\", "_")
+        cert_file = Path(cert_dir) / f"platform_{serial}.pem"
+        if cert_file.exists() and cert_file.read_text(encoding="utf-8") == normalized:
+            return
+        cert_file.write_text(normalized, encoding="utf-8")
 
     @property
     def missing_config_fields(self) -> list[str]:
@@ -63,11 +90,17 @@ class WeChatPayClient:
         missing = self.missing_config_fields
         if missing:
             self._client = None
+            self._last_init_error = f"missing required env: {', '.join(missing)}"
             logger.warning("微信支付配置不完整，缺失: %s", ", ".join(missing))
             return False
 
         try:
             from wechatpayv3 import WeChatPay, WeChatPayType
+
+            use_public_key_mode = bool(self.public_key and self.public_key_id)
+            cert_dir = self._resolve_cert_dir()
+            if not use_public_key_mode:
+                self._seed_platform_certificate(cert_dir)
 
             self._client = WeChatPay(
                 wechatpay_type=WeChatPayType.NATIVE,
@@ -79,15 +112,19 @@ class WeChatPayClient:
                 notify_url=self.notify_url,
                 public_key=(self._normalize_public_key(self.public_key) if self.public_key else None),
                 public_key_id=(self.public_key_id or None),
+                cert_dir=(None if use_public_key_mode else cert_dir),
+                logger=logger,
             )
 
             if bool(self.public_key) ^ bool(self.public_key_id):
                 logger.warning("WECHAT_PUBLIC_KEY 与 WECHAT_PUBLIC_KEY_ID 需要同时配置；当前仅配置了一项，已回退平台证书模式")
 
+            self._last_init_error = ""
             logger.info("微信支付客户端初始化成功")
             return True
         except Exception as e:
             self._client = None
+            self._last_init_error = str(e)
             logger.error(f"微信支付客户端初始化失败: {e}")
             return False
 
@@ -117,6 +154,14 @@ class WeChatPayClient:
         if "BEGIN PUBLIC KEY" not in key_str:
             key_str = f"-----BEGIN PUBLIC KEY-----\n{key_str}\n-----END PUBLIC KEY-----"
         return key_str
+
+    @staticmethod
+    def _normalize_certificate(cert_str: str) -> str:
+        """确保平台证书格式正确（含 PEM 头尾）"""
+        cert_str = cert_str.strip().replace("\\n", "\n")
+        if "BEGIN CERTIFICATE" not in cert_str:
+            cert_str = f"-----BEGIN CERTIFICATE-----\n{cert_str}\n-----END CERTIFICATE-----"
+        return cert_str
 
     @property
     def is_configured(self) -> bool:
