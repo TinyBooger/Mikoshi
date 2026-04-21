@@ -124,8 +124,15 @@ class WeChatPayClient:
             return True
         except Exception as e:
             self._client = None
-            self._last_init_error = str(e)
-            logger.error(f"微信支付客户端初始化失败: {e}")
+            raw_error = str(e)
+            if "No wechatpay platform certificate" in raw_error:
+                self._last_init_error = (
+                    "No wechatpay platform certificate; 请配置 WECHAT_PUBLIC_KEY + WECHAT_PUBLIC_KEY_ID "
+                    "(公钥验签模式) 或配置 WECHAT_PLATFORM_CERT/WECHAT_CERT_DIR (平台证书模式)"
+                )
+            else:
+                self._last_init_error = raw_error
+            logger.error(f"微信支付客户端初始化失败: {self._last_init_error}")
             return False
 
     def _ensure_client(self):
