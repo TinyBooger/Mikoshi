@@ -266,6 +266,7 @@ class WeChatPayProvider:
         description: str,
         notify_url: Optional[str] = None,
         time_expire: Optional[str] = None,
+        attach: Optional[str] = None,
     ) -> str:
         return wechat_pay_client.create_native_order(
             out_trade_no=out_trade_no,
@@ -273,6 +274,7 @@ class WeChatPayProvider:
             description=description,
             notify_url=notify_url,
             time_expire=time_expire,
+            attach=attach,
         )
 
     def query_order(self, out_trade_no: str) -> dict:
@@ -323,6 +325,7 @@ class MockWeChatPayProvider:
         description: str,
         notify_url: Optional[str] = None,
         time_expire: Optional[str] = None,
+        attach: Optional[str] = None,
     ) -> str:
         logger.info(f"Mock微信支付创建Native订单: {out_trade_no}, amount={total_amount}")
         # Return a placeholder code_url for testing; the QR code just encodes this string.
