@@ -178,17 +178,12 @@ export default function UserCard({ user, onClick, disableClick = false }) {
           >
             {displayedRecentCharacters.map((character) => {
               return (
-                <div key={character.id} style={{ width: 132, minWidth: 132, flexShrink: 0 }}>
+                <div key={character.id} style={{ width: 180, minWidth: 180, flexShrink: 0 }}>
                   <EntityCard
                     type="character"
-                    size="mini"
                     entity={{
-                      id: character.id,
-                      name: character.name,
-                      picture: character.picture,
-                      creator_name: name,
-                      views: typeof character.views === 'number' ? character.views : 0,
-                      likes: typeof character.likes === 'number' ? character.likes : 0,
+                      ...character,
+                      creator_name: character?.creator_name || name,
                     }}
                     onClick={() => navigate(`/chat?character=${encodeURIComponent(character.id)}`)}
                   />

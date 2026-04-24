@@ -1,9 +1,0 @@
-.discover-masonry-description {
-  -webkit-line-clamp: 3;
-}
-
-@media (max-width: 768px) {
-  .discover-masonry-description {
-    -webkit-line-clamp: 2;
-  }
-}

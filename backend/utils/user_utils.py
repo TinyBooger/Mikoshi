@@ -60,9 +60,17 @@ def enrich_user_with_character_count(user: User, db: Session) -> dict:
             {
                 "id": character.id,
                 "name": character.name,
+                "tagline": character.tagline or "",
+                "tags": character.tags or [],
                 "picture": character.picture,
                 "views": character.views or 0,
                 "likes": character.likes or 0,
+                "is_public": bool(character.is_public),
+                "is_forkable": bool(character.is_forkable),
+                "context_label": character.context_label or "standard",
+                "creator_id": character.creator_id or user.id,
+                "creator_name": character.creator_name or user.name,
+                "creator_profile_pic": user.profile_pic,
             }
             for character in recent_characters
         ],

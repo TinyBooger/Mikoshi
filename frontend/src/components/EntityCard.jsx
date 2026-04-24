@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
+import defaultAvatar from '../assets/images/default-avatar.png';
 
 /**
  * EntityCard - Unified card for Character, Scene, Persona
@@ -18,6 +19,8 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
   // Mobile viewport detection
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
   const [hovered, setHovered] = useState(false);
+  const [isCreatorHovered, setIsCreatorHovered] = useState(false);
+  const [isDetailCtaActive, setIsDetailCtaActive] = useState(false);
   const navigate = useNavigate();
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
@@ -29,6 +32,7 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
     id,
     name,
     picture,
+    creator_id,
     creator_name,
     views,
     likes,
@@ -57,71 +61,27 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
     }
   }
 
-  // Tag color mapping and fallback color generator
-  const normalizeTag = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, '_');
-  const tagPalette = {
-    romance: '#ec4899',
-    love: '#ef4444',
-    fantasy: '#10b981',
-    sci_fi: '#06b6d4',
-    scifi: '#06b6d4',
-    science_fiction: '#06b6d4',
-    action: '#f59e0b',
-    adventure: '#16a34a',
-    drama: '#8b5cf6',
-    comedy: '#22c55e',
-    horror: '#dc2626',
-    mystery: '#3b82f6',
-    thriller: '#fb923c',
-    slice_of_life: '#6366f1',
-    historical: '#a78bfa',
-    cyberpunk: '#14b8a6',
-    detective: '#0ea5e9',
-    school: '#60a5fa',
-    isekai: '#f97316',
-  };
-  const hslToHex = (h, s, l) => {
-    s /= 100; l /= 100;
-    const c = (1 - Math.abs(2 * l - 1)) * s;
-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    const m = l - c / 2;
-    let r = 0, g = 0, b = 0;
-    if (0 <= h && h < 60) { r = c; g = x; b = 0; }
-    else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
-    else if (120 <= h && h < 180) { r = 0; g = c; b = x; }
-    else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
-    else if (240 <= h && h < 300) { r = x; g = 0; b = c; }
-    else { r = c; g = 0; b = x; }
-    const toHex = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-  };
-  const stringToColor = (str) => {
+  const getTagAccentColor = (label) => {
+    const source = String(label || 'tag');
     let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-      hash |= 0; // keep 32bit
+    for (let i = 0; i < source.length; i++) {
+      hash = source.charCodeAt(i) + ((hash << 5) - hash);
+      hash |= 0;
     }
-    const h = Math.abs(hash) % 360;
-    const s = 65; // vibrant
-    const l = 46; // readable on white
-    return hslToHex(h, s, l);
+    let hue = Math.abs(hash) % 360;
+    if (hue >= 250 && hue <= 310) {
+      hue = (hue + 90) % 360;
+    }
+    return `hsl(${hue}, 72%, 44%)`;
   };
-  let tagColor, tagBg, tagBorder;
-  if (primaryTag) {
-    const key = normalizeTag(primaryTag);
-    const base = tagPalette[key] || stringToColor(key);
-    tagColor = base;
-    tagBg = `${base}18`;
-    tagBorder = `${base}40`;
-  }
 
-  const isMini = size === 'mini';
+  const tagAccent = getTagAccentColor(primaryTag);
 
   // Card sizes
   // On mobile, use 4:5 aspect ratio for card (height = width * 1.25)
-  const CARD_WIDTH = compact ? '100%' : (isMobile ? '100%' : (isMini ? '8.25rem' : '11.25rem'));
+  const CARD_WIDTH = compact ? '100%' : (isMobile ? '100%' : (size === 'mini' ? '8.25rem' : '11.25rem'));
   const CARD_ASPECT_RATIO = 1.25; // 4:5
-  const CARD_HEIGHT = isMini
+  const CARD_HEIGHT = size === 'mini'
     ? (isMobile ? '9.2rem' : '10.5rem')
     : compact
     ? (isMobile ? '100%' : '15.625rem')
@@ -136,6 +96,18 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
   } else if (entity.creator_name) {
     creatorDisplay = entity.creator_name ? entity.creator_name : t('entity_card.unknown');
   }
+
+  const creatorAvatarRaw =
+    entity.creator_profile_pic ||
+    entity.creator_avatar ||
+    entity.creator_avatar_picture ||
+    (typeof creator_name === 'object'
+      ? creator_name.profile_pic || creator_name.avatar || creator_name.avatar_picture
+      : null);
+
+  const creatorAvatar = creatorAvatarRaw
+    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(creatorAvatarRaw).replace(/^\//, '')}`
+    : defaultAvatar;
 
   const suppressPersonaNavigation = type === 'persona' && !onClick;
   const clickSuppressed = disableClick || suppressPersonaNavigation;
@@ -161,6 +133,12 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
     navigate(`/${type}/${id}`);
   };
 
+  const handleCreatorClick = (e) => {
+    e.stopPropagation();
+    if (!creator_id) return;
+    navigate(`/profile/${encodeURIComponent(creator_id)}`);
+  };
+
   return (
     <div
       className={compact && isMobile ? "d-flex flex-row position-relative" : "d-flex flex-column position-relative"}
@@ -168,21 +146,22 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
         width: CARD_WIDTH,
         height: CARD_HEIGHT,
         background: '#f9fafb',
-        borderRadius: isMobile ? '0.75rem' : '1rem',
-        boxShadow: isMobile ? '0 0.0625rem 0.375rem rgba(0,0,0,0.10)' : '0 0.125rem 0.75rem rgba(0,0,0,0.10)',
-        border: '0.125rem solid #e9ecef',
+        borderRadius: '20px',
+        boxShadow: hovered ? '0 6px 18px rgba(0,0,0,0.13)' : '0 2px 10px rgba(0,0,0,0.08)',
+        border: '1px solid #e9ecef',
         overflow: 'hidden',
-        transition: 'box-shadow 0.16s, transform 0.16s',
+        transition: 'box-shadow 0.16s ease, transform 0.16s ease',
         cursor: clickSuppressed ? 'default' : 'pointer',
         pointerEvents: disableClick ? 'none' : 'auto',
         margin: 0,
         maxWidth: '100%',
         display: 'flex',
         flexDirection: compact && isMobile ? 'row' : 'column',
+        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
       }}
       onClick={clickSuppressed ? undefined : handleClick}
-      onMouseEnter={clickSuppressed ? undefined : e => { setHovered(true); e.currentTarget.style.boxShadow = isMobile ? '0 3px 10px rgba(0,0,0,0.13)' : '0 6px 18px rgba(0,0,0,0.13)'; e.currentTarget.style.transform = isMobile ? 'scale(1.03)' : 'translateY(-2px) scale(1.018)'; }}
-      onMouseLeave={clickSuppressed ? undefined : e => { setHovered(false); e.currentTarget.style.boxShadow = isMobile ? '0 1px 6px rgba(0,0,0,0.10)' : '0 2px 12px rgba(0,0,0,0.10)'; e.currentTarget.style.transform = 'none'; }}
+      onMouseEnter={clickSuppressed ? undefined : () => setHovered(true)}
+      onMouseLeave={clickSuppressed ? undefined : () => setHovered(false)}
     >
       {/* Top: Image */}
       <div
@@ -202,10 +181,53 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
           overflow: 'hidden',
           padding: 0,
           position: 'relative',
+          borderTopLeftRadius: '12px',
+          borderTopRightRadius: '12px',
         }}
       >
+        {primaryTag && (
+          <span
+            className="text-uppercase"
+            title={primaryTag}
+            style={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              zIndex: 2,
+              maxWidth: '56%',
+              padding: '0.24rem 0.55rem',
+              borderRadius: '999px',
+              fontSize: '0.56rem',
+              fontWeight: 600,
+              letterSpacing: 0.25,
+              lineHeight: 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              color: '#4b416a',
+              background: 'rgba(255, 255, 255, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.92)',
+              boxShadow: `inset 2px 0 0 ${tagAccent}, 0 4px 12px rgba(0, 0, 0, 0.12)`,
+              textShadow: 'none',
+            }}
+          >
+            <span
+              style={{
+                width: '0.34rem',
+                height: '0.34rem',
+                borderRadius: '999px',
+                background: tagAccent,
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{primaryTag}</span>
+          </span>
+        )}
         {/* Status badges in top-right corner */}
-        <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 3, flexDirection: 'column', alignItems: 'flex-end', zIndex: 1 }}>
+        <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4, zIndex: 2 }}>
           {is_public === false && (
             <span
               title={t('entity_card.private') || 'Private'}
@@ -213,12 +235,10 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
                 background: 'rgba(107, 114, 128, 0.9)',
                 color: '#fff',
                 fontSize: '0.55rem',
-                padding: '2px 5px',
+                padding: '2px 6px',
                 borderRadius: '4px',
                 fontWeight: 600,
-                letterSpacing: '0.3px',
-                textTransform: 'uppercase',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                lineHeight: 1,
               }}
             >
               <i className="bi bi-lock-fill" style={{ fontSize: '0.5rem' }}></i>
@@ -231,12 +251,10 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
                 background: 'rgba(34, 197, 94, 0.9)',
                 color: '#fff',
                 fontSize: '0.55rem',
-                padding: '2px 5px',
+                padding: '2px 6px',
                 borderRadius: '4px',
                 fontWeight: 600,
-                letterSpacing: '0.3px',
-                textTransform: 'uppercase',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                lineHeight: 1,
               }}
             >
               <i className="bi bi-diagram-3-fill" style={{ fontSize: '0.5rem' }}></i>
@@ -258,103 +276,183 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
           }}
         />
       </div>
-      {/* Name & Creator and Info Area (footer) */}
-      <div
-        className={compact && isMobile ? "d-flex flex-column justify-content-center px-2 py-1" : "px-2 pt-2 pb-1"}
-        style={{
-          minWidth: 0,
-          flex: '0 0 auto',
-          minHeight: isMobile && !compact ? 64 : undefined, // always show info area
-          paddingTop: isMobile && !compact ? 8 : undefined,
-          paddingBottom: isMobile && !compact ? 8 : undefined,
-          background: 'inherit',
-        }}
-      >
-        <div className="d-flex align-items-center justify-content-between" style={{ gap: '0.25rem', marginBottom: compact && isMobile ? '0.05rem' : '0.15rem' }}>
-          <h5 className="fw-bold text-dark text-truncate mb-0" style={{ fontSize: isMini ? '0.78rem' : (compact && isMobile ? '0.85rem' : (isMobile ? '0.92rem' : '0.98rem')), maxWidth: primaryTag && !isMini ? '70%' : (isMobile ? '100%' : (isMini ? '100%' : '9.375rem')), fontFamily: 'Inter, sans-serif' }}>{name}</h5>
-          {primaryTag && !isMini && (
-            <span
-              className="badge text-uppercase"
-              title={primaryTag}
+      {/* Content Area */}
+      {!(compact && isMobile) && (
+        <div style={{ padding: '0.65rem 0.7rem 0.85rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <div className="d-flex align-items-start justify-content-between" style={{ gap: '0.5rem' }}>
+            <h5
+              className="fw-bold mb-0"
               style={{
-                background: tagBg,
-                color: tagColor,
-                border: `1px solid ${tagBorder}`,
-                fontSize: isMobile ? '0.48rem' : '0.52rem',
-                padding: isMobile ? '0.15rem 0.28rem' : '0.18rem 0.32rem',
-                letterSpacing: 0.2,
-                fontWeight: 500,
-                maxWidth: '30%',
+                fontSize: '1.05rem',
+                lineHeight: 1.15,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                color: '#000000',
+              }}
+              title={name}
+            >
+              {name}
+            </h5>
+          </div>
+
+          {size !== 'mini' && (
+            <p
+              className="mb-0"
+              style={{
+                fontSize: '0.76rem',
+                lineHeight: 1.18,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 1,
+                WebkitBoxOrient: 'vertical',
+                color: '#a0a0a0',
               }}
             >
-              {primaryTag}
-            </span>
+              {description || t('entity_card.no_description')}
+            </p>
           )}
-        </div>
-        {!isMini && (
-          <span className="text-muted small" style={{ fontSize: isMobile ? '0.68rem' : '0.74rem', fontFamily: 'Inter, sans-serif', fontWeight: 400, display: 'block', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: isMobile ? '100%' : '9.375rem' }}>
-            <i className="bi bi-person-circle me-1"></i>
-            {creatorDisplay ? creatorDisplay : <span style={{ opacity: 0.4 }}>Unknown</span>}
-          </span>
-        )}
-      </div>
-      {/* Description/Tagline/Intro */}
-      {!isMini && !(compact && isMobile) && (<div className="px-2" style={{
-        flex: 1,
-        minHeight: isMobile ? '1.125rem' : '1.375rem', // 18px/22px
-        maxHeight: isMobile ? '1.125rem' : '1.375rem',
-        overflow: 'hidden',
-        marginBottom: '0.125rem', // 2px
-        marginTop: '0.125rem',
-      }}>
-        <span className="text-secondary" style={{
-          fontSize: isMobile ? '0.66rem' : '0.74rem',
-          fontFamily: 'Inter, sans-serif',
-          lineHeight: 1.14,
-          whiteSpace: 'nowrap',
-          textOverflow: 'ellipsis',
-          overflow: 'hidden',
-          display: 'block',
-        }}>
-          {description || <span style={{ opacity: 0.4 }}>{t('entity_card.no_description')}</span>}
-        </span>
-      </div>)}
-      {/* Stats */}
-      {!(compact && isMobile) && (<div className="d-flex align-items-center justify-content-between px-2 pb-1" style={{ minHeight: isMini ? (isMobile ? '1rem' : '1.1rem') : (isMobile ? '0.875rem' : '1.125rem') }}> {/* 14px/18px */}
-        <span className="d-flex align-items-center text-secondary" style={{ fontSize: isMobile ? '0.5625rem' : '0.625rem' }}> {/* 9px/10px */}
-          <i className="bi bi-chat me-1"></i> {typeof views === 'number' ? views.toLocaleString() : 0}
-        </span>
-        {(type === 'character' || type === 'scene' || type === 'persona') && (
-          <span className="d-flex align-items-center text-secondary" style={{ fontSize: isMobile ? '0.5625rem' : '0.625rem' }}>
-            <i className="bi bi-heart me-1"></i> {typeof likes === 'number' ? likes.toLocaleString() : 0}
-          </span>
-        )}
-      </div>)}
-      {/* View Detail Button for forkable entities */}
-      {is_forkable && !isMini && !(compact && isMobile) && (
-        <div className="px-2 pb-2">
+
+          <div className="d-flex align-items-center justify-content-between" style={{ fontSize: '0.68rem', color: '#6c757d', gap: '0.5rem', lineHeight: 1.4 }}>
+            <div
+              className="d-flex align-items-center"
+              style={{
+                gap: '0.35rem',
+                minWidth: 0,
+                cursor: creator_id ? 'pointer' : 'default',
+                padding: '0.12rem 0.3rem',
+                borderRadius: '999px',
+                color: creator_id && isCreatorHovered ? '#5f4f8a' : '#6c757d',
+                background: creator_id && isCreatorHovered ? 'rgba(115, 107, 146, 0.12)' : 'transparent',
+                transition: 'background-color 0.16s ease, color 0.16s ease',
+              }}
+              title={creatorDisplay}
+              onClick={creator_id ? handleCreatorClick : undefined}
+              onMouseEnter={() => creator_id && setIsCreatorHovered(true)}
+              onMouseLeave={() => setIsCreatorHovered(false)}
+            >
+              <img
+                src={creatorAvatar}
+                alt={creatorDisplay}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  flexShrink: 0,
+                  border: '1px solid #e5e7eb',
+                }}
+              />
+              <span
+                style={{
+                  fontSize: '0.74rem',
+                  lineHeight: 1.2,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  textDecoration: creator_id && isCreatorHovered ? 'underline' : 'none',
+                }}
+              >
+                {creatorDisplay}
+              </span>
+            </div>
+
+            <div className="d-flex align-items-center ms-auto" style={{ gap: '0.7rem', flexShrink: 0 }}>
+              <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof likes === 'number' && likes === 0 ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
+                <i className="bi bi-heart" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
+                {typeof likes === 'number' ? likes.toLocaleString() : 0}
+              </span>
+              <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof views === 'number' && views === 0 ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
+                <i className="bi bi-chat" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
+                {typeof views === 'number' ? views.toLocaleString() : 0}
+              </span>
+            </div>
+          </div>
+
+          {is_forkable && size !== 'mini' && (
           <button
             onClick={handleViewDetail}
+            onMouseEnter={() => setIsDetailCtaActive(true)}
+            onMouseLeave={() => setIsDetailCtaActive(false)}
+            onFocus={() => setIsDetailCtaActive(true)}
+            onBlur={() => setIsDetailCtaActive(false)}
             className="w-100 btn btn-sm"
             style={{
-              fontSize: isMobile ? '0.65rem' : '0.7rem',
-              padding: isMobile ? '0.25rem 0.5rem' : '0.3rem 0.6rem',
-              background: '#736B92',
-              color: '#fff',
-              border: 'none',
+              fontSize: '0.68rem',
+              padding: '0.28rem 0.5rem',
+              background: isDetailCtaActive ? 'rgba(115, 107, 146, 0.16)' : 'rgba(115, 107, 146, 0.08)',
+              color: isDetailCtaActive ? '#584a82' : '#6b5f93',
+              border: isDetailCtaActive ? '1px solid rgba(115, 107, 146, 0.9)' : '1px solid rgba(115, 107, 146, 0.55)',
               borderRadius: '0.375rem',
-              fontWeight: 500,
-              transition: 'background 0.15s',
+              fontWeight: 600,
+              cursor: 'pointer',
+              outline: 'none',
+              boxShadow: isDetailCtaActive ? '0 0 0 3px rgba(115, 107, 146, 0.2)' : 'none',
+              transform: isDetailCtaActive ? 'translateY(-1px)' : 'translateY(0)',
+              transition: 'background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#6A6286'}
-            onMouseLeave={(e) => e.currentTarget.style.background = '#736B92'}
           >
             <i className="bi bi-info-circle me-1"></i>
             {t('entity_card.view_detail')}
           </button>
+          )}
+        </div>
+      )}
+
+      {compact && isMobile && (
+        <div
+          className="d-flex flex-column justify-content-center"
+          style={{
+            minWidth: 0,
+            flex: 1,
+            padding: '0.55rem 0.6rem',
+            gap: '0.3rem',
+          }}
+        >
+          <h5
+            className="fw-bold mb-0"
+            style={{
+              fontSize: '0.92rem',
+              lineHeight: 1.15,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              color: '#000000',
+            }}
+            title={name}
+          >
+            {name}
+          </h5>
+
+          {size !== 'mini' && (
+            <p
+              className="mb-0"
+              style={{
+                fontSize: '0.7rem',
+                lineHeight: 1.18,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                color: '#a0a0a0',
+              }}
+            >
+              {description || t('entity_card.no_description')}
+            </p>
+          )}
+
+          <div className="d-flex align-items-center ms-auto" style={{ gap: '0.7rem', flexShrink: 0, fontSize: '0.68rem', color: '#6c757d' }}>
+            <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof likes === 'number' && likes === 0 ? 0.5 : 1 }}>
+              <i className="bi bi-heart" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
+              {typeof likes === 'number' ? likes.toLocaleString() : 0}
+            </span>
+            <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof views === 'number' && views === 0 ? 0.5 : 1 }}>
+              <i className="bi bi-chat" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
+              {typeof views === 'number' ? views.toLocaleString() : 0}
+            </span>
+          </div>
         </div>
       )}
     </div>

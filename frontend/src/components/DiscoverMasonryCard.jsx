@@ -1,17 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
-import './DiscoverMasonryCard.css';
 
 export default function DiscoverMasonryCard({ type, entity, onClick, disableClick = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 640 : false));
   const [isCreatorHovered, setIsCreatorHovered] = useState(false);
   const [isCardHovered, setIsCardHovered] = useState(false);
   const [isAdvancedBadgeHovered, setIsAdvancedBadgeHovered] = useState(false);
+  const [isDetailCtaActive, setIsDetailCtaActive] = useState(false);
   const [cardTilt, setCardTilt] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const {
     id,
@@ -44,87 +52,21 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
     }
   }
 
-  const normalizeTag = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, '_');
-  const tagPalette = {
-    romance: '#ec4899',
-    love: '#ef4444',
-    fantasy: '#10b981',
-    sci_fi: '#06b6d4',
-    scifi: '#06b6d4',
-    science_fiction: '#06b6d4',
-    action: '#f59e0b',
-    adventure: '#16a34a',
-    drama: '#8b5cf6',
-    comedy: '#22c55e',
-    horror: '#dc2626',
-    mystery: '#3b82f6',
-    thriller: '#fb923c',
-    slice_of_life: '#6366f1',
-    historical: '#a78bfa',
-    cyberpunk: '#14b8a6',
-    detective: '#0ea5e9',
-    school: '#60a5fa',
-    isekai: '#f97316',
-  };
-
-  const hslToHex = (h, s, l) => {
-    s /= 100;
-    l /= 100;
-    const c = (1 - Math.abs(2 * l - 1)) * s;
-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    const m = l - c / 2;
-    let r = 0;
-    let g = 0;
-    let b = 0;
-    if (0 <= h && h < 60) {
-      r = c;
-      g = x;
-      b = 0;
-    } else if (60 <= h && h < 120) {
-      r = x;
-      g = c;
-      b = 0;
-    } else if (120 <= h && h < 180) {
-      r = 0;
-      g = c;
-      b = x;
-    } else if (180 <= h && h < 240) {
-      r = 0;
-      g = x;
-      b = c;
-    } else if (240 <= h && h < 300) {
-      r = x;
-      g = 0;
-      b = c;
-    } else {
-      r = c;
-      g = 0;
-      b = x;
-    }
-    const toHex = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-  };
-
-  const stringToColor = (str) => {
+  const getTagAccentColor = (label) => {
+    const source = String(label || 'tag');
     let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    for (let i = 0; i < source.length; i++) {
+      hash = source.charCodeAt(i) + ((hash << 5) - hash);
       hash |= 0;
     }
-    const h = Math.abs(hash) % 360;
-    return hslToHex(h, 65, 46);
+    let hue = Math.abs(hash) % 360;
+    if (hue >= 250 && hue <= 310) {
+      hue = (hue + 90) % 360;
+    }
+    return `hsl(${hue}, 72%, 44%)`;
   };
 
-  let tagColor;
-  let tagBg;
-  let tagBorder;
-  if (primaryTag) {
-    const key = normalizeTag(primaryTag);
-    const base = tagPalette[key] || stringToColor(key);
-    tagColor = base;
-    tagBg = `${base}18`;
-    tagBorder = `${base}40`;
-  }
+  const tagAccent = getTagAccentColor(primaryTag);
 
   let creatorDisplay = t('entity_card.unknown');
   if (creator_name) {
@@ -176,6 +118,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
   };
 
   const handleCardMouseMove = (e) => {
+    if (isMobile) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width;
     const py = (e.clientY - rect.top) / rect.height;
@@ -189,14 +132,14 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
     <article
       style={{
         width: '100%',
-        borderRadius: '12px',
+        borderRadius: isMobile ? '16px' : '20px',
         border: '1px solid #e9ecef',
         background: '#f9fafb',
         boxShadow:
           isAdvancedCharacter && isCardHovered
             ? '0 0 0 1px rgba(215, 164, 59, 0.35), 0 8px 24px rgba(215, 164, 59, 0.22)'
             : '0 2px 10px rgba(0,0,0,0.08)',
-        transform: isCardHovered
+        transform: isCardHovered && !isMobile
           ? `perspective(900px) rotateX(${cardTilt.x.toFixed(2)}deg) rotateY(${cardTilt.y.toFixed(2)}deg) translateY(-4px)`
           : 'perspective(900px) rotateX(0deg) rotateY(0deg) translateY(0px)',
         transformStyle: 'preserve-3d',
@@ -207,7 +150,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
         transition: 'transform 0.16s ease, box-shadow 0.2s ease',
       }}
       onClick={clickSuppressed ? undefined : handleClick}
-      onMouseEnter={() => setIsCardHovered(true)}
+      onMouseEnter={() => !isMobile && setIsCardHovered(true)}
       onMouseMove={handleCardMouseMove}
       onMouseLeave={() => {
         setIsCardHovered(false);
@@ -220,12 +163,53 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
           position: 'relative',
           width: '100%',
           background: '#e9ecef',
-          borderTopLeftRadius: '12px',
-          borderTopRightRadius: '12px',
+          borderTopLeftRadius: isMobile ? '10px' : '12px',
+          borderTopRightRadius: isMobile ? '10px' : '12px',
           overflow: 'hidden',
         }}
       >
-        <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4, zIndex: 2 }}>
+        {primaryTag && (
+          <span
+            className="text-uppercase"
+            title={primaryTag}
+            style={{
+              position: 'absolute',
+              top: isMobile ? 6 : 8,
+              left: isMobile ? 6 : 8,
+              zIndex: 2,
+              maxWidth: isMobile ? '62%' : '56%',
+              padding: isMobile ? '0.22rem 0.48rem' : '0.24rem 0.55rem',
+              borderRadius: '999px',
+              fontSize: isMobile ? '0.52rem' : '0.56rem',
+              fontWeight: 600,
+              letterSpacing: 0.25,
+              lineHeight: 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              color: '#4b416a',
+              background: 'rgba(255, 255, 255, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.92)',
+              boxShadow: `inset 2px 0 0 ${tagAccent}, 0 4px 12px rgba(0, 0, 0, 0.12)`,
+              textShadow: 'none',
+            }}
+          >
+            <span
+              style={{
+                width: isMobile ? '0.3rem' : '0.34rem',
+                height: isMobile ? '0.3rem' : '0.34rem',
+                borderRadius: '999px',
+                background: tagAccent,
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{primaryTag}</span>
+          </span>
+        )}
+        <div style={{ position: 'absolute', top: isMobile ? 5 : 6, right: isMobile ? 5 : 6, display: 'flex', gap: isMobile ? 3 : 4, zIndex: 2 }}>
           {isAdvancedCharacter && (
             <div
               style={{ position: 'relative', display: 'inline-flex' }}
@@ -236,8 +220,8 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
                 style={{
                   background: 'linear-gradient(135deg, #F8E39A 0%, #E1B755 45%, #C88A1B 100%)',
                   color: '#4A3210',
-                  fontSize: '0.58rem',
-                  padding: '2px 6px',
+                  fontSize: isMobile ? '0.54rem' : '0.58rem',
+                  padding: isMobile ? '2px 5px' : '2px 6px',
                   borderRadius: '999px',
                   fontWeight: 700,
                   lineHeight: 1,
@@ -277,8 +261,8 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
               style={{
                 background: 'rgba(107, 114, 128, 0.9)',
                 color: '#fff',
-                fontSize: '0.55rem',
-                padding: '2px 6px',
+                fontSize: isMobile ? '0.5rem' : '0.55rem',
+                padding: isMobile ? '2px 5px' : '2px 6px',
                 borderRadius: '4px',
                 fontWeight: 600,
                 lineHeight: 1,
@@ -293,8 +277,8 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
               style={{
                 background: 'rgba(34, 197, 94, 0.9)',
                 color: '#fff',
-                fontSize: '0.55rem',
-                padding: '2px 6px',
+                fontSize: isMobile ? '0.5rem' : '0.55rem',
+                padding: isMobile ? '2px 5px' : '2px 6px',
                 borderRadius: '4px',
                 fontWeight: 600,
                 lineHeight: 1,
@@ -315,69 +299,50 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
         />
       </div>
 
-      <div style={{ padding: '0.65rem 0.7rem 0.7rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-        <div className="d-flex align-items-start justify-content-between" style={{ gap: '0.5rem' }}>
+      <div style={{ padding: isMobile ? '0.56rem 0.58rem 0.68rem' : '0.65rem 0.7rem 0.85rem', display: 'flex', flexDirection: 'column', gap: isMobile ? '0.3rem' : '0.35rem' }}>
+        <div className="d-flex align-items-start justify-content-between" style={{ gap: isMobile ? '0.4rem' : '0.5rem' }}>
           <h5
             className="fw-bold mb-0"
             style={{
-              fontSize: '0.95rem',
+              fontSize: isMobile ? '0.96rem' : '1.05rem',
               lineHeight: 1.15,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
+              color: '#000000',
             }}
             title={name}
           >
             {name}
           </h5>
-          {primaryTag && (
-            <span
-              className="badge text-uppercase"
-              title={primaryTag}
-              style={{
-                background: tagBg,
-                color: tagColor,
-                border: `1px solid ${tagBorder}`,
-                fontSize: '0.56rem',
-                padding: '0.2rem 0.36rem',
-                letterSpacing: 0.2,
-                fontWeight: 500,
-                maxWidth: '45%',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
-            >
-              {primaryTag}
-            </span>
-          )}
         </div>
 
         <p
-          className="mb-0 text-secondary discover-masonry-description"
+          className="mb-0"
           style={{
-            fontSize: '0.76rem',
+            fontSize: isMobile ? '0.7rem' : '0.76rem',
             lineHeight: 1.18,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             display: '-webkit-box',
+            WebkitLineClamp: isMobile ? 1 : 2,
             WebkitBoxOrient: 'vertical',
+            color: '#a0a0a0',
           }}
         >
           {description || t('entity_card.no_description')}
         </p>
 
-        <div className="d-flex align-items-center justify-content-between" style={{ fontSize: '0.68rem', color: '#6c757d', gap: '0.5rem' }}>
+        <div className="d-flex align-items-center justify-content-between" style={{ fontSize: isMobile ? '0.63rem' : '0.68rem', color: '#6c757d', gap: isMobile ? '0.4rem' : '0.5rem', lineHeight: 1.4 }}>
           <div
             className="d-flex align-items-center"
             style={{
-              gap: '0.35rem',
+              gap: isMobile ? '0.3rem' : '0.35rem',
               minWidth: 0,
               cursor: creator_id ? 'pointer' : 'default',
-              padding: '0.12rem 0.3rem',
+              padding: isMobile ? '0.1rem 0.24rem' : '0.12rem 0.3rem',
               borderRadius: '999px',
               color: creator_id && isCreatorHovered ? '#5f4f8a' : '#6c757d',
               background: creator_id && isCreatorHovered ? 'rgba(115, 107, 146, 0.12)' : 'transparent',
@@ -392,8 +357,8 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
               src={creatorAvatar}
               alt={creatorDisplay}
               style={{
-                width: '18px',
-                height: '18px',
+                width: isMobile ? '16px' : '18px',
+                height: isMobile ? '16px' : '18px',
                 borderRadius: '50%',
                 objectFit: 'cover',
                 flexShrink: 0,
@@ -402,7 +367,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
             />
             <span
               style={{
-                fontSize: '0.74rem',
+                fontSize: isMobile ? '0.69rem' : '0.74rem',
                 lineHeight: 1.2,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -414,18 +379,19 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
             </span>
           </div>
 
-          <div className="d-flex align-items-center ms-auto" style={{ gap: '0.7rem', flexShrink: 0 }}>
-            <span className="d-flex align-items-center" style={{ gap: '0.25rem' }}>
-              <i className="bi bi-heart"></i>
+          <div className="d-flex align-items-center ms-auto" style={{ gap: isMobile ? '0.55rem' : '0.7rem', flexShrink: 0 }}>
+            <span className="d-flex align-items-center" style={{ gap: '0.2rem', opacity: typeof likes === 'number' && likes === 0 ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
+              <i className="bi bi-heart" style={{ fontSize: isMobile ? '0.6rem' : '0.65rem', fontWeight: 300 }}></i>
               {typeof likes === 'number' ? likes.toLocaleString() : 0}
             </span>
-            <span className="d-flex align-items-center" style={{ gap: '0.25rem' }}>
+            <span className="d-flex align-items-center" style={{ gap: '0.2rem', opacity: typeof views === 'number' && views === 0 ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
               <i
                 className={
                   type === 'character' && typeof views === 'number' && views > 100
                     ? 'bi bi-fire text-danger'
                     : 'bi bi-chat'
                 }
+                style={{ fontSize: isMobile ? '0.6rem' : '0.65rem', fontWeight: 300 }}
               ></i>
               {typeof views === 'number' ? views.toLocaleString() : 0}
             </span>
@@ -435,15 +401,24 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
         {is_forkable && (
           <button
             onClick={handleViewDetail}
+            onMouseEnter={() => setIsDetailCtaActive(true)}
+            onMouseLeave={() => setIsDetailCtaActive(false)}
+            onFocus={() => setIsDetailCtaActive(true)}
+            onBlur={() => setIsDetailCtaActive(false)}
             className="w-100 btn btn-sm"
             style={{
-              fontSize: '0.68rem',
-              padding: '0.28rem 0.5rem',
-              background: '#736B92',
-              color: '#fff',
-              border: 'none',
+              fontSize: isMobile ? '0.64rem' : '0.68rem',
+              padding: isMobile ? '0.25rem 0.45rem' : '0.28rem 0.5rem',
+              background: isDetailCtaActive ? 'rgba(115, 107, 146, 0.16)' : 'rgba(115, 107, 146, 0.08)',
+              color: isDetailCtaActive ? '#584a82' : '#6b5f93',
+              border: isDetailCtaActive ? '1px solid rgba(115, 107, 146, 0.9)' : '1px solid rgba(115, 107, 146, 0.55)',
               borderRadius: '0.375rem',
-              fontWeight: 500,
+              fontWeight: 600,
+              cursor: 'pointer',
+              outline: 'none',
+              boxShadow: isDetailCtaActive ? '0 0 0 3px rgba(115, 107, 146, 0.2)' : 'none',
+              transform: isDetailCtaActive ? 'translateY(-1px)' : 'translateY(0)',
+              transition: 'background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease',
             }}
           >
             <i className="bi bi-info-circle me-1"></i>
