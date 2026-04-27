@@ -15,7 +15,7 @@ import PaginationBar from '../components/PaginationBar';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
-import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/tokenDisplay';
+import { formatCompactTokenCount } from '../utils/tokenDisplay';
 
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
@@ -477,6 +477,28 @@ export default function ProfilePage() {
   const formattedProExpireDate = displayUser?.pro_expire_date
     ? new Date(displayUser.pro_expire_date).toLocaleDateString(activeLocale)
     : null;
+  const tokenScope = displayUser?.token_cap_scope;
+  const tokenUsed = Number(tokenScope === 'monthly' ? displayUser?.monthly_token_usage : displayUser?.daily_token_usage) || 0;
+  const tokenCap = Number(displayUser?.token_cap || 0);
+  const tokenUsageValue = tokenCap > 0
+    ? `${formatCompactTokenCount(tokenUsed)} / ${formatCompactTokenCount(tokenCap)}`
+    : formatCompactTokenCount(tokenUsed);
+  const tokenProgressPercent = tokenCap > 0
+    ? Math.min(100, Math.max(0, (tokenUsed / tokenCap) * 100))
+    : 0;
+  const tokenProgressLabel = `${tokenProgressPercent.toFixed(1)}%`;
+  const nextTokenResetDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
+  const formattedNextTokenResetDate = nextTokenResetDate.toLocaleDateString(activeLocale);
+  const proExpireDateObj = displayUser?.pro_expire_date ? new Date(displayUser.pro_expire_date) : null;
+  const isProDueBeforeNextReset = Boolean(proExpireDateObj && proExpireDateObj < nextTokenResetDate);
+  const tokenNoticeText = isProDueBeforeNextReset
+    ? t('profile.pro_due_no_token_reset_notice', {
+      defaultValue: 'Pro 即将到期，下个月 Token 不会重置。',
+    })
+    : t('profile.next_token_reset_notice', {
+      date: formattedNextTokenResetDate,
+      defaultValue: `下次 Token 重置时间：${formattedNextTokenResetDate}`,
+    });
 
   useEffect(() => {
     setShowProBenefits(false);
@@ -578,6 +600,7 @@ export default function ProfilePage() {
                     <span
                       className="fw-bold"
                       style={{
+                        position: 'relative',
                         fontSize: '0.62rem',
                         lineHeight: 1,
                         padding: '0.2rem 0.36rem',
@@ -585,7 +608,11 @@ export default function ProfilePage() {
                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         color: '#fff',
                         flexShrink: 0,
+                        cursor: 'default',
                       }}
+                      title={formattedProExpireDate
+                        ? `${t('profile.pro_remaining_date')}: ${formattedProExpireDate}`
+                        : t('profile.pro_no_expire_date')}
                     >
                       PRO
                     </span>
@@ -593,11 +620,7 @@ export default function ProfilePage() {
                 </div>
 
               </div>
-              {isActivePro && (
-                <div style={{ fontSize: '0.86rem', color: '#555' }}>
-                  {t('profile.pro_remaining_date')}: {formattedProExpireDate || t('profile.pro_no_expire_date')}
-                </div>
-              )}
+
               <p className="mb-0" style={{ fontSize: '1.02rem', lineHeight: 1.5, maxWidth: 640, whiteSpace: 'pre-line', color: '#3a3a3a' }}>
                 {displayUser.bio && displayUser.bio.trim()
                   ? displayUser.bio
@@ -607,118 +630,167 @@ export default function ProfilePage() {
               </p>
               {isOwnProfile && (
                 <div style={{ marginTop: 6 }}>
-                  <ButtonRounded onClick={openEditProfile} style={{ padding: '0.5rem 1rem', fontSize: '0.95rem', width: 'fit-content' }}>
-                    <i className="bi bi-pencil"></i> {t('profile.edit_profile')}
-                  </ButtonRounded>
+                  <button
+                    type="button"
+                    onClick={openEditProfile}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(167, 139, 250, 0.25)';
+                      e.currentTarget.style.boxShadow = '0 0 15px rgba(167, 139, 250, 0.3), inset 0 1px 0 rgba(255,255,255,0.35)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(167, 139, 250, 0.15)';
+                      e.currentTarget.style.boxShadow = '0 10px 24px rgba(111,66,193,0.08), inset 0 1px 0 rgba(255,255,255,0.35)';
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 10,
+                      padding: '0.68rem 1.2rem',
+                      borderRadius: 999,
+                      border: '1px solid rgba(255,255,255,0.48)',
+                      background: 'rgba(167, 139, 250, 0.15)',
+                      color: '#6f42c1',
+                      fontSize: '0.95rem',
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      letterSpacing: '0.01em',
+                      boxShadow: '0 10px 24px rgba(111,66,193,0.08), inset 0 1px 0 rgba(255,255,255,0.35)',
+                      backdropFilter: 'blur(14px)',
+                      WebkitBackdropFilter: 'blur(14px)',
+                      transition: 'background 0.2s ease, box-shadow 0.2s ease',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span>{t('profile.edit_profile')}</span>
+                    <i
+                      className="bi bi-pencil"
+                      aria-hidden="true"
+                      style={{ fontSize: '0.9rem', lineHeight: 1, flexShrink: 0, opacity: 0.9 }}
+                    ></i>
+                  </button>
                 </div>
               )}
 
+              <div style={{ marginTop: 12, width: '100%', maxWidth: 640 }}>
+                <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 6 }}>
+                  <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#5b2f9b' }}>
+                    {tokenProgressLabel}
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 700 }}>
+                    {tokenNoticeText}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    height: 10,
+                    borderRadius: 999,
+                    background: 'rgba(167, 139, 250, 0.16)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${tokenProgressPercent}%`,
+                      height: '100%',
+                      borderRadius: 999,
+                      background: 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%)',
+                      transition: 'width 0.25s ease',
+                    }}
+                  ></div>
+                </div>
+                <div style={{ marginTop: 5, fontSize: '0.84rem', color: '#4b5563' }}>
+                  {tokenUsageValue}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                flex: '0 1 300px',
+                minWidth: 240,
+                marginLeft: 'auto',
+                marginRight: '5rem',
+                alignSelf: 'stretch',
+                display: 'flex',
+                justifyContent: 'flex-end',
+              }}
+            >
               <div
-                className="d-flex align-items-center justify-content-start flex-wrap"
-                style={{ gap: 12, fontSize: '0.96rem', color: '#222', marginTop: 2 }}
+                style={{
+                  width: '100%',
+                  maxWidth: 300,
+                  padding: '1rem 1.05rem',
+                  borderRadius: 22,
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.34), rgba(255,255,255,0.12))',
+                  border: '1px solid rgba(255,255,255,0.45)',
+                  boxShadow: '0 20px 40px rgba(17,17,17,0.08), inset 0 1px 0 rgba(255,255,255,0.45)',
+                  backdropFilter: 'blur(18px)',
+                  WebkitBackdropFilter: 'blur(18px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 14,
+                }}
               >
-                <span
-                  className="d-flex align-items-center gap-2"
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 12,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  }}
-                >
-                  <i className="bi bi-chat" style={{ fontSize: '1.05rem' }}></i>
-                  <div className="d-flex flex-column" style={{ lineHeight: 1.15 }}>
-                    <strong style={{ fontSize: '1.05rem' }}>{totalChats.toLocaleString()}</strong>
-                    <span style={{ fontSize: '0.83rem', color: '#555' }}>{t('profile.total_chats')}</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 700 }}>
+                      {t('profile.total_chats')}
+                    </div>
+                    <div style={{ fontSize: '1.8rem', lineHeight: 1, fontWeight: 800, color: '#111', marginTop: 4 }}>
+                      {totalChats.toLocaleString()}
+                    </div>
                   </div>
-                </span>
-                <span
-                  className="d-flex align-items-center gap-2"
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 12,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  }}
-                >
-                  <i className="bi bi-heart" style={{ fontSize: '1.05rem' }}></i>
-                  <div className="d-flex flex-column" style={{ lineHeight: 1.15 }}>
-                    <strong style={{ fontSize: '1.05rem' }}>{totalLikes.toLocaleString()}</strong>
-                    <span style={{ fontSize: '0.83rem', color: '#555' }}>{t('profile.total_likes')}</span>
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 14,
+                      background: 'rgba(255,255,255,0.28)',
+                      border: '1px solid rgba(255,255,255,0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#111',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <i className="bi bi-chat-dots" style={{ fontSize: '1.15rem' }}></i>
                   </div>
-                </span>
-                <span
-                  className="d-flex align-items-center gap-2"
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 12,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  }}
-                >
-                  <i className="bi bi-lightning-charge" style={{ fontSize: '1.05rem' }}></i>
-                  <div className="d-flex flex-column" style={{ lineHeight: 1.15 }}>
-                    <strong style={{ fontSize: '1.05rem' }}>
-                      {(() => {
-                        const scope = displayUser?.token_cap_scope;
-                        const used = Number(scope === 'monthly' ? displayUser?.monthly_token_usage : displayUser?.daily_token_usage) || 0;
-                        const cap = Number(displayUser?.token_cap || 0);
-                        return cap > 0
-                          ? `${formatCompactTokenCount(used)} / ${formatCompactTokenCount(cap)}`
-                          : formatCompactTokenCount(used);
-                      })()}
-                    </strong>
-                    <span style={{ fontSize: '0.83rem', color: '#555' }}>
-                      {getTokenQuotaLabel(displayUser?.token_cap_scope)}
-                    </span>
+                </div>
+
+                <div style={{ height: 1, background: 'linear-gradient(90deg, rgba(17,17,17,0.08), rgba(255,255,255,0.55), rgba(17,17,17,0.08))' }}></div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 700 }}>
+                      {t('profile.total_likes')}
+                    </div>
+                    <div style={{ fontSize: '1.8rem', lineHeight: 1, fontWeight: 800, color: '#111', marginTop: 4 }}>
+                      {totalLikes.toLocaleString()}
+                    </div>
                   </div>
-                </span>
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 14,
+                      background: 'rgba(255,255,255,0.28)',
+                      border: '1px solid rgba(255,255,255,0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#111',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <i className="bi bi-heart" style={{ fontSize: '1.15rem' }}></i>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
-
-          {/* Pro benefits above level progress, collapsed by default */}
-          {isActivePro && (
-            <div className="mt-3" style={{ maxWidth: 640 }}>
-              <button
-                type="button"
-                onClick={() => setShowProBenefits(prev => !prev)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  border: '1px solid #e1d9ff',
-                  background: '#f8f5ff',
-                  color: '#5b2f9b',
-                  borderRadius: 10,
-                  padding: '0.45rem 0.75rem',
-                  fontSize: '0.84rem',
-                  fontWeight: 700,
-                }}
-              >
-                <i className={`bi ${showProBenefits ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i>
-                {showProBenefits ? t('profile.pro_benefits_collapse') : t('profile.pro_benefits_expand')}
-              </button>
-              {showProBenefits && (
-                <div
-                  style={{
-                    marginTop: 8,
-                    padding: '0.7rem 0.85rem',
-                    borderRadius: 10,
-                    background: '#f8f5ff',
-                    border: '1px solid #e1d9ff',
-                  }}
-                >
-                  <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#5b2f9b', marginBottom: 4 }}>
-                    {t('profile.pro_benefits_title')}
-                  </div>
-                  <ul style={{ margin: 0, paddingLeft: '1.1rem', color: '#4a4a4a', fontSize: '0.84rem', lineHeight: 1.45 }}>
-                    <li>{t('profile.pro_benefit_unlimited_messages')}</li>
-                    <li>{t('profile.pro_benefit_2x_context')}</li>
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Badges Section removed */}
         </div>
 
         <div className="d-flex flex-column w-100" style={{ gap: 24 }}>
