@@ -14,9 +14,8 @@ export default function EntityDetailPage() {
   const navigate = useNavigate();
   const { sessionToken, userData } = useContext(AuthContext);
   const toast = useToast();
-  const userLevel = Number(userData?.level || 1);
   const isProUser = !!userData?.is_pro;
-  const canFork = userLevel >= 2;
+  const canFork = isProUser;
   
   const [entity, setEntity] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -214,8 +213,6 @@ export default function EntityDetailPage() {
     return null;
   }
 
-  const isAdvancedCharacter = type === 'character' && entity?.context_label === 'advanced';
-  const disableForkForFreeAdvanced = !!entity?.is_forkable && isAdvancedCharacter && !isProUser;
   const isOwner = userData?.id === entity.creator_id;
   const picture = entity.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(entity.picture).replace(/^\//, '')}` : defaultPicture;
 
@@ -356,12 +353,9 @@ export default function EntityDetailPage() {
                   {liked ? t('entity_detail.unlike') : t('entity_detail.like')}
               </SecondaryButton>
 
-              {entity.is_forkable && (canFork || disableForkForFreeAdvanced) && (
+              {entity.is_forkable && canFork && (
                 <SecondaryButton
-                  onClick={disableForkForFreeAdvanced ? undefined : handleFork}
-                  disabled={disableForkForFreeAdvanced}
-                  title={disableForkForFreeAdvanced ? '只有付费用户可以参考进阶角色' : undefined}
-                  style={disableForkForFreeAdvanced ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                  onClick={handleFork}
                 >
                   <i className="bi bi-code-fork me-2"></i>
                   {t('entity_detail.fork', 'Fork')}
@@ -369,11 +363,6 @@ export default function EntityDetailPage() {
                 </SecondaryButton>
               )}
 
-              {disableForkForFreeAdvanced && (
-                <div style={{ width: '100%', color: '#8a6a16', fontSize: '0.88rem' }}>
-                  只有付费用户可以参考进阶角色
-                </div>
-              )}
 
               {isOwner && (
                 <>

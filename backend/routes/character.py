@@ -16,7 +16,6 @@ from utils.validators import validate_character_fields
 from utils.content_censor import censor_form_payload
 from utils.text_moderation import moderate_form_payload_with_review
 from schemas import CharacterOut, CharacterListOut
-from utils.level_system import award_exp_with_limits
 from utils.llm_client import client
 from utils.content_review_queue import enqueue_character_review
 from utils.usage_utils import normalize_usage
@@ -235,23 +234,23 @@ async def create_character(
         raise HTTPException(status_code=400, detail=error)
 
     is_pro_user = bool(current_user.is_pro)
-    can_create_private = is_pro_user or (current_user.level or 1) >= 2
-    can_use_fork_features = is_pro_user or (current_user.level or 1) >= 2
+    can_create_private = True
+    can_use_fork_features = is_pro_user
 
     if context_label == "advanced" and not is_pro_user:
         raise HTTPException(status_code=403, detail="Advanced characters require Pro user")
 
-    # Enforce private character capability by level or Pro
+    # Private character creation is open to all users.
     if not is_public and not can_create_private:
-        raise HTTPException(status_code=403, detail="Private characters require level 2 or higher")
+        raise HTTPException(status_code=403, detail="Private characters are unavailable")
     
-    # Enforce: forking requires level 2 or higher
+    # Forking is Pro-only.
     if forked_from_id and not can_use_fork_features:
-        raise HTTPException(status_code=403, detail="Forking requires level 2 or higher")
+        raise HTTPException(status_code=403, detail="Forking requires Pro user")
 
-    # Enforce: open-source/forkable characters require level 2+ or Pro
+    # Making characters forkable is Pro-only.
     if is_forkable and not can_use_fork_features:
-        raise HTTPException(status_code=403, detail="Forkable characters require level 2 or higher")
+        raise HTTPException(status_code=403, detail="Forkable characters require Pro user")
 
     for tag_name in tags:  # update tags
         tag = db.query(Tag).filter(Tag.name == tag_name).first()
@@ -261,7 +260,7 @@ async def create_character(
             db.add(Tag(name=tag_name, count=1))
 
     normalized_long_description = long_description.strip()
-    can_use_advanced_config = is_pro_user or (current_user.level or 1) >= 3
+    can_use_advanced_config = is_pro_user
     chat_config = parse_character_chat_config(
         model=model,
         temperature=temperature,
@@ -372,23 +371,8 @@ async def create_character(
     db.commit()
     db.refresh(char)
 
-    # Award EXP to creator for creating a character
-    exp_result = award_exp_with_limits(current_user, "create_character", db)
-    
-    # Award EXP to original creator if this is a fork (only if forked by someone else)
-    if forked_from_id:
-        original_char = db.query(Character).filter(Character.id == forked_from_id).first()
-        if original_char and original_char.creator_id:
-            original_creator = db.query(User).filter(User.id == original_char.creator_id).first()
-            # Only award EXP if the forker is not the original creator
-            if original_creator and original_creator.id != current_user.id:
-                award_exp_with_limits(original_creator, "forked", db)
-    
     return {
         "message": f"Character '{name}' created.",
-        "exp": current_user.exp,
-        "level": current_user.level,
-        "exp_result": exp_result,
         "content_censored": content_censored,
         "token_limits": get_token_cap_info(current_user, db),
     }
@@ -460,22 +444,22 @@ async def update_character(
         raise HTTPException(status_code=400, detail=error)
     
     is_pro_user = bool(current_user.is_pro)
-    can_create_private = is_pro_user or (current_user.level or 1) >= 2
-    can_use_fork_features = is_pro_user or (current_user.level or 1) >= 2
+    can_create_private = True
+    can_use_fork_features = is_pro_user
 
     if context_label == "advanced" and not is_pro_user:
         raise HTTPException(status_code=403, detail="Advanced characters require Pro user")
 
-    # Enforce level-based private character access (L2+)
+    # Private character creation is open to all users.
     final_is_public = is_public if is_public is not None else char.is_public
     if not final_is_public and not can_create_private:
-        raise HTTPException(status_code=403, detail="Private characters require level 2 or higher")
+        raise HTTPException(status_code=403, detail="Private characters are unavailable")
 
     final_is_forkable = is_forkable if is_forkable is not None else char.is_forkable
 
-    # Enforce open-source/forkable character capability by level or Pro
+    # Making characters forkable is Pro-only.
     if final_is_forkable and not can_use_fork_features:
-        raise HTTPException(status_code=403, detail="Forkable characters require level 2 or higher")
+        raise HTTPException(status_code=403, detail="Forkable characters require Pro user")
 
     normalized_long_description = long_description.strip()
     existing_long_description = (char.long_description or "").strip()
@@ -521,7 +505,7 @@ async def update_character(
     char.long_description = normalized_long_description
     char.long_description_chunks = long_description_chunks
     char.context_label = context_label
-    can_use_advanced_config = is_pro_user or (current_user.level or 1) >= 3
+    can_use_advanced_config = is_pro_user
     chat_config = parse_character_chat_config(
         model=model,
         temperature=temperature,

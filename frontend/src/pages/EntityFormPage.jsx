@@ -10,7 +10,6 @@ import ConfirmModal from '../components/ConfirmModal';
 import UgcPolicyModal from '../components/UgcPolicyModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
-import { silentExpGain } from '../utils/expUtils';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 
 export default function EntityFormPage() {
@@ -59,9 +58,8 @@ export default function EntityFormPage() {
   const MAX_TAGS = entityConfig.maxTags;
 
   const { sessionToken, userData } = useContext(AuthContext);
-  const userLevel = Number(userData?.level || 1);
-  const canPrivate = userLevel >= 2;
-  const canFork = userLevel >= 2;
+  const canPrivate = true;
+  const canFork = !!userData?.is_pro;
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -212,9 +210,6 @@ export default function EntityFormPage() {
       const data = await res.json();
       if (res.ok) {
         toast.show(mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.updated`) : mode === 'fork' ? t(`${entityConfig.transactionKeyPrefix}.forked`) : t(`${entityConfig.transactionKeyPrefix}.created`));
-        if (mode === 'create' || mode === 'fork') {
-          silentExpGain(entityConfig.expGainAction, null, sessionToken).catch(() => {});
-        }
         navigate("/profile");
       } else {
         toast.show(getApiErrorMessage(data, t(`${entityConfig.transactionKeyPrefix}.error`), t), { type: 'error' });
@@ -443,7 +438,7 @@ export default function EntityFormPage() {
                     </div>
                     {!canFork && (
                       <div className="text-danger" style={{ fontSize: '0.75rem' }}>
-                        {t(`${entityConfig.transactionKeyPrefix}.level_lock_notice`, { level: 2 })}
+                        {t('character_form.advanced.locked_notice') || 'This feature requires Pro.'}
                       </div>
                     )}
                   </div>

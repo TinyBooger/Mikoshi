@@ -24,7 +24,6 @@ import re
 from pathlib import Path
 from datetime import datetime, UTC
 from models import User, Character, Scene, ChatHistory
-from utils.level_system import award_exp_with_limits
 from utils.message_limit import can_send_user_message, increment_user_message_count
 from utils.context_window import compact_conversation_messages, resolve_context_window_settings
 from utils.usage_utils import normalize_usage
@@ -361,7 +360,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     persona_id = data.get("persona_id")
     branch_id = data.get("branch_id")
     fork_from_message_id = data.get("fork_from_message_id")
-    can_use_advanced_config = bool(current_user.is_pro) or (current_user.level or 1) >= 3
+    can_use_advanced_config = bool(current_user.is_pro)
     raw_chat_config = data.get("chat_config")
     chat_config = parse_chat_config(raw_chat_config) if can_use_advanced_config else default_chat_config()
     context_window_tier, context_window_soft_limit = resolve_context_window_settings(
@@ -445,9 +444,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         token_limit_info = get_token_cap_info(current_user, db)
     if not prepared_messages:
         return JSONResponse(content={"error": "Invalid messages after normalization"}, status_code=400)
-
-    # Award daily chat EXP (handled by centralized function with limits)
-    exp_result = award_exp_with_limits(current_user, "daily_chat", db)
 
     # Get existing chat info if this is an existing chat
     existing_entry = None

@@ -10,7 +10,6 @@ import textLogo from '../assets/images/logo_text.png';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import TextButton from './TextButton';
-import AvatarFrame from './AvatarFrame';
 import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/tokenDisplay';
 
 export default function Sidebar({ isMobile, setSidebarVisible }) {
@@ -1035,13 +1034,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               aria-haspopup="true"
               tabIndex={0}
             >
-              <AvatarFrame badge={userData?.active_badge} size={32}>
-                <img
-                  src={userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar}
-                  alt={userData?.name || 'User'}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              </AvatarFrame>
+              <img
+                src={userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar}
+                alt={userData?.name || 'User'}
+                style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: '50%' }}
+              />
               <div className="flex-grow-1 text-start d-flex" style={{ minWidth: 0, lineHeight: 1.2 }}>
                 <span
                   className="text-truncate"

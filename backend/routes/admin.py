@@ -26,8 +26,6 @@ class UserUpdate(BaseModel):
     is_pro: Optional[bool] = None
     pro_start_date: Optional[datetime] = None
     pro_expire_date: Optional[datetime] = None
-    level: Optional[int] = None
-    exp: Optional[int] = None
 
 
 class CharacterUpdate(BaseModel):
@@ -231,17 +229,7 @@ def get_user_data_stats(
         if today_active_token_users > 0 else 0
     )
 
-    daily_message_counts = db.query(User.id, User.daily_action_counts).all()
     top_daily_message_users = []
-    for user_id, counts in daily_message_counts:
-        chat_message_count = int((counts or {}).get("chat_messages", 0) or 0)
-        if chat_message_count > 0:
-            top_daily_message_users.append({
-                "user_id": user_id,
-                "daily_messages": chat_message_count,
-            })
-
-    top_daily_message_users.sort(key=lambda item: item["daily_messages"], reverse=True)
 
     return {
         "snapshot_at": now.isoformat(),
@@ -621,15 +609,7 @@ def update_user(
     if effective_pro_start_date and effective_pro_expire_date and effective_pro_expire_date < effective_pro_start_date:
         raise HTTPException(status_code=400, detail="Pro expire date must be after pro start date")
 
-    if update_data.level is not None:
-        if update_data.level < 1 or update_data.level > 6:
-            raise HTTPException(status_code=400, detail="Level must be between 1 and 6")
-        user.level = update_data.level
-    if update_data.exp is not None:
-        if update_data.exp < 0:
-            raise HTTPException(status_code=400, detail="EXP cannot be negative")
-        user.exp = update_data.exp
-    
+
     db.commit()
     db.refresh(user)
     

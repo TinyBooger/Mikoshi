@@ -104,9 +104,6 @@ class UserOut(BaseModel):
     is_admin: bool = False
     default_persona_id: Optional[int] = None
     default_persona: Optional[PersonaOut] = None
-    level: int = 1
-    exp: int = 0
-    daily_exp_gained: int = 0
     daily_token_usage: int = 0
     monthly_token_usage: int = 0
     token_cap_scope: Optional[str] = None
@@ -119,8 +116,6 @@ class UserOut(BaseModel):
     purchased_token_balance: int = 0
     purchased_tokens_bought_total: int = 0
     purchased_tokens_consumed_total: int = 0
-    badges: dict[str, Any] = {}
-    active_badge: Optional[str] = None
     is_pro: bool = False
     pro_start_date: Optional[Any] = None
     pro_expire_date: Optional[Any] = None

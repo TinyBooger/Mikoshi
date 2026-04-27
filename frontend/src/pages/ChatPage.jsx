@@ -260,7 +260,7 @@ export default function ChatPage() {
   const SUMMARY_PREFIX = 'Summary of previous conversation:';
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
   const { userData, setUserData, sessionToken, refreshUserData, loading } = useContext(AuthContext);
-  const canUseAdvancedChatConfig = !!userData?.is_pro || Number(userData?.level || 1) >= 3;
+  const canUseAdvancedChatConfig = !!userData?.is_pro;
   const isProUser = !!userData?.is_pro;
   const toast = useToast();
   const [searchParams] = useSearchParams();

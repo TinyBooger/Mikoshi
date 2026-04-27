@@ -58,16 +58,6 @@ class User(Base):
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
     
-    # Level and EXP system
-    level = Column(Integer, default=1, nullable=False)  # User level (1-6)
-    exp = Column(Integer, default=0, nullable=False)  # Current experience points
-    last_chat_date = Column(DateTime(timezone=True), nullable=True)  # Track daily chat activity for EXP
-    
-    # Daily EXP limits and tracking
-    daily_exp_gained = Column(Integer, default=0, nullable=False)  # EXP gained today
-    last_exp_reset_date = Column(DateTime(timezone=True), nullable=True)  # Last daily reset
-    daily_action_counts = Column(JSONB, default={}, nullable=False)  # Track daily action counts
-
     # Purchased token wallet
     purchased_token_balance = Column(Integer, default=0, nullable=False)
     purchased_tokens_bought_total = Column(Integer, default=0, nullable=False)
@@ -75,10 +65,6 @@ class User(Base):
 
     # liked_characters, liked_scenes, liked_personas removed; now handled by junction tables
     liked_tags = Column(ARRAY(Text), default=[])
-    
-    # Badge system
-    badges = Column(JSONB, default={}, nullable=False)  # Badge data: {badge_name: {awarded_at: timestamp, frame: frame_id}}
-    active_badge = Column(String, nullable=True)  # Currently displayed badge key (e.g., "bronze_creator", "gold_creator")
     
     default_persona_id = Column(Integer, ForeignKey('personas.id', ondelete='SET NULL'), nullable=True)
 

@@ -5,17 +5,9 @@ import EditModal from "../components/EditModal";
 import PaginationBar from "../../components/PaginationBar";
 import "./UsersPage.css";
 
-const AVAILABLE_BADGES = {
-  pioneer: { name: "Pioneer", description: "Early adopter of Mikoshi" },
-  bronze_creator: { name: "Bronze Creator", description: "Reached 1,000 views" },
-  silver_creator: { name: "Silver Creator", description: "Reached 10,000 views" },
-  gold_creator: { name: "Gold Creator", description: "Reached 100,000 views" }
-};
-
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
-  const [managingBadges, setManagingBadges] = useState(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -111,9 +103,7 @@ export default function UsersPage() {
           is_admin: userData.is_admin,
           is_pro: userData.is_pro,
           pro_start_date: toIsoOrNull(userData.pro_start_date),
-          pro_expire_date: toIsoOrNull(userData.pro_expire_date),
-          level: userData.level ? parseInt(userData.level) : undefined,
-          exp: userData.exp ? parseInt(userData.exp) : undefined
+          pro_expire_date: toIsoOrNull(userData.pro_expire_date)
         })
       });
 
@@ -139,121 +129,9 @@ export default function UsersPage() {
     { name: 'is_admin', label: 'Admin Status', type: 'checkbox', helperText: 'Grant admin privileges' },
     { name: 'is_pro', label: 'Pro Status', type: 'checkbox', helperText: 'Mark as premium user' },
     { name: 'pro_start_date', label: 'Pro Start Date', type: 'datetime-local', helperText: 'Optional: when Pro membership started' },
-    { name: 'pro_expire_date', label: 'Pro Expire Date', type: 'datetime-local', helperText: 'Optional: when Pro membership expires' },
-    { name: 'level', label: 'User Level', type: 'number', min: 1, max: 6 },
-    { name: 'exp', label: 'Experience Points', type: 'number', min: 0 }
+    { name: 'pro_expire_date', label: 'Pro Expire Date', type: 'datetime-local', helperText: 'Optional: when Pro membership expires' }
   ];
 
-  const handleManageBadges = (user) => {
-    setManagingBadges(user);
-  };
-
-  const handleAwardBadge = async (badgeKey) => {
-    if (!managingBadges) return;
-
-    try {
-      const formData = new FormData();
-      formData.append('badge_key', badgeKey);
-
-      const response = await fetch(`${window.API_BASE_URL}/api/admin/badges/${managingBadges.id}/award`, {
-        method: 'POST',
-        headers: {
-          'Authorization': sessionToken
-        },
-        body: formData
-      });
-
-      if (response.ok) {
-        alert(`Badge awarded successfully`);
-        fetchUsers();
-        // Update the managingBadges state with the new badge
-        setManagingBadges(prev => ({
-          ...prev,
-          badges: { ...(prev.badges || {}), [badgeKey]: AVAILABLE_BADGES[badgeKey] }
-        }));
-      } else {
-        const error = await response.json();
-        alert(`Error: ${error.detail || 'Failed to award badge'}`);
-      }
-    } catch (err) {
-      console.error('Error awarding badge:', err);
-      alert('Failed to award badge');
-    }
-  };
-
-  const handleRemoveBadge = async (badgeKey) => {
-    if (!managingBadges) return;
-
-    if (!confirm(`Remove badge "${AVAILABLE_BADGES[badgeKey]?.name}" from ${managingBadges.name}?`)) {
-      return;
-    }
-
-    try {
-      const formData = new FormData();
-      formData.append('badge_key', badgeKey);
-
-      const response = await fetch(`${window.API_BASE_URL}/api/admin/badges/${managingBadges.id}/remove`, {
-        method: 'POST',
-        headers: {
-          'Authorization': sessionToken
-        },
-        body: formData
-      });
-
-      if (response.ok) {
-        // If the removed badge was the active badge, clear it
-        if (managingBadges.active_badge === badgeKey) {
-          await handleSetActiveBadge(null);
-        }
-        
-        alert(`Badge removed successfully`);
-        fetchUsers();
-        // Update the managingBadges state
-        setManagingBadges(prev => {
-          const newBadges = { ...(prev.badges || {}) };
-          delete newBadges[badgeKey];
-          return { 
-            ...prev, 
-            badges: newBadges,
-            active_badge: prev.active_badge === badgeKey ? null : prev.active_badge
-          };
-        });
-      } else {
-        const error = await response.json();
-        alert(`Error: ${error.detail || 'Failed to remove badge'}`);
-      }
-    } catch (err) {
-      console.error('Error removing badge:', err);
-      alert('Failed to remove badge');
-    }
-  };
-
-  const handleSetActiveBadge = async (badgeKey) => {
-    if (!managingBadges) return;
-
-    try {
-      const response = await fetch(`${window.API_BASE_URL}/api/users/${managingBadges.id}/active-badge`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': sessionToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ badge_key: badgeKey })
-      });
-
-      if (response.ok) {
-        alert(`Active badge set successfully`);
-        fetchUsers();
-        setManagingBadges(prev => ({ ...prev, active_badge: badgeKey }));
-      } else {
-        const error = await response.json();
-        alert(`Error: ${error.detail || 'Failed to set active badge'}`);
-      }
-    } catch (err) {
-      console.error('Error setting active badge:', err);
-      alert('Failed to set active badge');
-    }
-  };
 
   // Filter and search users
   const filteredUsers = users.filter(user => {
@@ -305,28 +183,9 @@ export default function UsersPage() {
         )}
       </div>
     ),
-    'Level': (
-      <div style={{ textAlign: 'center' }}>
-        <span style={{
-          display: 'inline-block',
-          background: '#2196F3',
-          color: '#fff',
-          width: '2.5rem',
-          height: '2.5rem',
-          lineHeight: '2.5rem',
-          borderRadius: '50%',
-          fontWeight: 'bold'
-        }}>
-          {user.level || 1}
-        </span>
-      </div>
-    ),
-    'EXP': (
-      <div style={{ textAlign: 'right' }}>
-        <strong>{user.exp || 0}</strong>
-        <div style={{ fontSize: '0.8rem', color: '#999' }}>
-          {user.daily_exp_gained || 0}/day
-        </div>
+    'User ID': (
+      <div style={{ textAlign: 'left', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+        {user.id}
       </div>
     )
   }));
@@ -337,7 +196,7 @@ export default function UsersPage() {
         <div>
           <h2 style={{ marginBottom: '0.5rem' }}>👥 User Management</h2>
           <p style={{ marginBottom: 0, color: '#666' }}>
-            Manage users, update permissions, and award badges
+            Manage users and update permissions
           </p>
         </div>
         <div style={{
@@ -400,18 +259,10 @@ export default function UsersPage() {
         }}>
           <div className="table-responsive">
             <Table 
-              columns={["id", "name", "Email/Phone", "Status", "Level", "EXP"]} 
+              columns={["id", "name", "Email/Phone", "Status", "User ID"]} 
               data={displayUsers}
               onEdit={handleEdit}
               onDelete={handleDelete}
-              customActions={[
-                {
-                  label: "Badges",
-                  icon: "bi-award",
-                  className: "btn-outline-warning",
-                  onClick: (row) => handleManageBadges(users.find(u => u.id === row.id))
-                }
-              ]}
             />
           </div>
         </div>
@@ -435,130 +286,6 @@ export default function UsersPage() {
         />
       )}
 
-      {managingBadges && (
-        <div 
-          className="badge-modal-overlay"
-          onClick={() => setManagingBadges(null)}
-        >
-          <div 
-            className="badge-modal-content"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="badge-modal-header">
-              <h4>🏅 Manage Badges</h4>
-              <p style={{ marginBottom: 0, color: '#666' }}>
-                {managingBadges.name} ({managingBadges.email})
-              </p>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={() => setManagingBadges(null)}
-                style={{ position: 'absolute', top: '1.5rem', right: '1.5rem' }}
-              ></button>
-            </div>
-            
-            <div className="badge-modal-body">
-              <div className="badge-section">
-                <h6 className="section-title">Current Badges</h6>
-                {managingBadges.badges && Object.keys(managingBadges.badges).length > 0 ? (
-                  <div className="badge-list">
-                    {Object.entries(managingBadges.badges).map(([key, badge]) => (
-                      <div 
-                        key={key}
-                        className="badge-item"
-                      >
-                        <div className="badge-info">
-                          <div>
-                            <strong>{badge.name || AVAILABLE_BADGES[key]?.name}</strong>
-                            {managingBadges.active_badge === key && (
-                              <span className="active-badge-label">Active</span>
-                            )}
-                          </div>
-                          <div className="badge-description">
-                            {badge.description || AVAILABLE_BADGES[key]?.description}
-                          </div>
-                        </div>
-                        <div className="badge-actions">
-                          {managingBadges.active_badge !== key && (
-                            <button
-                              className="btn btn-sm btn-outline-primary"
-                              onClick={() => handleSetActiveBadge(key)}
-                              title="Set as active display badge"
-                            >
-                              Set Active
-                            </button>
-                          )}
-                          {managingBadges.active_badge === key && (
-                            <button
-                              className="btn btn-sm btn-outline-secondary"
-                              onClick={() => handleSetActiveBadge(null)}
-                              title="Clear active badge"
-                            >
-                              Clear
-                            </button>
-                          )}
-                          <button
-                            className="btn btn-sm btn-danger"
-                            onClick={() => handleRemoveBadge(key)}
-                            title="Remove badge from user"
-                          >
-                            <i className="bi bi-trash"></i>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: 0 }}>
-                    No badges yet
-                  </p>
-                )}
-              </div>
-
-              <div className="badge-section">
-                <h6 className="section-title">Award New Badge</h6>
-                <div className="badge-list">
-                  {Object.entries(AVAILABLE_BADGES).map(([key, badge]) => (
-                    <div 
-                      key={key}
-                      className="badge-item"
-                      style={{
-                        opacity: managingBadges.badges?.[key] ? 0.5 : 1,
-                        pointerEvents: managingBadges.badges?.[key] ? 'none' : 'auto'
-                      }}
-                    >
-                      <div className="badge-info">
-                        <div>
-                          <strong>{badge.name}</strong>
-                        </div>
-                        <div className="badge-description">
-                          {badge.description}
-                        </div>
-                      </div>
-                      <button
-                        className="btn btn-sm btn-primary"
-                        onClick={() => handleAwardBadge(key)}
-                        disabled={!!managingBadges.badges?.[key]}
-                      >
-                        <i className="bi bi-plus-circle"></i> Award
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="badge-modal-footer">
-              <button
-                className="btn btn-secondary"
-                onClick={() => setManagingBadges(null)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

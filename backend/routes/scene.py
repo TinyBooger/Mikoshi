@@ -12,7 +12,6 @@ from utils.session import get_current_user
 from datetime import datetime, UTC
 from schemas import SceneOut, SceneListOut
 from sqlalchemy.dialects.postgresql import array, TEXT
-from utils.level_system import award_exp_with_limits
 from utils.content_censor import censor_form_payload
 
 
@@ -66,13 +65,13 @@ async def create_scene(
     if len(description) > MAX_DESCRIPTION_LENGTH:
         raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
 
-    # Enforce: forking requires level 2 or higher
-    if forked_from_id and current_user.level < 2:
-        raise HTTPException(status_code=403, detail="Forking requires level 2 or higher")
-    
-    # Enforce level-based private scene access (L2+)
-    if not is_public and current_user.level < 2:
-        raise HTTPException(status_code=403, detail="Private scenes require level 2 or higher")
+    # Forking is Pro-only.
+    if forked_from_id and not bool(current_user.is_pro):
+        raise HTTPException(status_code=403, detail="Forking requires Pro user")
+
+    # Making scenes forkable is Pro-only.
+    if is_forkable and not bool(current_user.is_pro):
+        raise HTTPException(status_code=403, detail="Forkable scenes require Pro user")
     
     scene = Scene(
         name=name,
@@ -101,23 +100,9 @@ async def create_scene(
         db.commit()
         db.refresh(scene)
     
-    # Award EXP to creator for creating a scene
-    exp_result = award_exp_with_limits(current_user, "create_scene", db)
-    
-    # Award EXP to original creator if this is a fork
-    if forked_from_id:
-        original_scene = db.query(Scene).filter(Scene.id == forked_from_id).first()
-        if original_scene and original_scene.creator_id:
-            original_creator = db.query(User).filter(User.id == original_scene.creator_id).first()
-            if original_creator:
-                award_exp_with_limits(original_creator, "forked", db)
-    
     return JSONResponse(content={
         "id": scene.id,
         "message": "Scene created",
-        "exp": current_user.exp,
-        "level": current_user.level,
-        "exp_result": exp_result,
         "content_censored": content_censored
     })
 
@@ -318,11 +303,14 @@ async def update_scene(
     intro = censored_payload.get("intro")
     tags = censored_payload.get("tags")
     
-    # Enforce level-based private scene access (L2+)
+    # Private scenes are open to all users.
     final_is_public = is_public if is_public is not None else scene.is_public
-    if not final_is_public and current_user.level < 2:
-        raise HTTPException(status_code=403, detail="Private scenes require level 2 or higher")
-    
+
+    # Making scenes forkable is Pro-only.
+    final_is_forkable = is_forkable if is_forkable is not None else scene.is_forkable
+    if final_is_forkable and not bool(current_user.is_pro):
+        raise HTTPException(status_code=403, detail="Forkable scenes require Pro user")
+
     if name is not None:
         scene.name = name
     if description is not None:

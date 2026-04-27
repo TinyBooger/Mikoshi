@@ -11,7 +11,6 @@ import UgcPolicyModal from '../components/UgcPolicyModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import CharacterAssistantModal from '../components/CharacterAssistantModal';
-import { silentExpGain } from '../utils/expUtils';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/tokenDisplay';
 
@@ -91,12 +90,11 @@ export default function CharacterFormPage() {
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
 
   const { sessionToken, userData, refreshUserData } = useContext(AuthContext);
-  const userLevel = Number(userData?.level || 1);
   const isProUser = !!userData?.is_pro;
-  const canUseAdvancedConfig = userLevel >= 3 || isProUser;
+  const canUseAdvancedConfig = isProUser;
   const canUseAdvancedCharacter = isProUser;
-  const canPrivate = userLevel >= 2 || isProUser;
-  const canFork = userLevel >= 2 || isProUser;
+  const canPrivate = true;
+  const canFork = isProUser;
   const navigate = useNavigate();
   const toast = useToast();
   const [charData, setCharData] = useState({
@@ -370,10 +368,6 @@ export default function CharacterFormPage() {
           refreshUserData({ silent: true });
         }
         toast.show(mode === 'edit' ? t('character_form.updated') : mode === 'fork' ? t('character_form.forked') : t('character_form.created'));
-        // Silently award EXP for character creation (backend handles it but we can trigger refresh)
-        if (mode === 'create' || mode === 'fork') {
-          silentExpGain('create_character', null, sessionToken).catch(() => {});
-        }
         navigate(mode === 'edit' ? "/profile" : "/profile");
       } else {
         const tokenCapMessage = formatTokenCapError(data);
@@ -993,7 +987,7 @@ export default function CharacterFormPage() {
                     </div>
                     {!canFork && (
                       <div className="text-danger" style={{ fontSize: '0.75rem' }}>
-                        {t('character_form.level_lock_notice', { level: 2 }) || 'This function will be available at level 2'}
+                        {t('character_form.advanced.locked_notice') || 'This feature requires Pro.'}
                       </div>
                     )}
                   </div>

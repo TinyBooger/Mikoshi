@@ -228,18 +228,17 @@ def search_users(
         
         query = base_query.add_columns(score_case)
         query = query.group_by(User.id)
-        query = query.order_by(score_case.desc(), User.views.desc(), User.level.desc())
+        query = query.order_by(score_case.desc(), User.views.desc(), User.id.asc())
         total = query.count()
         results = query.offset((page - 1) * page_size).limit(page_size).all()
         users = [r[0] for r in results]  # Extract User objects
     elif sort == "popularity":
         # Sort by views (profile visits)
-        query = base_query.order_by(User.views.desc(), User.level.desc())
+        query = base_query.order_by(User.views.desc(), User.id.asc())
         total = query.count()
         users = query.offset((page - 1) * page_size).limit(page_size).all()
     elif sort == "recent":
-        # Sort by level/exp as a proxy for activity
-        query = base_query.order_by(User.level.desc(), User.exp.desc())
+        query = base_query.order_by(User.views.desc(), User.id.asc())
         total = query.count()
         users = query.offset((page - 1) * page_size).limit(page_size).all()
     else:

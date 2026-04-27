@@ -1,7 +1,6 @@
 import os
 from datetime import datetime, UTC
 
-from utils.level_system import reset_daily_limits_if_needed
 from utils.user_utils import is_pro_active
 
 
@@ -26,10 +25,7 @@ def _is_user_chat_request(messages) -> bool:
 
 
 def get_message_limit_info(user) -> dict:
-    reset_daily_limits_if_needed(user)
-
-    daily_counts = user.daily_action_counts or {}
-    current_count = int(daily_counts.get("chat_messages", 0) or 0)
+    current_count = 0
 
     is_pro = is_pro_active(user)
     cap = _get_int_env("NON_PRO_DAILY_MESSAGE_CAP", 100)
@@ -84,17 +80,5 @@ def can_send_user_message(user, messages) -> dict:
 def increment_user_message_count(user, db_session, should_increment: bool) -> dict:
     if not should_increment:
         return get_message_limit_info(user)
-
-    reset_daily_limits_if_needed(user)
-
-    if is_pro_active(user):
-        return get_message_limit_info(user)
-
-    current_counts = dict(user.daily_action_counts or {})
-    current_count = int(current_counts.get("chat_messages", 0) or 0)
-    current_counts["chat_messages"] = current_count + 1
-    user.daily_action_counts = current_counts
-    db_session.commit()
-    db_session.refresh(user)
 
     return get_message_limit_info(user)
