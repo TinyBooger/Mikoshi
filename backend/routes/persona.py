@@ -358,13 +358,21 @@ def get_personas_created(
     Otherwise, fetch current user's created personas.
     """
     if userId:
-        query = db.query(Persona).filter(Persona.creator_id == userId)
+        query = (
+            db.query(Persona, User.profile_pic.label("creator_profile_pic"))
+            .outerjoin(User, Persona.creator_id == User.id)
+            .filter(Persona.creator_id == userId)
+        )
         if not current_user or current_user.id != userId:
             query = query.filter(Persona.is_public == True)
     else:
         if not current_user:
             return PersonaListOut(items=[], total=0, page=1, page_size=0, short=False)
-        query = db.query(Persona).filter(Persona.creator_id == current_user.id)
+        query = (
+            db.query(Persona, User.profile_pic.label("creator_profile_pic"))
+            .outerjoin(User, Persona.creator_id == User.id)
+            .filter(Persona.creator_id == current_user.id)
+        )
 
     if sort == "popular":
         query = query.order_by(Persona.views.desc(), Persona.created_time.desc())
@@ -372,8 +380,12 @@ def get_personas_created(
         query = query.order_by(Persona.created_time.desc())
     
     total = query.count()
-    personas = query.offset((page - 1) * page_size).limit(page_size).all()
-    return PersonaListOut(items=personas, total=total, page=page, page_size=page_size, short=False)
+    rows = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for persona, creator_profile_pic in rows:
+        persona.creator_profile_pic = creator_profile_pic
+        items.append(persona)
+    return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 # Get personas liked by a user
 @router.get("/api/personas-liked", response_model=PersonaListOut)
@@ -398,8 +410,9 @@ def get_personas_liked(
         target_user_id = current_user.id
 
     query = (
-        db.query(Persona)
+        db.query(Persona, User.profile_pic.label("creator_profile_pic"))
         .join(UserLikedPersona, UserLikedPersona.persona_id == Persona.id)
+        .outerjoin(User, Persona.creator_id == User.id)
         .filter(UserLikedPersona.user_id == target_user_id, Persona.is_public == True)
     )
 
@@ -409,5 +422,9 @@ def get_personas_liked(
         query = query.order_by(Persona.created_time.desc())
 
     total = query.count()
-    personas = query.offset((page - 1) * page_size).limit(page_size).all()
-    return PersonaListOut(items=personas, total=total, page=page, page_size=page_size, short=False)
+    rows = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for persona, creator_profile_pic in rows:
+        persona.creator_profile_pic = creator_profile_pic
+        items.append(persona)
+    return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)

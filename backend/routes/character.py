@@ -755,14 +755,22 @@ def get_user_created_characters(
     Otherwise, fetch current user's created characters.
     """
     if userId:
-        query = db.query(Character).filter(Character.creator_id == userId)
+        query = (
+            db.query(Character, User.profile_pic.label("creator_profile_pic"))
+            .outerjoin(User, Character.creator_id == User.id)
+            .filter(Character.creator_id == userId)
+        )
         # If viewing another user's creations, show only public
         if not current_user or current_user.id != userId:
             query = query.filter(Character.is_public == True)
     else:
         if not current_user:
             return CharacterListOut(items=[], total=0, page=1, page_size=0, short=False)
-        query = db.query(Character).filter(Character.creator_id == current_user.id)
+        query = (
+            db.query(Character, User.profile_pic.label("creator_profile_pic"))
+            .outerjoin(User, Character.creator_id == User.id)
+            .filter(Character.creator_id == current_user.id)
+        )
 
     if sort == "popular":
         query = query.order_by(Character.views.desc(), Character.created_time.desc())
@@ -770,8 +778,12 @@ def get_user_created_characters(
         query = query.order_by(Character.created_time.desc())
     
     total = query.count()
-    characters = query.offset((page - 1) * page_size).limit(page_size).all()
-    return CharacterListOut(items=characters, total=total, page=page, page_size=page_size, short=False)
+    rows = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for char, creator_profile_pic in rows:
+        char.creator_profile_pic = creator_profile_pic
+        items.append(char)
+    return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 @router.get("/api/characters-liked", response_model=CharacterListOut)
 def get_user_liked_characters(
@@ -785,8 +797,9 @@ def get_user_liked_characters(
         return CharacterListOut(items=[], total=0, page=1, page_size=0, short=False)
 
     query = (
-        db.query(Character)
+        db.query(Character, User.profile_pic.label("creator_profile_pic"))
         .join(UserLikedCharacter, UserLikedCharacter.character_id == Character.id)
+        .outerjoin(User, Character.creator_id == User.id)
         .filter(UserLikedCharacter.user_id == current_user.id, Character.is_public == True)
     )
 
@@ -796,8 +809,12 @@ def get_user_liked_characters(
         query = query.order_by(Character.created_time.desc())
 
     total = query.count()
-    characters = query.offset((page - 1) * page_size).limit(page_size).all()
-    return CharacterListOut(items=characters, total=total, page=page, page_size=page_size, short=False)
+    rows = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for char, creator_profile_pic in rows:
+        char.creator_profile_pic = creator_profile_pic
+        items.append(char)
+    return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 
 @router.get("/api/user/{user_id}/characters", response_model=List[CharacterOut])

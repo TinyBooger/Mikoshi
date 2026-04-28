@@ -13,8 +13,19 @@ import defaultAvatar from '../assets/images/default-avatar.png';
  * @param {boolean} [props.disableClick] Optional flag to disable click behavior
  * @param {boolean} [props.compact] Optional flag for compact horizontal layout
  * @param {'default'|'mini'} [props.size] Optional visual size variant
+ * @param {boolean} [props.hideCreator] Optional flag to hide creator section
+ * @param {boolean} [props.hideDetailButton] Optional flag to hide detail button
  */
-export default function EntityCard({ type, entity, onClick, disableClick = false, compact = false, size = 'default' }) {
+export default function EntityCard({
+  type,
+  entity,
+  onClick,
+  disableClick = false,
+  compact = false,
+  size = 'default',
+  hideCreator = false,
+  hideDetailButton = false,
+}) {
   const { t } = useTranslation();
   // Mobile viewport detection
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
@@ -317,48 +328,50 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
           )}
 
           <div className="d-flex align-items-center justify-content-between" style={{ fontSize: '0.68rem', color: '#6c757d', gap: '0.5rem', lineHeight: 1.4 }}>
-            <div
-              className="d-flex align-items-center"
-              style={{
-                gap: '0.35rem',
-                minWidth: 0,
-                cursor: creator_id ? 'pointer' : 'default',
-                padding: '0.12rem 0.3rem',
-                borderRadius: '999px',
-                color: creator_id && isCreatorHovered ? '#5f4f8a' : '#6c757d',
-                background: creator_id && isCreatorHovered ? 'rgba(115, 107, 146, 0.12)' : 'transparent',
-                transition: 'background-color 0.16s ease, color 0.16s ease',
-              }}
-              title={creatorDisplay}
-              onClick={creator_id ? handleCreatorClick : undefined}
-              onMouseEnter={() => creator_id && setIsCreatorHovered(true)}
-              onMouseLeave={() => setIsCreatorHovered(false)}
-            >
-              <img
-                src={creatorAvatar}
-                alt={creatorDisplay}
+            {!hideCreator && (
+              <div
+                className="d-flex align-items-center"
                 style={{
-                  width: '18px',
-                  height: '18px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  flexShrink: 0,
-                  border: '1px solid #e5e7eb',
+                  gap: '0.35rem',
+                  minWidth: 0,
+                  cursor: creator_id ? 'pointer' : 'default',
+                  padding: '0.12rem 0.3rem',
+                  borderRadius: '999px',
+                  color: creator_id && isCreatorHovered ? '#5f4f8a' : '#6c757d',
+                  background: creator_id && isCreatorHovered ? 'rgba(115, 107, 146, 0.12)' : 'transparent',
+                  transition: 'background-color 0.16s ease, color 0.16s ease',
                 }}
-              />
-              <span
-                style={{
-                  fontSize: '0.74rem',
-                  lineHeight: 1.2,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  textDecoration: creator_id && isCreatorHovered ? 'underline' : 'none',
-                }}
+                title={creatorDisplay}
+                onClick={creator_id ? handleCreatorClick : undefined}
+                onMouseEnter={() => creator_id && setIsCreatorHovered(true)}
+                onMouseLeave={() => setIsCreatorHovered(false)}
               >
-                {creatorDisplay}
-              </span>
-            </div>
+                <img
+                  src={creatorAvatar}
+                  alt={creatorDisplay}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    flexShrink: 0,
+                    border: '1px solid #e5e7eb',
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: '0.74rem',
+                    lineHeight: 1.2,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    textDecoration: creator_id && isCreatorHovered ? 'underline' : 'none',
+                  }}
+                >
+                  {creatorDisplay}
+                </span>
+              </div>
+            )}
 
             <div className="d-flex align-items-center ms-auto" style={{ gap: '0.7rem', flexShrink: 0 }}>
               <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof likes === 'number' && likes === 0 ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
@@ -372,7 +385,7 @@ export default function EntityCard({ type, entity, onClick, disableClick = false
             </div>
           </div>
 
-          {is_forkable && size !== 'mini' && (
+          {!hideDetailButton && is_forkable && size !== 'mini' && (
           <button
             onClick={handleViewDetail}
             onMouseEnter={() => setIsDetailCtaActive(true)}

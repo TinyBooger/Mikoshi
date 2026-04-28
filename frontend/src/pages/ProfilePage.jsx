@@ -9,7 +9,6 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '../components/ToastProvider';
 
 import EntityCard from '../components/EntityCard';
-import ButtonRounded from '../components/ButtonRounded';
 import CardSection from '../components/CardSection';
 import PaginationBar from '../components/PaginationBar';
 import PrimaryButton from '../components/PrimaryButton';
@@ -76,6 +75,12 @@ export default function ProfilePage() {
   const [totalLikes, setTotalLikes] = useState(0);
   
   const [showProBenefits, setShowProBenefits] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Keep own-profile stats (including monthly token usage) fresh when returning to this page.
   useEffect(() => {
@@ -254,9 +259,9 @@ export default function ProfilePage() {
   // Unified content renderer for all tabs and subtabs
   const renderTabContent = () => {
     // Helper for CardSection grid
-    const renderEntityCardSection = (entities, type, showEdit, editUrlPrefix, title, emptyMsg, page, total, onPageChange) => (
+    const renderEntityCardSection = (entities, type, showEdit, editUrlPrefix, emptyMsg, page, total, onPageChange) => (
       <>
-        <CardSection title={title}>
+        <CardSection>
           {loading ? (
             <div className="text-center my-5" style={{ gridColumn: '1/-1' }}>
               <div className="spinner-border text-primary" role="status">
@@ -280,19 +285,37 @@ export default function ProfilePage() {
                     gap: '8px'
                   }}
                 >
-                  <EntityCard type={type} entity={entity} />
+                  <EntityCard
+                    type={type}
+                    entity={entity}
+                    hideDetailButton={true}
+                  />
                   {showEdit && (
-                    <ButtonRounded
-                      title={t('profile.edit')}
+                    <button
+                      type="button"
                       onClick={() => navigate(`/${editUrlPrefix}/edit/${entity.id}`)}
-                      style={{ 
-                        width: '100%', 
-                        fontSize: '0.85rem', 
-                        padding: '0.4rem 0.8rem'
+                      onMouseEnter={(e) => { e.currentTarget.style.color = '#7c3aed'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = '#9ca3af'; }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 5,
+                        width: 'fit-content',
+                        margin: '0 auto',
+                        padding: '0.3rem 0',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#9ca3af',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'color 0.18s ease',
                       }}
                     >
-                      <i className="bi bi-pencil-square"></i> {t('profile.edit')}
-                    </ButtonRounded>
+                      <i className="bi bi-pencil" style={{ fontSize: '0.75rem' }}></i>
+                      {t('profile.edit')}
+                    </button>
                   )}
                 </div>
               ))}
@@ -314,7 +337,6 @@ export default function ProfilePage() {
     let type = '';
     let showEdit = false;
     let editUrlPrefix = '';
-    let title = '';
     let emptyMsg = '';
     let page = 1;
     let total = 0;
@@ -326,7 +348,6 @@ export default function ProfilePage() {
         type = 'character';
         showEdit = isOwnProfile;
         editUrlPrefix = 'character';
-        title = t('profile.created_characters');
         emptyMsg = t('profile.no_characters_created');
         page = createdCharactersPage;
         total = createdCharactersTotal;
@@ -336,7 +357,6 @@ export default function ProfilePage() {
         type = 'scene';
         showEdit = isOwnProfile;
         editUrlPrefix = 'scene';
-        title = t('profile.created_scenes');
         emptyMsg = t('profile.no_scenes_created');
         page = scenesPage;
         total = scenesTotal;
@@ -347,7 +367,6 @@ export default function ProfilePage() {
         type = 'persona';
         showEdit = isOwnProfile;
         editUrlPrefix = 'persona';
-        title = t('profile.created_personas');
         emptyMsg = t('profile.no_personas_created');
         page = personasPage;
         total = personasTotal;
@@ -359,7 +378,6 @@ export default function ProfilePage() {
         type = 'character';
         showEdit = false;
         editUrlPrefix = 'character';
-        title = t('profile.liked_characters');
         emptyMsg = t('profile.no_liked_characters');
         page = likedCharactersPage;
         total = likedCharactersTotal;
@@ -369,7 +387,6 @@ export default function ProfilePage() {
         type = 'scene';
         showEdit = false;
         editUrlPrefix = 'scene';
-        title = t('profile.liked_scenes');
         emptyMsg = t('profile.no_liked_scenes');
         page = likedScenesPage;
         total = likedScenesTotal;
@@ -379,14 +396,13 @@ export default function ProfilePage() {
         type = 'persona';
         showEdit = false;
         editUrlPrefix = 'persona';
-        title = t('profile.liked_personas');
         emptyMsg = t('profile.no_liked_personas');
         page = likedPersonasPage;
         total = likedPersonasTotal;
         onPageChange = setLikedPersonasPage;
       }
     }
-    return renderEntityCardSection(entities, type, showEdit, editUrlPrefix, title, emptyMsg, page, total, onPageChange);
+    return renderEntityCardSection(entities, type, showEdit, editUrlPrefix, emptyMsg, page, total, onPageChange);
   };
   // Edit profile modal state
   const [showModal, setShowModal] = useState(false);
@@ -491,7 +507,9 @@ export default function ProfilePage() {
   const formattedNextTokenResetDate = nextTokenResetDate.toLocaleDateString(activeLocale);
   const proExpireDateObj = displayUser?.pro_expire_date ? new Date(displayUser.pro_expire_date) : null;
   const isProDueBeforeNextReset = Boolean(proExpireDateObj && proExpireDateObj < nextTokenResetDate);
-  const tokenNoticeText = isProDueBeforeNextReset
+  const tokenNoticeText = !isActivePro
+    ? t('profile.token_resets_daily', { defaultValue: 'Token quota resets daily.' })
+    : isProDueBeforeNextReset
     ? t('profile.pro_due_no_token_reset_notice', {
       defaultValue: 'Pro 即将到期，下个月 Token 不会重置。',
     })
@@ -503,6 +521,27 @@ export default function ProfilePage() {
   useEffect(() => {
     setShowProBenefits(false);
   }, [displayUser?.id, isActivePro]);
+
+  const activeSort = activeSubtab === SUBTAB_TYPES.CHARACTERS
+    ? characterSort
+    : activeSubtab === SUBTAB_TYPES.SCENES
+    ? sceneSort
+    : personaSort;
+
+  const setActiveSort = (sortValue) => {
+    if (activeSubtab === SUBTAB_TYPES.CHARACTERS) {
+      setCharacterSort(sortValue);
+      return;
+    }
+    if (activeSubtab === SUBTAB_TYPES.SCENES) {
+      setSceneSort(sortValue);
+      return;
+    }
+    setPersonaSort(sortValue);
+  };
+
+  const sortToggleTranslatePercent = activeSort === ENTITY_SORTS.RECENT ? 0 : 100;
+  const subtabPillIndex = activeSubtab === SUBTAB_TYPES.CHARACTERS ? 0 : activeSubtab === SUBTAB_TYPES.SCENES ? 1 : 2;
 
   if (userLoading) {
     return (
@@ -580,17 +619,17 @@ export default function ProfilePage() {
             <img
               src={displayUser.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${displayUser.profile_pic.replace(/^\//, '')}` : defaultAvatar}
               alt={t('profile.alt_profile')}
-              style={{ width: 104, height: 104, objectFit: 'cover', borderRadius: '50%' }}
+              style={{ width: isMobile ? 72 : 104, height: isMobile ? 72 : 104, objectFit: 'cover', borderRadius: '50%', flexShrink: 0 }}
             />
 
-            <div style={{ flex: '1 1 340px', minWidth: 260, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ flex: '1 1 200px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div className="d-flex align-items-center justify-content-between flex-wrap" style={{ gap: 10 }}>
                 <div className="d-flex align-items-center flex-wrap" style={{ gap: 10 }}>
                   <h2
                     style={{
                       color: isActivePro ? '#6f42c1' : '#111',
                       fontWeight: 800,
-                      fontSize: '1.5rem',
+                      fontSize: isMobile ? '1.2rem' : '1.5rem',
                       marginBottom: 0,
                     }}
                   >
@@ -621,7 +660,7 @@ export default function ProfilePage() {
 
               </div>
 
-              <p className="mb-0" style={{ fontSize: '1.02rem', lineHeight: 1.5, maxWidth: 640, whiteSpace: 'pre-line', color: '#3a3a3a' }}>
+              <p className="mb-0" style={{ fontSize: isMobile ? '0.88rem' : '1.02rem', lineHeight: 1.5, maxWidth: 640, whiteSpace: 'pre-line', color: '#3a3a3a' }}>
                 {displayUser.bio && displayUser.bio.trim()
                   ? displayUser.bio
                   : (isOwnProfile
@@ -672,6 +711,7 @@ export default function ProfilePage() {
                 </div>
               )}
 
+              {!isMobile && (
               <div style={{ marginTop: 12, width: '100%', maxWidth: 640 }}>
                 <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 6 }}>
                   <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#5b2f9b' }}>
@@ -699,28 +739,59 @@ export default function ProfilePage() {
                     }}
                   ></div>
                 </div>
-                <div style={{ marginTop: 5, fontSize: '0.84rem', color: '#4b5563' }}>
-                  {tokenUsageValue}
+              </div>
+              )}
+            </div>
+
+            {isMobile && (
+              <div style={{ flex: '1 1 100%', width: '100%', marginTop: 2 }}>
+                <div style={{ width: '100%', maxWidth: '100%' }}>
+                  <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 6 }}>
+                    <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#5b2f9b' }}>
+                      {tokenProgressLabel}
+                    </span>
+                    <span style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 700 }}>
+                      {tokenNoticeText}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      height: 10,
+                      borderRadius: 999,
+                      background: 'rgba(167, 139, 250, 0.16)',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${tokenProgressPercent}%`,
+                        height: '100%',
+                        borderRadius: 999,
+                        background: 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%)',
+                        transition: 'width 0.25s ease',
+                      }}
+                    ></div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div
               style={{
-                flex: '0 1 300px',
-                minWidth: 240,
-                marginLeft: 'auto',
-                marginRight: '5rem',
-                alignSelf: 'stretch',
+                flex: isMobile ? '1 1 100%' : '0 1 300px',
+                minWidth: isMobile ? 0 : 240,
+                marginLeft: isMobile ? 0 : 'auto',
+                marginRight: isMobile ? 0 : '5rem',
+                alignSelf: 'flex-start',
                 display: 'flex',
-                justifyContent: 'flex-end',
+                justifyContent: isMobile ? 'stretch' : 'flex-end',
               }}
             >
               <div
                 style={{
                   width: '100%',
-                  maxWidth: 300,
-                  padding: '1rem 1.05rem',
+                  maxWidth: isMobile ? '100%' : 300,
+                  padding: isMobile ? '0.7rem 0.85rem' : '1rem 1.05rem',
                   borderRadius: 22,
                   background: 'linear-gradient(135deg, rgba(255,255,255,0.34), rgba(255,255,255,0.12))',
                   border: '1px solid rgba(255,255,255,0.45)',
@@ -728,23 +799,24 @@ export default function ProfilePage() {
                   backdropFilter: 'blur(18px)',
                   WebkitBackdropFilter: 'blur(18px)',
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: 14,
+                  flexDirection: isMobile ? 'row' : 'column',
+                  alignItems: isMobile ? 'center' : 'stretch',
+                  gap: isMobile ? 0 : 14,
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flex: isMobile ? 1 : undefined }}>
                   <div>
                     <div style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 700 }}>
                       {t('profile.total_chats')}
                     </div>
-                    <div style={{ fontSize: '1.8rem', lineHeight: 1, fontWeight: 800, color: '#111', marginTop: 4 }}>
+                    <div style={{ fontSize: isMobile ? '1.3rem' : '1.8rem', lineHeight: 1, fontWeight: 800, color: '#111', marginTop: 4 }}>
                       {totalChats.toLocaleString()}
                     </div>
                   </div>
                   <div
                     style={{
-                      width: 44,
-                      height: 44,
+                      width: isMobile ? 34 : 44,
+                      height: isMobile ? 34 : 44,
                       borderRadius: 14,
                       background: 'rgba(255,255,255,0.28)',
                       border: '1px solid rgba(255,255,255,0.35)',
@@ -755,25 +827,28 @@ export default function ProfilePage() {
                       flexShrink: 0,
                     }}
                   >
-                    <i className="bi bi-chat-dots" style={{ fontSize: '1.15rem' }}></i>
+                    <i className="bi bi-chat-dots" style={{ fontSize: isMobile ? '0.9rem' : '1.15rem' }}></i>
                   </div>
                 </div>
 
-                <div style={{ height: 1, background: 'linear-gradient(90deg, rgba(17,17,17,0.08), rgba(255,255,255,0.55), rgba(17,17,17,0.08))' }}></div>
+                <div style={isMobile
+                  ? { width: 1, alignSelf: 'stretch', margin: '0 12px', background: 'linear-gradient(180deg, rgba(17,17,17,0.08), rgba(255,255,255,0.55), rgba(17,17,17,0.08))' }
+                  : { height: 1, background: 'linear-gradient(90deg, rgba(17,17,17,0.08), rgba(255,255,255,0.55), rgba(17,17,17,0.08))' }
+                }></div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flex: isMobile ? 1 : undefined }}>
                   <div>
                     <div style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 700 }}>
                       {t('profile.total_likes')}
                     </div>
-                    <div style={{ fontSize: '1.8rem', lineHeight: 1, fontWeight: 800, color: '#111', marginTop: 4 }}>
+                    <div style={{ fontSize: isMobile ? '1.3rem' : '1.8rem', lineHeight: 1, fontWeight: 800, color: '#111', marginTop: 4 }}>
                       {totalLikes.toLocaleString()}
                     </div>
                   </div>
                   <div
                     style={{
-                      width: 44,
-                      height: 44,
+                      width: isMobile ? 34 : 44,
+                      height: isMobile ? 34 : 44,
                       borderRadius: 14,
                       background: 'rgba(255,255,255,0.28)',
                       border: '1px solid rgba(255,255,255,0.35)',
@@ -784,7 +859,7 @@ export default function ProfilePage() {
                       flexShrink: 0,
                     }}
                   >
-                    <i className="bi bi-heart" style={{ fontSize: '1.15rem' }}></i>
+                    <i className="bi bi-heart" style={{ fontSize: isMobile ? '0.9rem' : '1.15rem' }}></i>
                   </div>
                 </div>
 
@@ -793,19 +868,20 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="d-flex flex-column w-100" style={{ gap: 24 }}>
+        <div className="d-flex flex-column w-100" style={{ gap: isMobile ? 3 : 10 }}>
           {/* Tabs for navigation */}
-          <div className="d-flex w-100" style={{ borderBottom: '2px solid #111', paddingBottom: 8 }}>
+          <div className="d-flex w-100" style={{ borderBottom: '1px solid #e8e7f2', paddingBottom: 2, gap: 18 }}>
             <button
               className={`flex-fill fw-bold py-2 border-0 ${activeTab === TAB_TYPES.CREATED ? '' : ''}`}
               style={{
-                background: activeTab === TAB_TYPES.CREATED ? '#111' : '#fff',
-                color: activeTab === TAB_TYPES.CREATED ? '#fff' : '#111',
-                borderTopLeftRadius: 12,
-                borderTopRightRadius: 12,
-                border: '1.5px solid #111',
-                borderBottom: activeTab === TAB_TYPES.CREATED ? 'none' : '1.5px solid #111',
-                transition: 'background 0.2s, color 0.2s',
+                background: 'transparent',
+                color: activeTab === TAB_TYPES.CREATED ? '#2f2447' : '#6f6b80',
+                fontWeight: activeTab === TAB_TYPES.CREATED ? 800 : 700,
+                borderRadius: 0,
+                border: 'none',
+                boxShadow: activeTab === TAB_TYPES.CREATED ? 'inset 0 -2px 0 #b59cf3' : 'inset 0 -2px 0 transparent',
+                padding: '0.6rem 0.4rem',
+                transition: 'color 0.2s ease, box-shadow 0.2s ease',
               }}
               onClick={() => { setActiveTab(TAB_TYPES.CREATED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); }}
             >
@@ -815,13 +891,14 @@ export default function ProfilePage() {
               <button
                 className={`flex-fill fw-bold py-2 border-0 ${activeTab === TAB_TYPES.LIKED ? '' : ''}`}
                 style={{
-                  background: activeTab === TAB_TYPES.LIKED ? '#111' : '#fff',
-                  color: activeTab === TAB_TYPES.LIKED ? '#fff' : '#111',
-                  borderTopLeftRadius: 0,
-                  borderTopRightRadius: 0,
-                  border: '1.5px solid #111',
-                  borderBottom: activeTab === TAB_TYPES.LIKED ? 'none' : '1.5px solid #111',
-                  transition: 'background 0.2s, color 0.2s',
+                  background: 'transparent',
+                  color: activeTab === TAB_TYPES.LIKED ? '#2f2447' : '#6f6b80',
+                  fontWeight: activeTab === TAB_TYPES.LIKED ? 800 : 700,
+                  borderRadius: 0,
+                  border: 'none',
+                  boxShadow: activeTab === TAB_TYPES.LIKED ? 'inset 0 -2px 0 #b59cf3' : 'inset 0 -2px 0 transparent',
+                  padding: '0.6rem 0.4rem',
+                  transition: 'color 0.2s ease, box-shadow 0.2s ease',
                 }}
                 onClick={() => { setActiveTab(TAB_TYPES.LIKED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); }}
               >
@@ -831,164 +908,154 @@ export default function ProfilePage() {
           </div>
           {/* Subtabs for Created/Liked */}
           {(
-          <div className="d-flex w-100" style={{ borderBottom: '1.5px solid #aaa', paddingBottom: 4, marginTop: 8, gap: 8 }}>
-            <button
-              className={`fw-bold py-1 px-3 border-0 ${activeSubtab === SUBTAB_TYPES.CHARACTERS ? '' : ''}`}
+          <div className="d-flex w-100 align-items-center" style={{ borderBottom: '1px solid #e8e7f2', paddingBottom: isMobile ? 8 : 10, marginTop: 10, columnGap: isMobile ? 10 : 14, flexWrap: 'nowrap', overflowX: isMobile ? 'auto' : 'visible', justifyContent: isMobile ? 'flex-start' : 'space-between' }}>
+            <div
               style={{
-                background: activeSubtab === SUBTAB_TYPES.CHARACTERS ? '#222' : '#f5f5f5',
-                color: activeSubtab === SUBTAB_TYPES.CHARACTERS ? '#fff' : '#222',
-                borderRadius: 8,
-                border: '1.2px solid #222',
-                borderBottom: activeSubtab === SUBTAB_TYPES.CHARACTERS ? 'none' : '1.2px solid #222',
-                marginRight: 8,
-                transition: 'background 0.18s, color 0.18s',
+                position: 'relative',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                alignItems: 'center',
+                flexShrink: 0,
+                minWidth: isMobile ? 220 : 300,
+                borderRadius: 14,
+                padding: 4,
+                background: 'rgba(255, 255, 255, 0.42)',
+                border: '1px solid rgba(255, 255, 255, 0.7)',
+                boxShadow: '0 10px 28px rgba(114, 124, 150, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                overflow: 'hidden',
               }}
-              onClick={() => setActiveSubtab(SUBTAB_TYPES.CHARACTERS)}
             >
-              {t('profile.characters')}
-            </button>
-            <button
-              className={`fw-bold py-1 px-3 border-0 ${activeSubtab === SUBTAB_TYPES.SCENES ? '' : ''}`}
-              style={{
-                background: activeSubtab === SUBTAB_TYPES.SCENES ? '#222' : '#f5f5f5',
-                color: activeSubtab === SUBTAB_TYPES.SCENES ? '#fff' : '#222',
-                borderRadius: 8,
-                border: '1.2px solid #222',
-                borderBottom: activeSubtab === SUBTAB_TYPES.SCENES ? 'none' : '1.2px solid #222',
-                marginRight: 8,
-                transition: 'background 0.18s, color 0.18s',
-              }}
-              onClick={() => setActiveSubtab(SUBTAB_TYPES.SCENES)}
-            >
-              {t('profile.scenes')}
-            </button>
-            <button
-              className={`fw-bold py-1 px-3 border-0 ${activeSubtab === SUBTAB_TYPES.PERSONAS ? '' : ''}`}
-              style={{
-                background: activeSubtab === SUBTAB_TYPES.PERSONAS ? '#222' : '#f5f5f5',
-                color: activeSubtab === SUBTAB_TYPES.PERSONAS ? '#fff' : '#222',
-                borderRadius: 8,
-                border: '1.2px solid #222',
-                borderBottom: activeSubtab === SUBTAB_TYPES.PERSONAS ? 'none' : '1.2px solid #222',
-                marginRight: 8,
-                transition: 'background 0.18s, color 0.18s',
-              }}
-              onClick={() => setActiveSubtab(SUBTAB_TYPES.PERSONAS)}
-            >
-              {t('profile.personas')}
-            </button>
+              {/* sliding pill */}
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  left: 4,
+                  top: 4,
+                  bottom: 4,
+                  width: 'calc((100% - 8px) / 3)',
+                  borderRadius: 10,
+                  background: 'linear-gradient(180deg, #f3eef9 0%, #ebe5f1 100%)',
+                  boxShadow: '0 8px 18px rgba(124, 109, 158, 0.2), inset 0 1px 0 rgba(255,255,255,0.82), inset 0 -1px 2px rgba(124,109,158,0.06)',
+                  transform: `translateX(${subtabPillIndex * 100}%)`,
+                  transition: 'transform 220ms cubic-bezier(0.35, 0, 0.25, 1)',
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                }}
+              />
+              {[
+                { key: SUBTAB_TYPES.CHARACTERS, label: t('profile.characters') },
+                { key: SUBTAB_TYPES.SCENES,     label: t('profile.scenes') },
+                { key: SUBTAB_TYPES.PERSONAS,   label: t('profile.personas') },
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className="border-0"
+                  style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    background: 'transparent',
+                    color: activeSubtab === tab.key ? '#5C5178' : '#7a748a',
+                    borderRadius: 10,
+                    fontSize: isMobile ? '0.82rem' : '0.9rem',
+                    padding: isMobile ? '0.38rem 0.45rem' : '0.46rem 0.6rem',
+                    fontWeight: activeSubtab === tab.key ? 700 : 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'color 180ms ease',
+                  }}
+                  onClick={() => setActiveSubtab(tab.key)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="d-flex align-items-center" style={{ gap: 8, flexWrap: 'nowrap', justifyContent: 'flex-end', flexShrink: 0, marginLeft: isMobile ? 2 : 'auto' }}>
+              {!isMobile && (
+                <span
+                title={t('browse.sort_by')}
+                aria-label={t('browse.sort_by')}
+                style={{ color: '#555', fontSize: isMobile ? '0.78rem' : '0.84rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
+              >
+                <i className="bi bi-sort-down" aria-hidden="true" style={{ fontSize: isMobile ? '0.9rem' : '0.95rem', lineHeight: 1 }}></i>
+                <span className="visually-hidden">{t('browse.sort_by')}</span>
+              </span>
+              )}
+              <div
+                style={{
+                  position: 'relative',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  alignItems: 'center',
+                  minWidth: isMobile ? 124 : 148,
+                  borderRadius: 8,
+                  padding: 2,
+                  background: 'rgba(0,0,0,0.06)',
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    left: 2,
+                    top: 2,
+                    bottom: 2,
+                    width: 'calc((100% - 4px) / 2)',
+                    borderRadius: 6,
+                    background: '#fff',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                    transform: `translateX(${sortToggleTranslatePercent}%)`,
+                    transition: 'transform 200ms ease',
+                    pointerEvents: 'none',
+                    zIndex: 0,
+                  }}
+                ></div>
+                <button
+                  type="button"
+                  className="border-0"
+                  style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    background: 'transparent',
+                    color: activeSort === ENTITY_SORTS.RECENT ? '#2f2447' : '#9088a4',
+                    borderRadius: 6,
+                    fontSize: isMobile ? '0.79rem' : '0.86rem',
+                    fontWeight: activeSort === ENTITY_SORTS.RECENT ? 700 : 500,
+                    padding: isMobile ? '0.28rem 0.5rem' : '0.32rem 0.65rem',
+                    whiteSpace: 'nowrap',
+                    transition: 'color 0.18s ease, font-weight 0.18s ease',
+                  }}
+                  onClick={() => setActiveSort(ENTITY_SORTS.RECENT)}
+                >
+                  {t('browse.recent')}
+                </button>
+                <button
+                  type="button"
+                  className="border-0"
+                  style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    background: 'transparent',
+                    color: activeSort === ENTITY_SORTS.POPULAR ? '#2f2447' : '#9088a4',
+                    borderRadius: 6,
+                    fontSize: isMobile ? '0.79rem' : '0.86rem',
+                    fontWeight: activeSort === ENTITY_SORTS.POPULAR ? 700 : 500,
+                    padding: isMobile ? '0.28rem 0.5rem' : '0.32rem 0.65rem',
+                    whiteSpace: 'nowrap',
+                    transition: 'color 0.18s ease, font-weight 0.18s ease',
+                  }}
+                  onClick={() => setActiveSort(ENTITY_SORTS.POPULAR)}
+                >
+                  {t('browse.popular')}
+                </button>
+              </div>
+            </div>
           </div>
-          )}
-          {activeSubtab === SUBTAB_TYPES.CHARACTERS && (
-            <div className="d-flex align-items-center" style={{ marginTop: 4, gap: 10 }}>
-              <span style={{ color: '#555', fontSize: '0.88rem', fontWeight: 600 }}>
-                {t('browse.sort_by')}
-              </span>
-              <div className="d-flex" style={{ gap: 8 }}>
-                <button
-                  type="button"
-                  className="fw-bold py-1 px-3 border-0"
-                  style={{
-                    background: characterSort === ENTITY_SORTS.RECENT ? '#222' : '#f5f5f5',
-                    color: characterSort === ENTITY_SORTS.RECENT ? '#fff' : '#222',
-                    borderRadius: 8,
-                    border: '1.2px solid #222',
-                    transition: 'background 0.18s, color 0.18s',
-                  }}
-                  onClick={() => setCharacterSort(ENTITY_SORTS.RECENT)}
-                >
-                  {t('browse.recent')}
-                </button>
-                <button
-                  type="button"
-                  className="fw-bold py-1 px-3 border-0"
-                  style={{
-                    background: characterSort === ENTITY_SORTS.POPULAR ? '#222' : '#f5f5f5',
-                    color: characterSort === ENTITY_SORTS.POPULAR ? '#fff' : '#222',
-                    borderRadius: 8,
-                    border: '1.2px solid #222',
-                    transition: 'background 0.18s, color 0.18s',
-                  }}
-                  onClick={() => setCharacterSort(ENTITY_SORTS.POPULAR)}
-                >
-                  {t('browse.popular')}
-                </button>
-              </div>
-            </div>
-          )}
-          {activeSubtab === SUBTAB_TYPES.SCENES && (
-            <div className="d-flex align-items-center" style={{ marginTop: 4, gap: 10 }}>
-              <span style={{ color: '#555', fontSize: '0.88rem', fontWeight: 600 }}>
-                {t('browse.sort_by')}
-              </span>
-              <div className="d-flex" style={{ gap: 8 }}>
-                <button
-                  type="button"
-                  className="fw-bold py-1 px-3 border-0"
-                  style={{
-                    background: sceneSort === ENTITY_SORTS.RECENT ? '#222' : '#f5f5f5',
-                    color: sceneSort === ENTITY_SORTS.RECENT ? '#fff' : '#222',
-                    borderRadius: 8,
-                    border: '1.2px solid #222',
-                    transition: 'background 0.18s, color 0.18s',
-                  }}
-                  onClick={() => setSceneSort(ENTITY_SORTS.RECENT)}
-                >
-                  {t('browse.recent')}
-                </button>
-                <button
-                  type="button"
-                  className="fw-bold py-1 px-3 border-0"
-                  style={{
-                    background: sceneSort === ENTITY_SORTS.POPULAR ? '#222' : '#f5f5f5',
-                    color: sceneSort === ENTITY_SORTS.POPULAR ? '#fff' : '#222',
-                    borderRadius: 8,
-                    border: '1.2px solid #222',
-                    transition: 'background 0.18s, color 0.18s',
-                  }}
-                  onClick={() => setSceneSort(ENTITY_SORTS.POPULAR)}
-                >
-                  {t('browse.popular')}
-                </button>
-              </div>
-            </div>
-          )}
-          {activeSubtab === SUBTAB_TYPES.PERSONAS && (
-            <div className="d-flex align-items-center" style={{ marginTop: 4, gap: 10 }}>
-              <span style={{ color: '#555', fontSize: '0.88rem', fontWeight: 600 }}>
-                {t('browse.sort_by')}
-              </span>
-              <div className="d-flex" style={{ gap: 8 }}>
-                <button
-                  type="button"
-                  className="fw-bold py-1 px-3 border-0"
-                  style={{
-                    background: personaSort === ENTITY_SORTS.RECENT ? '#222' : '#f5f5f5',
-                    color: personaSort === ENTITY_SORTS.RECENT ? '#fff' : '#222',
-                    borderRadius: 8,
-                    border: '1.2px solid #222',
-                    transition: 'background 0.18s, color 0.18s',
-                  }}
-                  onClick={() => setPersonaSort(ENTITY_SORTS.RECENT)}
-                >
-                  {t('browse.recent')}
-                </button>
-                <button
-                  type="button"
-                  className="fw-bold py-1 px-3 border-0"
-                  style={{
-                    background: personaSort === ENTITY_SORTS.POPULAR ? '#222' : '#f5f5f5',
-                    color: personaSort === ENTITY_SORTS.POPULAR ? '#fff' : '#222',
-                    borderRadius: 8,
-                    border: '1.2px solid #222',
-                    transition: 'background 0.18s, color 0.18s',
-                  }}
-                  onClick={() => setPersonaSort(ENTITY_SORTS.POPULAR)}
-                >
-                  {t('browse.popular')}
-                </button>
-              </div>
-            </div>
           )}
           {/* Content based on active tab and subtab */}
           {renderTabContent()}

@@ -135,13 +135,21 @@ def get_scenes_created(
     Otherwise, fetch current user's created scenes.
     """
     if userId:
-        query = db.query(Scene).filter(Scene.creator_id == userId)
+        query = (
+            db.query(Scene, User.profile_pic.label("creator_profile_pic"))
+            .outerjoin(User, Scene.creator_id == User.id)
+            .filter(Scene.creator_id == userId)
+        )
         if not current_user or current_user.id != userId:
             query = query.filter(Scene.is_public == True)
     else:
         if not current_user:
             return SceneListOut(items=[], total=0, page=1, page_size=0, short=False)
-        query = db.query(Scene).filter(Scene.creator_id == current_user.id)
+        query = (
+            db.query(Scene, User.profile_pic.label("creator_profile_pic"))
+            .outerjoin(User, Scene.creator_id == User.id)
+            .filter(Scene.creator_id == current_user.id)
+        )
 
     if sort == "popular":
         query = query.order_by(Scene.views.desc(), Scene.created_time.desc())
@@ -149,8 +157,12 @@ def get_scenes_created(
         query = query.order_by(Scene.created_time.desc())
     
     total = query.count()
-    scenes = query.offset((page - 1) * page_size).limit(page_size).all()
-    return SceneListOut(items=[SceneOut.from_orm(s) for s in scenes], total=total, page=page, page_size=page_size, short=False)
+    rows = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for scene, creator_profile_pic in rows:
+        scene.creator_profile_pic = creator_profile_pic
+        items.append(SceneOut.from_orm(scene))
+    return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 
 # Popular Scenes
@@ -377,8 +389,9 @@ def get_scenes_liked(
         target_user_id = current_user.id
 
     query = (
-        db.query(Scene)
+        db.query(Scene, User.profile_pic.label("creator_profile_pic"))
         .join(UserLikedScene, UserLikedScene.scene_id == Scene.id)
+        .outerjoin(User, Scene.creator_id == User.id)
         .filter(UserLikedScene.user_id == target_user_id, Scene.is_public == True)
     )
 
@@ -388,5 +401,9 @@ def get_scenes_liked(
         query = query.order_by(Scene.created_time.desc())
 
     total = query.count()
-    scenes = query.offset((page - 1) * page_size).limit(page_size).all()
-    return SceneListOut(items=scenes, total=total, page=page, page_size=page_size, short=False)
+    rows = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for scene, creator_profile_pic in rows:
+        scene.creator_profile_pic = creator_profile_pic
+        items.append(SceneOut.from_orm(scene))
+    return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)

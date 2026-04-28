@@ -29,29 +29,29 @@ function PaginationBar({ page, total, pageSize, loading, onPageChange, style = {
       ...style
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-        <TextButton
-          disabled={loading || atStart}
-          onClick={() => {
-            if (!atStart) onPageChange(page - 1);
-          }}
-        >
-          Prev
-        </TextButton>
+        {!atStart && (
+          <TextButton
+            disabled={loading}
+            onClick={() => onPageChange(page - 1)}
+          >
+            上一页
+          </TextButton>
+        )}
         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#6A6286', letterSpacing: '0.5px', minWidth: 70, textAlign: 'center' }}>
-          Page {page}
+          第 {page} 页
         </span>
-        <TextButton
-          disabled={loading || atEnd}
-          onClick={() => {
-            if (!atEnd) onPageChange(page + 1);
-          }}
-        >
-          Next
-        </TextButton>
+        {!atEnd && (
+          <TextButton
+            disabled={loading}
+            onClick={() => onPageChange(page + 1)}
+          >
+            下一页
+          </TextButton>
+        )}
       </div>
       <div className="text-muted" style={{ fontSize: '0.65rem', marginTop: '0.6rem', letterSpacing: '0.4px' }}>
         {(!loading && total > 0) && (
-          <span>Showing {startIdx} - {endIdx} of {total}</span>
+          <span>共 {total} 条，显示第 {startIdx} - {endIdx} 条</span>
         )}
       </div>
     </div>

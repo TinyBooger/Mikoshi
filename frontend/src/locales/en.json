@@ -202,7 +202,8 @@
     "pro_benefit_unlimited_messages": "Unlimited daily messages",
     "pro_benefit_2x_context": "2x context length before summarization",
     "pro_benefits_expand": "Show Pro benefits",
-    "pro_benefits_collapse": "Hide Pro benefits"
+    "pro_benefits_collapse": "Hide Pro benefits",
+    "token_resets_daily": "Token quota resets daily."
   },
   "settings": {
     "title": "Settings",

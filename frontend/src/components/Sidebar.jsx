@@ -16,7 +16,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { userData, setUserData, refreshUserData, sessionToken, loading } = useContext(AuthContext); // Get user data from context
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const toast = useToast();
   const isActivePro = Boolean(userData?.pro_active);
   const [query, setQuery] = useState('');
@@ -967,32 +967,54 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       <div className="mt-auto px-1" style={{ fontSize: '0.8rem', flexShrink: 0 }}>
         {userData && (
           <div className="rounded-4 mb-2" style={{ background: '#fff', border: '1px solid #eef0f3', padding: '0.45rem 0.65rem' }}>
-            <div
-              className="d-flex align-items-center justify-content-between"
-              style={{
-                color: '#4b5563',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-              }}
-            >
-              <span>
-                {getTokenQuotaLabel(userData?.token_cap_scope)}
-              </span>
-              <span>
-                {(() => {
-                  const used = Number(
-                    userData?.token_cap_scope === 'monthly'
-                      ? (userData?.monthly_token_usage || 0)
-                      : (userData?.daily_token_usage || 0)
-                  );
-                  const cap = Number(userData?.token_cap || 0);
-                  if (cap > 0) {
-                    return `${formatCompactTokenCount(used)} / ${formatCompactTokenCount(cap)}`;
-                  }
-                  return formatCompactTokenCount(used);
-                })()}
-              </span>
-            </div>
+            {(() => {
+              const tokenScope = userData?.token_cap_scope;
+              const tokenUsed = Number(tokenScope === 'monthly' ? userData?.monthly_token_usage : userData?.daily_token_usage) || 0;
+              const tokenCap = Number(userData?.token_cap || 0);
+              const tokenUsageValue = tokenCap > 0
+                ? `${formatCompactTokenCount(tokenUsed)} / ${formatCompactTokenCount(tokenCap)}`
+                : formatCompactTokenCount(tokenUsed);
+              const tokenProgressPercent = tokenCap > 0
+                ? Math.min(100, Math.max(0, (tokenUsed / tokenCap) * 100))
+                : 0;
+              const tokenProgressLabel = `${tokenProgressPercent.toFixed(1)}%`;
+              const activeLocale = i18n?.resolvedLanguage || i18n?.language;
+              const nextTokenResetDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
+              const formattedNextTokenResetDate = nextTokenResetDate.toLocaleDateString(activeLocale);
+              const proExpireDateObj = userData?.pro_expire_date ? new Date(userData.pro_expire_date) : null;
+              const isProDueBeforeNextReset = Boolean(proExpireDateObj && proExpireDateObj < nextTokenResetDate);
+              const tokenNoticeText = !isActivePro
+                ? t('profile.token_resets_daily', { defaultValue: 'Token quota resets daily.' })
+                : isProDueBeforeNextReset
+                ? t('profile.pro_due_no_token_reset_notice', { defaultValue: 'Pro 即将到期，下个月 Token 不会重置。' })
+                : t('profile.next_token_reset_notice', { date: formattedNextTokenResetDate, defaultValue: `下次 Token 重置时间：${formattedNextTokenResetDate}` });
+              return (
+                <>
+                  <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 4 }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#5b2f9b' }}>
+                      {tokenProgressLabel}
+                    </span>
+                    <span style={{ fontSize: '0.68rem', color: '#6b7280', fontWeight: 700 }}>
+                      {tokenNoticeText}
+                    </span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 999, background: 'rgba(167, 139, 250, 0.16)', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        width: `${tokenProgressPercent}%`,
+                        height: '100%',
+                        borderRadius: 999,
+                        background: 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%)',
+                        transition: 'width 0.25s ease',
+                      }}
+                    />
+                  </div>
+                  <div style={{ marginTop: 3, fontSize: '0.68rem', color: '#4b5563', fontWeight: 600 }}>
+                    {tokenUsageValue}
+                  </div>
+                </>
+              );
+            })()}
             <div
               className="d-flex align-items-center justify-content-between mt-1"
               style={{

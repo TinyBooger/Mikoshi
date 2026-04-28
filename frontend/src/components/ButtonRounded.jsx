@@ -17,6 +17,7 @@ export default function ButtonRounded({
   className = '',
   filled = false,
   disabled = false,
+  noTopMargin = false,
   ...rest
 }) {
   const baseStyle = {
@@ -53,7 +54,7 @@ export default function ButtonRounded({
   return (
     <button
       type="button"
-      className={`btn btn-sm mt-2 ${className}`}
+      className={`btn btn-sm ${noTopMargin ? '' : 'mt-2'} ${className}`}
       style={baseStyle}
       onClick={onClick}
       onMouseEnter={handleMouseEnter}

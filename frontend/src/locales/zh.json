@@ -202,7 +202,8 @@
     "pro_benefit_unlimited_messages": "每日消息不限量",
     "pro_benefit_2x_context": "摘要前上下文长度提升至 2 倍",
     "pro_benefits_expand": "展开 Pro 权益",
-    "pro_benefits_collapse": "收起 Pro 权益"
+    "pro_benefits_collapse": "收起 Pro 权益",
+    "token_resets_daily": "Token 配额每日重置。"
   },
   "settings": {
     "title": "设置",
