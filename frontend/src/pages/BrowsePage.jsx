@@ -431,7 +431,7 @@ function BrowsePage() {
               navigate('/');
             }}
           >
-            <img src={textLogo} alt="Logo" style={{ height: '2.2rem', width: 'auto', objectFit: 'contain', display: 'block' }} />
+            <img src={textLogo} alt="Logo" style={{ height: '2.2rem', width: 'auto', objectFit: 'contain', display: 'block', marginLeft: '1rem' }} />
           </a>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', flex: 1, minWidth: 0 }}>
@@ -441,15 +441,15 @@ function BrowsePage() {
               style={{
                 background: '#f5f6fa',
                 borderRadius: 24,
-                border: `2px solid ${searchFocused ? '#736B92' : 'transparent'}`,
+                border: '2px solid transparent',
                 boxShadow: searchFocused ? '0 0 0 4px rgba(115,107,146,0.16)' : 'none',
-                transition: 'box-shadow 120ms ease, border-color 120ms ease'
+                transition: 'box-shadow 120ms ease'
               }}
             >
               <input
                 type="text"
                 className="form-control border-0 rounded-pill"
-                style={{ background: 'transparent', fontSize: '0.92rem', paddingLeft: 14, color: '#232323', outline: 'none', boxShadow: 'none' }}
+                style={{ background: 'transparent', fontSize: '0.92rem', paddingLeft: 14, paddingRight: 8, color: '#232323', outline: 'none', boxShadow: 'none', borderRadius: '22px 0 0 22px' }}
                 placeholder={t('topbar.search_placeholder')}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -460,13 +460,39 @@ function BrowsePage() {
                 aria-haspopup="true"
               />
               <button
-                className="btn rounded-pill px-3"
-                style={{ fontSize: '0.92rem', background: '#736B92', color: '#fff', borderColor: '#736B92', outline: 'none', boxShadow: 'none' }}
+                className="btn"
+                style={{
+                  fontSize: '1.05rem',
+                  background: 'transparent',
+                  color: '#736B92',
+                  border: 'none',
+                  outline: 'none',
+                  boxShadow: 'none',
+                  margin: 0,
+                  width: '2.2rem',
+                  height: '2.2rem',
+                  borderRadius: '999px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'background 0.16s ease, color 0.16s ease, transform 0.16s ease'
+                }}
                 onClick={() => handleSearch()}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setTimeout(() => setSearchFocused(false), 100)}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(220,208,245,0.35)';
+                  e.currentTarget.style.color = '#5f567f';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#736B92';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
-                <i className="bi bi-search"></i>
+                <i className="bi bi-search" style={{ fontSize: '1rem' }}></i>
               </button>
             </div>
             {showSearchSuggestions && searchSuggestions.length > 0 && (

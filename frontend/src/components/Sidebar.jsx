@@ -443,9 +443,9 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
           style={{
             background: '#f5f6fa',
             borderRadius: 20,
-            border: `1.2px solid ${searchFocused ? '#736B92' : 'transparent'}`,
+            border: '1.2px solid transparent',
             boxShadow: searchFocused ? '0 0 0 3px rgba(115,107,146,0.14)' : 'none',
-            transition: 'box-shadow 120ms ease, border-color 120ms ease',
+            transition: 'box-shadow 120ms ease',
           }}
         >
           <input
@@ -455,9 +455,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               background: 'transparent',
               fontSize: '0.85rem',
               paddingLeft: 12,
+              paddingRight: 8,
               color: '#232323',
               outline: 'none',
               boxShadow: 'none',
+              borderRadius: '18px 0 0 18px',
             }}
             placeholder={t('topbar.search_placeholder')}
             value={query}
@@ -477,20 +479,39 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             aria-haspopup="true"
           />
           <button
-            className="btn rounded-pill px-2"
+            className="btn"
             style={{
-              fontSize: '0.85rem',
-              background: '#736B92',
-              color: '#fff',
-              borderColor: '#736B92',
+              fontSize: '0.95rem',
+              background: 'transparent',
+              color: '#736B92',
+              border: 'none',
               outline: 'none',
               boxShadow: 'none',
+              margin: 0,
+              width: '2.05rem',
+              height: '2.05rem',
+              borderRadius: '999px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              transition: 'background 0.16s ease, color 0.16s ease, transform 0.16s ease',
             }}
             onClick={() => handleSearch()}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setTimeout(() => setSearchFocused(false), 100)}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(220,208,245,0.35)';
+              e.currentTarget.style.color = '#5f567f';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = '#736B92';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
           >
-            <i className="bi bi-search"></i>
+            <i className="bi bi-search" style={{ fontSize: '0.92rem' }}></i>
           </button>
         </div>
         {showSuggestions && suggestions.length > 0 && (

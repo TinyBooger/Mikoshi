@@ -21,7 +21,7 @@ function PageWrapper({ children, style = {}, className = '' }) {
 
   const combinedStyle = isMobile
       ? {
-          minHeight: 'auto',
+        minHeight: '100dvh',
           height: 'auto',
           width: '100vw',
           maxWidth: '100vw',
@@ -38,7 +38,7 @@ function PageWrapper({ children, style = {}, className = '' }) {
           ...style,
         }
     : {
-        minHeight: 'auto',
+      minHeight: '100vh',
         height: 'auto',
         boxSizing: 'border-box',
         width: '100%',
