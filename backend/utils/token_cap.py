@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, UTC, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from models import User, UserTokenUsageLedger
+
+
+CHINA_TIMEZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
+FREE_DAILY_RESET_HOUR_LOCAL = 12
 
 
 def _get_int_env(name: str, default: int) -> int:
@@ -27,23 +31,74 @@ def _resolve_pro_active(user: User) -> bool:
     return bool(expire_date and now < expire_date)
 
 
-def _get_usage_window_bounds() -> tuple[datetime, datetime, datetime]:
-    now = datetime.now(UTC)
-    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    month_start = day_start.replace(day=1)
-    return now, day_start, month_start
+def is_user_pro_active(user: User) -> bool:
+    return _resolve_pro_active(user)
 
 
-def get_user_token_usage(db: Session, user_id: str) -> dict[str, int]:
-    _, day_start, month_start = _get_usage_window_bounds()
-    today_date = day_start.date()
-    month_start_date = month_start.date()
+def get_free_daily_usage_date(when: datetime | None = None):
+    now = when or datetime.now(UTC)
+    local_now = now.astimezone(CHINA_TIMEZONE)
+    shifted = local_now - timedelta(hours=FREE_DAILY_RESET_HOUR_LOCAL)
+    return shifted.date()
+
+
+def get_pro_cycle_start(user: "User", now: datetime) -> datetime:
+    """Return the start of the current billing cycle based on the day-of-month of pro_start_date."""
+    pro_start = getattr(user, "pro_start_date", None)
+    if pro_start is None:
+        # Fallback: beginning of the current calendar month
+        return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if pro_start.tzinfo is None:
+        pro_start = pro_start.replace(tzinfo=UTC)
+    pro_start_midnight = pro_start.replace(hour=0, minute=0, second=0, microsecond=0)
+    if now < pro_start:
+        return pro_start_midnight
+    anchor_day = pro_start.day
+    # Clamp anchor_day to the last day of the month when needed
+    import calendar
+    def _cycle_start_for(year: int, month: int) -> datetime:
+        last_day = calendar.monthrange(year, month)[1]
+        day = min(anchor_day, last_day)
+        return pro_start.replace(year=year, month=month, day=day,
+                                 hour=0, minute=0,
+                                 second=0, microsecond=0)
+
+    candidate = _cycle_start_for(now.year, now.month)
+    if now < candidate:
+        # We haven't reached this month's anchor yet — use previous month
+        prev_month = now.month - 1 or 12
+        prev_year = now.year if now.month > 1 else now.year - 1
+        return _cycle_start_for(prev_year, prev_month)
+    return candidate
+
+
+def get_next_free_daily_reset_at(when: datetime | None = None) -> datetime:
+    now = when or datetime.now(UTC)
+    local_now = now.astimezone(CHINA_TIMEZONE)
+    reset_anchor_local = local_now.replace(
+        hour=FREE_DAILY_RESET_HOUR_LOCAL,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+    if local_now < reset_anchor_local:
+        return reset_anchor_local.astimezone(UTC)
+    return (reset_anchor_local + timedelta(days=1)).astimezone(UTC)
+
+
+def get_user_token_usage(
+    db: Session,
+    user_id: str,
+    *,
+    daily_usage_date,
+    month_start_date,
+) -> dict[str, int]:
 
     daily_tokens = (
         db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
         .filter(
             UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date == today_date,
+            UserTokenUsageLedger.usage_date == daily_usage_date,
         )
         .scalar()
     ) or 0
@@ -65,25 +120,43 @@ def get_user_token_usage(db: Session, user_id: str) -> dict[str, int]:
 
 def get_token_cap_info(user: User, db: Session) -> dict[str, Any]:
     pro_active = _resolve_pro_active(user)
-    usage = get_user_token_usage(db, user.id)
 
     free_daily_cap = _get_int_env("FREE_DAILY_TOKEN_CAP", 3000)
     pro_monthly_cap = _get_int_env("PRO_MONTHLY_TOKEN_CAP", 5_000_000)
 
-    now, day_start, month_start = _get_usage_window_bounds()
+    now = datetime.now(UTC)
+    month_start = get_pro_cycle_start(user, now) if pro_active else now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    daily_usage_date = now.date() if pro_active else get_free_daily_usage_date(now)
+    usage = get_user_token_usage(
+        db,
+        user.id,
+        daily_usage_date=daily_usage_date,
+        month_start_date=month_start.date(),
+    )
 
     if pro_active:
         cap_scope = "monthly"
         cap_value = pro_monthly_cap
         used_tokens = usage["monthly_token_usage"]
-        next_month_start = (month_start + timedelta(days=32)).replace(day=1)
-        reset_at = next_month_start.isoformat()
+        next_month = month_start.month % 12 + 1
+        next_year = month_start.year if month_start.month < 12 else month_start.year + 1
+        import calendar as _cal
+        _last = _cal.monthrange(next_year, next_month)[1]
+        _day = min(month_start.day, _last)
+        cycle_reset_at = month_start.replace(year=next_year, month=next_month, day=_day)
+        pro_expire_date = getattr(user, "pro_expire_date", None)
+        if pro_expire_date is not None and pro_expire_date.tzinfo is None:
+            pro_expire_date = pro_expire_date.replace(tzinfo=UTC)
+        # Keep pro token-cycle reset aligned with actual pro end time.
+        if pro_expire_date is not None and pro_expire_date < cycle_reset_at:
+            reset_at = pro_expire_date.isoformat()
+        else:
+            reset_at = cycle_reset_at.isoformat()
     else:
         cap_scope = "daily"
         cap_value = free_daily_cap
         used_tokens = usage["daily_token_usage"]
-        next_day_start = day_start + timedelta(days=1)
-        reset_at = next_day_start.isoformat()
+        reset_at = get_next_free_daily_reset_at(now).isoformat()
 
     is_limited = cap_value > 0
     remaining_tokens = max(0, cap_value - used_tokens) if is_limited else None

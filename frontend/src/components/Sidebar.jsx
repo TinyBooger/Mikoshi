@@ -979,10 +979,10 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 : 0;
               const tokenProgressLabel = `${tokenProgressPercent.toFixed(1)}%`;
               const activeLocale = i18n?.resolvedLanguage || i18n?.language;
-              const nextTokenResetDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
-              const formattedNextTokenResetDate = nextTokenResetDate.toLocaleDateString(activeLocale);
+              const nextTokenResetDate = userData?.token_reset_at ? new Date(userData.token_reset_at) : null;
+              const formattedNextTokenResetDate = nextTokenResetDate ? nextTokenResetDate.toLocaleDateString(activeLocale) : null;
               const proExpireDateObj = userData?.pro_expire_date ? new Date(userData.pro_expire_date) : null;
-              const isProDueBeforeNextReset = Boolean(proExpireDateObj && proExpireDateObj < nextTokenResetDate);
+              const isProDueBeforeNextReset = Boolean(proExpireDateObj && nextTokenResetDate && proExpireDateObj < nextTokenResetDate);
               return (
                 <>
                   <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 4 }}>
@@ -1019,16 +1019,24 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               type="button"
               className="btn btn-sm w-100 mt-2"
               onClick={() => handleNavigate('/token-topup')}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(115, 107, 146, 0.14)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(115, 107, 146, 0.07)';
+              }}
               style={{
                 borderRadius: 8,
-                background: '#111827',
-                color: '#fff',
-                fontSize: '0.7rem',
+                background: 'rgba(115, 107, 146, 0.07)',
+                color: '#4f456c',
+                fontSize: '0.72rem',
                 fontWeight: 700,
-                padding: '0.28rem 0.45rem',
+                padding: '0.32rem 0.45rem',
                 border: 'none',
+                transition: 'background 0.16s ease',
               }}
             >
+              <i className="bi bi-wallet2 me-1"></i>
               充值 Token
             </button>
           </div>

@@ -203,7 +203,9 @@
     "pro_benefit_2x_context": "2x context length before summarization",
     "pro_benefits_expand": "Show Pro benefits",
     "pro_benefits_collapse": "Hide Pro benefits",
-    "token_resets_daily": "Token quota resets daily."
+    "token_resets_daily": "Resets tomorrow at 12:00 noon.",
+    "pro_due_no_token_reset_notice": "Pro expires on {{date}}.",
+    "next_token_reset_notice": "Resets on {{date}}."
   },
   "settings": {
     "title": "Settings",

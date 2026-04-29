@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 
 from models import User, UserTokenUsageLedger
-from utils.token_cap import can_consume_tokens
+from utils.token_cap import can_consume_tokens, get_free_daily_usage_date, is_user_pro_active
 from utils.token_wallet import consume_wallet_tokens
 from utils.usage_utils import normalize_usage
 
@@ -18,14 +18,15 @@ def record_token_usage(
     user_id: str,
     usage: Any,
     usage_timestamp: datetime | None = None,
+    use_free_daily_reset: bool = False,
 ) -> None:
-    """Increment the user's token usage ledger for a UTC day."""
+    """Increment token usage ledger for a UTC day or free-user noon-reset window."""
     normalized = normalize_usage(usage)
     if normalized["total_tokens"] <= 0:
         return
 
     when = usage_timestamp or datetime.now(UTC)
-    usage_date = when.date()
+    usage_date = get_free_daily_usage_date(when) if use_free_daily_reset else when.date()
 
     stmt = insert(UserTokenUsageLedger).values(
         user_id=user_id,
@@ -108,6 +109,7 @@ def apply_token_usage_with_wallet(
         db_session,
         user_id=user.id,
         usage=normalized,
+        use_free_daily_reset=not is_user_pro_active(user),
     )
     return {
         "success": True,

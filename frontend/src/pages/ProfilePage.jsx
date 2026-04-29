@@ -503,19 +503,18 @@ export default function ProfilePage() {
     ? Math.min(100, Math.max(0, (tokenUsed / tokenCap) * 100))
     : 0;
   const tokenProgressLabel = `${tokenProgressPercent.toFixed(1)}%`;
-  const nextTokenResetDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
-  const formattedNextTokenResetDate = nextTokenResetDate.toLocaleDateString(activeLocale);
+  const nextTokenResetDate = displayUser?.token_reset_at ? new Date(displayUser.token_reset_at) : null;
+  const formattedNextTokenResetDate = nextTokenResetDate ? nextTokenResetDate.toLocaleDateString(activeLocale) : null;
   const proExpireDateObj = displayUser?.pro_expire_date ? new Date(displayUser.pro_expire_date) : null;
-  const isProDueBeforeNextReset = Boolean(proExpireDateObj && proExpireDateObj < nextTokenResetDate);
+  const isProDueBeforeNextReset = Boolean(proExpireDateObj && nextTokenResetDate && proExpireDateObj <= nextTokenResetDate);
   const tokenNoticeText = !isActivePro
-    ? t('profile.token_resets_daily', { defaultValue: 'Token quota resets daily.' })
+    ? t('profile.token_resets_daily')
     : isProDueBeforeNextReset
     ? t('profile.pro_due_no_token_reset_notice', {
-      defaultValue: 'Pro 即将到期，下个月 Token 不会重置。',
+      date: formattedProExpireDate,
     })
     : t('profile.next_token_reset_notice', {
       date: formattedNextTokenResetDate,
-      defaultValue: `下次 Token 重置时间：${formattedNextTokenResetDate}`,
     });
 
   useEffect(() => {

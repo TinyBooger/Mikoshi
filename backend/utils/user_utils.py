@@ -142,26 +142,43 @@ def is_pro_active(user: User) -> bool:
     return get_pro_state(user)["active"]
 
 
-def upgrade_to_pro(user: User, db: Session, duration_days: int = 30) -> User:
+def _add_months(dt: datetime, months: int) -> datetime:
+    """Advance *dt* by *months* calendar months, anchored to the same day-of-month.
+    Days that don't exist in the target month are clamped to the last day."""
+    import calendar
+    target_month = (dt.month - 1 + months) % 12 + 1
+    years_over = (dt.month - 1 + months) // 12
+    target_year = dt.year + years_over
+    last_day = calendar.monthrange(target_year, target_month)[1]
+    return dt.replace(year=target_year, month=target_month, day=min(dt.day, last_day))
+
+
+def upgrade_to_pro(user: User, db: Session, duration_months: int = 1, duration_days: int | None = None) -> User:
     """Upgrade a user to Pro status.
-    
+
     Args:
         user: User object to upgrade
         db: Database session
-        duration_days: Number of days for the Pro subscription (default: 30)
-    
+        duration_months: Number of calendar months for the subscription (default: 1).
+        duration_days: Legacy parameter. If provided and duration_months is default,
+                       converts 30-day multiples to months (30→1, 180→6, etc.).
+
     Returns:
         Updated User object
     """
+    # Back-compat: callers still passing duration_days
+    if duration_days is not None:
+        duration_months = max(1, round(duration_days / 30))
+
     now = datetime.now(UTC)
-    
+
     # If already Pro and not expired, extend from current expiration
     if user.is_pro and user.pro_expire_date and user.pro_expire_date > now:
-        new_expire = user.pro_expire_date + timedelta(days=duration_days)
+        new_expire = _add_months(user.pro_expire_date, duration_months)
     else:
         # New Pro subscription or expired
         user.pro_start_date = now
-        new_expire = now + timedelta(days=duration_days)
+        new_expire = _add_months(now, duration_months)
     
     user.is_pro = True
     user.pro_expire_date = new_expire

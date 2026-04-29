@@ -602,7 +602,8 @@ def update_user(
     if update_data.is_pro is True and not effective_pro_start_date and not effective_pro_expire_date:
         now = datetime.now(UTC)
         user.pro_start_date = now
-        user.pro_expire_date = now + timedelta(days=30)
+        from utils.user_utils import _add_months
+        user.pro_expire_date = _add_months(now, 1)
         effective_pro_start_date = user.pro_start_date
         effective_pro_expire_date = user.pro_expire_date
 
