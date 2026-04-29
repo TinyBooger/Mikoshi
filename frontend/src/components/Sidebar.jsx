@@ -983,19 +983,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               const formattedNextTokenResetDate = nextTokenResetDate.toLocaleDateString(activeLocale);
               const proExpireDateObj = userData?.pro_expire_date ? new Date(userData.pro_expire_date) : null;
               const isProDueBeforeNextReset = Boolean(proExpireDateObj && proExpireDateObj < nextTokenResetDate);
-              const tokenNoticeText = !isActivePro
-                ? t('profile.token_resets_daily', { defaultValue: 'Token quota resets daily.' })
-                : isProDueBeforeNextReset
-                ? t('profile.pro_due_no_token_reset_notice', { defaultValue: 'Pro 即将到期，下个月 Token 不会重置。' })
-                : t('profile.next_token_reset_notice', { date: formattedNextTokenResetDate, defaultValue: `下次 Token 重置时间：${formattedNextTokenResetDate}` });
               return (
                 <>
                   <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 4 }}>
                     <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#5b2f9b' }}>
                       {tokenProgressLabel}
-                    </span>
-                    <span style={{ fontSize: '0.68rem', color: '#6b7280', fontWeight: 700 }}>
-                      {tokenNoticeText}
                     </span>
                   </div>
                   <div style={{ height: 6, borderRadius: 999, background: 'rgba(167, 139, 250, 0.16)', overflow: 'hidden' }}>
@@ -1008,9 +1000,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                         transition: 'width 0.25s ease',
                       }}
                     />
-                  </div>
-                  <div style={{ marginTop: 3, fontSize: '0.68rem', color: '#4b5563', fontWeight: 600 }}>
-                    {tokenUsageValue}
                   </div>
                 </>
               );
