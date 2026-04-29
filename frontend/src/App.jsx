@@ -4,7 +4,6 @@ import AuthLayout from './components/AuthLayout';
 import AdminApp from './admin/AdminApp.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
 import Layout from './components/Layout.jsx';
-import HomePage from './pages/HomePage';
 import BrowsePage from './pages/BrowsePage.jsx';
 import WelcomePage from './pages/WelcomePage';
 import SignUpPage from './pages/SignUpPage';
@@ -77,7 +76,6 @@ const router = createBrowserRouter([
       { path: 'browse', element: <ProtectedPage><BrowsePage /></ProtectedPage> },
       { path: 'browse/:mainTab/:subTab', element: <ProtectedPage><BrowsePage /></ProtectedPage> },
       { path: 'browse/:mainTab', element: <ProtectedPage><BrowsePage /></ProtectedPage> },
-      { path: 'HomePage', element: <ProtectedPage><HomePage /></ProtectedPage> },
       { path: 'character/create', element: <ProtectedPage><CharacterFormPage /></ProtectedPage> },
       { path: 'character/edit/:id', element: <ProtectedPage><CharacterFormPage /></ProtectedPage> },
       { path: 'character/fork/:id', element: <ProtectedPage><CharacterFormPage /></ProtectedPage> },
