@@ -21,8 +21,8 @@ function PageWrapper({ children, style = {}, className = '' }) {
 
   const combinedStyle = isMobile
       ? {
-        minHeight: '100dvh',
-          height: 'auto',
+          minHeight: '100dvh',
+          flexShrink: 0,
           width: '100vw',
           maxWidth: '100vw',
           boxSizing: 'border-box',
@@ -38,8 +38,8 @@ function PageWrapper({ children, style = {}, className = '' }) {
           ...style,
         }
     : {
-      minHeight: '100vh',
-        height: 'auto',
+        minHeight: '100dvh',
+        flexShrink: 0,
         boxSizing: 'border-box',
         width: '100%',
         maxWidth: '100%',

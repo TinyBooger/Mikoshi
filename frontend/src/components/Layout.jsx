@@ -122,7 +122,6 @@ export default function Layout() {
       className="d-flex flex-column"
       style={{
         height: '100dvh',
-        overflow: 'hidden',
         width: '100%',
         position: 'fixed',
         inset: 0,

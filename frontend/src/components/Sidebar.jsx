@@ -24,6 +24,32 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [homeIconFocused, setHomeIconFocused] = useState(false);
+  const [searchHistory, setSearchHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sidebar_search_history') || '[]'); }
+    catch { return []; }
+  });
+
+  const addToHistory = (term) => {
+    setSearchHistory(prev => {
+      const filtered = prev.filter(h => h !== term);
+      const next = [term, ...filtered].slice(0, 5);
+      localStorage.setItem('sidebar_search_history', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const removeFromHistory = (term) => {
+    setSearchHistory(prev => {
+      const next = prev.filter(h => h !== term);
+      localStorage.setItem('sidebar_search_history', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const clearHistory = () => {
+    setSearchHistory([]);
+    localStorage.removeItem('sidebar_search_history');
+  };
   
   // Helper function to close sidebar and navigate immediately
   const handleNavigate = (path) => {
@@ -37,6 +63,14 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   const handleSearch = (q = query) => {
     const trimmed = q.trim();
     if (!trimmed) return;
+    addToHistory(trimmed);
+    if (sessionToken) {
+      fetch(`${window.API_BASE_URL}/api/update-search-term`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: sessionToken },
+        body: JSON.stringify({ keyword: trimmed }),
+      }).catch(() => {});
+    }
     if (isMobile && setSidebarVisible) {
       setSidebarVisible(false);
     }
@@ -360,7 +394,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         alignItems: 'center',
         justifyContent: 'space-between',
         height: '2.5rem',
-        marginBottom: '0.75rem',
+        marginBottom: '1rem',
         flexShrink: 0,
       }}>
         {/* Text logo on far left */}
@@ -437,7 +471,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
           </button>
         </div>
       </div>
-      <div className="mb-2" style={{ position: 'relative' }}>
+      <div className="mb-3" style={{ position: 'relative' }}>
         <div
           className="input-group rounded-pill"
           style={{
@@ -474,7 +508,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             onBlur={() => setTimeout(() => {
               setShowSuggestions(false);
               setSearchFocused(false);
-            }, 100)}
+            }, 200)}
             aria-autocomplete="list"
             aria-haspopup="true"
           />
@@ -514,51 +548,78 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             <i className="bi bi-search" style={{ fontSize: '0.92rem' }}></i>
           </button>
         </div>
-        {showSuggestions && suggestions.length > 0 && (
-          <ul
-            className="list-group position-absolute w-100 shadow rounded-4"
+        {showSuggestions && (searchHistory.length > 0 || suggestions.length > 0) && (
+          <div
+            className="position-absolute w-100 shadow-sm rounded-4"
             style={{
-              top: '100%',
+              top: 'calc(100% + 4px)',
               zIndex: 2100,
-              maxHeight: 176,
-              overflowY: 'auto',
               background: '#fff',
-              color: '#232323',
-              border: 'none',
+              border: '1px solid rgba(115,107,146,0.13)',
               fontSize: '0.78rem',
+              overflow: 'hidden',
+              padding: '6px 0',
             }}
           >
-            {suggestions.map(({ keyword, count }) => (
-              <li
-                key={keyword}
-                className="list-group-item list-group-item-action rounded-3"
-                style={{
-                  cursor: 'pointer',
-                  transition: 'background 0.16s',
-                  background: 'transparent',
-                  color: '#232323',
-                  border: 'none',
-                  fontSize: '0.78rem',
-                }}
-                onClick={() => handleSearch(keyword)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#232323';
-                  e.currentTarget.style.color = '#fff';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = '#232323';
-                }}
-              >
-                <span className="fw-semibold">{keyword}</span>{' '}
-                <small className="text-muted">{t('topbar.suggestion_count', { count })}</small>
-              </li>
-            ))}
-          </ul>
+            {searchHistory.length > 0 && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px 2px' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#736B92', letterSpacing: '0.3px' }}>搜索历史</span>
+                  <button
+                    style={{ background: 'none', border: 'none', padding: '2px 4px', fontSize: '0.68rem', color: '#aaa', cursor: 'pointer', borderRadius: 4, transition: 'color 0.15s, background 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#e05252'; e.currentTarget.style.background = 'rgba(224,82,82,0.07)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = '#aaa'; e.currentTarget.style.background = 'none'; }}
+                    onMouseDown={e => { e.preventDefault(); clearHistory(); }}
+                  >清空搜索历史</button>
+                </div>
+                {searchHistory.map((term) => (
+                  <div
+                    key={term}
+                    style={{ display: 'flex', alignItems: 'center', padding: '0 4px 0 12px', gap: 2, cursor: 'pointer', transition: 'background 0.14s', borderRadius: 6, margin: '1px 4px' }}
+                    onClick={() => handleSearch(term)}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#f3f0fa'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <i className="bi bi-clock-history" style={{ fontSize: '0.7rem', color: '#b0a8c8', flexShrink: 0, marginRight: 4 }}></i>
+                    <span style={{ flex: 1, fontWeight: 500, color: '#232323', fontSize: '0.78rem', padding: '5px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{term}</span>
+                    <button
+                      style={{ background: 'none', border: 'none', padding: '3px 5px', color: '#ccc', cursor: 'pointer', borderRadius: 4, flexShrink: 0, transition: 'color 0.15s, background 0.15s', display: 'flex', alignItems: 'center' }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#e05252'; e.currentTarget.style.background = 'rgba(224,82,82,0.09)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = '#ccc'; e.currentTarget.style.background = 'none'; }}
+                      onMouseDown={e => { e.preventDefault(); e.stopPropagation(); removeFromHistory(term); }}
+                      title="删除"
+                    >
+                      <i className="bi bi-x" style={{ fontSize: '0.85rem' }}></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {suggestions.length > 0 && (
+              <div style={{ marginTop: searchHistory.length > 0 ? 6 : 0 }}>
+                {searchHistory.length > 0 && <div style={{ height: 1, background: 'rgba(115,107,146,0.09)', margin: '2px 10px 4px' }} />}
+                <div style={{ padding: '4px 12px 2px' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#736B92', letterSpacing: '0.3px' }}>热门搜索</span>
+                </div>
+                {suggestions.map(({ keyword, count }) => (
+                  <div
+                    key={keyword}
+                    style={{ display: 'flex', alignItems: 'center', padding: '5px 12px', cursor: 'pointer', transition: 'background 0.14s', borderRadius: 6, margin: '1px 4px', gap: 6 }}
+                    onClick={() => handleSearch(keyword)}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#f3f0fa'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {count > 100 && <i className="bi bi-fire" style={{ fontSize: '0.7rem', color: '#f0874a', flexShrink: 0 }}></i>}
+                    <span style={{ fontWeight: 500, color: '#232323', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{keyword}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
       {/* Top navigation */}
-      <div className="d-flex flex-column gap-2 mb-1 position-relative">
+      <div className="d-flex flex-column gap-2 mb-3 position-relative">
         <div className="create-dropdown-area" style={{ position: 'relative' }}>
           <div style={{ 
             position: 'relative',
@@ -620,6 +681,25 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
 
             .recent-chats-scroll::-webkit-scrollbar-thumb:active {
               background: rgba(35, 35, 35, 0.3);
+            }
+
+            .chat-options-btn {
+              opacity: 0;
+              pointer-events: none;
+              transition: opacity 0.15s;
+            }
+
+            .recent-chat-menu-area:hover .chat-options-btn,
+            .chat-options-btn.menu-open {
+              opacity: 1;
+              pointer-events: auto;
+            }
+
+            @media (hover: none) {
+              .chat-options-btn {
+                opacity: 1;
+                pointer-events: auto;
+              }
             }
           `}</style>
           <ul
@@ -693,23 +773,9 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
           </ul>
         </div>
       </div>
-      <button
-        className="fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center"
-        style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: '#fff', color: '#232323', borderRadius: 19, padding: '9px 0', border: 'none', fontWeight: 700, transition: 'background 0.2s', marginBottom: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-        onClick={() => {
-          handleNavigate('/browse/popular');
-        }}
-        onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
-        tabIndex={0}
-        title={t('sidebar.browse_tooltip')}
-      >
-        <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-compass me-2"></i> {t('sidebar.browse')}</span>
-      </button>
-
       {/* Recent chats */}
       <div className="recent-chats-scroll mb-3 d-flex flex-column" style={{ minHeight: 0, flex: '1 1 auto', overflowX: 'hidden', overflowY: 'auto' }}>
-        <h6 className="fw-bold mb-1" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px', flexShrink: 0 }}>{t('sidebar.recent_chats')}</h6>
+        <h6 className="fw-bold mb-2" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px', flexShrink: 0 }}>{t('sidebar.recent_chats')}</h6>
         <div className="list-group rounded-4" style={{ background: 'transparent', boxShadow: 'none', minHeight: 0 }}>
           {recentChats.length === 0 ? (
             <div className="rounded-4 p-3" style={{ 
@@ -760,7 +826,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               {recentChats.map(item => (
                 <div
                   key={`${item.type}-${item.id}-${item.chat_id || 'unknown'}`}
-                  className="recent-chat-menu-area list-group-item border-0 rounded-4 mb-1 p-0"
+                  className="recent-chat-menu-area list-group-item border-0 rounded-4 mb-2 p-0"
                   style={{ background: '#fff', position: 'relative', width: '100%' }}
                 >
                   <div className="d-flex align-items-center" style={{ minHeight: 38, width: '100%' }}>
@@ -776,7 +842,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                         width: '100%',
                         minWidth: 0,
                         textAlign: 'left',
-                        padding: '0.28rem 2.2rem 0.28rem 0.4rem',
+                        padding: '0.45rem 2.2rem 0.45rem 0.4rem',
                       }}
                       onClick={() => {
                         if (item.type === 'scene') {
@@ -871,6 +937,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                         flexShrink: 0,
                         zIndex: 2,
                       }}
+                      className={`chat-options-btn${chatMenuOpenId === item.chat_id ? ' menu-open' : ''}`}
                       aria-label={t('sidebar.chat_options') || 'Chat options'}
                       title={t('sidebar.chat_options') || 'Chat options'}
                     >

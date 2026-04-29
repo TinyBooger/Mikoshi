@@ -54,6 +54,31 @@ function SearchPage() {
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchHistory, setSearchHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sidebar_search_history') || '[]'); }
+    catch { return []; }
+  });
+
+  const addToSearchHistory = (term) => {
+    setSearchHistory(prev => {
+      const filtered = prev.filter(h => h !== term);
+      const next = [term, ...filtered].slice(0, 5);
+      localStorage.setItem('sidebar_search_history', JSON.stringify(next));
+      return next;
+    });
+  };
+  const removeFromSearchHistory = (term) => {
+    setSearchHistory(prev => {
+      const next = prev.filter(h => h !== term);
+      localStorage.setItem('sidebar_search_history', JSON.stringify(next));
+      return next;
+    });
+  };
+  const clearSearchHistory = () => {
+    setSearchHistory([]);
+    localStorage.removeItem('sidebar_search_history');
+  };
+
   const loadMoreRef = useRef(null);
   const sortDropdownRef = useRef(null);
   const activePillRef = useRef(null);
@@ -143,6 +168,14 @@ function SearchPage() {
   const handleSearch = (q = searchQuery) => {
     const trimmed = q.trim();
     if (!trimmed) return;
+    addToSearchHistory(trimmed);
+    if (sessionToken) {
+      fetch(`${window.API_BASE_URL}/api/update-search-term`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: sessionToken },
+        body: JSON.stringify({ keyword: trimmed }),
+      }).catch(() => {});
+    }
     navigate(`/search?q=${encodeURIComponent(trimmed)}`);
     setShowSearchSuggestions(false);
   };
@@ -469,7 +502,7 @@ function SearchPage() {
                 onChange={e => setSearchQuery(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
                 onFocus={() => { setShowSearchSuggestions(true); setSearchFocused(true); }}
-                onBlur={() => setTimeout(() => { setShowSearchSuggestions(false); setSearchFocused(false); }, 100)}
+                onBlur={() => setTimeout(() => { setShowSearchSuggestions(false); setSearchFocused(false); }, 200)}
                 aria-autocomplete="list"
                 aria-haspopup="true"
               />
@@ -509,94 +542,138 @@ function SearchPage() {
                 <i className="bi bi-search" style={{ fontSize: '1rem' }}></i>
               </button>
             </div>
-            {showSearchSuggestions && searchSuggestions.length > 0 && (
-              <ul
-                className="list-group position-absolute w-100 shadow rounded-4"
-                style={{ top: '100%', zIndex: 1040, maxHeight: 176, overflowY: 'auto', background: '#fff', color: '#232323', border: 'none', fontSize: '0.8rem' }}
+            {showSearchSuggestions && (searchHistory.length > 0 || searchSuggestions.length > 0) && (
+              <div
+                className="position-absolute w-100 shadow-sm rounded-4"
+                style={{ top: 'calc(100% + 4px)', zIndex: 1040, background: '#fff', border: '1px solid rgba(115,107,146,0.13)', fontSize: '0.8rem', overflow: 'hidden', padding: '6px 0' }}
               >
-                {searchSuggestions.map(({ keyword, count }) => (
-                  <li
-                    key={keyword}
-                    className="list-group-item list-group-item-action rounded-3"
-                    style={{ cursor: 'pointer', transition: 'background 0.16s', background: 'transparent', color: '#232323', border: 'none', fontSize: '0.8rem' }}
-                    onClick={() => handleSearch(keyword)}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#232323'; e.currentTarget.style.color = '#fff'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                  >
-                    <span className="fw-semibold">{keyword}</span> <small className="text-muted">{t('topbar.suggestion_count', { count })}</small>
-                  </li>
-                ))}
-              </ul>
+                {searchHistory.length > 0 && (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px 2px' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#736B92', letterSpacing: '0.3px' }}>搜索历史</span>
+                      <button
+                        style={{ background: 'none', border: 'none', padding: '2px 4px', fontSize: '0.7rem', color: '#aaa', cursor: 'pointer', borderRadius: 4, transition: 'color 0.15s, background 0.15s' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#e05252'; e.currentTarget.style.background = 'rgba(224,82,82,0.07)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#aaa'; e.currentTarget.style.background = 'none'; }}
+                        onMouseDown={e => { e.preventDefault(); clearSearchHistory(); }}
+                      >清空搜索历史</button>
+                    </div>
+                    {searchHistory.map((term) => (
+                      <div
+                        key={term}
+                        style={{ display: 'flex', alignItems: 'center', padding: '0 4px 0 12px', gap: 2, cursor: 'pointer', transition: 'background 0.14s', borderRadius: 6, margin: '1px 4px' }}
+                        onClick={() => handleSearch(term)}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#f3f0fa'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <i className="bi bi-clock-history" style={{ fontSize: '0.72rem', color: '#b0a8c8', flexShrink: 0, marginRight: 4 }}></i>
+                        <span style={{ flex: 1, fontWeight: 500, color: '#232323', fontSize: '0.8rem', padding: '5px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{term}</span>
+                        <button
+                          style={{ background: 'none', border: 'none', padding: '3px 5px', color: '#ccc', cursor: 'pointer', borderRadius: 4, flexShrink: 0, transition: 'color 0.15s, background 0.15s', display: 'flex', alignItems: 'center' }}
+                          onMouseEnter={e => { e.currentTarget.style.color = '#e05252'; e.currentTarget.style.background = 'rgba(224,82,82,0.09)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = '#ccc'; e.currentTarget.style.background = 'none'; }}
+                          onMouseDown={e => { e.preventDefault(); e.stopPropagation(); removeFromSearchHistory(term); }}
+                          title="删除"
+                        >
+                          <i className="bi bi-x" style={{ fontSize: '0.9rem' }}></i>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {searchSuggestions.length > 0 && (
+                  <div style={{ marginTop: searchHistory.length > 0 ? 6 : 0 }}>
+                    {searchHistory.length > 0 && <div style={{ height: 1, background: 'rgba(115,107,146,0.09)', margin: '2px 10px 4px' }} />}
+                    <div style={{ padding: '4px 12px 2px' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#736B92', letterSpacing: '0.3px' }}>热门搜索</span>
+                    </div>
+                    {searchSuggestions.map(({ keyword, count }) => (
+                      <div
+                        key={keyword}
+                        style={{ display: 'flex', alignItems: 'center', padding: '5px 12px', cursor: 'pointer', transition: 'background 0.14s', borderRadius: 6, margin: '1px 4px', gap: 6 }}
+                        onClick={() => handleSearch(keyword)}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#f3f0fa'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        {count > 100 && <i className="bi bi-fire" style={{ fontSize: '0.72rem', color: '#f0874a', flexShrink: 0 }}></i>}
+                        <span style={{ fontWeight: 500, color: '#232323', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{keyword}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
-          <button
-            onClick={() => setShowOnboarding(true)}
-            aria-label={t('onboarding.replay_tour')}
-            title={t('onboarding.replay_tour')}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              color: '#736B92',
-              fontSize: '1.1rem',
-              padding: '0.35rem 0.45rem',
-              borderRadius: 8,
-              cursor: 'pointer',
-              transition: 'background 0.16s, color 0.16s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-          >
-            <i className="bi bi-play-circle" style={{ fontSize: '1.05rem' }}></i>
-          </button>
-          <button
-            onClick={() => setShowUpdateNotification(true)}
-            aria-label={t('topbar.updates')}
-            title={t('topbar.updates')}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              color: '#736B92',
-              fontSize: '1.2rem',
-              padding: '0.35rem 0.55rem',
-              borderRadius: 8,
-              cursor: 'pointer',
-              transition: 'background 0.16s, color 0.16s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-          >
-            <i className="bi bi-megaphone" style={{ fontSize: '1.2rem' }}></i>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.28rem', paddingLeft: '0.18rem' }}>
+            <button
+              onClick={() => setShowOnboarding(true)}
+              aria-label={t('onboarding.replay_tour')}
+              title={t('onboarding.replay_tour')}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: '#736B92',
+                fontSize: '1.1rem',
+                padding: '0.35rem 0.45rem',
+                borderRadius: 8,
+                cursor: 'pointer',
+                transition: 'background 0.16s, color 0.16s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <i className="bi bi-play-circle" style={{ fontSize: '1.05rem' }}></i>
+            </button>
+            <button
+              onClick={() => setShowUpdateNotification(true)}
+              aria-label={t('topbar.updates')}
+              title={t('topbar.updates')}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: '#736B92',
+                fontSize: '1.2rem',
+                padding: '0.35rem 0.55rem',
+                borderRadius: 8,
+                cursor: 'pointer',
+                transition: 'background 0.16s, color 0.16s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <i className="bi bi-megaphone" style={{ fontSize: '1.2rem' }}></i>
+            </button>
 
-          <button
-            onClick={() => setShowProblemReport(true)}
-            aria-label={t('topbar.report_problem')}
-            title={t('topbar.report_problem')}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              color: '#736B92',
-              fontSize: '1.2rem',
-              padding: '0.35rem 0.55rem',
-              borderRadius: 8,
-              cursor: 'pointer',
-              transition: 'background 0.16s, color 0.16s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-          >
-            <i className="bi bi-flag" style={{ fontSize: '1.2rem' }}></i>
-          </button>
+            <button
+              onClick={() => setShowProblemReport(true)}
+              aria-label={t('topbar.report_problem')}
+              title={t('topbar.report_problem')}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: '#736B92',
+                fontSize: '1.2rem',
+                padding: '0.35rem 0.55rem',
+                borderRadius: 8,
+                cursor: 'pointer',
+                transition: 'background 0.16s, color 0.16s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <i className="bi bi-flag" style={{ fontSize: '1.2rem' }}></i>
+            </button>
+          </div>
           </div>
         </section>
 
