@@ -5,8 +5,6 @@ import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
 import ConfirmModal from '../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
-import PrimaryButton from '../components/PrimaryButton';
-import SecondaryButton from '../components/SecondaryButton';
 import ProblemReportModal from '../components/ProblemReportModal';
 
 function HelpFaqItem({ question, answer }) {
@@ -76,6 +74,90 @@ export default function SettingsPage() {
   const [confirmDelete, setConfirmDelete] = useState({ show: false });
   const [lang, setLang] = useState('zh');
   const [showProblemReport, setShowProblemReport] = useState(false);
+  const [isCompact, setIsCompact] = useState(window.innerWidth < 992);
+
+  const baseButtonStyle = {
+    borderRadius: '0.65rem',
+    border: '1px solid #d8dbe2',
+    fontSize: '0.88rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease',
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+    padding: '0.48rem 0.92rem',
+  };
+
+  const buttonVariants = {
+    primary: {
+      background: '#ede7f7',
+      border: '1px solid #ddd4ef',
+      color: '#5f567f',
+    },
+    secondary: {
+      background: '#f3f4f6',
+      border: '1px solid #e1e5eb',
+      color: '#4b5563',
+    },
+    danger: {
+      background: '#fef2f2',
+      border: '1px solid #fecdd3',
+      color: '#be123c',
+    },
+  };
+
+  const sectionCardStyle = {
+    padding: 16,
+    borderRadius: 12,
+    border: '1px solid #ece9f4',
+    background: '#fff',
+    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.05)',
+    marginBottom: 16,
+  };
+
+  const AppButton = ({ variant = 'primary', style = {}, disabled, onMouseEnter, onMouseLeave, ...props }) => (
+    <button
+      {...props}
+      disabled={disabled}
+      style={{
+        ...baseButtonStyle,
+        ...(buttonVariants[variant] || buttonVariants.primary),
+        ...(disabled ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
+        ...style,
+      }}
+      onMouseEnter={(e) => {
+        if (disabled) return;
+        if (variant === 'primary') e.currentTarget.style.background = '#e7e0f4';
+        if (variant === 'secondary') e.currentTarget.style.background = '#eceff4';
+        if (variant === 'danger') e.currentTarget.style.background = '#fee2e2';
+        if (onMouseEnter) onMouseEnter(e);
+      }}
+      onMouseLeave={(e) => {
+        if (disabled) return;
+        if (variant === 'primary') e.currentTarget.style.background = '#ede7f7';
+        if (variant === 'secondary') e.currentTarget.style.background = '#f3f4f6';
+        if (variant === 'danger') e.currentTarget.style.background = '#fef2f2';
+        if (onMouseLeave) onMouseLeave(e);
+      }}
+    />
+  );
+
+  const getNavButtonStyle = (isActive) => ({
+    padding: '12px 16px',
+    border: 'none',
+    background: isActive ? '#f1ebfb' : 'transparent',
+    color: isActive ? '#5f567f' : '#6c757d',
+    borderRadius: 8,
+    textAlign: 'left',
+    cursor: 'pointer',
+    fontWeight: isActive ? 700 : 500,
+    transition: 'all 0.2s',
+  });
+
+  React.useEffect(() => {
+    const handleResize = () => setIsCompact(window.innerWidth < 992);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Set default language to Chinese
   React.useEffect(() => {
@@ -311,40 +393,32 @@ export default function SettingsPage() {
   return (
     <PageWrapper>
       <div className="container mt-4">
-        <h2>设置</h2>
-        <div style={{ display: 'flex', gap: 24, marginTop: 24 }}>
+        <h2 style={{ color: '#2f2b3d', fontWeight: 800 }}>设置</h2>
+        <div style={{ display: 'flex', flexDirection: isCompact ? 'column' : 'row', gap: 24, marginTop: 24 }}>
           {/* Sidebar Navigator */}
           <div style={{ 
-            minWidth: 200, 
+            minWidth: isCompact ? '100%' : 200,
             height: 'fit-content',
-            position: 'sticky',
-            top: 24
+            position: isCompact ? 'static' : 'sticky',
+            top: isCompact ? 'auto' : 24
           }}>
             <nav style={{ 
               display: 'flex', 
-              flexDirection: 'column', 
+              flexDirection: isCompact ? 'row' : 'column',
+              flexWrap: isCompact ? 'wrap' : 'nowrap',
               gap: 8,
               background: '#fff',
               borderRadius: 12,
-              border: '1px solid #e9ecef',
+              border: '1px solid #ece9f4',
+              boxShadow: '0 4px 12px rgba(15, 23, 42, 0.05)',
               padding: 12
             }}>
               <button
                 onClick={() => setActiveSection('account')}
-                style={{
-                  padding: '12px 16px',
-                  border: 'none',
-                  background: activeSection === 'account' ? '#f0eef7' : 'transparent',
-                  color: activeSection === 'account' ? '#736B92' : '#6c757d',
-                  borderRadius: 8,
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontWeight: activeSection === 'account' ? 600 : 400,
-                  transition: 'all 0.2s'
-                }}
+                style={getNavButtonStyle(activeSection === 'account')}
                 onMouseEnter={(e) => {
                   if (activeSection !== 'account') {
-                    e.currentTarget.style.background = '#f8f9fa';
+                    e.currentTarget.style.background = '#f8f7fc';
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -357,20 +431,10 @@ export default function SettingsPage() {
               </button>
               <button
                 onClick={() => setActiveSection('orderHistory')}
-                style={{
-                  padding: '12px 16px',
-                  border: 'none',
-                  background: activeSection === 'orderHistory' ? '#f0eef7' : 'transparent',
-                  color: activeSection === 'orderHistory' ? '#736B92' : '#6c757d',
-                  borderRadius: 8,
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontWeight: activeSection === 'orderHistory' ? 600 : 400,
-                  transition: 'all 0.2s'
-                }}
+                style={getNavButtonStyle(activeSection === 'orderHistory')}
                 onMouseEnter={(e) => {
                   if (activeSection !== 'orderHistory') {
-                    e.currentTarget.style.background = '#f8f9fa';
+                    e.currentTarget.style.background = '#f8f7fc';
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -383,20 +447,10 @@ export default function SettingsPage() {
               </button>
               <button
                 onClick={() => setActiveSection('language')}
-                style={{
-                  padding: '12px 16px',
-                  border: 'none',
-                  background: activeSection === 'language' ? '#f0eef7' : 'transparent',
-                  color: activeSection === 'language' ? '#736B92' : '#6c757d',
-                  borderRadius: 8,
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontWeight: activeSection === 'language' ? 600 : 400,
-                  transition: 'all 0.2s'
-                }}
+                style={getNavButtonStyle(activeSection === 'language')}
                 onMouseEnter={(e) => {
                   if (activeSection !== 'language') {
-                    e.currentTarget.style.background = '#f8f9fa';
+                    e.currentTarget.style.background = '#f8f7fc';
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -409,20 +463,10 @@ export default function SettingsPage() {
               </button>
               <button
                 onClick={() => setActiveSection('help')}
-                style={{
-                  padding: '12px 16px',
-                  border: 'none',
-                  background: activeSection === 'help' ? '#f0eef7' : 'transparent',
-                  color: activeSection === 'help' ? '#736B92' : '#6c757d',
-                  borderRadius: 8,
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontWeight: activeSection === 'help' ? 600 : 400,
-                  transition: 'all 0.2s'
-                }}
+                style={getNavButtonStyle(activeSection === 'help')}
                 onMouseEnter={(e) => {
                   if (activeSection !== 'help') {
-                    e.currentTarget.style.background = '#f8f9fa';
+                    e.currentTarget.style.background = '#f8f7fc';
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -442,11 +486,11 @@ export default function SettingsPage() {
             {activeSection === 'account' && (
               <>
                 {/* Change Password */}
-                <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
+                <section style={sectionCardStyle}>
                   <h4>安全设置</h4>
                   {!showPasswordForm ? (
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <PrimaryButton onClick={() => setShowPasswordForm(true)}>修改密码</PrimaryButton>
+                      <AppButton onClick={() => setShowPasswordForm(true)}>修改密码</AppButton>
                     </div>
                   ) : (
                     <form onSubmit={doChangePassword}>
@@ -466,20 +510,20 @@ export default function SettingsPage() {
                         <div className="text-danger mb-2" style={{ fontSize: '0.95rem' }}>{passwordError}</div>
                       )}
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <PrimaryButton type="submit" disabled={changingPassword}>修改密码</PrimaryButton>
-                        <SecondaryButton type="button" onClick={() => { setShowPasswordForm(false); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); }}>取消</SecondaryButton>
+                        <AppButton type="submit" disabled={changingPassword}>修改密码</AppButton>
+                        <AppButton variant="secondary" type="button" onClick={() => { setShowPasswordForm(false); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); }}>取消</AppButton>
                       </div>
                     </form>
                   )}
                 </section>
 
                 {/* Change Email */}
-                <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
+                <section style={sectionCardStyle}>
                   <h4>修改邮箱</h4>
                   <p>当前邮箱 <strong>{userData.email || '当前未绑定邮箱'}</strong></p>
                   {!showEmailForm ? (
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <PrimaryButton onClick={() => setShowEmailForm(true)}>修改邮箱</PrimaryButton>
+                      <AppButton onClick={() => setShowEmailForm(true)}>修改邮箱</AppButton>
                     </div>
                   ) : (
                     <form onSubmit={doChangeEmail}>
@@ -488,8 +532,8 @@ export default function SettingsPage() {
                         <input type="email" className="form-control" value={newEmail} onChange={e => setNewEmail(e.target.value)} required />
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <PrimaryButton type="submit" disabled={changingEmail}>修改邮箱</PrimaryButton>
-                        <SecondaryButton type="button" onClick={() => { setShowEmailForm(false); setNewEmail(''); setEmailError(''); }}>取消</SecondaryButton>
+                        <AppButton type="submit" disabled={changingEmail}>修改邮箱</AppButton>
+                        <AppButton variant="secondary" type="button" onClick={() => { setShowEmailForm(false); setNewEmail(''); setEmailError(''); }}>取消</AppButton>
                       </div>
                       {emailError && (
                         <div className="text-danger mt-2" style={{ fontSize: '0.95rem' }}>{emailError}</div>
@@ -500,7 +544,7 @@ export default function SettingsPage() {
 
                 {/* Change Phone Number */}
                 {userData.phone_number && (
-                  <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
+                  <section style={sectionCardStyle}>
                     <h4>修改手机号</h4>
                     <p>
                       当前手机号 <strong>
@@ -509,7 +553,7 @@ export default function SettingsPage() {
                     </p>
                     {!showPhoneForm ? (
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <PrimaryButton onClick={startPhoneChange}>修改手机号</PrimaryButton>
+                        <AppButton onClick={startPhoneChange}>修改手机号</AppButton>
                       </div>
                     ) : (
                       <div>
@@ -544,7 +588,7 @@ export default function SettingsPage() {
                                   placeholder="请输入6位验证码"
                                   maxLength={6}
                                 />
-                                <PrimaryButton 
+                                <AppButton 
                                   onClick={sendCodeToCurrentPhone} 
                                   disabled={sendingCode || resendTimer > 0}
                                   style={{ minWidth: 120 }}
@@ -552,17 +596,17 @@ export default function SettingsPage() {
                                   {sendingCode ? '发送中...' : 
                                    resendTimer > 0 ? `${resendTimer}秒后可重发` : 
                                    '发送验证码'}
-                                </PrimaryButton>
+                                </AppButton>
                               </div>
                             </div>
                             {phoneError && (
                               <div className="text-danger mb-2" style={{ fontSize: '0.95rem' }}>{phoneError}</div>
                             )}
                             <div style={{ display: 'flex', gap: 8 }}>
-                              <PrimaryButton onClick={verifyCurrentPhone} disabled={verifyingCode || !currentPhoneCode}>
+                              <AppButton onClick={verifyCurrentPhone} disabled={verifyingCode || !currentPhoneCode}>
                                 {verifyingCode ? '发送中...' : '下一步'}
-                              </PrimaryButton>
-                              <SecondaryButton onClick={cancelPhoneChange}>取消</SecondaryButton>
+                              </AppButton>
+                              <AppButton variant="secondary" onClick={cancelPhoneChange}>取消</AppButton>
                             </div>
                           </div>
                         )}
@@ -599,10 +643,10 @@ export default function SettingsPage() {
                               <div className="text-danger mb-2" style={{ fontSize: '0.95rem' }}>{phoneError}</div>
                             )}
                             <div style={{ display: 'flex', gap: 8 }}>
-                              <PrimaryButton onClick={sendCodeToNewPhone} disabled={sendingCode || !newPhoneNumber}>
+                              <AppButton onClick={sendCodeToNewPhone} disabled={sendingCode || !newPhoneNumber}>
                                 {sendingCode ? '发送中...' : '下一步'}
-                              </PrimaryButton>
-                              <SecondaryButton onClick={cancelPhoneChange}>取消</SecondaryButton>
+                              </AppButton>
+                              <AppButton variant="secondary" onClick={cancelPhoneChange}>取消</AppButton>
                             </div>
                           </div>
                         )}
@@ -625,7 +669,7 @@ export default function SettingsPage() {
                                   placeholder="请输入6位验证码"
                                   maxLength={6}
                                 />
-                                <PrimaryButton 
+                                <AppButton 
                                   onClick={sendCodeToNewPhone} 
                                   disabled={sendingCode || resendTimer > 0}
                                   style={{ minWidth: 120 }}
@@ -633,17 +677,17 @@ export default function SettingsPage() {
                                   {sendingCode ? '发送中...' : 
                                    resendTimer > 0 ? `${resendTimer}秒后可重发` : 
                                    '重新发送验证码'}
-                                </PrimaryButton>
+                                </AppButton>
                               </div>
                             </div>
                             {phoneError && (
                               <div className="text-danger mb-2" style={{ fontSize: '0.95rem' }}>{phoneError}</div>
                             )}
                             <div style={{ display: 'flex', gap: 8 }}>
-                              <PrimaryButton onClick={confirmPhoneChange} disabled={verifyingCode || !newPhoneCode}>
+                              <AppButton onClick={confirmPhoneChange} disabled={verifyingCode || !newPhoneCode}>
                                 {verifyingCode ? '发送中...' : '确认更换'}
-                              </PrimaryButton>
-                              <SecondaryButton onClick={cancelPhoneChange}>取消</SecondaryButton>
+                              </AppButton>
+                              <AppButton variant="secondary" onClick={cancelPhoneChange}>取消</AppButton>
                             </div>
                           </div>
                         )}
@@ -653,18 +697,16 @@ export default function SettingsPage() {
                 )}
 
                 {/* Delete Account - Danger Zone */}
-                <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
+                <section style={sectionCardStyle}>
                   <h4 className="text-danger">危险操作</h4>
                   <p className="text-muted">此操作将永久删除您的账号，数据无法恢复。请谨慎操作！</p>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <PrimaryButton 
+                    <AppButton 
+                      variant="danger"
                       onClick={() => setConfirmDelete({ show: true })}
-                      style={{ background: '#d32f2f', color: '#fff' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#b71c1c'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = '#d32f2f'; }}
                     >
                       删除账号
-                    </PrimaryButton>
+                    </AppButton>
                   </div>
                 </section>
               </>
@@ -679,7 +721,7 @@ export default function SettingsPage() {
             {activeSection === 'help' && (
               <>
                 {/* FAQ */}
-                <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
+                <section style={sectionCardStyle}>
                   <h4>常见问题</h4>
 
                   {[
@@ -717,35 +759,34 @@ export default function SettingsPage() {
                 </section>
 
                 {/* Problem Report */}
-                <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
+                <section style={sectionCardStyle}>
                   <h4>提交问题</h4>
                   <p className="text-muted" style={{ marginBottom: 12 }}>
                     遇到其他问题？请向我们提交详细描述，方便我们更快地帮助您。
                   </p>
-                  <PrimaryButton onClick={() => setShowProblemReport(true)}>
+                  <AppButton onClick={() => setShowProblemReport(true)}>
                     <i className="bi bi-send me-2"></i>提交问题报告
-                  </PrimaryButton>
+                  </AppButton>
                 </section>
               </>
             )}
 
             {/* Language Settings Section */}
             {activeSection === 'language' && (
-              <section style={{ padding: 16, borderRadius: 12, border: '1px solid #e9ecef', marginBottom: 16 }}>
+              <section style={sectionCardStyle}>
                 <h4>语言</h4>
                 <p>当前语言: <strong>中文</strong></p>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <PrimaryButton 
+                  <AppButton 
                     onClick={() => handleLangToggle('zh')}
                     disabled={lang === 'zh'}
                     style={{ 
-                      background: lang === 'zh' ? '#736B92' : '#e9ecef',
-                      color: lang === 'zh' ? '#fff' : '#6c757d',
-                      cursor: lang === 'zh' ? 'default' : 'pointer'
+                      background: lang === 'zh' ? '#ede7f7' : '#f3f4f6',
+                      color: lang === 'zh' ? '#5f567f' : '#6c757d',
                     }}
                   >
                     中文
-                  </PrimaryButton>
+                  </AppButton>
                 </div>
               </section>
             )}

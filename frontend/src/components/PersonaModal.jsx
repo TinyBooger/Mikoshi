@@ -15,6 +15,57 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [selectedPersonaId, setSelectedPersonaId] = useState(null);
 
+  const baseButtonStyle = {
+    borderRadius: '0.5rem',
+    border: '1px solid #d8dbe2',
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease',
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+  };
+
+  const lavenderButtonStyle = {
+    ...baseButtonStyle,
+    background: '#ede7f7',
+    border: '1px solid #ddd4ef',
+    color: '#5f567f',
+  };
+
+  const neutralButtonStyle = {
+    ...baseButtonStyle,
+    background: '#f3f4f6',
+    border: '1px solid #e1e5eb',
+    color: '#4b5563',
+  };
+
+  const dangerButtonStyle = {
+    ...baseButtonStyle,
+    background: '#fef2f2',
+    border: '1px solid #fecdd3',
+    color: '#be123c',
+  };
+
+  const activeTagButtonStyle = {
+    ...baseButtonStyle,
+    padding: '0.4rem 0.6rem',
+    fontSize: '0.75rem',
+    background: '#e8ddf6',
+    border: '1px solid #d9c9f1',
+    color: '#5b3f89',
+    whiteSpace: 'nowrap',
+  };
+
+  const inactiveTagButtonStyle = {
+    ...baseButtonStyle,
+    padding: '0.4rem 0.6rem',
+    fontSize: '0.75rem',
+    background: '#f4f5f8',
+    border: '1px solid #e1e5eb',
+    color: '#4b5563',
+    whiteSpace: 'nowrap',
+  };
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
     window.addEventListener('resize', handleResize);
@@ -163,10 +214,36 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
   const modalContent = (
     <div onClick={onClose} className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '1rem' : '2rem' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: isMobile ? '95vw' : '600px', width: '100%', margin: 'auto' }}>
-        <div className="modal-content" style={{ maxHeight: isMobile ? '85vh' : '80vh', display: 'flex', flexDirection: 'column' }}>
-          <div className="modal-header">
+        <div className="modal-content" style={{ maxHeight: isMobile ? '85vh' : '80vh', display: 'flex', flexDirection: 'column', borderRadius: 14, border: '1px solid #ece9f4', boxShadow: '0 8px 20px rgba(15, 23, 42, 0.1)' }}>
+          <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h5 className="modal-title">{t('persona_modal.title')}</h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                ...neutralButtonStyle,
+                width: 30,
+                height: 30,
+                marginLeft: 'auto',
+                flexShrink: 0,
+                borderRadius: '50%',
+                padding: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.95rem',
+                lineHeight: 1,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#eceff4';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#f3f4f6';
+              }}
+              aria-label={t('persona_modal.cancel')}
+            >
+              <i className="bi bi-x"></i>
+            </button>
           </div>
           <div className="modal-body" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0, padding: isMobile ? '1rem 0.5rem' : '1rem' }}>
             {/* User Personas Section - Always at Top */}
@@ -196,16 +273,14 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                               onClick={() => confirmDelete(persona.id)}
                               style={{
                                 padding: '0.4rem 0.8rem',
-                                fontSize: '0.8rem',
-                                backgroundColor: '#dc3545',
-                                color: '#fff',
-                                border: 'none',
-                                borderRadius: '0.4rem',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                ...dangerButtonStyle,
                               }}
-                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#c82333'}
-                              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#dc3545'}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.background = '#ffe4e8';
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.background = '#fef2f2';
+                              }}
                             >
                               {t('persona_modal.delete')}
                             </button>
@@ -213,16 +288,14 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                               onClick={cancelDelete}
                               style={{
                                 padding: '0.4rem 0.8rem',
-                                fontSize: '0.8rem',
-                                backgroundColor: '#6c757d',
-                                color: '#fff',
-                                border: 'none',
-                                borderRadius: '0.4rem',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                ...neutralButtonStyle,
                               }}
-                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#5a6268'}
-                              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#6c757d'}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.background = '#eceff4';
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.background = '#f3f4f6';
+                              }}
                             >
                               {t('persona_modal.cancel')}
                             </button>
@@ -268,21 +341,17 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                             <button
                               onClick={(e) => handleSetDefault(e, persona.id)}
                               style={{
-                                padding: '0.4rem 0.6rem',
-                                fontSize: '0.75rem',
-                                backgroundColor: defaultPersonaId === persona.id ? '#7c3aed' : '#e9ecef',
-                                color: defaultPersonaId === persona.id ? '#fff' : '#232323',
-                                border: 'none',
-                                borderRadius: '0.4rem',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                whiteSpace: 'nowrap'
+                                ...(defaultPersonaId === persona.id ? activeTagButtonStyle : inactiveTagButtonStyle),
                               }}
                               onMouseEnter={e => {
-                                e.currentTarget.style.backgroundColor = defaultPersonaId === persona.id ? '#6d28d9' : '#d1d5db';
+                                e.currentTarget.style.background = defaultPersonaId === persona.id
+                                  ? '#e3d5f5'
+                                  : '#eceff4';
                               }}
                               onMouseLeave={e => {
-                                e.currentTarget.style.backgroundColor = defaultPersonaId === persona.id ? '#7c3aed' : '#e9ecef';
+                                e.currentTarget.style.background = defaultPersonaId === persona.id
+                                  ? '#e8ddf6'
+                                  : '#f3f4f6';
                               }}
                               title={defaultPersonaId === persona.id ? 'Click to unset default' : 'Click to set as default'}
                             >
@@ -293,19 +362,14 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                               style={{
                                 padding: '0.4rem 0.6rem',
                                 fontSize: '0.75rem',
-                                backgroundColor: '#ffe6e6',
-                                color: '#dc3545',
-                                border: '1px solid #dc3545',
-                                borderRadius: '0.4rem',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                whiteSpace: 'nowrap'
+                                whiteSpace: 'nowrap',
+                                ...dangerButtonStyle,
                               }}
                               onMouseEnter={e => {
-                                e.currentTarget.style.backgroundColor = '#ffc2c2';
+                                e.currentTarget.style.background = '#ffe4e8';
                               }}
                               onMouseLeave={e => {
-                                e.currentTarget.style.backgroundColor = '#ffe6e6';
+                                e.currentTarget.style.background = '#fef2f2';
                               }}
                             >
                               {t('persona_modal.delete')}
@@ -440,8 +504,34 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
             )}
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>{t('persona_modal.cancel')}</button>
-            <button type="button" className="btn btn-primary" onClick={handleConfirm}>{t('persona_modal.confirm')}</button>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ ...neutralButtonStyle, padding: '0.45rem 0.95rem' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#eceff4';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#f3f4f6';
+              }}
+            >
+              {t('persona_modal.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              style={{ ...lavenderButtonStyle, padding: '0.45rem 0.95rem' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#e7e0f4';
+                e.currentTarget.style.color = '#554d73';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#ede7f7';
+                e.currentTarget.style.color = '#5f567f';
+              }}
+            >
+              {t('persona_modal.confirm')}
+            </button>
           </div>
         </div>
       </div>

@@ -12,6 +12,23 @@ export default function CharacterModal({ show, onClose, onSelect }) {
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
 
+  const baseButtonStyle = {
+    borderRadius: '0.5rem',
+    border: '1px solid #d8dbe2',
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease',
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+  };
+
+  const neutralButtonStyle = {
+    ...baseButtonStyle,
+    background: '#f3f4f6',
+    border: '1px solid #e1e5eb',
+    color: '#4b5563',
+  };
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
     window.addEventListener('resize', handleResize);
@@ -47,12 +64,38 @@ export default function CharacterModal({ show, onClose, onSelect }) {
   if (!show) return null;
 
   const modalContent = (
-    <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? '98vw' : undefined }}>
-        <div className="modal-content" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-          <div className="modal-header">
+    <div onClick={onClose} className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '1rem' : '2rem' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: isMobile ? '95vw' : '600px', width: '100%', margin: 'auto' }}>
+        <div className="modal-content" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column', borderRadius: 14, border: '1px solid #ece9f4', boxShadow: '0 8px 20px rgba(15, 23, 42, 0.1)' }}>
+          <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h5 className="modal-title">{t('character_modal.title')}</h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                ...neutralButtonStyle,
+                width: 30,
+                height: 30,
+                marginLeft: 'auto',
+                flexShrink: 0,
+                borderRadius: '50%',
+                padding: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.95rem',
+                lineHeight: 1,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#eceff4';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#f3f4f6';
+              }}
+              aria-label={t('character_modal.cancel')}
+            >
+              <i className="bi bi-x"></i>
+            </button>
           </div>
           <div className="modal-body" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0, padding: isMobile ? '1rem 0.5rem' : '1rem' }}>
             <input
@@ -93,7 +136,19 @@ export default function CharacterModal({ show, onClose, onSelect }) {
             )}
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>{t('character_modal.cancel')}</button>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ ...neutralButtonStyle, padding: '0.45rem 0.95rem' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#eceff4';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#f3f4f6';
+              }}
+            >
+              {t('character_modal.cancel')}
+            </button>
           </div>
         </div>
       </div>

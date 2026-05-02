@@ -1,5 +1,4 @@
 import React from 'react';
-import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 
 import InfoCard from './InfoCard';
@@ -385,20 +384,88 @@ export default function CharacterSidebar({
 
           </div>
 
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 6,
+              marginBottom: 12,
+              padding: 4,
+              borderRadius: 12,
+              background: 'rgba(255, 255, 255, 0.42)',
+              border: '1px solid rgba(255, 255, 255, 0.75)',
+              boxShadow: '0 8px 18px rgba(141, 125, 176, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+            }}
+          >
             <button
               type="button"
-              className={`btn btn-sm ${activeTab === 'chat' ? 'btn-dark' : 'btn-outline-secondary'}`}
+              aria-pressed={activeTab === 'chat'}
               onClick={() => setActiveTab('chat')}
-              style={{ flex: 1, borderRadius: 10 }}
+              style={{
+                border: 'none',
+                borderRadius: 10,
+                minHeight: 34,
+                background: activeTab === 'chat'
+                  ? 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)'
+                  : 'transparent',
+                color: activeTab === 'chat' ? '#5f567f' : '#8d86a6',
+                fontSize: '0.82rem',
+                fontWeight: activeTab === 'chat' ? 700 : 600,
+                boxShadow: activeTab === 'chat'
+                  ? '0 6px 14px rgba(141, 125, 176, 0.2), inset 0 1px 0 rgba(255,255,255,0.86)'
+                  : 'none',
+                transition: 'background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => {
+                if (activeTab !== 'chat') {
+                  e.currentTarget.style.background = 'rgba(220,208,245,0.45)';
+                  e.currentTarget.style.color = '#736b92';
+                }
+              }}
+              onMouseLeave={e => {
+                if (activeTab !== 'chat') {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#8d86a6';
+                }
+              }}
             >
               {t('chat.tab_chat')}
             </button>
             <button
               type="button"
-              className={`btn btn-sm ${activeTab === 'advanced' ? 'btn-dark' : 'btn-outline-secondary'}`}
+              aria-pressed={activeTab === 'advanced'}
               onClick={() => setActiveTab('advanced')}
-              style={{ flex: 1, borderRadius: 10 }}
+              style={{
+                border: 'none',
+                borderRadius: 10,
+                minHeight: 34,
+                background: activeTab === 'advanced'
+                  ? 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)'
+                  : 'transparent',
+                color: activeTab === 'advanced' ? '#5f567f' : '#8d86a6',
+                fontSize: '0.82rem',
+                fontWeight: activeTab === 'advanced' ? 700 : 600,
+                boxShadow: activeTab === 'advanced'
+                  ? '0 6px 14px rgba(141, 125, 176, 0.2), inset 0 1px 0 rgba(255,255,255,0.86)'
+                  : 'none',
+                transition: 'background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => {
+                if (activeTab !== 'advanced') {
+                  e.currentTarget.style.background = 'rgba(220,208,245,0.45)';
+                  e.currentTarget.style.color = '#736b92';
+                }
+              }}
+              onMouseLeave={e => {
+                if (activeTab !== 'advanced') {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#8d86a6';
+                }
+              }}
             >
               {t('chat.tab_advanced')}
             </button>
@@ -555,19 +622,45 @@ export default function CharacterSidebar({
 
         {/* New Chat Button */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
-          <PrimaryButton
+          <button
             type="button"
-            isMobile={isMobile}
             onClick={onNewChat}
+            className="fw-bold rounded-pill"
+            style={{
+              background: 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)',
+              color: '#5f567f',
+              border: '1px solid rgba(255, 255, 255, 0.78)',
+              boxShadow: '0 8px 16px rgba(141, 125, 176, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              fontSize: isMobile ? '0.78rem' : '0.86rem',
+              padding: isMobile ? '0.32rem 1.1rem' : '0.4rem 1.6rem',
+              letterSpacing: isMobile ? '0.12px' : '0.16px',
+              transition: 'background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'linear-gradient(180deg, rgba(246, 241, 251, 0.98) 0%, rgba(239, 233, 246, 0.92) 100%)';
+              e.currentTarget.style.color = '#554d73';
+              e.currentTarget.style.boxShadow = '0 10px 18px rgba(141, 125, 176, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.88)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)';
+              e.currentTarget.style.color = '#5f567f';
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(141, 125, 176, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
           >
             <i className="bi bi-plus-circle me-2"></i> {t('chat.new_chat')}
-          </PrimaryButton>
+          </button>
         </div>
 
         {/* Chat History Section */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#18191a' }}>
+            <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#2f2b3d' }}>
               {t('chat.memory_management')}
             </h6>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -584,7 +677,7 @@ export default function CharacterSidebar({
             </div>
           </div>
           {showMemoryManagement && (
-            <div style={{ maxHeight: 176, overflowY: 'auto', borderRadius: 12, background: '#f8fafc', padding: 8, border: '1px solid #e5e7eb' }}>
+            <div style={{ maxHeight: 176, overflowY: 'auto', borderRadius: 12, background: '#f8f7fc', padding: 8, border: '1px solid #ece9f4' }}>
               {!Array.isArray(pinnedMemories) || pinnedMemories.length === 0 ? (
                 <div style={{ fontSize: '0.82rem', color: '#6b7280', padding: '0.35rem 0.5rem', lineHeight: 1.4 }}>
                   {t('chat.memory_empty_hint')}
@@ -596,7 +689,7 @@ export default function CharacterSidebar({
                     style={{
                       background: '#fff',
                       borderRadius: 10,
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid #ece9f4',
                       padding: '0.46rem 0.6rem',
                       marginBottom: 6,
                     }}
@@ -642,7 +735,7 @@ export default function CharacterSidebar({
         {userData?.chat_history?.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#18191a' }}>{t('chat.chat_history')}</h6>
+              <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#2f2b3d' }}>{t('chat.chat_history')}</h6>
               <SecondaryButton
                 type="button"
                 isMobile={isMobile}
@@ -652,7 +745,7 @@ export default function CharacterSidebar({
               </SecondaryButton>
             </div>
             {showChatHistory && (
-              <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 12, background: '#f5f6fa', padding: 8 }}>
+              <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 12, background: '#f8f7fc', padding: 8, border: '1px solid #ece9f4' }}>
                 {userData.chat_history
                   .filter(chat => {
                     if (isSceneMode) {
@@ -672,15 +765,28 @@ export default function CharacterSidebar({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '0.5rem 1rem',
+                        padding: '0.5rem 0.75rem',
                         borderRadius: 10,
-                        background: selectedChat?.chat_id === chat.chat_id ? '#18191a' : 'transparent',
-                        color: selectedChat?.chat_id === chat.chat_id ? '#fff' : '#232323',
+                        border: selectedChat?.chat_id === chat.chat_id ? '1px solid #d8d0ec' : '1px solid #ece9f4',
+                        background: selectedChat?.chat_id === chat.chat_id ? 'rgba(220, 208, 245, 0.42)' : '#fff',
+                        color: selectedChat?.chat_id === chat.chat_id ? '#4a3f67' : '#2f2b3d',
                         marginBottom: 4,
                         cursor: 'pointer',
                         fontWeight: 500,
-                        fontSize: '0.98rem',
-                        transition: 'background 0.18s, color 0.18s',
+                        fontSize: '0.94rem',
+                        transition: 'background 0.16s ease, color 0.16s ease, border-color 0.16s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (selectedChat?.chat_id !== chat.chat_id) {
+                          e.currentTarget.style.background = '#f2eff9';
+                          e.currentTarget.style.borderColor = '#e3ddf0';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (selectedChat?.chat_id !== chat.chat_id) {
+                          e.currentTarget.style.background = '#fff';
+                          e.currentTarget.style.borderColor = '#ece9f4';
+                        }
                       }}
                       onClick={() => loadChat(chat)}
                     >
@@ -723,14 +829,14 @@ export default function CharacterSidebar({
                             {chat.title || chat.messages.find(m => m.role === 'user')?.content || t('chat.new_chat_title')}
                           </span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <small style={{ color: selectedChat?.chat_id === chat.chat_id ? '#fff' : '#888', fontWeight: 400 }}>
+                            <small style={{ color: selectedChat?.chat_id === chat.chat_id ? '#6b6186' : '#8b859d', fontWeight: 500 }}>
                               {new Date(chat.last_updated).toLocaleDateString()}
                             </small>
                             <div className="dropdown">
                               <button
                                 className="btn btn-sm btn-link text-muted p-0"
                                 onClick={(e) => toggleMenu(chat.chat_id, e)}
-                                style={{ position: 'relative', zIndex: menuOpenId === chat.chat_id ? 1000 : 'auto', color: selectedChat?.chat_id === chat.chat_id ? '#fff' : '#888' }}
+                                style={{ position: 'relative', zIndex: menuOpenId === chat.chat_id ? 1000 : 'auto', color: selectedChat?.chat_id === chat.chat_id ? '#6b6186' : '#8b859d' }}
                               >
                                 <i className="bi bi-three-dots-vertical"></i>
                               </button>
@@ -742,7 +848,9 @@ export default function CharacterSidebar({
                                     right: '1rem',
                                     zIndex: 9999,
                                     minWidth: '120px',
-                                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                                    border: '1px solid #ebe8f3',
+                                    borderRadius: 10,
+                                    boxShadow: '0 8px 16px rgba(73, 59, 106, 0.12)'
                                   }}
                                 >
                                   <button

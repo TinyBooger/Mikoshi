@@ -21,6 +21,36 @@ export default function TokenTopUpPage() {
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [wechatQrData, setWechatQrData] = useState(null); // { codeUrl, outTradeNo, amount }
 
+  const baseButtonStyle = {
+    borderRadius: '0.65rem',
+    border: '1px solid #d8dbe2',
+    fontSize: '0.9rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease',
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+  };
+
+  const primaryButtonStyle = {
+    ...baseButtonStyle,
+    background: '#ede7f7',
+    border: '1px solid #ddd4ef',
+    color: '#5f567f',
+  };
+
+  const paymentOptionStyle = (method) => ({
+    ...baseButtonStyle,
+    background: '#fff',
+    border: selectedPaymentMethod === method
+      ? (method === 'alipay' ? '2px solid #1677ff' : '2px solid #07c160')
+      : '1px solid #d9e2ec',
+    borderRadius: '12px',
+    padding: '0.6rem 1rem',
+    boxShadow: selectedPaymentMethod === method
+      ? (method === 'alipay' ? '0 4px 12px rgba(22, 119, 255, 0.15)' : '0 4px 12px rgba(7,193,96,0.15)')
+      : 'none',
+  });
+
   useEffect(() => {
     let cancelled = false;
 
@@ -213,11 +243,11 @@ export default function TokenTopUpPage() {
                         style={{
                           background: '#fff',
                           border: isSelected
-                            ? '2px solid #667eea'
+                            ? '1.5px solid #d8ccef'
                             : '1px solid #e5e7eb',
                           boxShadow: isSelected
-                            ? '0 6px 18px rgba(102, 126, 234, 0.18)'
-                            : '0 8px 20px rgba(15,23,42,0.06)',
+                            ? '0 4px 12px rgba(95, 86, 127, 0.12)'
+                            : '0 4px 12px rgba(15,23,42,0.05)',
                           position: 'relative',
                           cursor: 'pointer',
                           transition: 'border 0.15s, box-shadow 0.15s',
@@ -283,13 +313,7 @@ export default function TokenTopUpPage() {
                   type="button"
                   className="btn d-flex align-items-center gap-2"
                   onClick={() => setSelectedPaymentMethod('alipay')}
-                  style={{
-                    background: '#fff',
-                    border: selectedPaymentMethod === 'alipay' ? '2px solid #1677ff' : '1px solid #d9e2ec',
-                    borderRadius: '12px',
-                    padding: '0.6rem 1rem',
-                    boxShadow: selectedPaymentMethod === 'alipay' ? '0 4px 12px rgba(22, 119, 255, 0.15)' : 'none',
-                  }}
+                  style={paymentOptionStyle('alipay')}
                 >
                   <img
                     src="/alipay/支付宝logo-方形.png"
@@ -315,13 +339,7 @@ export default function TokenTopUpPage() {
                   type="button"
                   className="btn d-flex align-items-center gap-2"
                   onClick={() => setSelectedPaymentMethod('wechat')}
-                  style={{
-                    background: '#fff',
-                    border: selectedPaymentMethod === 'wechat' ? '2px solid #07c160' : '1px solid #d9e2ec',
-                    borderRadius: '12px',
-                    padding: '0.6rem 1rem',
-                    boxShadow: selectedPaymentMethod === 'wechat' ? '0 4px 12px rgba(7,193,96,0.15)' : 'none',
-                  }}
+                  style={paymentOptionStyle('wechat')}
                 >
                   <i className="bi bi-wechat" style={{ color: '#07c160', fontSize: '1.3rem' }} />
                   <span style={{ color: '#232323', fontWeight: 700, fontSize: '0.9rem' }}>微信支付</span>
@@ -340,21 +358,14 @@ export default function TokenTopUpPage() {
             <div className="text-center mt-4 mb-3">
               <button
                 className="btn btn-lg fw-bold px-5 py-3 shadow"
-                style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  border: 'none',
-                  color: '#fff',
-                  borderRadius: '16px',
-                  fontSize: '1.1rem',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                }}
+                style={{ ...primaryButtonStyle, borderRadius: '16px', fontSize: '1.05rem', padding: '0.8rem 2.4rem' }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 12px 32px rgba(102, 126, 234, 0.4)';
+                  e.currentTarget.style.background = '#e7e0f4';
+                  e.currentTarget.style.color = '#554d73';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.3)';
+                  e.currentTarget.style.background = '#ede7f7';
+                  e.currentTarget.style.color = '#5f567f';
                 }}
                 onClick={handlePurchase}
                 disabled={!!payingPackageId || !selectedPackageId || (selectedPaymentMethod !== 'alipay' && selectedPaymentMethod !== 'wechat')}
@@ -369,6 +380,19 @@ export default function TokenTopUpPage() {
                 )}
               </button>
             </div>
+
+            {/* Footer Note */}
+            <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+              {t('token_topup.footer_note')}
+              {' '}
+              <a href="/terms-of-service" className="text-decoration-none" style={{ color: '#667eea' }}>
+                {t('token_topup.terms')}
+              </a>
+              {' '}{t('common.and')}{' '}
+              <a href="/privacy-policy" className="text-decoration-none" style={{ color: '#667eea' }}>
+                {t('token_topup.privacy')}
+              </a>
+            </p>
 
         </div>
       </div>
@@ -389,18 +413,6 @@ export default function TokenTopUpPage() {
           onCancel={() => setWechatQrData(null)}
         />
       )}
-      {/* Footer Note */}
-      <p className="text-muted" style={{ fontSize: '0.9rem' }}>
-        {t('pro_upgrade.footer_note')}
-        {' '}
-        <a href="/terms-of-service" className="text-decoration-none" style={{ color: '#667eea' }}>
-          {t('pro_upgrade.terms')}
-        </a>
-        {' '}{t('common.and')}{' '}
-        <a href="/privacy-policy" className="text-decoration-none" style={{ color: '#667eea' }}>
-          {t('pro_upgrade.privacy')}
-        </a>
-      </p>
     </PageWrapper>
   );
 }

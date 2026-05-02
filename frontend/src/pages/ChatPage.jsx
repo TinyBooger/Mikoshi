@@ -2383,78 +2383,73 @@ export default function ChatPage() {
           }}
         >
           <div style={chatContentRailStyle}>
-          {tokenLimits?.is_limited && (
+          {tokenLimits?.cap_reached && (
             <div
               style={{
                 width: '100%',
                 marginBottom: 8,
                 padding: '0.45rem 0.65rem',
                 borderRadius: 10,
-                border: tokenLimits?.cap_reached ? '1px solid #fecaca' : '1px solid #fde68a',
-                background: tokenLimits?.cap_reached ? '#fff1f2' : '#fffbeb',
-                color: tokenLimits?.cap_reached ? '#b91c1c' : '#92400e',
+                border: '1px solid #fecaca',
+                background: '#fff1f2',
+                color: '#b91c1c',
                 fontSize: '0.74rem',
                 fontWeight: 600,
               }}
             >
               {(() => {
-                const scopeLabel = getTokenQuotaLabel(tokenLimits?.cap_scope);
+                const isPro = !!tokenLimits?.is_pro;
+                const scopeLabel = isPro ? '本月剩余token' : '本日剩余token';
                 const used = Number(tokenLimits?.cap_scope === 'monthly' ? tokenLimits?.monthly_token_usage : tokenLimits?.daily_token_usage) || 0;
                 const cap = Number(tokenLimits?.token_cap || 0);
-                const remaining = Number(tokenLimits?.remaining_tokens || 0);
-
-                if (tokenLimits?.cap_reached) {
-                  const walletBalance = Number(tokenLimits?.purchased_token_balance || 0);
-                  const hasWallet = walletBalance > 0;
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
-                      <span>
-                        {scopeLabel}已达上限：{formatCompactTokenCount(used)} / {formatCompactTokenCount(cap)}。
-                        {hasWallet
-                          ? ` 当前钱包可用 ${formatCompactTokenCount(walletBalance)} token。`
-                          : ' 可升级Pro或购买Token包继续使用。'}
-                      </span>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                const walletBalance = Number(tokenLimits?.purchased_token_balance || 0);
+                const hasWallet = walletBalance > 0;
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
+                    <span>
+                      {scopeLabel}已达上限：{formatCompactTokenCount(used)} / {formatCompactTokenCount(cap)}。
+                      {hasWallet
+                        ? ` 当前钱包可用 ${formatCompactTokenCount(walletBalance)} token。`
+                        : ' 可升级Pro或购买Token包继续使用。'}
+                    </span>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/token-topup')}
+                        style={{
+                          padding: '0.15rem 0.55rem',
+                          borderRadius: 6,
+                          border: 'none',
+                          background: '#111827',
+                          color: '#fff',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        充值Token
+                      </button>
+                      {!tokenLimits?.is_pro && (
                         <button
                           type="button"
-                          onClick={() => navigate('/token-topup')}
+                          onClick={() => navigate('/pro-upgrade')}
                           style={{
                             padding: '0.15rem 0.55rem',
                             borderRadius: 6,
                             border: 'none',
-                            background: '#111827',
+                            background: '#b91c1c',
                             color: '#fff',
                             fontSize: '0.7rem',
                             fontWeight: 700,
                             cursor: 'pointer',
                           }}
                         >
-                          充值Token
+                          升级 Pro
                         </button>
-                        {!tokenLimits?.is_pro && (
-                          <button
-                            type="button"
-                            onClick={() => navigate('/pro-upgrade')}
-                            style={{
-                              padding: '0.15rem 0.55rem',
-                              borderRadius: 6,
-                              border: 'none',
-                              background: '#b91c1c',
-                              color: '#fff',
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            升级 Pro
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  );
-                }
-
-                return `${scopeLabel}：${formatCompactTokenCount(used)} / ${formatCompactTokenCount(cap)}，剩余 ${formatCompactTokenCount(remaining)}`;
+                  </div>
+                );
               })()}
             </div>
           )}
@@ -2650,9 +2645,11 @@ export default function ChatPage() {
                     position: 'absolute',
                     right: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
                     bottom: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
-                    background: sending ? '#888' : '#18191a',
-                    color: '#fff',
-                    border: 'none',
+                    background: sending
+                      ? 'rgba(222, 215, 236, 0.82)'
+                      : 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)',
+                    color: sending ? '#958faa' : '#5f567f',
+                    border: '1px solid rgba(255, 255, 255, 0.78)',
                     borderRadius: '50%',
                     width: 38,
                     height: 38,
@@ -2660,19 +2657,37 @@ export default function ChatPage() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: 16,
-                    boxShadow: '0 2px 8px rgba(24,25,26,0.08)',
-                    transition: 'background 0.14s',
+                    boxShadow: sending
+                      ? '0 4px 10px rgba(141, 125, 176, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.65)'
+                      : '0 8px 16px rgba(141, 125, 176, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    transition: 'background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease',
                     cursor: sending ? 'not-allowed' : 'pointer',
                     outline: 'none',
                     flexShrink: 0,
                   }}
-                  onMouseEnter={e => { if (!sending) e.currentTarget.style.background = '#232323'; }}
-                  onMouseLeave={e => { if (!sending) e.currentTarget.style.background = '#18191a'; }}
+                  onMouseEnter={e => {
+                    if (!sending) {
+                      e.currentTarget.style.background = 'linear-gradient(180deg, rgba(246, 241, 251, 0.98) 0%, rgba(239, 233, 246, 0.92) 100%)';
+                      e.currentTarget.style.color = '#554d73';
+                      e.currentTarget.style.boxShadow = '0 10px 18px rgba(141, 125, 176, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.88)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!sending) {
+                      e.currentTarget.style.background = 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)';
+                      e.currentTarget.style.color = '#5f567f';
+                      e.currentTarget.style.boxShadow = '0 8px 16px rgba(141, 125, 176, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }
+                  }}
                   title={t('chat.input_shortcut_hint')}
                   disabled={sending || !!tokenLimits?.cap_reached}
                 >
                   {sending ? (
-                    <span className="spinner-border spinner-border-sm" style={{ color: '#fff' }}></span>
+                    <span className="spinner-border spinner-border-sm" style={{ color: '#6d638e' }}></span>
                   ) : (
                     <i className="bi bi-send-fill"></i>
                   )}

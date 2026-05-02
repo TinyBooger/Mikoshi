@@ -599,6 +599,11 @@
     "terms": "服务条款",
     "privacy": "隐私政策"
   },
+  "token_topup": {
+    "footer_note": "购买Token即表示您同意我们的",
+    "terms": "服务条款",
+    "privacy": "隐私政策"
+  },
   "sidebar": {
     "create": "创建",
     "create_character": "角色",

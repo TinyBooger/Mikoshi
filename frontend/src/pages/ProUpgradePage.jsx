@@ -16,6 +16,36 @@ export default function ProUpgradePage() {
   const [selectedPlan, setSelectedPlan] = useState('1month');
   const [wechatQrData, setWechatQrData] = useState(null); // { codeUrl, outTradeNo, amount }
 
+  const baseButtonStyle = {
+    borderRadius: '0.65rem',
+    border: '1px solid #d8dbe2',
+    fontSize: '0.9rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease',
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+  };
+
+  const primaryButtonStyle = {
+    ...baseButtonStyle,
+    background: '#ede7f7',
+    border: '1px solid #ddd4ef',
+    color: '#5f567f',
+  };
+
+  const paymentOptionStyle = (method) => ({
+    ...baseButtonStyle,
+    background: '#fff',
+    border: selectedPaymentMethod === method
+      ? (method === 'alipay' ? '2px solid #1677ff' : '2px solid #07c160')
+      : '1px solid #d9e2ec',
+    borderRadius: '12px',
+    padding: '0.6rem 1rem',
+    boxShadow: selectedPaymentMethod === method
+      ? (method === 'alipay' ? '0 4px 12px rgba(22, 119, 255, 0.15)' : '0 4px 12px rgba(7,193,96,0.15)')
+      : 'none',
+  });
+
   if (!userData) return null;
 
   return (
@@ -132,14 +162,12 @@ export default function ProUpgradePage() {
                           className="btn w-100"
                           onClick={() => setSelectedPlan(plan.id)}
                           style={{
-                            background: isSelected
-                              ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.12) 100%)'
-                              : '#fff',
-                            border: isSelected ? '2px solid #667eea' : '1px solid #dee2e6',
+                            background: isSelected ? '#f1ebfb' : '#fff',
+                            border: isSelected ? '1.5px solid #d8ccef' : '1px solid #dee2e6',
                             borderRadius: '16px',
                             padding: '1.1rem 0.75rem',
                             boxShadow: isSelected
-                              ? '0 6px 18px rgba(102, 126, 234, 0.18)'
+                              ? '0 4px 12px rgba(95, 86, 127, 0.12)'
                               : '0 2px 8px rgba(0,0,0,0.04)',
                             transition: 'all 0.15s ease',
                           }}
@@ -151,12 +179,7 @@ export default function ProUpgradePage() {
                             style={{
                               fontWeight: 800,
                               fontSize: '1.5rem',
-                              background: isSelected
-                                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                                : 'none',
-                              backgroundClip: isSelected ? 'text' : 'unset',
-                              WebkitBackgroundClip: isSelected ? 'text' : 'unset',
-                              WebkitTextFillColor: isSelected ? 'transparent' : '#232323',
+                              color: isSelected ? '#5f567f' : '#232323',
                             }}
                           >
                             ¥{plan.price}
@@ -183,13 +206,7 @@ export default function ProUpgradePage() {
                   type="button"
                   className="btn d-flex align-items-center gap-2"
                   onClick={() => setSelectedPaymentMethod('alipay')}
-                  style={{
-                    background: '#fff',
-                    border: selectedPaymentMethod === 'alipay' ? '2px solid #1677ff' : '1px solid #d9e2ec',
-                    borderRadius: '12px',
-                    padding: '0.6rem 1rem',
-                    boxShadow: selectedPaymentMethod === 'alipay' ? '0 4px 12px rgba(22, 119, 255, 0.15)' : 'none',
-                  }}
+                  style={paymentOptionStyle('alipay')}
                 >
                   <img
                     src="/alipay/支付宝logo-方形.png"
@@ -215,13 +232,7 @@ export default function ProUpgradePage() {
                   type="button"
                   className="btn d-flex align-items-center gap-2"
                   onClick={() => setSelectedPaymentMethod('wechat')}
-                  style={{
-                    background: '#fff',
-                    border: selectedPaymentMethod === 'wechat' ? '2px solid #07c160' : '1px solid #d9e2ec',
-                    borderRadius: '12px',
-                    padding: '0.6rem 1rem',
-                    boxShadow: selectedPaymentMethod === 'wechat' ? '0 4px 12px rgba(7,193,96,0.15)' : 'none',
-                  }}
+                  style={paymentOptionStyle('wechat')}
                 >
                   <i className="bi bi-wechat" style={{ color: '#07c160', fontSize: '1.3rem' }} />
                   <span style={{ color: '#232323', fontWeight: 700, fontSize: '0.9rem' }}>微信支付</span>
@@ -240,21 +251,14 @@ export default function ProUpgradePage() {
             <div className="text-center mb-3">
               <button
                 className="btn btn-lg fw-bold px-5 py-3 shadow"
-                style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  border: 'none',
-                  color: '#fff',
-                  borderRadius: '16px',
-                  fontSize: '1.1rem',
-                  transition: 'transform 0.2s, box-shadow 0.2s'
-                }}
+                style={{ ...primaryButtonStyle, borderRadius: '16px', fontSize: '1.05rem', padding: '0.8rem 2.4rem' }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 12px 32px rgba(102, 126, 234, 0.4)';
+                  e.currentTarget.style.background = '#e7e0f4';
+                  e.currentTarget.style.color = '#554d73';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.3)';
+                  e.currentTarget.style.background = '#ede7f7';
+                  e.currentTarget.style.color = '#5f567f';
                 }}
                 onClick={async () => {
                   if (!userData) {

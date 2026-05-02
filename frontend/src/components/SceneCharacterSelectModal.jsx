@@ -3,8 +3,6 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import EntityCard from './EntityCard';
-import PrimaryButton from './PrimaryButton';
-import SecondaryButton from './SecondaryButton';
 import defaultPic from '../assets/images/default-picture.png';
 
 export default function SceneCharacterSelectModal({
@@ -19,6 +17,30 @@ export default function SceneCharacterSelectModal({
   isMobile
 }) {
   const { t } = useTranslation();
+  const baseButtonStyle = {
+    borderRadius: '0.5rem',
+    border: '1px solid #d8dbe2',
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease',
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+  };
+
+  const neutralButtonStyle = {
+    ...baseButtonStyle,
+    background: '#f3f4f6',
+    border: '1px solid #e1e5eb',
+    color: '#4b5563',
+  };
+
+  const lavenderButtonStyle = {
+    ...baseButtonStyle,
+    background: '#ede7f7',
+    border: '1px solid #ddd4ef',
+    color: '#5f567f',
+  };
+
   if (!show) return null;
 
   if (loading) {
@@ -40,9 +62,36 @@ export default function SceneCharacterSelectModal({
         }}
       >
         <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? '98vw' : undefined, margin: 'auto' }}>
-          <div className="modal-content" style={{ maxHeight: '96vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
-            <div className="modal-header">
+          <div className="modal-content" style={{ maxHeight: '96vh', display: 'flex', flexDirection: 'column', width: '100%', borderRadius: 14, border: '1px solid #ece9f4', boxShadow: '0 8px 20px rgba(15, 23, 42, 0.1)' }}>
+            <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h5 className="modal-title">{t('scene_select_modal.preparing')}</h5>
+              <button
+                type="button"
+                onClick={onCancel}
+                style={{
+                  ...neutralButtonStyle,
+                  width: 30,
+                  height: 30,
+                  marginLeft: 'auto',
+                  flexShrink: 0,
+                  borderRadius: '50%',
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.95rem',
+                  lineHeight: 1,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#eceff4';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#f3f4f6';
+                }}
+                aria-label={t('scene_select_modal.cancel')}
+              >
+                <i className="bi bi-x"></i>
+              </button>
             </div>
             <div className="modal-body" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
               <span className="spinner-border spinner-border-lg" style={{ color: '#18191a', marginRight: 12 }}></span>
@@ -116,13 +165,40 @@ export default function SceneCharacterSelectModal({
       }}
     >
       <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? '95vw' : 760, margin: 'auto', maxHeight: '90vh', display: 'flex' }}>
-        <div className="modal-content" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
-          <div className="modal-header" style={{ flexShrink: 0 }}>
+        <div className="modal-content" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column', width: '100%', borderRadius: 14, border: '1px solid #ece9f4', boxShadow: '0 8px 20px rgba(15, 23, 42, 0.1)' }}>
+          <div className="modal-header" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h5 className="modal-title" style={{ fontWeight: 800 }}>
               {selectedScene?.name
                 ? t('scene_select_modal.title', { scene: selectedScene.name })
                 : t('scene_select_modal.title_fallback')}
             </h5>
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{
+                ...neutralButtonStyle,
+                width: 30,
+                height: 30,
+                marginLeft: 'auto',
+                flexShrink: 0,
+                borderRadius: '50%',
+                padding: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.95rem',
+                lineHeight: 1,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#eceff4';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#f3f4f6';
+              }}
+              aria-label={t('scene_select_modal.cancel')}
+            >
+              <i className="bi bi-x"></i>
+            </button>
           </div>
           <div
             className="modal-body"
@@ -205,21 +281,36 @@ export default function SceneCharacterSelectModal({
             </div>
           </div>
           <div className="modal-footer d-flex justify-content-center" style={{ gap: isMobile ? 8 : 16, padding: isMobile ? '0.75rem 1rem' : '1rem', flexShrink: 0 }}>
-            <SecondaryButton
+            <button
+              type="button"
               onClick={onCancel}
-              isMobile={isMobile}
-              style={{ borderRadius: '1.6rem', fontWeight: 600, fontSize: isMobile ? '0.95rem' : '1.02rem', paddingTop: isMobile ? 6 : 8, paddingBottom: isMobile ? 6 : 8, paddingLeft: isMobile ? 16 : 20, paddingRight: isMobile ? 16 : 20 }}
+              style={{ ...neutralButtonStyle, borderRadius: '1.2rem', fontWeight: 600, fontSize: isMobile ? '0.9rem' : '0.95rem', padding: isMobile ? '0.45rem 0.95rem' : '0.5rem 1.1rem' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#eceff4';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#f3f4f6';
+              }}
             >
               {t('scene_select_modal.cancel')}
-            </SecondaryButton>
-            <PrimaryButton
+            </button>
+            <button
+              type="button"
               onClick={onStartChat}
-              isMobile={isMobile}
-              style={{ borderRadius: '1.6rem', fontWeight: 700, fontSize: isMobile ? '1rem' : '1.08rem', paddingTop: isMobile ? 6 : 8, paddingBottom: isMobile ? 6 : 8, paddingLeft: isMobile ? 20 : 24, paddingRight: isMobile ? 20 : 24 }}
+              style={{ ...lavenderButtonStyle, borderRadius: '1.2rem', fontWeight: 700, fontSize: isMobile ? '0.92rem' : '0.98rem', padding: isMobile ? '0.45rem 1rem' : '0.5rem 1.2rem', opacity: selectedCharacter ? 1 : 0.55, cursor: selectedCharacter ? 'pointer' : 'not-allowed' }}
+              onMouseEnter={(e) => {
+                if (!selectedCharacter) return;
+                e.currentTarget.style.background = '#e7e0f4';
+                e.currentTarget.style.color = '#554d73';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#ede7f7';
+                e.currentTarget.style.color = '#5f567f';
+              }}
               disabled={!selectedCharacter}
             >
               {t('scene_select_modal.start_chat')}
-            </PrimaryButton>
+            </button>
           </div>
         </div>
       </div>

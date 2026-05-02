@@ -591,6 +591,11 @@
     "terms": "Terms of Service",
     "privacy": "Privacy Policy"
   },
+  "token_topup": {
+    "footer_note": "Purchasing tokens indicates that you agree to our",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy"
+  },
   "sidebar": {
     "create": "Create",
     "create_character": "Character",
