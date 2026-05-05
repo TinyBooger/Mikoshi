@@ -10,7 +10,6 @@ import ConfirmModal from '../components/ConfirmModal';
 import UgcPolicyModal from '../components/UgcPolicyModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
-import CharacterAssistantModal from '../components/CharacterAssistantModal';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/tokenDisplay';
 
@@ -128,10 +127,7 @@ export default function CharacterFormPage() {
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit' || mode === 'fork');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAssistant, setShowAssistant] = useState(false);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-  const [assistantMessages, setAssistantMessages] = useState(null);
-  const [assistantGeneratedData, setAssistantGeneratedData] = useState(null);
   const selectedTokenLimits = getTokenLimits(charData.model || DEFAULT_CHAT_CONFIG.model);
   const selectedTokenTiers = getTokenTiers(charData.model || DEFAULT_CHAT_CONFIG.model);
   const effectiveContextLabel = charData.context_label === 'advanced' ? 'advanced' : 'standard';
@@ -410,82 +406,10 @@ export default function CharacterFormPage() {
     }
   };
 
-  const handleApplyAssistant = (generatedData) => {
-    setCharData(prev => ({
-      ...prev,
-      name: generatedData.name || prev.name,
-      persona: generatedData.persona || prev.persona,
-      tagline: generatedData.tagline || prev.tagline,
-      greeting: generatedData.greeting || prev.greeting,
-      sample: generatedData.sample_dialogue || prev.sample,
-      long_description: generatedData.long_description || prev.long_description,
-    }));
-    // Don't close the assistant window, keep the conversation going
-  };
-
-  // Cleanup conversation when leaving page
-  useEffect(() => {
-    return () => {
-      // Clear conversation state on unmount
-      setAssistantMessages(null);
-      setAssistantGeneratedData(null);
-    };
-  }, []);
-
   if (loading) return null;
   return (
     <PageWrapper>
       <div className="character-form-page" style={{ position: 'relative', width: '100%' }}>
-        {userData?.token_cap !== null && (
-          <div
-            style={{
-              marginBottom: 12,
-              borderRadius: 10,
-              padding: '0.55rem 0.75rem',
-              border: userData?.token_cap_reached ? '1px solid #fecaca' : '1px solid #fde68a',
-              background: userData?.token_cap_reached ? '#fff1f2' : '#fffbeb',
-              color: userData?.token_cap_reached ? '#b91c1c' : '#92400e',
-              fontSize: '0.82rem',
-              fontWeight: 600,
-            }}
-          >
-            {(() => {
-              const scopeLabel = getTokenQuotaLabel(userData?.token_cap_scope);
-              const used = Number(userData?.token_cap_scope === 'monthly' ? userData?.monthly_token_usage : userData?.daily_token_usage) || 0;
-              const cap = Number(userData?.token_cap || 0);
-              const remaining = Number(userData?.remaining_tokens || 0);
-
-              if (userData?.token_cap_reached) {
-                return (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
-                    <span>{scopeLabel}已达上限：{formatCompactTokenCount(used)} / {formatCompactTokenCount(cap)}，相关功能将受限。</span>
-                    {userData?.token_cap_scope !== 'monthly' && (
-                      <button
-                        type="button"
-                        onClick={() => navigate('/pro-upgrade')}
-                        style={{
-                          flexShrink: 0,
-                          padding: '0.15rem 0.55rem',
-                          borderRadius: 6,
-                          border: 'none',
-                          background: '#b91c1c',
-                          color: '#fff',
-                          fontSize: '0.82rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        升级 Pro
-                      </button>
-                    )}
-                  </div>
-                );
-              }
-
-              return `${scopeLabel}：${formatCompactTokenCount(used)} / ${formatCompactTokenCount(cap)}，剩余 ${formatCompactTokenCount(remaining)}`;
-            })()}
-          </div>
-        )}
         <style>{`
           .character-form-page .form-control::placeholder,
           .character-form-page textarea::placeholder {
@@ -1150,157 +1074,6 @@ export default function CharacterFormPage() {
         document.body
       )}
 
-      {/* AI Assistant Floating Button - Fixed position using portal */}
-      {createPortal(
-        <>
-          <style>{`
-            @keyframes pulse {
-              0%, 100% {
-                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
-              }
-              50% {
-                box-shadow: 0 0 0 12px rgba(102, 126, 234, 0);
-              }
-            }
-            @keyframes fadeInTooltip {
-              from {
-                opacity: 0;
-                transform: translateX(-10px);
-              }
-              to {
-                opacity: 1;
-                transform: translateX(0);
-              }
-            }
-            .ai-assistant-button {
-              animation: pulse 2s infinite;
-            }
-            .ai-assistant-button:hover {
-              animation: none;
-            }
-            .ai-tooltip {
-              position: absolute;
-              right: 100%;
-              top: 50%;
-              transform: translateY(-50%);
-              margin-right: 12px;
-              background: rgba(0, 0, 0, 0.85);
-              color: white;
-              padding: 8px 16px;
-              border-radius: 8px;
-              white-space: nowrap;
-              font-size: 0.9rem;
-              font-weight: 500;
-              pointer-events: none;
-              animation: fadeInTooltip 0.3s ease-out;
-              z-index: 10000;
-            }
-            .ai-tooltip::after {
-              content: '';
-              position: absolute;
-              left: 100%;
-              top: 50%;
-              transform: translateY(-50%);
-              border: 6px solid transparent;
-              border-left-color: rgba(0, 0, 0, 0.85);
-            }
-            @media (max-width: 768px) {
-              .ai-assistant-button {
-                bottom: 20px !important;
-                top: auto !important;
-                right: 50% !important;
-                transform: translateX(50%) !important;
-                width: 56px !important;
-                height: 56px !important;
-                border-radius: 50% !important;
-                flex-direction: row !important;
-              }
-              .ai-assistant-button .ai-text {
-                display: none !important;
-              }
-              .ai-assistant-button i {
-                font-size: 1.75rem !important;
-              }
-              .ai-tooltip {
-                right: auto;
-                left: 50%;
-                top: auto;
-                bottom: 100%;
-                transform: translateX(-50%);
-                margin-right: 0;
-                margin-bottom: 12px;
-              }
-              .ai-tooltip::after {
-                left: 50%;
-                top: 100%;
-                transform: translateX(-50%);
-                border-left-color: transparent;
-                border-top-color: rgba(0, 0, 0, 0.85);
-              }
-            }
-          `}</style>
-          <div
-            className="ai-assistant-button"
-            onClick={() => {
-              if (!isSubmitting) setShowAssistant(true);
-            }}
-            style={{
-              position: 'fixed',
-              right: '20px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: '48px',
-              height: '120px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              borderRadius: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              boxShadow: '-4px 4px 16px rgba(102, 126, 234, 0.4)',
-              zIndex: 1000,
-              transition: 'all 0.3s ease',
-              gap: '0.5rem',
-              opacity: isSubmitting ? 0.6 : 1,
-            }}
-            onMouseEnter={(e) => {
-              if (window.innerWidth > 768) {
-                e.currentTarget.style.width = '56px';
-                e.currentTarget.style.boxShadow = '-6px 6px 20px rgba(102, 126, 234, 0.5)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (window.innerWidth > 768) {
-                e.currentTarget.style.width = '48px';
-                e.currentTarget.style.boxShadow = '-4px 4px 16px rgba(102, 126, 234, 0.4)';
-              }
-            }}
-          >
-            <i className="bi bi-magic" style={{ color: '#fff', fontSize: '1.5rem' }}></i>
-            <div
-              className="ai-text"
-              style={{
-                color: '#fff',
-                fontSize: '0.7rem',
-                fontWeight: '600',
-                writingMode: 'vertical-rl',
-                textOrientation: 'mixed',
-                letterSpacing: '1px',
-              }}
-            >
-              AI
-            </div>
-            {!showAssistant && (
-              <div className="ai-tooltip">
-                {t('character_assistant.tooltip') || '✨ AI Assistant - Click to create your character!'}
-              </div>
-            )}
-          </div>
-        </>,
-        document.body
-      )}
-
       {showCrop && rawSelectedFile && createPortal(
         <ImageCropModal
           srcFile={rawSelectedFile}
@@ -1328,18 +1101,6 @@ export default function CharacterFormPage() {
         onClose={() => setShowUgcPolicyModal(false)}
         onAgree={() => setShowUgcPolicyModal(false)}
       />
-
-      {showAssistant && (
-        <CharacterAssistantModal
-          onApply={handleApplyAssistant}
-          onHide={() => setShowAssistant(false)}
-          currentCharData={charData}
-          initialMessages={assistantMessages}
-          initialGeneratedData={assistantGeneratedData}
-          onMessagesChange={setAssistantMessages}
-          onGeneratedDataChange={setAssistantGeneratedData}
-        />
-      )}
     </PageWrapper>
   );
 }
