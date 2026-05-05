@@ -197,6 +197,7 @@ export default function EntityFormPage() {
     formData.append("is_public", String(!!entityData.is_public));
     formData.append("is_forkable", String(!!entityData.is_forkable));
     if (picture) formData.append("picture", picture);
+    if (entityType === 'persona' && avatarPicture) formData.append("avatar_picture", avatarPicture);
 
     setIsSubmitting(true);
     try {
@@ -392,7 +393,6 @@ export default function EntityFormPage() {
                           </span>
                         </div>
                       )}
-              if (entityType === 'persona' && avatarPicture) formData.append("avatar_picture", avatarPicture);
             </div>
           </div>
 
