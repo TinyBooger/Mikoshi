@@ -49,10 +49,6 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
     }
   };
 
-  const addTagFromInput = () => {
-    if (trimmedInput) addTag(trimmedInput);
-  };
-
   const addTag = (tag) => {
     if (tags.length < maxTags && !tags.includes(tag)) {
       setTags([...tags, tag]);
@@ -66,7 +62,15 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
 
   return (
     <>
-      <div className="d-flex flex-wrap gap-2 p-2 border rounded position-relative">
+      <div
+        className="d-flex flex-wrap gap-2 position-relative"
+        style={{
+          background: '#f5f6fa',
+          border: '1.5px solid #e9ecef',
+          borderRadius: 16,
+          padding: '0.7rem 1rem',
+        }}
+      >
         {tags.map((tag, i) => (
           <div key={i} className="badge bg-secondary d-flex align-items-center">
             {tag}
@@ -88,30 +92,51 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
-          placeholder={placeholder || "Type a tag, then tap Add or press Enter"}
-          style={{ minWidth: 140 }}
+          enterKeyHint="done"
+          autoCorrect="off"
+          autoCapitalize="none"
+          placeholder={placeholder || "Type a tag and press Enter"}
+          style={{
+            minWidth: 120,
+            flex: '1 1 140px',
+            background: 'transparent',
+            outline: 'none',
+            boxShadow: 'none',
+            color: '#18191a',
+          }}
         />
-        <button
-          type="button"
-          className="btn btn-sm btn-primary"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={addTagFromInput}
-          disabled={!trimmedInput}
-          aria-label={t('common.add_tag_aria')}
-          style={{ whiteSpace: 'nowrap' }}
-        >
-          {t('common.add_tag_button')}
-        </button>
         {showSuggestions && suggestions.length > 0 && (
           <div
-            className="position-absolute border rounded p-2 d-flex flex-wrap gap-2"
-            style={{ background: '#f8f9fa', top: '100%', left: 0, right: 0, zIndex: 10 }}
+            className="position-absolute p-2 d-flex flex-wrap gap-2"
+            style={{
+              background: '#f5f6fa',
+              border: '1.5px solid #e9ecef',
+              borderRadius: 14,
+              boxShadow: '0 8px 20px rgba(15, 23, 42, 0.08)',
+              top: 'calc(100% + 8px)',
+              left: 0,
+              right: 0,
+              zIndex: 20,
+              maxHeight: 220,
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}
           >
             {suggestions.map((s, i) => (
               <div
                 key={i}
-                className="badge bg-light text-dark border d-flex align-items-center"
-                style={{ cursor: 'pointer' }}
+                className="d-inline-flex align-items-center"
+                style={{
+                  cursor: 'pointer',
+                  background: '#ffffff',
+                  color: '#374151',
+                  border: '1px solid #dbe2ea',
+                  borderRadius: 999,
+                  padding: '0.35rem 0.65rem',
+                  fontSize: '0.86rem',
+                  lineHeight: 1.2,
+                  minHeight: 32,
+                }}
                 onMouseDown={() => addTag(s.name)} // use onMouseDown to avoid blur before click
               >
                 {s.name}
@@ -121,9 +146,6 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
           </div>
         )}
       </div>
-      {hint && (
-        <small className="text-muted d-block mt-1">{hint}</small>
-      )}
     </>
   );
 }

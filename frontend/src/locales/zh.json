@@ -330,7 +330,7 @@
     "name": "名称",
     "persona": "设定",
     "required_marker": "*",
-    "tagline": "标语",
+    "tagline": "简介",
     "tags": "标签",
     "greeting": "问候语",
     "advanced_options": "高级选项",
@@ -339,10 +339,10 @@
     "improvise_greeting": "即兴问候",
     "greeting_improvising_placeholder": "开始对话时会动态生成问候语",
     "notes": {
-      "persona": "设定决定了角色的行为方式和说话风格，仅自己可见。",
-      "tagline": "将展示在角色封面上。",
-      "greeting": "角色会说的第一句话。",
-      "tags": "第一个标签会显示在封面上。"
+      "persona": "设定决定了角色的行为方式和说话风格，仅自己可见",
+      "tagline": "仅用于展示，不影响角色性格和对话风格",
+      "greeting": "",
+      "tags": "第一个标签会显示在封面上"
     },
     "advanced": {
       "title": "高级聊天配置",
@@ -385,13 +385,14 @@
     "processing_tip": "角色正在处理中，请稍候。",
     "error": "发生错误。",
     "tags_required": "请至少添加一个标签。",
+    "greeting_required": "请填写开场白，或者启用即兴问候。",
     "placeholders": {
-      "name": "例如：\"露娜·长青\"",
-      "persona": "例如：温柔的森林守护者，说话轻声细语，常用自然意象。",
-      "tagline": "例如：翡翠林的守护者",
-      "greeting": "例如：\"哦！旅人——欢迎来到树林。\"",
-      "sample_dialogue": "添加 2–3 句示例台词来体现语气。例如：\n你：你好！\n露娜：树林一直在低声呼唤你的名字。",
-      "tags": "例如：奇幻、守护者、自然"
+      "name": "例如：威廉·莎士比亚",
+      "persona": "描述角色的特质、背景和说话风格。例如：文艺复兴时期的剧作家，语言华丽，喜欢用隐喻。",
+      "tagline": "",
+      "greeting": "",
+      "sample_dialogue": "添加 2–3 句示例台词来体现语气。",
+      "tags": "输入标签后按Enter确认"
     },
     "tags_suffix": "个标签",
     "alt_preview": "预览",

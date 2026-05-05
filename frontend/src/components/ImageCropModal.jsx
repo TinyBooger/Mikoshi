@@ -7,7 +7,14 @@ import { useTranslation } from 'react-i18next';
 
 export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, mode = 'avatar' }) {
   const { t } = useTranslation();
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 600);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 600);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
   const [imageSrc, setImageSrc] = useState(null);
+  const [originalImgRatio, setOriginalImgRatio] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
@@ -78,7 +85,7 @@ export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, 
   }, [imageSrc, croppedAreaPixels, onSave, srcFile]);
 
   const isSquare = mode === 'square';
-  const originalTitle = t('image_crop_modal.original_title');
+  const originalTitle = '角色封面';
   const originalDescription = isSquare
     ? t('image_crop_modal.original_desc_square')
     : t('image_crop_modal.original_desc_avatar');
@@ -92,14 +99,14 @@ export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, 
   if (!srcFile) return null;
 
   return (
-    <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 100000, position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="modal-dialog" style={{ maxWidth: 820, width: '96%' }}>
-        <div className="modal-content" style={{ borderRadius: 12, overflow: 'hidden' }}>
+    <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 100000, position: 'fixed', inset: 0, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? '0 12px' : undefined }}>
+      <div className="modal-dialog" style={{ maxWidth: 820, width: '100%', margin: isMobile ? '16px 0' : undefined }}>        
+        <div className="modal-content" style={{ borderRadius: isMobile ? 16 : 12, overflow: 'hidden' }}>
           <div className="modal-header">
             <h5 className="modal-title">{t('image_crop_modal.title')}</h5>
             <button type="button" className="btn-close" onClick={onCancel}></button>
           </div>
-          <div className="modal-body" style={{ padding: 12 }}>
+          <div className="modal-body" style={{ padding: 12, overflowY: 'auto', maxHeight: isMobile ? '80vh' : '75vh' }}>
             <div
               style={{
                 display: 'flex',
@@ -108,28 +115,51 @@ export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, 
                 flexWrap: 'wrap',
               }}
             >
+              {!isMobile && (
               <div style={{ flex: '1 1 300px', minWidth: 280 }}>
                 <div className="fw-semibold" style={{ marginBottom: 4 }}>{originalTitle}</div>
                 <div className="text-muted" style={{ fontSize: '0.82rem', marginBottom: 8 }}>{originalDescription}</div>
-                <div style={{ width: '100%', height: 420, borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{
+                  width: '100%',
+                  aspectRatio: originalImgRatio ? String(originalImgRatio) : '4 / 3',
+                  maxHeight: 480,
+                  borderRadius: 10,
+                  border: '1px solid #e5e7eb',
+                  overflow: 'hidden',
+                  background: '#f3f4f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
                   {imageSrc ? (
-                    <img src={imageSrc} alt={t('image_crop_modal.original_preview_alt')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <img
+                      src={imageSrc}
+                      alt={t('image_crop_modal.original_preview_alt')}
+                      onLoad={e => {
+                        const r = e.currentTarget.naturalWidth / e.currentTarget.naturalHeight;
+                        if (Number.isFinite(r) && r > 0) setOriginalImgRatio(r);
+                      }}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    />
                   ) : (
                     <div style={{ color: '#888' }}>{t('image_crop_modal.preview')}</div>
                   )}
                 </div>
               </div>
+              )}
 
-              <div style={{ flex: '1.2 1 360px', minWidth: 300 }}>
+              <div style={{ flex: '1.2 1 360px', minWidth: 0, width: '100%' }}>
                 <div className="fw-semibold" style={{ marginBottom: 4 }}>{cropTitle}</div>
                 <div className="text-muted" style={{ fontSize: '0.82rem', marginBottom: 8 }}>{cropDescription}</div>
-                <div style={{ position: 'relative', width: '100%', height: 320, background: '#333', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ position: 'relative', width: '100%', height: isMobile ? 240 : 320, background: '#333', borderRadius: 10, overflow: 'hidden', touchAction: 'none' }}>
                   {imageSrc && (
                     <Cropper
                       image={imageSrc}
                       crop={crop}
                       zoom={zoom}
                       aspect={1}
+                      cropShape={isSquare ? 'rect' : 'round'}
+                      showGrid={false}
                       onCropChange={setCrop}
                       onZoomChange={setZoom}
                       onCropComplete={onCropComplete}
@@ -137,9 +167,34 @@ export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, 
                   )}
                 </div>
 
-                <div style={{ width: '100%', marginTop: 10 }}>
-                  <label className="form-label" style={{ marginBottom: 4 }}>{t('image_crop_modal.zoom')}</label>
-                  <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={e => setZoom(Number(e.target.value))} className="form-range" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+                  <button
+                    type="button"
+                    aria-label="缩小"
+                    onClick={() => setZoom(z => Math.max(1, parseFloat((z - 0.1).toFixed(2))))}
+                    style={{
+                      width: 44, height: 44, borderRadius: '50%',
+                      border: '1.5px solid #e9ecef', background: '#f5f6fa',
+                      fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, touchAction: 'manipulation',
+                    }}
+                  >−</button>
+                  <div style={{ flex: 1, textAlign: 'center', fontSize: '0.88rem', color: '#6b7280', userSelect: 'none' }}>
+                    {Math.round((zoom - 1) / 2 * 100)}%
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="放大"
+                    onClick={() => setZoom(z => Math.min(3, parseFloat((z + 0.1).toFixed(2))))}
+                    style={{
+                      width: 44, height: 44, borderRadius: '50%',
+                      border: '1.5px solid #e9ecef', background: '#f5f6fa',
+                      fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, touchAction: 'manipulation',
+                    }}
+                  >+</button>
                 </div>
 
                 <div style={{ marginTop: 8 }}>

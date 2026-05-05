@@ -120,6 +120,7 @@ export default function CharacterFormPage() {
   });
   const [picture, setPicture] = useState(null);
   const [picturePreview, setPicturePreview] = useState(null);
+  const [pictureAspectRatio, setPictureAspectRatio] = useState(1);
   const [avatarPicture, setAvatarPicture] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [isImprovisingGreeting, setIsImprovisingGreeting] = useState(false);
@@ -304,6 +305,10 @@ export default function CharacterFormPage() {
       toast.show(t('character_form.tags_required'), { type: 'error' });
       return;
     }
+    if (!isImprovisingGreeting && !charData.greeting.trim()) {
+      toast.show(t('character_form.greeting_required'), { type: 'error' });
+      return;
+    }
     if (charData.persona.length > MAX_PERSONA_LENGTH) {
       toast.show(`Persona too long (max ${MAX_PERSONA_LENGTH})`, { type: 'error' });
       return;
@@ -409,7 +414,7 @@ export default function CharacterFormPage() {
   if (loading) return null;
   return (
     <PageWrapper>
-      <div className="character-form-page" style={{ position: 'relative', width: '100%' }}>
+      <div className="character-form-page flex-grow-1 d-flex flex-column align-items-center" style={{ padding: '2rem 1rem', width: '100%', maxWidth: 800, margin: '0 auto' }}>
         <style>{`
           .character-form-page .form-control::placeholder,
           .character-form-page textarea::placeholder {
@@ -417,16 +422,7 @@ export default function CharacterFormPage() {
             opacity: 1;
           }
         `}</style>
-        <div style={{
-          width: '100%',
-          maxWidth: 700,
-          background: '#fff',
-          borderRadius: 24,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-          padding: '2.5rem 2rem',
-          margin: '0 auto',
-        }}>
-          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>{mode === 'edit' ? t('character_form.edit_title') : mode === 'fork' ? t('character_form.fork_title') : t('character_form.create_title')}</h2>
+          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>{mode === 'edit' ? t('character_form.edit_title') : mode === 'fork' ? t('character_form.fork_title') : t('character_form.create_title')}</h2>
 
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           {/* Forked From - Display only */}
@@ -436,6 +432,128 @@ export default function CharacterFormPage() {
               {t('character_form.forked_from')} <strong>{charData.forked_from_name}</strong>
             </div>
           )}
+
+          {/* Cover + Avatar Pictures */}
+          <div className="mb-4">
+            <div
+              style={{
+                position: 'relative',
+                width: '100%',
+                maxWidth: 'min(360px, 100%)',
+                aspectRatio: picturePreview ? String(pictureAspectRatio || 1) : '1 / 1',
+              }}
+            >
+              <label
+                htmlFor="character-picture-upload"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'block',
+                  borderRadius: 16,
+                  background: '#f5f6fa',
+                  border: '1.5px solid #e9ecef',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                }}
+              >
+                {picturePreview ? (
+                  <img
+                    src={picturePreview}
+                    alt={t('character_form.alt_preview')}
+                    onLoad={e => {
+                      const nextRatio = e.currentTarget.naturalWidth / e.currentTarget.naturalHeight;
+                      if (Number.isFinite(nextRatio) && nextRatio > 0) {
+                        setPictureAspectRatio(nextRatio);
+                      }
+                    }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#eef2f7' }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'column',
+                      color: '#94a3b8',
+                      gap: 8,
+                      fontSize: '0.95rem',
+                    }}
+                  >
+                    <i className="bi bi-image" style={{ fontSize: '1.7rem' }}></i>
+                    <span>点击上传封面图片</span>
+                    <span style={{ fontSize: '0.82rem' }}>支持 JPG / PNG / GIF / WebP / BMP / TIFF</span>
+                  </div>
+                )}
+                <input
+                  id="character-picture-upload"
+                  type="file"
+                  accept="image/*"
+                  className="d-none"
+                  onChange={e => {
+                    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                    if (!f) return;
+                    setPicture(f);
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      setPicturePreview(reader.result);
+                    };
+                    reader.readAsDataURL(f);
+                    setRawSelectedFile(f);
+                    setShowCrop(true);
+                    // Reset so selecting the same file again still triggers onChange.
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+
+              <div
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  bottom: 10,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 4,
+                  pointerEvents: 'none',
+                }}
+              >
+                <div
+                  style={{
+                    width: 72,
+                    height: 72,
+                    overflow: 'hidden',
+                    borderRadius: '50%',
+                    background: '#fff',
+                    border: '1px solid #e9ecef',
+                    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.18)',
+                  }}
+                >
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt={t('character_form.alt_preview')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.75rem' }}>{t('character_form.avatar_label')}</div>
+                  )}
+                </div>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    lineHeight: 1,
+                    color: '#475569',
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    borderRadius: 999,
+                    padding: '0.18rem 0.45rem',
+                    border: '1px solid #e2e8f0',
+                  }}
+                >
+                  头像预览
+                </span>
+              </div>
+            </div>
+          </div>
 
           {/* Name */}
           <div className="mb-4 position-relative">
@@ -467,12 +585,41 @@ export default function CharacterFormPage() {
             </small>
           </div>
 
+          {/* Tagline */}
+          <div className="mb-4 position-relative">
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              {t('character_form.tagline')}
+              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t('character_form.notes.tagline')}</small>
+            </label>
+            <input
+              className="form-control"
+              value={charData.tagline}
+              maxLength={MAX_TAGLINE_LENGTH}
+              placeholder={t('character_form.placeholders.tagline')}
+              onChange={e => handleChange('tagline', e.target.value)}
+              style={{
+                background: '#f5f6fa',
+                color: '#18191a',
+                border: '1.5px solid #e9ecef',
+                borderRadius: 16,
+                fontSize: '1.08rem',
+                padding: '0.7rem 1.2rem',
+                boxShadow: 'none',
+                outline: 'none',
+                paddingRight: '3rem',
+              }}
+            />
+            <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+              {charData.tagline.length}/{MAX_TAGLINE_LENGTH}
+            </small>
+          </div>
+
           {/* Persona */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
               {t('character_form.persona')}
               <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('character_form.required_marker')}</span>
-              <small className="text-muted" style={{ marginLeft: 8 }}>{t('character_form.notes.persona')}</small>
+              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t('character_form.notes.persona')}</small>
             </label>
             <textarea
               className="form-control"
@@ -500,20 +647,34 @@ export default function CharacterFormPage() {
             </small>
           </div>
 
-          {/* Tagline */}
+          {/* Greeting */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              {t('character_form.tagline')}
-              <small className="text-muted" style={{ marginLeft: 8 }}>{t('character_form.notes.tagline')}</small>
+            <label className="form-label fw-bold d-flex align-items-center gap-3" style={{ color: '#232323' }}>
+              <span>
+                {t('character_form.greeting')}
+                <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
+                <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t('character_form.notes.greeting')}</small>
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400, whiteSpace: 'nowrap' }}>
+                <input
+                  id="improviseGreeting"
+                  type="checkbox"
+                  checked={isImprovisingGreeting}
+                  onChange={e => setIsImprovisingGreeting(e.target.checked)}
+                />
+                <label htmlFor="improviseGreeting" style={{ margin: 0, fontSize: '0.95rem', cursor: 'pointer' }}>{t('character_form.improvise_greeting')}</label>
+              </span>
             </label>
-            <input
+            <textarea
               className="form-control"
-              value={charData.tagline}
-              maxLength={MAX_TAGLINE_LENGTH}
-              placeholder={t('character_form.placeholders.tagline')}
-              onChange={e => handleChange('tagline', e.target.value)}
+              rows={3}
+              value={isImprovisingGreeting ? '' : charData.greeting}
+              maxLength={MAX_GREETING_LENGTH}
+              onChange={e => handleChange('greeting', e.target.value)}
+              disabled={isImprovisingGreeting}
+              placeholder={isImprovisingGreeting ? t('character_form.greeting_improvising_placeholder') : t('character_form.placeholders.greeting')}
               style={{
-                background: '#f5f6fa',
+                background: isImprovisingGreeting ? '#f0f0f0' : '#f5f6fa',
                 color: '#18191a',
                 border: '1.5px solid #e9ecef',
                 borderRadius: 16,
@@ -522,54 +683,12 @@ export default function CharacterFormPage() {
                 boxShadow: 'none',
                 outline: 'none',
                 paddingRight: '3rem',
+                resize: 'vertical',
               }}
             />
             <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-              {charData.tagline.length}/{MAX_TAGLINE_LENGTH}
+              {charData.greeting.length}/{MAX_GREETING_LENGTH}
             </small>
-          </div>
-
-          {/* Greeting */}
-          <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              {t('character_form.greeting')}
-              <small className="text-muted" style={{ marginLeft: 8 }}>{t('character_form.notes.greeting')}</small>
-            </label>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <div style={{ flex: 1 }}>
-                <input
-                  className="form-control"
-                  value={charData.greeting}
-                  maxLength={MAX_GREETING_LENGTH}
-                  onChange={e => handleChange('greeting', e.target.value)}
-                  disabled={isImprovisingGreeting}
-                  placeholder={isImprovisingGreeting ? t('character_form.greeting_improvising_placeholder') : t('character_form.placeholders.greeting')}
-                  style={{
-                    background: isImprovisingGreeting ? '#f0f0f0' : '#f5f6fa',
-                    color: '#18191a',
-                    border: '1.5px solid #e9ecef',
-                    borderRadius: 16,
-                    fontSize: '1.08rem',
-                    padding: '0.7rem 1.2rem',
-                    boxShadow: 'none',
-                    outline: 'none',
-                    paddingRight: '3rem',
-                  }}
-                />
-                <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-                  {charData.greeting.length}/{MAX_GREETING_LENGTH}
-                </small>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input
-                  id="improviseGreeting"
-                  type="checkbox"
-                  checked={isImprovisingGreeting}
-                  onChange={e => setIsImprovisingGreeting(e.target.checked)}
-                />
-                <label htmlFor="improviseGreeting" style={{ margin: 0, fontSize: '0.95rem' }}>{t('character_form.improvise_greeting')}</label>
-              </div>
-            </div>
           </div>
 
           {/* Tags */}
@@ -577,7 +696,7 @@ export default function CharacterFormPage() {
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
               {t('character_form.tags')}
               <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('character_form.required_marker')}</span>
-              <small className="text-muted" style={{ marginLeft: 8 }}>{t('character_form.notes.tags')}</small>
+              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t('character_form.notes.tags')}</small>
             </label>
             <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} placeholder={t('character_form.placeholders.tags')} hint={t('character_form.tags_input_hint')} />
             <small className="text-muted" style={{ top: 0, right: 0 }}>
@@ -703,7 +822,7 @@ export default function CharacterFormPage() {
                 <div className="mb-4 position-relative">
                   <label className="form-label fw-bold" style={{ color: '#232323' }}>
                     {t('character_form.long_description')}
-                    <small className="text-muted" style={{ marginLeft: 8 }}>
+                    <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
                       {t('character_form.notes.long_description')}
                     </small>
                   </label>
@@ -931,61 +1050,6 @@ export default function CharacterFormPage() {
             </div>
           </div>
 
-          {/* Cover + Avatar Pictures */}
-          <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.picture')}</label>
-            <div className="d-flex align-items-center gap-3" style={{ flexWrap: 'wrap' }}>
-              <div style={{ width: 148, height: 96, overflow: 'hidden', borderRadius: 8, background: '#fff', border: '1px solid #e9ecef' }}>
-                {picturePreview ? (
-                  <img src={picturePreview} alt={t('character_form.alt_preview')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>{t('character_form.no_picture')}</div>
-                )}
-              </div>
-              <div style={{ width: 72, height: 72, overflow: 'hidden', borderRadius: '50%', background: '#fff', border: '1px solid #e9ecef' }}>
-                {avatarPreview ? (
-                  <img src={avatarPreview} alt={t('character_form.alt_preview')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.75rem' }}>{t('character_form.avatar_label')}</div>
-                )}
-              </div>
-              <div style={{ flex: 1 }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="form-control"
-                  onChange={e => {
-                    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                    if (!f) return;
-                    setPicture(f);
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      setPicturePreview(reader.result);
-                    };
-                    reader.readAsDataURL(f);
-                    setRawSelectedFile(f);
-                    setShowCrop(true);
-                    // Reset so selecting the same file again still triggers onChange.
-                    e.target.value = '';
-                  }}
-                  style={{
-                    background: '#f5f6fa',
-                    color: '#232323',
-                    border: '1.5px solid #e9ecef',
-                    borderRadius: 16,
-                    fontSize: '1.08rem',
-                    padding: '0.7rem 1.2rem',
-                    boxShadow: 'none',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-            </div>
-            <div className="text-muted mt-2" style={{ fontSize: '0.78rem' }}>
-              {t('character_form.cover_avatar_hint')}
-            </div>
-          </div>
-
           {mode === 'create' && (
             <p style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: '1rem' }}>
               点击创建即视为同意{' '}
@@ -1033,8 +1097,6 @@ export default function CharacterFormPage() {
             )}
           </div>
         </form>
-      </div>
-      
       </div>
 
       {isSubmitting && createPortal(

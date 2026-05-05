@@ -76,6 +76,9 @@ export default function EntityFormPage() {
 
   const [picture, setPicture] = useState(null);
   const [picturePreview, setPicturePreview] = useState(null);
+  const [pictureAspectRatio, setPictureAspectRatio] = useState(1);
+  const [avatarPicture, setAvatarPicture] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit' || mode === 'fork');
@@ -248,23 +251,17 @@ export default function EntityFormPage() {
 
   return (
     <PageWrapper>
-      <div style={{
-        width: '100%',
-        maxWidth: 700,
-        background: '#fff',
-        borderRadius: 24,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-        padding: '2.5rem 2rem',
-        margin: '0 auto',
-      }}>
-        <h2 className="fw-bold text-dark mb-2" style={{ fontSize: '2.1rem', letterSpacing: '0.5px' }}>
+      <div className="entity-form-page flex-grow-1 d-flex flex-column align-items-center" style={{ padding: '2rem 1rem', width: '100%', maxWidth: 800, margin: '0 auto' }}>
+        <style>{`
+          .entity-form-page .form-control::placeholder,
+          .entity-form-page textarea::placeholder {
+            color: #c5ccd3;
+            opacity: 1;
+          }
+        `}</style>
+        <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>
           {mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.edit_title`) : mode === 'fork' ? t(`${entityConfig.transactionKeyPrefix}.fork_title`) : t(`${entityConfig.transactionKeyPrefix}.create_title`)}
         </h2>
-        {mode === 'create' && (
-          <p className="text-muted mb-4" style={{ fontSize: '0.98rem', lineHeight: 1.65 }}>
-            {t(`${entityConfig.transactionKeyPrefix}.create_description`) || ''}
-          </p>
-        )}
         
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           {/* Forked From - Display only */}
@@ -274,11 +271,136 @@ export default function EntityFormPage() {
               {t(`${entityConfig.transactionKeyPrefix}.forked_from`)} <strong>{entityData.forked_from_name}</strong>
             </div>
           )}
+
+          {/* Cover Picture */}
+          <div className="mb-4">
+            <div
+              style={{
+                position: 'relative',
+                width: '100%',
+                maxWidth: 'min(360px, 100%)',
+                aspectRatio: picturePreview ? String(pictureAspectRatio || 1) : '1 / 1',
+              }}
+            >
+              <label
+                htmlFor="entity-picture-upload"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'block',
+                  borderRadius: 16,
+                  background: '#f5f6fa',
+                  border: '1.5px solid #e9ecef',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                }}
+              >
+                {picturePreview ? (
+                  <img
+                    src={picturePreview}
+                    alt="预览"
+                    onLoad={e => {
+                      const nextRatio = e.currentTarget.naturalWidth / e.currentTarget.naturalHeight;
+                      if (Number.isFinite(nextRatio) && nextRatio > 0) {
+                        setPictureAspectRatio(nextRatio);
+                      }
+                    }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#eef2f7' }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'column',
+                      color: '#94a3b8',
+                      gap: 8,
+                      fontSize: '0.95rem',
+                    }}
+                  >
+                    <i className="bi bi-image" style={{ fontSize: '1.7rem' }}></i>
+                    <span>{entityType === 'scene' ? '点击上传场景封面' : '点击上传形象图片'}</span>
+                    <span style={{ fontSize: '0.82rem' }}>支持 JPG / PNG / GIF / WebP / BMP / TIFF</span>
+                  </div>
+                )}
+                <input
+                  id="entity-picture-upload"
+                  type="file"
+                  accept="image/*"
+                  className="d-none"
+                  onChange={e => {
+                    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                    if (!f) return;
+                    setPicture(f);
+                    const reader = new FileReader();
+                    reader.onload = () => { setPicturePreview(reader.result); };
+                    reader.readAsDataURL(f);
+                    if (entityType === 'persona') {
+                      setRawSelectedFile(f);
+                      setShowCrop(true);
+                    }
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+
+                      {entityType === 'persona' && picturePreview && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            right: 10,
+                            bottom: 10,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 4,
+                            pointerEvents: 'none',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 72,
+                              height: 72,
+                              overflow: 'hidden',
+                              borderRadius: '50%',
+                              background: '#fff',
+                              border: '1px solid #e9ecef',
+                              boxShadow: '0 4px 12px rgba(15, 23, 42, 0.18)',
+                            }}
+                          >
+                            {avatarPreview ? (
+                              <img src={avatarPreview} alt="头像预览" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.75rem' }}>头像</div>
+                            )}
+                          </div>
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              lineHeight: 1,
+                              color: '#475569',
+                              background: 'rgba(255, 255, 255, 0.9)',
+                              borderRadius: 999,
+                              padding: '0.18rem 0.45rem',
+                              border: '1px solid #e2e8f0',
+                            }}
+                          >
+                            头像预览
+                          </span>
+                        </div>
+                      )}
+              if (entityType === 'persona' && avatarPicture) formData.append("avatar_picture", avatarPicture);
+            </div>
+          </div>
+
           {/* Name */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
               {t(`${entityConfig.transactionKeyPrefix}.name`)}
-              <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t(`${entityConfig.transactionKeyPrefix}.required_marker`) || t('character_form.required_marker')}</span>
+              <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
             </label>
             <input
               className="form-control"
@@ -304,43 +426,11 @@ export default function EntityFormPage() {
             </small>
           </div>
 
-          {/* Description */}
-          <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              {t(`${entityConfig.transactionKeyPrefix}.description`)}
-              <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t(`${entityConfig.transactionKeyPrefix}.required_marker`) || t('character_form.required_marker')}</span>
-              <small className="text-muted" style={{ marginLeft: 8 }}>{t(`${entityConfig.transactionKeyPrefix}.notes.description`)}</small>
-            </label>
-            <textarea
-              className="form-control"
-              rows={Math.max(5, Math.min(20, Math.ceil(entityData.description.length / 80)))}
-              value={entityData.description}
-              maxLength={MAX_DESC_LENGTH}
-              placeholder={t(`${entityConfig.transactionKeyPrefix}.placeholders.description`)}
-              onChange={e => handleChange('description', e.target.value)}
-              style={{
-                background: '#f5f6fa',
-                color: '#18191a',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-                paddingRight: '3rem',
-                resize: 'vertical',
-              }}
-            />
-            <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-              {entityData.description.length}/{MAX_DESC_LENGTH}
-            </small>
-          </div>
-
-          {/* Intro */}
+          {/* Intro (short tagline-like summary) */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
               {t(`${entityConfig.transactionKeyPrefix}.intro`)}
-              <small className="text-muted" style={{ marginLeft: 8 }}>{t(`${entityConfig.transactionKeyPrefix}.notes.intro`)}</small>
+              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t(`${entityConfig.transactionKeyPrefix}.notes.intro`)}</small>
             </label>
             <textarea
               className="form-control"
@@ -367,12 +457,44 @@ export default function EntityFormPage() {
             </small>
           </div>
 
+          {/* Description (main content field) */}
+          <div className="mb-4 position-relative">
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              {t(`${entityConfig.transactionKeyPrefix}.description`)}
+              <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
+              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t(`${entityConfig.transactionKeyPrefix}.notes.description`)}</small>
+            </label>
+            <textarea
+              className="form-control"
+              rows={Math.max(5, Math.min(20, Math.ceil(entityData.description.length / 80)))}
+              value={entityData.description}
+              maxLength={MAX_DESC_LENGTH}
+              placeholder={t(`${entityConfig.transactionKeyPrefix}.placeholders.description`)}
+              onChange={e => handleChange('description', e.target.value)}
+              style={{
+                background: '#f5f6fa',
+                color: '#18191a',
+                border: '1.5px solid #e9ecef',
+                borderRadius: 16,
+                fontSize: '1.08rem',
+                padding: '0.7rem 1.2rem',
+                boxShadow: 'none',
+                outline: 'none',
+                paddingRight: '3rem',
+                resize: 'vertical',
+              }}
+            />
+            <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+              {entityData.description.length}/{MAX_DESC_LENGTH}
+            </small>
+          </div>
+
           {/* Tags */}
           <div className="mb-4">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
               {t(`${entityConfig.transactionKeyPrefix}.tags`)}
-              <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t(`${entityConfig.transactionKeyPrefix}.required_marker`) || t('character_form.required_marker')}</span>
-              <small className="text-muted" style={{ marginLeft: 8 }}>{t(`${entityConfig.transactionKeyPrefix}.notes.tags`)}</small>
+              <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
+              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t(`${entityConfig.transactionKeyPrefix}.notes.tags`)}</small>
             </label>
             <TagsInput
               tags={entityData.tags}
@@ -388,7 +510,7 @@ export default function EntityFormPage() {
             <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '1rem' }}>
               {t(`${entityConfig.transactionKeyPrefix}.visibility_settings`) || 'Visibility & Access'}
             </label>
-            
+
             {/* Public/Private Toggle */}
             <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canPrivate && !entityData.is_public ? 0.55 : 1 }}>
               <div className="d-flex align-items-center justify-content-between">
@@ -398,8 +520,8 @@ export default function EntityFormPage() {
                     <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
                       {entityData.is_public ? (t(`${entityConfig.transactionKeyPrefix}.public`) || 'Public') : (t(`${entityConfig.transactionKeyPrefix}.private`) || 'Private')}
                     </div>
-                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
-                      {entityData.is_public 
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      {entityData.is_public
                         ? (t(`${entityConfig.transactionKeyPrefix}.public_desc`) || 'Visible to everyone')
                         : (t(`${entityConfig.transactionKeyPrefix}.private_desc`) || 'Only visible to you')}
                     </div>
@@ -433,7 +555,7 @@ export default function EntityFormPage() {
                     <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
                       {t(`${entityConfig.transactionKeyPrefix}.forkable`) || 'Allow Forking'}
                     </div>
-                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                       {t(`${entityConfig.transactionKeyPrefix}.forkable_desc`) || 'Users can create their own versions'}
                     </div>
                     {!canFork && (
@@ -454,43 +576,6 @@ export default function EntityFormPage() {
                     style={{ width: '3rem', height: '1.5rem', cursor: (canFork && mode !== 'fork') ? 'pointer' : 'not-allowed' }}
                   />
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Profile Picture */}
-          <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t(`${entityConfig.transactionKeyPrefix}.picture`)}</label>
-            <div className="d-flex align-items-center gap-3">
-              <div style={{ width: 96, height: 96, overflow: 'hidden', borderRadius: 8, background: '#fff', border: '1px solid #e9ecef' }}>
-                {picturePreview ? (
-                  <img src={picturePreview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>{t(`${entityConfig.transactionKeyPrefix}.no_picture`)}</div>
-                )}
-              </div>
-              <div style={{ flex: 1 }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="form-control"
-                  onChange={e => {
-                    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                    if (f) { setRawSelectedFile(f); setShowCrop(true); }
-                    // Reset so selecting the same file again still triggers onChange.
-                    e.target.value = '';
-                  }}
-                  style={{
-                    background: '#f5f6fa',
-                    color: '#232323',
-                    border: '1.5px solid #e9ecef',
-                    borderRadius: 16,
-                    fontSize: '1.08rem',
-                    padding: '0.7rem 1.2rem',
-                    boxShadow: 'none',
-                    outline: 'none',
-                  }}
-                />
               </div>
             </div>
           </div>
@@ -586,9 +671,9 @@ export default function EntityFormPage() {
         <ImageCropModal
           srcFile={rawSelectedFile}
           onCancel={() => { setShowCrop(false); setRawSelectedFile(null); }}
-          onSave={({ file, dataUrl }) => { setPicture(file); setPicturePreview(dataUrl); setShowCrop(false); setRawSelectedFile(null); }}
-          size={220}
-          mode="square"
+          onSave={({ file, dataUrl }) => { setAvatarPicture(file); setAvatarPreview(dataUrl); setShowCrop(false); setRawSelectedFile(null); }}
+          size={160}
+          mode="avatar"
         />, document.body)
       }
       <ConfirmModal

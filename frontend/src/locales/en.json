@@ -377,6 +377,7 @@
     "processing_tip": "Your character is being processed. This may take a moment.",
     "error": "An error occurred.",
     "tags_required": "Please add at least one tag.",
+    "greeting_required": "Please enter a greeting, or enable improvise greeting.",
     "placeholders": {
       "name": "e.g., \"Luna Evergreen\"",
       "persona": "e.g., A compassionate forest guardian who speaks softly and uses nature metaphors.",
