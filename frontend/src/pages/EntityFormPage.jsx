@@ -14,6 +14,8 @@ import { getApiErrorMessage } from '../utils/apiErrorUtils';
 
 export default function EntityFormPage() {
   const { t } = useTranslation();
+  const MAX_GREETING_LENGTH = 200;
+  const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
   const params = useParams();
   const id = params.id;
   const location = useLocation();
@@ -67,6 +69,7 @@ export default function EntityFormPage() {
     name: '',
     description: '',
     intro: '',
+    greeting: '',
     tags: [],
     is_public: true,
     is_forkable: false,
@@ -79,6 +82,7 @@ export default function EntityFormPage() {
   const [pictureAspectRatio, setPictureAspectRatio] = useState(1);
   const [avatarPicture, setAvatarPicture] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [isImprovisingGreeting, setIsImprovisingGreeting] = useState(false);
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit' || mode === 'fork');
@@ -128,12 +132,16 @@ export default function EntityFormPage() {
         })
         .then(data => {
           if (!data) return;
+          const loadedGreeting = entityType === 'scene' ? (data.greeting || '') : '';
+          const isImprov = entityType === 'scene' && loadedGreeting.indexOf(SPECIAL_IMPROVISING_GREETING) !== -1;
+          setIsImprovisingGreeting(!!isImprov);
           if (mode === 'fork') {
             // In fork mode, set forked_from fields
             setEntityData({
               name: `${data.name} (Fork)`,
               description: data.description || '',
               intro: data.intro || '',
+              greeting: isImprov ? '' : loadedGreeting,
               tags: data.tags || [],
               is_public: !!data.is_public,
               is_forkable: true,
@@ -146,6 +154,7 @@ export default function EntityFormPage() {
               name: data.name || '',
               description: data.description || '',
               intro: data.intro || '',
+              greeting: isImprov ? '' : loadedGreeting,
               tags: data.tags || [],
               is_public: !!data.is_public,
               is_forkable: !!data.is_forkable,
@@ -181,6 +190,10 @@ export default function EntityFormPage() {
         return;
       }
     }
+    if (entityType === 'scene' && !isImprovisingGreeting && !entityData.greeting.trim()) {
+      toast.show(t('scene_form.greeting_required'), { type: 'error' });
+      return;
+    }
     const formData = new FormData();
     if (mode === 'edit') formData.append("id", id);
     // In fork mode, don't append id - create a new entity
@@ -193,6 +206,10 @@ export default function EntityFormPage() {
       formData.append("description", entityData.description.trim());
     }
     formData.append("intro", entityData.intro.trim());
+    if (entityType === 'scene') {
+      const finalGreeting = isImprovisingGreeting ? SPECIAL_IMPROVISING_GREETING : entityData.greeting.trim();
+      formData.append("greeting", finalGreeting);
+    }
     entityData.tags.forEach(tag => formData.append("tags", tag));
     formData.append("is_public", String(!!entityData.is_public));
     formData.append("is_forkable", String(!!entityData.is_forkable));
@@ -488,6 +505,51 @@ export default function EntityFormPage() {
               {entityData.description.length}/{MAX_DESC_LENGTH}
             </small>
           </div>
+
+          {entityType === 'scene' && (
+            <div className="mb-4 position-relative">
+              <label className="form-label fw-bold d-flex align-items-center gap-3" style={{ color: '#232323' }}>
+                <span>
+                  {t('scene_form.greeting')}
+                  <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
+                  <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t('scene_form.notes.greeting')}</small>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400, whiteSpace: 'nowrap' }}>
+                  <input
+                    id="improviseSceneGreeting"
+                    type="checkbox"
+                    checked={isImprovisingGreeting}
+                    onChange={e => setIsImprovisingGreeting(e.target.checked)}
+                  />
+                  <label htmlFor="improviseSceneGreeting" style={{ margin: 0, fontSize: '0.95rem', cursor: 'pointer' }}>{t('scene_form.improvise_greeting')}</label>
+                </span>
+              </label>
+              <textarea
+                className="form-control"
+                rows={3}
+                value={isImprovisingGreeting ? '' : entityData.greeting}
+                maxLength={MAX_GREETING_LENGTH}
+                onChange={e => handleChange('greeting', e.target.value)}
+                disabled={isImprovisingGreeting}
+                placeholder={isImprovisingGreeting ? t('scene_form.greeting_improvising_placeholder') : t('scene_form.placeholders.greeting')}
+                style={{
+                  background: isImprovisingGreeting ? '#f0f0f0' : '#f5f6fa',
+                  color: '#18191a',
+                  border: '1.5px solid #e9ecef',
+                  borderRadius: 16,
+                  fontSize: '1.08rem',
+                  padding: '0.7rem 1.2rem',
+                  boxShadow: 'none',
+                  outline: 'none',
+                  paddingRight: '3rem',
+                  resize: 'vertical',
+                }}
+              />
+              <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+                {entityData.greeting.length}/{MAX_GREETING_LENGTH}
+              </small>
+            </div>
+          )}
 
           {/* Tags */}
           <div className="mb-4">

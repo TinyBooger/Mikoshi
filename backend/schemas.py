@@ -7,6 +7,7 @@ class SceneOut(BaseModel):
     name: str
     description: str
     intro: Optional[str] = None
+    greeting: Optional[str] = None
     tags: List[str] = []
     creator_id: str
     creator_name: str

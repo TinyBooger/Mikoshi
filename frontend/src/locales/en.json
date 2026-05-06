@@ -325,6 +325,7 @@
     "tagline": "Tagline",
     "tags": "Tags",
     "greeting": "Greeting",
+    "long_description": "Detailed Background",
     "advanced_options": "Advanced options",
     "expand_advanced": "Show",
     "collapse_advanced": "Hide",
@@ -334,6 +335,7 @@
       "persona": "This decides the character's persona—how they act.",
       "tagline": "Shown on the character cover.",
       "greeting": "The first line they would say.",
+      "long_description": "Use this to add fuller backstory, relationships, boundaries, and internal rules.",
       "tags": "The first tag appears on the cover."
     },
     "advanced": {
@@ -383,6 +385,7 @@
       "persona": "e.g., A compassionate forest guardian who speaks softly and uses nature metaphors.",
       "tagline": "e.g., Keeper of the Emerald Grove",
       "greeting": "e.g., \"Oh! A traveler—welcome to the Grove.\"",
+      "long_description": "Add fuller backstory, worldview, key relationships, behavioral boundaries, or long-term goals. e.g., Raised by a hidden druid circle, Luna protects sacred ruins, distrusts loggers, and softens only around people who respect the forest.",
       "sample_dialogue": "Add 2–3 example lines to show tone. e.g.\nYou: Hello!\nLuna: The trees have been whispering your name.",
       "tags": "e.g., fantasy, guardian, nature"
     },
@@ -390,7 +393,7 @@
     "alt_preview": "预览",
     "avatar_label": "头像",
     "cover_avatar_hint": "上传原比例封面图后，再裁剪圆形头像。",
-    "tags_input_hint": "Type a tag, then tap Add (or press Enter)",
+    "tags_input_hint": "",
     "visibility_settings": "Visibility & Access",
     "public": "Public",
     "private": "Private",
@@ -472,6 +475,7 @@
     "fork_title": "Fork Scene",
     "name": "Name",
     "description": "Description",
+    "greeting": "Greeting",
     "intro": "Intro",
     "tags": "Tags",
     "picture": "Scene Picture",
@@ -485,6 +489,7 @@
     "not_logged_in": "You need to be logged in.",
     "name_required": "Name and description are required.",
     "description_required": "Description is required.",
+    "greeting_required": "Please enter a greeting, or enable improvise greeting.",
     "updated": "Scene updated!",
     "created": "Scene created!",
     "deleted": "Scene deleted",
@@ -494,15 +499,19 @@
     "tags_required": "Please add at least one tag.",
     "notes": {
       "description": "Sets the premise and atmosphere.",
+      "greeting": "The first line used when the scene opens.",
       "intro": "Opening flavor text (one sentence).",
       "tags": "The first tag appears on the cover."
     },
     "placeholders": {
       "name": "e.g., \"Neon Alley\"",
       "description": "e.g., A rain-soaked cyberpunk backstreet lit by flickering signs.",
+      "greeting": "e.g., \"The night air hums with neon and distant engines.\"",
       "intro": "e.g., \"Rain hisses on neon-lit pavement as footsteps echo between shuttered stalls.\"",
       "tags": "e.g., cyberpunk, night, rain"
     },
+    "improvise_greeting": "Improvise greeting",
+    "greeting_improvising_placeholder": "A dynamic opening line will be generated.",
     "tags_input_hint": "Type a tag, then tap Add (or press Enter)",
     "visibility_settings": "Visibility & Access",
     "public": "Public",

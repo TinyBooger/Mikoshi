@@ -27,6 +27,7 @@ async def create_scene(
     name: str = Form(...),
     description: str = Form(...),
     intro: str = Form(None),
+    greeting: str = Form(None),
     tags: List[str] = Form([]),
     is_public: bool = Form(False),
     is_forkable: bool = Form(False),
@@ -40,6 +41,7 @@ async def create_scene(
         "name": name,
         "description": description,
         "intro": intro,
+        "greeting": greeting,
         "tags": tags,
         "forked_from_name": forked_from_name,
     })
@@ -53,12 +55,14 @@ async def create_scene(
         "name": name,
         "description": description,
         "intro": intro,
+        "greeting": greeting,
         "tags": tags,
         "forked_from_name": forked_from_name,
     })
     name = (censored_payload.get("name") or "").strip()
     description = (censored_payload.get("description") or "").strip()
     intro = censored_payload.get("intro")
+    greeting = censored_payload.get("greeting")
     tags = censored_payload.get("tags") or []
     forked_from_name = censored_payload.get("forked_from_name")
 
@@ -77,6 +81,7 @@ async def create_scene(
         name=name,
         description=description,
         intro=intro,
+        greeting=greeting,
         tags=tags,
         creator_id=current_user.id,
         creator_name=current_user.name,
@@ -277,6 +282,7 @@ async def update_scene(
     name: str = Form(None),
     description: str = Form(None),
     intro: str = Form(None),
+    greeting: str = Form(None),
     tags: List[str] = Form(None),
     is_public: Optional[bool] = Form(None),
     is_forkable: Optional[bool] = Form(None),
@@ -294,6 +300,7 @@ async def update_scene(
         "name": name,
         "description": description,
         "intro": intro,
+        "greeting": greeting,
         "tags": tags,
     })
     if not text_safe:
@@ -306,6 +313,7 @@ async def update_scene(
         "name": name,
         "description": description,
         "intro": intro,
+        "greeting": greeting,
         "tags": tags,
     })
     name = censored_payload.get("name")
@@ -313,6 +321,7 @@ async def update_scene(
     if description is not None:
         description = description.strip()
     intro = censored_payload.get("intro")
+    greeting = censored_payload.get("greeting")
     tags = censored_payload.get("tags")
     
     # Private scenes are open to all users.
@@ -331,6 +340,8 @@ async def update_scene(
         scene.description = description
     if intro is not None:
         scene.intro = intro
+    if greeting is not None:
+        scene.greeting = greeting
     if tags is not None:
         scene.tags = tags
     if is_public is not None:

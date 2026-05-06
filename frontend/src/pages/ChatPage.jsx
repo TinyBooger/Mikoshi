@@ -973,7 +973,7 @@ export default function ChatPage() {
     if (initialized.current) return;
 
     if (sessionToken && sceneId && !initModal) {
-      handleSceneEntry();
+      setInitModal(true);
       return;
     }
 
@@ -1003,21 +1003,6 @@ export default function ChatPage() {
   const startChatFromSceneSelection = async () => {
     if (!selectedCharacter) return;
     setInitModal(false);
-    const existingChats = userData?.chat_history?.filter(h => {
-      const characterMatches = String(h.character_id) === String(selectedCharacter.id);
-      const sceneMatches = selectedScene ? String(h.scene_id) === String(selectedScene.id) : false;
-      return characterMatches && sceneMatches;
-    }) || [];
-
-    if (existingChats.length > 0) {
-      const mostRecentChat = existingChats.sort(
-        (a, b) => new Date(b.last_updated) - new Date(a.last_updated)
-      )[0];
-      await loadChat(mostRecentChat);
-      initialized.current = true;
-      return;
-    }
-
     await startChatWithSelectedEntities();
     initialized.current = true;
   };

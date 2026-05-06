@@ -49,21 +49,38 @@ export default function CharacterFormPage() {
       Math.abs(tier.value - clamped) < Math.abs(nearest.value - clamped) ? tier : nearest
     ), tiers[0]).value;
   };
-  const InfoHint = ({ text }) => (
-    <span
-      title={text}
-      aria-label={text}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        marginLeft: 6,
-        color: '#6b7280',
-        cursor: 'help',
-      }}
-    >
-      <i className="bi bi-info-circle" style={{ fontSize: '0.9rem' }}></i>
-    </span>
-  );
+  const InfoHint = ({ text }) => {
+    const [visible, setVisible] = useState(false);
+    return (
+      <span
+        aria-label={text}
+        onMouseEnter={() => setVisible(true)}
+        onMouseLeave={() => setVisible(false)}
+        style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6, color: '#6b7280', cursor: 'help', position: 'relative' }}
+      >
+        <i className="bi bi-info-circle" style={{ fontSize: '0.9rem' }}></i>
+        {visible && (
+          <span style={{
+            position: 'absolute',
+            bottom: '130%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#232323',
+            color: '#fff',
+            borderRadius: 8,
+            padding: '0.35rem 0.7rem',
+            fontSize: '0.82rem',
+            whiteSpace: 'nowrap',
+            zIndex: 9999,
+            pointerEvents: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+          }}>
+            {text}
+          </span>
+        )}
+      </span>
+    );
+  };
   const DEFAULT_CHAT_CONFIG = {
     model: 'deepseek-chat',
     temperature: 1.3,
@@ -732,6 +749,69 @@ export default function CharacterFormPage() {
             </small>
           </div>
 
+          {/* Detailed Description Toggle */}
+          <div className="mb-3 d-flex align-items-center justify-content-between" style={{ background: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: 14, padding: '0.75rem 1rem' }}>
+            <div>
+              <span style={{ fontWeight: 700, color: '#232323', fontSize: '0.97rem' }}>启用详细人物设定</span>
+              {!canUseAdvancedCharacter ? (
+                <small style={{ display: 'block', color: '#9333ea', marginTop: 2 }}>升级为Pro用户可填写最多10000字的详细人物设定</small>
+              ) : effectiveContextLabel === 'advanced' ? (
+                <small style={{ display: 'block', color: '#7c3aed', marginTop: 2 }}>可填写最多10000字的详细人物设定，用于构建更丰富的角色背景</small>
+              ) : (
+                <small style={{ display: 'block', color: '#888', marginTop: 2 }}>开启后可额外填写最多10000字的详细人物设定</small>
+              )}
+            </div>
+            <div className="form-check form-switch mb-0" style={{ paddingLeft: 0 }}>
+              <input
+                className="form-check-input"
+                type="checkbox"
+                role="switch"
+                id="detailedDescriptionToggle"
+                checked={effectiveContextLabel === 'advanced'}
+                disabled={!canUseAdvancedCharacter}
+                title={!canUseAdvancedCharacter ? '升级为Pro用户后可用' : ''}
+                onChange={e => handleChange('context_label', e.target.checked ? 'advanced' : 'standard')}
+                style={{ width: '2.5em', height: '1.4em', cursor: canUseAdvancedCharacter ? 'pointer' : 'not-allowed' }}
+              />
+            </div>
+          </div>
+
+          {/* Long Description (shown when detailed description is enabled) */}
+          {effectiveContextLabel === 'advanced' && (
+            <div className="mb-4 position-relative">
+              <label className="form-label fw-bold" style={{ color: '#232323' }}>
+                {t('character_form.long_description')}
+                <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
+                  {t('character_form.notes.long_description')}
+                </small>
+              </label>
+              <textarea
+                className="form-control"
+                rows={Math.max(6, Math.min(30, Math.ceil((charData.long_description || '').length / 80)))}
+                value={charData.long_description || ''}
+                maxLength={ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
+                placeholder={t('character_form.placeholders.long_description')}
+                onChange={e => handleChange('long_description', e.target.value)}
+                style={{
+                  background: '#f5f6fa',
+                  color: '#18191a',
+                  border: '1.5px solid #e9ecef',
+                  borderRadius: 16,
+                  fontSize: '1.08rem',
+                  padding: '0.7rem 1.2rem',
+                  boxShadow: 'none',
+                  outline: 'none',
+                  paddingRight: '3rem',
+                  resize: 'vertical',
+                }}
+              />
+              <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>创建角色时处理详细人物设定会消耗少量的token</small>
+              <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+                {(charData.long_description || '').length}/{ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
+              </small>
+            </div>
+          )}
+
           <div className="mb-4">
             <button
               type="button"
@@ -757,104 +837,6 @@ export default function CharacterFormPage() {
 
           {showAdvancedOptions && (
             <>
-              {/* Context Label */}
-              <div className="mb-4">
-                <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.5rem', display: 'block' }}>
-                  角色类型
-                </label>
-                <div style={{ display: 'flex', gap: 0, borderRadius: 12, overflow: 'hidden', border: '1.5px solid #e9ecef', width: 'fit-content' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleChange('context_label', 'standard')}
-                    style={{
-                      padding: '0.5rem 1.4rem',
-                      fontSize: '1rem',
-                      fontWeight: effectiveContextLabel === 'standard' ? 700 : 400,
-                      background: effectiveContextLabel === 'standard' ? '#232323' : '#f5f6fa',
-                      color: effectiveContextLabel === 'standard' ? '#fff' : '#555',
-                      border: 'none',
-                      cursor: 'pointer',
-                      transition: 'background 0.15s, color 0.15s',
-                    }}
-                  >
-                    标准
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => canUseAdvancedCharacter && handleChange('context_label', 'advanced')}
-                    disabled={!canUseAdvancedCharacter}
-                    title={!canUseAdvancedCharacter ? '升级为Pro用户后可用' : ''}
-                    style={{
-                      padding: '0.5rem 1.4rem',
-                      fontSize: '1rem',
-                      fontWeight: effectiveContextLabel === 'advanced' ? 700 : 400,
-                      background: effectiveContextLabel === 'advanced' ? '#7c3aed' : '#f5f6fa',
-                      color: effectiveContextLabel === 'advanced' ? '#fff' : (!canUseAdvancedCharacter ? '#bbb' : '#555'),
-                      border: 'none',
-                      cursor: canUseAdvancedCharacter ? 'pointer' : 'not-allowed',
-                      transition: 'background 0.15s, color 0.15s',
-                      opacity: !canUseAdvancedCharacter ? 0.7 : 1,
-                    }}
-                  >
-                    高级
-                    {!canUseAdvancedCharacter && (
-                      <span style={{ marginLeft: 4, fontSize: '0.75rem' }}>🔒</span>
-                    )}
-                  </button>
-                </div>
-                {!canUseAdvancedCharacter ? (
-                  <small style={{ display: 'block', marginTop: 8, color: '#9333ea' }}>
-                    升级为Pro用户可以增加最多10000字的详细人物设定
-                  </small>
-                ) : effectiveContextLabel === 'advanced' ? (
-                  <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>
-                    高级角色可填写最多10000字的详细人物设定，用于构建更丰富的角色背景
-                  </small>
-                ) : (
-                  <small style={{ display: 'block', marginTop: 8, color: '#888' }}>
-                    选择「高级」后可额外填写最多10000字的详细人物设定
-                  </small>
-                )}
-              </div>
-
-              {/* Long Description (advanced only) */}
-              {effectiveContextLabel === 'advanced' && (
-                <div className="mb-4 position-relative">
-                  <label className="form-label fw-bold" style={{ color: '#232323' }}>
-                    {t('character_form.long_description')}
-                    <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
-                      {t('character_form.notes.long_description')}
-                    </small>
-                  </label>
-                  <textarea
-                    className="form-control"
-                    rows={Math.max(6, Math.min(30, Math.ceil((charData.long_description || '').length / 80)))}
-                    value={charData.long_description || ''}
-                    maxLength={ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
-                    placeholder={t('character_form.placeholders.long_description')}
-                    onChange={e => handleChange('long_description', e.target.value)}
-                    style={{
-                      background: '#f5f6fa',
-                      color: '#18191a',
-                      border: '1.5px solid #e9ecef',
-                      borderRadius: 16,
-                      fontSize: '1.08rem',
-                      padding: '0.7rem 1.2rem',
-                      boxShadow: 'none',
-                      outline: 'none',
-                      paddingRight: '3rem',
-                      resize: 'vertical',
-                    }}
-                  />
-                  <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>
-                    创建角色时处理详细人物设定会消耗少量的token
-                  </small>
-                  <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-                    {(charData.long_description || '').length}/{ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
-                  </small>
-                </div>
-              )}
-
               {/* Advanced Chat Config */}
               <div className="mb-4">
                 <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.75rem' }}>

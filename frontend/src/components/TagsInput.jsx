@@ -62,6 +62,12 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
 
   return (
     <>
+      <style>{`
+        .tags-input-field::placeholder {
+          color: #c5ccd3;
+          opacity: 1;
+        }
+      `}</style>
       <div
         className="d-flex flex-wrap gap-2 position-relative"
         style={{
@@ -86,7 +92,7 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
         ))}
         <input
           type="text"
-          className="border-0 flex-grow-1"
+          className="border-0 flex-grow-1 tags-input-field"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -103,6 +109,7 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
             outline: 'none',
             boxShadow: 'none',
             color: '#18191a',
+            fontSize: '1.08rem',
           }}
         />
         {showSuggestions && suggestions.length > 0 && (

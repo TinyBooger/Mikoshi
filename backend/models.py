@@ -168,6 +168,7 @@ class Scene(Base):
     name = Column(String, nullable=False)
     description = Column(Text, nullable=False)
     intro = Column(Text, nullable=True)  # Short intro for display
+    greeting = Column(String, nullable=True)
     tags = Column(ARRAY(Text), default=[])  # array of strings
     picture = Column(String, nullable=True)  # path or URL to the picture
     creator_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
