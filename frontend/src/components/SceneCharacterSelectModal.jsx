@@ -104,28 +104,30 @@ export default function SceneCharacterSelectModal({
     return createPortal(loadingContent, document.body);
   }
 
-  const sceneImg = selectedScene?.picture
-    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${selectedScene.picture.replace(/^\//, '')}`
-    : defaultPic;
+  const cardWrapperStyle = {
+    width: isMobile ? 'min(100%, 18rem)' : 'auto',
+    maxWidth: '100%',
+    position: 'relative',
+    flexShrink: 0,
+  };
 
-  const cardStyle = (selected) => ({
-    width: isMobile ? '100%' : 260,
-    height: isMobile ? 140 : 240,
-    borderRadius: isMobile ? '0.875rem' : '1.2rem',
+  const placeholderCardStyle = {
+    width: isMobile ? '100%' : '11.25rem',
+    height: isMobile ? 'calc(100vw / 2 * 1.25 - 0.5rem)' : '15.625rem',
+    borderRadius: '20px',
     background: '#f5f6fa',
-    border: '2px dashed #e9ecef',
+    border: '2px dashed #e5e7eb',
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    boxShadow: selected ? '0 2px 8px rgba(24,25,26,0.08)' : 'none',
-    position: 'relative',
-    transition: 'border 0.18s, box-shadow 0.18s',
-    padding: 0,
-    minWidth: 0,
-    minHeight: 0,
-    flexShrink: 0,
-  });
+    transition: 'border-color 0.18s ease, background-color 0.18s ease',
+    color: '#6b7280',
+    gap: 8,
+    padding: '0.9rem',
+    textAlign: 'center',
+  };
 
   const removeBtnStyle = {
     position: 'absolute',
@@ -162,16 +164,42 @@ export default function SceneCharacterSelectModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        padding: isMobile ? '0.75rem' : '0 2.5rem',
+        boxSizing: 'border-box',
       }}
     >
-      <div className="modal-dialog modal-lg" style={{ maxWidth: isMobile ? '95vw' : 760, margin: 'auto', maxHeight: '90vh', display: 'flex' }}>
+      <div
+        className="modal-dialog modal-lg"
+        style={{
+          width: '100%',
+          maxWidth: isMobile ? 'min(95vw, 30rem)' : 'min(44rem, calc(100vw - 7rem))',
+          margin: 'auto',
+          maxHeight: '90vh',
+          display: 'flex'
+        }}
+      >
         <div className="modal-content" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column', width: '100%', borderRadius: 14, border: '1px solid #ece9f4', boxShadow: '0 8px 20px rgba(15, 23, 42, 0.1)' }}>
-          <div className="modal-header" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h5 className="modal-title" style={{ fontWeight: 800 }}>
-              {selectedScene?.name
-                ? t('scene_select_modal.title', { scene: selectedScene.name })
-                : t('scene_select_modal.title_fallback')}
-            </h5>
+          <div className="modal-header" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <h5 className="modal-title" style={{ fontWeight: 800, marginBottom: 2 }}>
+                进入场景
+              </h5>
+              <div
+                style={{
+                  color: '#6b7280',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  lineHeight: 1.2,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  maxWidth: isMobile ? 'calc(95vw - 90px)' : '420px',
+                }}
+                title={selectedScene?.name || t('scene_select_modal.title_fallback')}
+              >
+                {selectedScene?.name || t('scene_select_modal.title_fallback')}
+              </div>
+            </div>
             <button
               type="button"
               onClick={onCancel}
@@ -210,53 +238,62 @@ export default function SceneCharacterSelectModal({
               minHeight: 0,
             }}
           >
-            {/* Scene summary */}
-            {selectedScene && (
-              <div style={{
+            <div
+              style={{
                 display: 'flex',
-                gap: isMobile ? 12 : 16,
-                alignItems: isMobile ? 'flex-start' : 'center',
-                marginBottom: isMobile ? 12 : 16,
-                background: '#fff',
-                border: '1px solid #e9ecef',
-                borderRadius: 14,
-                padding: isMobile ? '0.6rem' : '0.8rem 1rem',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-              }}>
-                <img
-                  src={sceneImg}
-                  alt={selectedScene?.name || 'Scene'}
-                  style={{
-                    width: isMobile ? 64 : 80,
-                    height: isMobile ? 64 : 80,
-                    borderRadius: 12,
-                    objectFit: 'cover',
-                    flexShrink: 0,
-                    border: '1px solid #e9ecef'
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: isMobile ? 14 : 16,
+                minHeight: isMobile ? 'auto' : 280,
+              }}
+            >
+              <div style={cardWrapperStyle}>
+                <EntityCard
+                  type="scene"
+                  entity={selectedScene || {
+                    id: 'scene-placeholder',
+                    name: t('scene_select_modal.scene'),
+                    intro: t('scene_select_modal.title_fallback'),
+                    picture: defaultPic,
                   }}
+                  disableClick={true}
                 />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, color: '#111827', fontSize: isMobile ? '1rem' : '1.05rem' }}>
-                    {selectedScene?.name || t('scene_select_modal.scene')}
-                  </div>
-                  {selectedScene?.intro && (
-                    <div style={{ marginTop: 4, color: '#4b5563', fontSize: '0.9rem', lineHeight: 1.35 }}>
-                      {selectedScene.intro}
-                    </div>
-                  )}
-                </div>
               </div>
-            )}
 
-            {/* Prompt */}
-            <div style={{ textAlign: 'center', color: '#374151', marginBottom: 10, fontWeight: 600 }}>
-              {t('scene_select_modal.prompt')}
-            </div>
-
-            {/* Character chooser */}
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
               <div
-                style={cardStyle(selectedCharacter)}
+                style={{
+                  display: 'flex',
+                  flexDirection: isMobile ? 'row' : 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  color: '#6b7280',
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ fontSize: isMobile ? '1.05rem' : '1.1rem' }}>场景</span>
+                <div
+                  style={{
+                    width: isMobile ? 36 : 44,
+                    height: isMobile ? 36 : 44,
+                    borderRadius: '50%',
+                    background: '#f3f4f6',
+                    border: '1px solid #e5e7eb',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#4b5563',
+                  }}
+                >
+                  <i className={`bi ${isMobile ? 'bi-arrow-down' : 'bi-arrow-right'} fs-5`}></i>
+                </div>
+                <span style={{ fontSize: isMobile ? '1.05rem' : '1.1rem' }}>角色</span>
+              </div>
+
+              <div
+                style={cardWrapperStyle}
                 onClick={() => { onSelectCharacter && onSelectCharacter(); }}
               >
                 {selectedCharacter && (
@@ -270,11 +307,30 @@ export default function SceneCharacterSelectModal({
                   </button>
                 )}
                 {selectedCharacter ? (
-                  <EntityCard type="character" entity={selectedCharacter} disableClick={true} compact={true} />
+                  <EntityCard
+                    type="character"
+                    entity={selectedCharacter}
+                    disableClick={true}
+                  />
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isMobile ? '1rem' : '0.75rem', padding: isMobile ? '0 1rem' : 0 }}>
-                    <i className="bi bi-person" style={{ fontSize: isMobile ? 32 : 48, color: '#bbb' }}></i>
-                    <div style={{ fontWeight: 600, fontSize: isMobile ? '0.95rem' : '1.02rem', color: '#888', textAlign: 'center' }}>{t('scene_select_modal.select_character')}</div>
+                  <div
+                    style={placeholderCardStyle}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#d1d5db';
+                      e.currentTarget.style.background = '#f8fafc';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                      e.currentTarget.style.background = '#f5f6fa';
+                    }}
+                  >
+                    <i className="bi bi-person-plus" style={{ fontSize: isMobile ? 30 : 38, color: '#9ca3af' }}></i>
+                    <div style={{ fontWeight: 700, fontSize: isMobile ? '0.9rem' : '0.95rem', color: '#4b5563' }}>
+                      {t('scene_select_modal.select_character')}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#9ca3af' }}>
+                      {t('scene_select_modal.prompt')}
+                    </div>
                   </div>
                 )}
               </div>

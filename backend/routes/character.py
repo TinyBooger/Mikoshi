@@ -589,13 +589,20 @@ def get_characters(search: str = None, db: Session = Depends(get_db)):
 
 @router.get("/api/character/{character_id}", response_model=CharacterOut)
 def get_character(character_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    c = db.query(Character).filter(Character.id == character_id).first()
+    row = (
+        db.query(Character, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Character.creator_id == User.id)
+        .filter(Character.id == character_id)
+        .first()
+    )
+    c = row[0] if row else None
     if not c:
         raise HTTPException(status_code=404, detail="Character not found")
 
     if not c.is_public:
         if not current_user or (c.creator_id != current_user.id and not current_user.is_admin):
             raise HTTPException(status_code=404, detail="Character not found")
+    c.creator_profile_pic = row[1] if row else None
     return c
 
 @router.delete("/api/character/{character_id}/delete")

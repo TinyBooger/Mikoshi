@@ -267,12 +267,19 @@ def get_recommended_scenes(
 # Read single Scene
 @router.get("/api/scenes/{scene_id}", response_model=SceneOut)
 def get_scene(scene_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    scene = db.query(Scene).filter(Scene.id == scene_id).first()
+    row = (
+        db.query(Scene, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Scene.creator_id == User.id)
+        .filter(Scene.id == scene_id)
+        .first()
+    )
+    scene = row[0] if row else None
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
     if not scene.is_public:
         if not current_user or (scene.creator_id != current_user.id and not current_user.is_admin):
             raise HTTPException(status_code=404, detail="Scene not found")
+    scene.creator_profile_pic = row[1] if row else None
     return scene
 
 # Update Scene

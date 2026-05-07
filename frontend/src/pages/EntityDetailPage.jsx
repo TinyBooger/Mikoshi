@@ -7,6 +7,7 @@ import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import defaultPicture from '../assets/images/default-picture.png';
+import defaultAvatar from '../assets/images/default-avatar.png';
 
 export default function EntityDetailPage() {
   const { t } = useTranslation();
@@ -21,6 +22,8 @@ export default function EntityDetailPage() {
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
+  const [isCreatorHovered, setIsCreatorHovered] = useState(false);
+  const [isForkableBadgeHovered, setIsForkableBadgeHovered] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
@@ -76,49 +79,67 @@ export default function EntityDetailPage() {
   useEffect(() => {
     if (!entity || !sessionToken) return;
 
-    let endpoint = '';
+    const params = new URLSearchParams();
     if (type === 'character') {
-      endpoint = `${window.API_BASE_URL}/api/character/${entity.id}/liked`;
+      params.append('character_id', String(entity.id));
     } else if (type === 'persona') {
-      endpoint = `${window.API_BASE_URL}/api/personas/${entity.id}/liked`;
+      params.append('persona_id', String(entity.id));
     } else if (type === 'scene') {
-      endpoint = `${window.API_BASE_URL}/api/scenes/${entity.id}/liked`;
+      params.append('scene_id', String(entity.id));
     }
 
-    if (endpoint) {
-      fetch(endpoint, {
-        headers: { 'Authorization': sessionToken }
+    if (![...params.keys()].length) return;
+
+    fetch(`${window.API_BASE_URL}/api/is-liked-multi?${params.toString()}`, {
+      credentials: 'include',
+      headers: { 'Authorization': sessionToken }
+    })
+      .then(res => res.json())
+      .then(data => {
+        const likedValue = data?.[type]?.liked;
+        setLiked(!!likedValue);
       })
-        .then(res => res.json())
-        .then(data => setLiked(data.liked || false))
-        .catch(() => setLiked(false));
-    }
+      .catch(() => setLiked(false));
   }, [entity, type, sessionToken]);
 
   const handleLike = async () => {
     if (!entity || !sessionToken) return;
 
-    let endpoint = '';
-    if (type === 'character') {
-      endpoint = `${window.API_BASE_URL}/api/character/${entity.id}/like`;
-    } else if (type === 'persona') {
-      endpoint = `${window.API_BASE_URL}/api/personas/${entity.id}/like`;
-    } else if (type === 'scene') {
-      endpoint = `${window.API_BASE_URL}/api/scenes/${entity.id}/like`;
-    }
+    const prevLiked = liked;
+    const prevLikes = typeof entity.likes === 'number' ? entity.likes : 0;
+    const nextLiked = !prevLiked;
+    const nextLikes = Math.max(0, prevLikes + (nextLiked ? 1 : -1));
+
+    // Keep interaction snappy like InfoCard: reflect state change immediately.
+    setLiked(nextLiked);
+    setEntity((prev) => (prev ? { ...prev, likes: nextLikes } : prev));
+
+    const action = nextLiked ? 'like' : 'unlike';
+    const endpoint = `${window.API_BASE_URL}/api/${action}/${type}/${entity.id}`;
 
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Authorization': sessionToken }
       });
+
+      if (!res.ok) {
+        throw new Error('Failed to like entity');
+      }
+
       const data = await res.json();
-      setLiked(!liked);
-      setEntity({ ...entity, likes: data.likes });
+
+      setLiked(nextLiked);
+
+      if (typeof data?.likes === 'number') {
+        setEntity((prev) => (prev ? { ...prev, likes: data.likes } : prev));
+      }
     } catch (err) {
+      setLiked(prevLiked);
+      setEntity((prev) => (prev ? { ...prev, likes: prevLikes } : prev));
       console.error(err);
       toast.show(t('entity_detail.like_error', 'Failed to like'), { type: 'error' });
-        toast.show(t('entity_detail.like_error'), { type: 'error' });
     }
   };
 
@@ -132,42 +153,6 @@ export default function EntityDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm(t('entity_detail.confirm_delete', 'Are you sure you want to delete this?'))) {
-      if (!window.confirm(t('entity_detail.confirm_delete'))) {
-      return;
-    }
-
-    let endpoint = '';
-    if (type === 'character') {
-      endpoint = `${window.API_BASE_URL}/api/character/${id}/delete`;
-    } else if (type === 'persona') {
-      endpoint = `${window.API_BASE_URL}/api/personas/${id}`;
-    } else if (type === 'scene') {
-      endpoint = `${window.API_BASE_URL}/api/scenes/${id}`;
-    }
-
-    try {
-      const res = await fetch(endpoint, {
-        method: 'DELETE',
-        headers: { 'Authorization': sessionToken }
-      });
-      if (res.ok) {
-        toast.show(t('entity_detail.delete_success', 'Deleted successfully'), { type: 'success' });
-          toast.show(t('entity_detail.delete_success'), { type: 'success' });
-        navigate('/');
-      } else {
-        toast.show(t('entity_detail.delete_error', 'Failed to delete'), { type: 'error' });
-          toast.show(t('entity_detail.delete_error'), { type: 'error' });
-      }
-    } catch (err) {
-      console.error(err);
-      toast.show(t('entity_detail.delete_error', 'Failed to delete'), { type: 'error' });
-        toast.show(t('entity_detail.delete_error'), { type: 'error' });
-    }
-    };
-  };
-
   const handleChat = () => {
     if (type === 'character') {
       navigate(`/chat?character=${id}`);
@@ -179,7 +164,6 @@ export default function EntityDetailPage() {
   const handleFork = () => {
     if (!entity.is_forkable) {
       toast.show(t('entity_detail.not_forkable', 'This entity is not forkable'), { type: 'error' });
-        toast.show(t('entity_detail.not_forkable'), { type: 'error' });
       return;
     }
 
@@ -215,6 +199,15 @@ export default function EntityDetailPage() {
 
   const isOwner = userData?.id === entity.creator_id;
   const picture = entity.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(entity.picture).replace(/^\//, '')}` : defaultPicture;
+  const creatorAvatar = entity.creator_profile_pic
+    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(entity.creator_profile_pic).replace(/^\//, '')}`
+    : defaultAvatar;
+
+  const handleCreatorClick = () => {
+    if (entity.creator_id) {
+      navigate(`/profile/${encodeURIComponent(entity.creator_id)}`);
+    }
+  };
 
   // Get description based on entity type
   let description = '';
@@ -240,6 +233,28 @@ export default function EntityDetailPage() {
         .filter(Boolean)
     : [];
 
+  const sectionTitleWrapStyle = {
+    borderBottom: '1px solid #f0f0f0',
+    paddingBottom: '0.55rem',
+    marginBottom: '0.6rem'
+  };
+
+  const sectionTitleStyle = {
+    margin: 0,
+    fontSize: '1.125rem',
+    fontWeight: 700,
+    lineHeight: 1.25,
+    color: '#000'
+  };
+
+  const sectionBodyStyle = {
+    whiteSpace: 'pre-wrap',
+    lineHeight: 1.68,
+    color: '#444',
+    fontSize: '0.94rem',
+    marginBottom: 0
+  };
+
   return (
     <PageWrapper>
       <div 
@@ -250,7 +265,7 @@ export default function EntityDetailPage() {
         }}
       >
         {/* Header with image and basic info */}
-        <div className="row mb-4">
+        <div className="row mb-5">
           <div className={isMobile ? 'col-12 mb-3' : 'col-md-4'}>
             <img 
               src={picture}
@@ -265,65 +280,201 @@ export default function EntityDetailPage() {
             />
           </div>
           <div className={isMobile ? 'col-12' : 'col-md-8'}>
-            <div className="d-flex justify-content-between align-items-start mb-3">
+            <div className="d-flex justify-content-between align-items-start mb-4">
               <div>
-                <h1 className="mb-2" style={{ fontSize: isMobile ? '1.75rem' : '2.5rem' }}>
-                  {entity.name}
-                </h1>
-                <p className="text-muted mb-2">
-                  {t('entity_detail.by')} {entity.creator_name || t('entity_detail.unknown')}
-                </p>
+                <div className="d-flex align-items-center flex-wrap" style={{ gap: '8px', marginBottom: '12px' }}>
+                  <h1
+                    className="mb-0"
+                    style={{
+                      fontSize: isMobile ? '1.72rem' : '2.4rem',
+                      fontWeight: 800,
+                      lineHeight: 1.15,
+                      letterSpacing: '-0.02em'
+                    }}
+                  >
+                    {entity.name}
+                  </h1>
+                  {entity.is_forkable && (
+                    <div
+                      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
+                      onMouseEnter={() => setIsForkableBadgeHovered(true)}
+                      onMouseLeave={() => setIsForkableBadgeHovered(false)}
+                    >
+                      <span
+                        title={t('entity_card.forkable') || 'Forkable'}
+                        style={{
+                          background: 'rgba(34, 197, 94, 0.9)',
+                          color: '#fff',
+                          fontSize: isMobile ? '0.5rem' : '0.55rem',
+                          padding: isMobile ? '2px 5px' : '2px 6px',
+                          borderRadius: '4px',
+                          fontWeight: 600,
+                          lineHeight: 1,
+                          display: 'inline-flex',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <i className="bi bi-diagram-3-fill" style={{ fontSize: '0.5rem' }}></i>
+                      </span>
+                      {isForkableBadgeHovered && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            marginTop: '6px',
+                            background: 'rgba(17, 24, 39, 0.94)',
+                            color: '#fff',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.72rem',
+                            fontWeight: 500,
+                            whiteSpace: 'nowrap',
+                            zIndex: 10,
+                            pointerEvents: 'none',
+                          }}
+                        >
+                          {t('entity_card.forkable') || 'Forkable'}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div
+                  role="button"
+                  onClick={handleCreatorClick}
+                  onMouseEnter={() => setIsCreatorHovered(true)}
+                  onMouseLeave={() => setIsCreatorHovered(false)}
+                  className="d-flex align-items-center gap-2 mb-2"
+                  style={{
+                    cursor: 'pointer',
+                    width: 'fit-content',
+                    borderRadius: '999px',
+                    padding: '4px 8px 4px 4px',
+                    backgroundColor: isCreatorHovered ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+                    transform: isCreatorHovered ? 'translateY(-1px)' : 'translateY(0)',
+                    transition: 'background-color 0.18s ease, transform 0.18s ease'
+                  }}
+                >
+                  <img
+                    src={creatorAvatar}
+                    alt={entity.creator_name || ''}
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      flexShrink: 0
+                    }}
+                  />
+                  <span
+                    className="text-muted"
+                    style={{
+                      fontSize: '0.92rem',
+                      fontWeight: 600,
+                      color: isCreatorHovered ? '#111827' : undefined,
+                      textDecoration: isCreatorHovered ? 'underline' : 'none',
+                      transition: 'color 0.18s ease, text-decoration-color 0.18s ease'
+                    }}
+                  >
+                    {entity.creator_name || t('entity_detail.unknown')}
+                  </span>
+                </div>
                 {/* Display forked_from information */}
                 {entity.forked_from_id && entity.forked_from_name && (
-                  <p className="text-muted mb-2" style={{ fontSize: '0.9rem' }}>
+                  <p className="text-muted mb-0" style={{ fontSize: '0.85rem' }}>
                     <i className="bi bi-code-fork me-1"></i>
                     {t('entity_detail.forked_from')} {entity.forked_from_name}
                   </p>
                 )}
               </div>
               {!entity.is_public && (
-                <span className="badge bg-secondary">{t('entity_detail.private')}</span>
+                <span className="badge bg-secondary ms-3 mt-1">{t('entity_detail.private')}</span>
               )}
             </div>
 
             {secondaryInfo && (
-              <p className="mb-3" style={{ fontSize: '1.1rem', fontStyle: 'italic', color: '#666' }}>
+              <p
+                className="mb-4"
+                style={{
+                  fontSize: '1rem',
+                  fontStyle: 'italic',
+                  fontWeight: 500,
+                  color: '#5f6368',
+                  lineHeight: 1.5
+                }}
+              >
                 {secondaryInfo}
               </p>
             )}
 
             {/* Stats */}
-            <div className="d-flex gap-3 mb-3">
-              <div>
-                <i className="bi bi-eye me-1"></i>
-                <span>{entity.views || 0} {t('entity_detail.views', 'views')}</span>
-                {/* Only one span needed after fallback removal */}
+            <div className="d-flex gap-2 flex-wrap mb-4">
+              <div
+                className="d-flex align-items-center"
+                style={{
+                  gap: '6px',
+                  padding: '6px 10px',
+                  borderRadius: '999px',
+                  backgroundColor: '#f6f7f9'
+                }}
+              >
+                <i className="bi bi-chat" style={{ fontSize: '0.9rem', color: '#57606a' }}></i>
+                <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#30363d' }}>
+                  {entity.views || 0}
+                </span>
               </div>
-              <div>
-                <i className="bi bi-heart-fill me-1"></i>
-                <span>{entity.likes || 0} {t('entity_detail.likes', 'likes')}</span>
-                {/* Only one span needed after fallback removal */}
-              </div>
+              <button
+                onClick={handleLike}
+                className="d-flex align-items-center"
+                aria-label={liked ? t('entity_detail.unlike', 'Unlike') : t('entity_detail.like', 'Like')}
+                style={{
+                  gap: '6px',
+                  padding: '6px 10px',
+                  borderRadius: '999px',
+                  backgroundColor: liked ? '#ffe9ec' : '#fff1f2',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.18s ease, transform 0.18s ease'
+                }}
+              >
+                <i
+                  className={`bi ${liked ? 'bi-heart-fill' : 'bi-heart'}`}
+                  style={{ fontSize: '0.9rem', color: '#d73a49' }}
+                ></i>
+                <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#30363d' }}>
+                  {entity.likes || 0}
+                </span>
+              </button>
             </div>
 
             {/* Tags */}
             {entity.tags && entity.tags.length > 0 && (
-              <div className="mb-3">
+              <div className="mb-4 d-flex flex-wrap" style={{ gap: '6px' }}>
                 {entity.tags.map((tag, idx) => {
                   const tagName = typeof tag === 'object' ? tag.name : tag;
                   return (
                     <span 
                       key={idx}
-                      className="badge me-2 mb-2"
+                      className="badge"
                       style={{
-                        backgroundColor: '#f0f0f0',
-                        color: '#333',
-                        padding: '0.5rem 0.75rem',
-                        fontSize: '0.9rem',
-                        fontWeight: 'normal'
+                        background: '#f5f6fa',
+                        color: '#232323',
+                        border: '1px solid #e9ecef',
+                        borderRadius: '1rem',
+                        fontWeight: 500,
+                        fontSize: '0.68rem',
+                        padding: '0.12rem 0.6rem',
+                        marginBottom: 1,
+                        lineHeight: 1.2,
+                        letterSpacing: '0.01em',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                       }}
                     >
-                      {tagName}
+                      #{tagName}
                     </span>
                   );
                 })}
@@ -331,64 +482,48 @@ export default function EntityDetailPage() {
             )}
 
             {/* Action buttons */}
-            <div className="d-flex gap-2 flex-wrap">
-              {type === 'character' ? (
-                <PrimaryButton onClick={handleChat}>
-                  <i className="bi bi-chat-dots me-2"></i>
-                  {t('entity_detail.start_chat', 'Start Chat')}
-                    {t('entity_detail.start_chat')}
-                </PrimaryButton>
-              ) : type === 'scene' ? (
-                <PrimaryButton onClick={handleChat}>
-                  <i className="bi bi-chat-dots me-2"></i>
-                  {t('entity_detail.start_chat', 'Start Chat')}
-                    {t('entity_detail.start_chat')}
-                </PrimaryButton>
-              ) : null}
-              
-              <SecondaryButton onClick={handleLike}>
-                <i className={`bi ${liked ? 'bi-heart-fill' : 'bi-heart'} me-2`}></i>
-                {liked ? t('entity_detail.unlike', 'Unlike') : t('entity_detail.like', 'Like')}
-                  {liked ? t('entity_detail.unlike') : t('entity_detail.like')}
-                  {liked ? t('entity_detail.unlike') : t('entity_detail.like')}
-              </SecondaryButton>
+            <div className="d-flex flex-column" style={{ gap: '10px' }}>
+              <div className="d-flex flex-wrap align-items-center" style={{ gap: '8px' }}>
+                {(type === 'character' || type === 'scene') && (
+                  <PrimaryButton
+                    onClick={handleChat}
+                    style={{
+                      background: '#a590dc',
+                      color: '#ffffff',
+                      border: '1px solid #9078cc',
+                      boxShadow: '0 6px 14px rgba(117, 92, 182, 0.22)',
+                      transition: 'background 0.18s ease, box-shadow 0.18s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#967fd2';
+                      e.currentTarget.style.boxShadow = '0 8px 16px rgba(117, 92, 182, 0.28)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#a590dc';
+                      e.currentTarget.style.boxShadow = '0 6px 14px rgba(117, 92, 182, 0.22)';
+                    }}
+                  >
+                    <i className="bi bi-chat-dots me-2"></i>
+                    {t('entity_detail.start_chat', 'Start Chat')}
+                  </PrimaryButton>
+                )}
 
-              {entity.is_forkable && canFork && (
-                <SecondaryButton
-                  onClick={handleFork}
-                >
-                  <i className="bi bi-code-fork me-2"></i>
-                  {t('entity_detail.fork', 'Fork')}
-                    {t('entity_detail.fork')}
-                </SecondaryButton>
-              )}
+                {entity.is_forkable && canFork && (
+                  <SecondaryButton onClick={handleFork}>
+                    <i className="bi bi-diagram-3-fill me-2"></i>
+                    {t('entity_detail.fork', 'Fork')}
+                  </SecondaryButton>
+                )}
 
-
-              {isOwner && (
-                <>
+                {isOwner && (
                   <SecondaryButton onClick={handleEdit}>
                     <i className="bi bi-pencil me-2"></i>
                     {t('entity_detail.edit', 'Edit')}
-                      {t('entity_detail.edit')}
                   </SecondaryButton>
-                  <SecondaryButton onClick={handleDelete} className="text-danger">
-                    <i className="bi bi-trash me-2"></i>
-                    {t('entity_detail.delete', 'Delete')}
-                      {t('entity_detail.delete')}
-                  </SecondaryButton>
-                </>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Additional info badges */}
-            <div className="mt-3">
-              {entity.is_forkable && (
-                <span className="badge bg-info me-2">
-                  <i className="bi bi-code-fork me-1"></i>
-                  {t('entity_detail.forkable')}
-                </span>
-              )}
-            </div>
           </div>
         </div>
 
@@ -396,12 +531,14 @@ export default function EntityDetailPage() {
         {description && (
           <div className="card mb-4">
             <div className="card-body">
-              <h3 className="card-title mb-3">
-                {type === 'character' 
-                  ? t('entity_detail.persona') 
-                  : t('entity_detail.description')}
-              </h3>
-              <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+              <div style={sectionTitleWrapStyle}>
+                <h3 style={sectionTitleStyle}>
+                  {type === 'character' 
+                    ? t('entity_detail.persona') 
+                    : t('entity_detail.description')}
+                </h3>
+              </div>
+              <p style={sectionBodyStyle}>
                 {description}
               </p>
             </div>
@@ -414,11 +551,12 @@ export default function EntityDetailPage() {
             {entity.greeting && entity.greeting !== '[IMPROVISE_GREETING]' && (
               <div className="card mb-4">
                 <div className="card-body">
-                  <h3 className="card-title mb-3">
-                    {t('entity_detail.greeting', 'Greeting')}
-                      {t('entity_detail.greeting')}
-                  </h3>
-                  <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                  <div style={sectionTitleWrapStyle}>
+                    <h3 style={sectionTitleStyle}>
+                      {t('entity_detail.greeting', 'Greeting')}
+                    </h3>
+                  </div>
+                  <p style={sectionBodyStyle}>
                     {entity.greeting}
                   </p>
                 </div>
@@ -428,11 +566,12 @@ export default function EntityDetailPage() {
             {entity.example_messages && (
               <div className="card mb-4">
                 <div className="card-body">
-                  <h3 className="card-title mb-3">
-                    {t('entity_detail.sample_dialogue', 'Sample Dialogue')}
-                      {t('entity_detail.sample_dialogue')}
-                  </h3>
-                  <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                  <div style={sectionTitleWrapStyle}>
+                    <h3 style={sectionTitleStyle}>
+                      {t('entity_detail.sample_dialogue', 'Sample Dialogue')}
+                    </h3>
+                  </div>
+                  <p style={sectionBodyStyle}>
                     {entity.example_messages}
                   </p>
                 </div>
@@ -442,11 +581,12 @@ export default function EntityDetailPage() {
             {entity.long_description && (
               <div className="card mb-4">
                 <div className="card-body">
-                  <h3 className="card-title mb-3">
-                    {t('entity_detail.long_description', '详细人物设定')}
-                      {t('entity_detail.long_description')}
-                  </h3>
-                  <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                  <div style={sectionTitleWrapStyle}>
+                    <h3 style={sectionTitleStyle}>
+                      {t('entity_detail.long_description', '详细人物设定')}
+                    </h3>
+                  </div>
+                  <p style={sectionBodyStyle}>
                     {entity.long_description}
                   </p>
                 </div>
@@ -456,10 +596,11 @@ export default function EntityDetailPage() {
             {longDescriptionChunks.length > 0 && (
               <div className="card mb-4">
                 <div className="card-body">
-                  <h3 className="card-title mb-3">
-                    {t('entity_detail.long_description_chunks', '详细设定分段')}
-                      {t('entity_detail.long_description_chunks')}
-                  </h3>
+                  <div style={sectionTitleWrapStyle}>
+                    <h3 style={sectionTitleStyle}>
+                      {t('entity_detail.long_description_chunks', '详细设定分段')}
+                    </h3>
+                  </div>
                   <div className="d-flex flex-column gap-3">
                     {longDescriptionChunks.map((chunkText, index) => (
                       <div
@@ -474,7 +615,7 @@ export default function EntityDetailPage() {
                         <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.4rem' }}>
                           {t('entity_detail.chunk_priority')} {index + 1}
                         </div>
-                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.68, color: '#444', fontSize: '0.94rem' }}>
                           {chunkText}
                         </div>
                       </div>

@@ -891,16 +891,6 @@ export default function ChatPage() {
     }, 1100);
   };
 
-  // Fetch initial entity data when modal opens and IDs are present
-  useEffect(() => {
-    if (initModal && (characterId || sceneId)) {
-      setInitLoading(true);
-      fetchInitialData().finally(() => {
-        setInitLoading(false);
-      });
-    }
-  }, [initModal, characterId, sceneId]);
-
   const handleCharacterEntry = async () => {
     setInitModal(false);
     isNewChat.current = true;
@@ -937,7 +927,6 @@ export default function ChatPage() {
     setInitLoading(true);
     try {
       const fetchedData = await fetchInitialData();
-
       const existingChats = userData?.chat_history?.filter(h => {
         const sceneMatches = String(h.scene_id) === String(sceneId);
         return sceneMatches;
@@ -952,8 +941,7 @@ export default function ChatPage() {
         return;
       }
 
-      initializeChat(fetchedData);
-      initialized.current = true;
+      setInitModal(true);
     } catch (err) {
       console.error('Error handling scene entry:', err);
     } finally {
@@ -972,17 +960,20 @@ export default function ChatPage() {
 
     if (initialized.current) return;
 
-    if (sessionToken && sceneId && !initModal) {
-      handleSceneEntry();
-      return;
+    const entryMode = sceneId ? 'scene' : (characterId ? 'character' : null);
+
+    switch (entryMode) {
+      case 'scene':
+        handleSceneEntry();
+        return;
+      case 'character':
+        handleCharacterEntry();
+        return;
+      default:
+        return;
     }
 
-    if (sessionToken && characterId) {
-      handleCharacterEntry();
-      return;
-    }
-
-  }, [navigate, sessionToken, loading, characterId, sceneId, userData, initModal]);
+  }, [navigate, sessionToken, loading, searchParams]);
 
   // Reusable function to start chat with current selections (used by modal and direct entry)
   const startChatWithSelectedEntities = async () => {
@@ -1002,24 +993,19 @@ export default function ChatPage() {
   // Start chat after choosing a character for a scene entry
   const startChatFromSceneSelection = async () => {
     if (!selectedCharacter) return;
+    setCharacterId(selectedCharacter.id || null);
+    isNewChat.current = true;
     setInitModal(false);
-    const existingChats = userData?.chat_history?.filter(h => {
-      const characterMatches = String(h.character_id) === String(selectedCharacter.id);
-      const sceneMatches = selectedScene ? String(h.scene_id) === String(selectedScene.id) : false;
-      return characterMatches && sceneMatches;
-    }) || [];
-
-    if (existingChats.length > 0) {
-      const mostRecentChat = existingChats.sort(
-        (a, b) => new Date(b.last_updated) - new Date(a.last_updated)
-      )[0];
-      await loadChat(mostRecentChat);
+    setInitLoading(true);
+    try {
+      const fetchedData = await fetchInitialData();
+      initializeChat(fetchedData);
       initialized.current = true;
-      return;
+    } catch (err) {
+      console.error('Error initializing chat from scene selection:', err);
+    } finally {
+      setInitLoading(false);
     }
-
-    await startChatWithSelectedEntities();
-    initialized.current = true;
   };
 
   // Fetch character and scene data if IDs are present
@@ -1165,16 +1151,15 @@ export default function ChatPage() {
   const startNewChat = async (fetchedData) => {
     const { character, scene, persona } = fetchedData || {};
     const sys = buildSystemPromptMessage(character, scene, persona);
-    // Use the character's greeting if available. Do not emit a special scene greeting here
-    // because the scene introduction is now handled by the welcome notice.
-    // If the character uses the improvising sentinel, call the backend LLM to generate
-    // the initial assistant greeting dynamically.
-    // Disable greeting when there's a scene.
-    const charGreeting = scene ? null : character?.greeting;
+    const openingGreeting = scene
+      ? (typeof scene?.greeting === 'string' && scene.greeting.trim()
+          ? scene.greeting.trim()
+          : SPECIAL_IMPROVISING_GREETING)
+      : character?.greeting;
     setSelectedChat(null);
     setInput('');
 
-    if (charGreeting === SPECIAL_IMPROVISING_GREETING) {
+    if (openingGreeting === SPECIAL_IMPROVISING_GREETING) {
       setMessages([sys]);
       await sendChatTurn({
         nextMessages: [sys],
@@ -1188,12 +1173,11 @@ export default function ChatPage() {
       return;
     }
 
-    // Non-improvising: use greeting if provided
     let greet = null;
-    if (charGreeting) {
+    if (openingGreeting) {
       greet = {
         role: 'assistant',
-        content: charGreeting,
+        content: openingGreeting,
         message_id: generateMessageId(),
         is_pinned: false,
       };
@@ -1449,7 +1433,7 @@ export default function ChatPage() {
       if (!normalizedChat) return;
 
       // Update IDs from the chat entry
-      setCharacterId(normalizedChat.character_id);
+      setCharacterId(normalizedChat.character_id || null);
       setSceneId(normalizedChat.scene_id || null);
       
       // Fetch all required entities in parallel
@@ -1986,84 +1970,67 @@ export default function ChatPage() {
                   (() => {
                     // Build a system-style welcome notice independent from the assistant's greeting message
                     const charName = selectedCharacter?.name;
-                    const personaName = selectedPersona?.name;
                     const sceneName = selectedScene?.name;
-                    const personaDesc = selectedPersona?.description;
-                    const sceneDesc = selectedScene?.description;
 
                     // Build the translated welcome title and body using i18n with sensible fallbacks
-                    const title = t('chat.welcome_title', { name: charName || '' });
+                    const title = sceneName
+                      ? (
+                          <>
+                            <span>正在场景 </span>
+                            <span style={{ color: '#8b5cf6', fontWeight: 800 }}>{sceneName}</span>
+                            <span> 中与 </span>
+                            <span style={{ color: '#6366f1', fontWeight: 800 }}>{charName || '角色'}</span>
+                            <span> 对话</span>
+                          </>
+                        )
+                      : (
+                          <>
+                            <span>正在与 </span>
+                            <span style={{ color: '#6366f1', fontWeight: 800 }}>{charName || '角色'}</span>
+                            <span> 对话</span>
+                          </>
+                        );
 
                     // For the body, prefer a combined sentence with character/persona data.
-                    // Scene information is displayed separately (title + intro) in its own visually distinct block.
                     const mainParts = [];
-                    mainParts.push(t('chat.welcome_body_intro', { character: charName || '' }));
-                    if (personaName) {
-                      mainParts.push(t('chat.welcome_body_persona', { persona: personaName }));
+                    if (sceneName) {
+                      mainParts.push('让故事自然展开，说点什么来推动这一幕吧。');
+                    } else {
+                      mainParts.push('让对话自然展开，说点什么来开启这段交流吧。');
                     }
-                    mainParts.push(t('chat.welcome_body_cta'));
                     const welcomeText = mainParts.join(' ');
 
-                    // Scene-specific text (localized)
-                    const sceneTitleText = sceneName ? t('chat.welcome_scene_title', { scene: sceneName }) : null;
+                    const welcomeImageRaw = selectedScene?.picture || selectedCharacter?.avatar_picture || selectedCharacter?.picture || null;
+                    const welcomeImageSrc = welcomeImageRaw
+                      ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(welcomeImageRaw).replace(/^\//, '')}`
+                      : defaultPic;
+                    const welcomeImageAlt = sceneName || charName || 'Character';
 
                     return (
                       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.2rem' }}>
-                        <div style={{ maxWidth: 720, width: '100%', textAlign: 'center', padding: '0 0.6rem' }}>
+                        <div style={{ maxWidth: 720, width: '100%', textAlign: 'center', padding: '0.8rem 0.6rem 0.35rem' }}>
                           {/* Picture above, centered */}
-                          {(selectedCharacter?.avatar_picture || selectedCharacter?.picture) ? (
-                            <img
-                              src={`${window.API_BASE_URL.replace(/\/$/, '')}/${String(selectedCharacter.avatar_picture || selectedCharacter.picture).replace(/^\//, '')}`}
-                              alt={charName || 'Character'}
-                              style={{
-                                width: 96,
-                                height: 96,
-                                objectFit: 'cover',
-                                borderRadius: '50%',
-                                display: 'block',
-                                margin: '0 auto'
-                              }}
-                            />
-                          ) : (
-                            <img
-                              src={defaultPic}
-                              alt={charName || 'Character'}
-                              style={{
-                                width: 96,
-                                height: 96,
-                                objectFit: 'cover',
-                                borderRadius: '50%',
-                                display: 'block',
-                                margin: '0 auto'
-                              }}
-                            />
-                          )}
+                          <img
+                            src={welcomeImageSrc}
+                            alt={welcomeImageAlt}
+                            style={{
+                              width: 96,
+                              height: 96,
+                              objectFit: 'cover',
+                              borderRadius: '50%',
+                              border: '1px solid #c4b5fd',
+                              display: 'block',
+                              margin: '0 auto'
+                            }}
+                          />
 
                           {/* Title centered */}
-                          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#121212', marginTop: 12 }}>
+                          <div style={{ fontSize: '1rem', fontWeight: 650, color: '#121212', marginTop: 18 }}>
                             {title}
                           </div>
 
-                          {/* Scene block (visually distinct). Shows scene title and scene.intro if available */}
-                          {sceneName && (
-                            <div style={{
-                              marginTop: 12,
-                              padding: '0.9rem',
-                              background: '#f1f5f9',
-                              borderRadius: '0.75rem',
-                              border: '1px solid rgba(15, 23, 42, 0.04)',
-                              color: '#0f172a',
-                              textAlign: 'left'
-                            }}>
-                              <div style={{ fontWeight: 700, fontSize: '0.98rem' }}>{sceneTitleText}</div>
-                              {selectedScene?.intro && (
-                                <div style={{ marginTop: 6, fontStyle: 'italic', color: '#374151' }}>{selectedScene.intro}</div>
-                              )}
-                            </div>
-                          )}
-
                           {/* Text centered, transparent background so it appears inline in chat */}
-                          <div style={{ marginTop: 8, color: '#4b5563', fontSize: '0.92rem', lineHeight: 1.35 }}>
+                          <div style={{ marginTop: 14, color: '#4b5563', fontSize: '0.92rem', lineHeight: 1.42 }}>
                             {welcomeText}
                           </div>
                         </div>

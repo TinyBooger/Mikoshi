@@ -766,7 +766,11 @@
     "persona": "设定",
     "description": "描述",
     "greeting": "问候语",
-    "sample_dialogue": "示例对话"
+    "sample_dialogue": "示例对话",
+    "fork": "参考创作",
+    "long_description": "详细人物设定",
+    "long_description_chunks": "详细设定分段",
+    "chunk_priority": "分段"
   },
   "terms": {
     "title": "语伴岛 用户服务协议",

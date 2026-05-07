@@ -771,7 +771,11 @@
     "persona": "Persona",
     "description": "Description",
     "greeting": "Greeting",
-    "sample_dialogue": "Sample Dialogue"
+    "sample_dialogue": "Sample Dialogue",
+    "fork": "Fork",
+    "long_description": "Detailed Character Setting",
+    "long_description_chunks": "Detailed Setting Segments",
+    "chunk_priority": "Segment"
   },
   "terms": {
     "title": "Terms of Service",
