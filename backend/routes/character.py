@@ -7,7 +7,7 @@ from datetime import datetime, UTC
 import json
 
 from database import get_db
-from models import Character, User, Tag, UserLikedCharacter
+from models import Character, User, Tag, UserLikedCharacter, ChatHistory
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
@@ -817,6 +817,51 @@ def get_user_liked_characters(
 
     total = query.count()
     rows = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for char, creator_profile_pic in rows:
+        char.creator_profile_pic = creator_profile_pic
+        items.append(char)
+    return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+
+
+@router.get("/api/characters-recent-chats", response_model=CharacterListOut)
+def get_recent_chat_characters(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Return characters the current user has recently chatted with, ordered by most recent chat."""
+    if not current_user:
+        return CharacterListOut(items=[], total=0, page=1, page_size=0, short=False)
+
+    from sqlalchemy import func
+
+    subq = (
+        db.query(
+            ChatHistory.character_id,
+            func.max(ChatHistory.last_updated).label("last_chat")
+        )
+        .filter(
+            ChatHistory.user_id == current_user.id,
+            ChatHistory.character_id.isnot(None)
+        )
+        .group_by(ChatHistory.character_id)
+        .subquery()
+    )
+
+    total = db.query(subq).count()
+
+    rows = (
+        db.query(Character, User.profile_pic.label("creator_profile_pic"))
+        .join(subq, subq.c.character_id == Character.id)
+        .outerjoin(User, Character.creator_id == User.id)
+        .order_by(subq.c.last_chat.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
     items = []
     for char, creator_profile_pic in rows:
         char.creator_profile_pic = creator_profile_pic
