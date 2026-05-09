@@ -36,6 +36,39 @@ export default function CharacterModal({ show, onClose, onSelect }) {
     color: '#4b5563',
   };
 
+  const tabListStyle = {
+    flexShrink: 0,
+    borderBottom: '1px solid #e3d9f3',
+    gap: '0.35rem',
+    flexWrap: 'wrap',
+  };
+
+  const tabButtonBaseStyle = {
+    cursor: 'pointer',
+    fontSize: '0.875rem',
+    borderRadius: '0.7rem 0.7rem 0 0',
+    padding: isMobile ? '0.45rem 0.7rem' : '0.48rem 0.85rem',
+    border: '1px solid transparent',
+    borderBottom: 'none',
+    transition: 'background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease',
+  };
+
+  const tabButtonActiveStyle = {
+    ...tabButtonBaseStyle,
+    fontWeight: 600,
+    color: '#564a7a',
+    background: '#efe8fb',
+    borderColor: '#d8caef',
+  };
+
+  const tabButtonInactiveStyle = {
+    ...tabButtonBaseStyle,
+    fontWeight: 500,
+    color: '#74698f',
+    background: '#f7f3fd',
+    borderColor: '#e8def6',
+  };
+
   const cardWrapperStyle = {
     width: '100%',
     maxWidth: '100%',
@@ -214,7 +247,7 @@ export default function CharacterModal({ show, onClose, onSelect }) {
               )
             ) : (
               <>
-                <ul className="nav nav-tabs mb-3" style={{ flexShrink: 0 }}>
+                <ul className="nav nav-tabs mb-3" style={tabListStyle}>
                   {[
                     { key: 'popular', label: '热门' },
                     { key: 'recent', label: '最近' },
@@ -224,8 +257,20 @@ export default function CharacterModal({ show, onClose, onSelect }) {
                     <li key={tab.key} className="nav-item">
                       <button
                         className={`nav-link${activeTab === tab.key ? ' active' : ''}`}
-                        style={{ cursor: 'pointer', fontSize: '0.875rem', fontWeight: activeTab === tab.key ? 700 : 500 }}
+                        style={activeTab === tab.key ? tabButtonActiveStyle : tabButtonInactiveStyle}
                         onClick={() => setActiveTab(tab.key)}
+                        onMouseEnter={(e) => {
+                          if (activeTab === tab.key) return;
+                          e.currentTarget.style.background = '#f1ebfb';
+                          e.currentTarget.style.color = '#665a86';
+                          e.currentTarget.style.borderColor = '#ddd0f1';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (activeTab === tab.key) return;
+                          e.currentTarget.style.background = tabButtonInactiveStyle.background;
+                          e.currentTarget.style.color = tabButtonInactiveStyle.color;
+                          e.currentTarget.style.borderColor = tabButtonInactiveStyle.borderColor;
+                        }}
                       >
                         {tab.label}
                       </button>
@@ -303,7 +348,7 @@ export default function CharacterModal({ show, onClose, onSelect }) {
             <button
               type="button"
               onClick={onClose}
-              style={{ ...neutralButtonStyle, padding: '0.45rem 0.95rem' }}
+              style={{ ...neutralButtonStyle, borderRadius: '1.2rem', fontWeight: 600, fontSize: isMobile ? '0.9rem' : '0.95rem', padding: isMobile ? '0.45rem 0.95rem' : '0.5rem 1.1rem' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = '#eceff4';
               }}
