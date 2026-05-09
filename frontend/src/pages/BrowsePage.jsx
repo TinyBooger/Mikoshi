@@ -33,10 +33,27 @@ function BrowsePage() {
     { key: 'total_rank', label: t('browse.creator_total_rank') },
     { key: 'recent_updated', label: t('browse.creator_recent_updated') },
   ];
+  const pathParts = location.pathname.split('/').filter(Boolean);
 
   // State
-  const [activeMainTab, setActiveMainTab] = useState('characters');
-  const [activeSubTab, setActiveSubTab] = useState('popular');
+  const activeMainTab = useMemo(() => {
+    if (pathParts[0] !== 'browse') return 'characters';
+    const main = pathParts[1];
+    return MAIN_TABS.some((tab) => tab.key === main) ? main : 'characters';
+  }, [location.pathname]);
+
+  const activeSubTab = useMemo(() => {
+    if (pathParts[0] !== 'browse') return 'popular';
+    const main = activeMainTab;
+    const sub = pathParts[2];
+    if (main === 'users') {
+      if (USER_SORT_OPTIONS.some((option) => option.key === sub)) return sub;
+      if (sub === 'recent' || sub === 'recent_hot') return 'recent_updated';
+      return 'total_rank';
+    }
+    return SUBTABS.some((tab) => tab.key === sub) ? sub : 'popular';
+  }, [location.pathname, activeMainTab]);
+
   const [entities, setEntities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -175,28 +192,6 @@ function BrowsePage() {
     });
     return columns;
   }, [entities, masonryColumnCount]);
-
-  // Parse tab from URL
-  useEffect(() => {
-    // URL: /browse/:mainTab/:subTab
-    const pathParts = location.pathname.split('/').filter(Boolean);
-    let main = 'characters', sub = 'popular';
-    if (pathParts[0] === 'browse') {
-      if (pathParts[1] && MAIN_TABS.some(t => t.key === pathParts[1])) main = pathParts[1];
-      if (main === 'users') {
-        sub = 'total_rank';
-        if (pathParts[2] && USER_SORT_OPTIONS.some(option => option.key === pathParts[2])) {
-          sub = pathParts[2];
-        } else if (pathParts[2] === 'recent' || pathParts[2] === 'recent_hot') {
-          sub = 'recent_updated';
-        }
-      } else if (pathParts[2] && SUBTABS.some(t => t.key === pathParts[2])) {
-        sub = pathParts[2];
-      }
-    }
-    setActiveMainTab(main);
-    setActiveSubTab(sub);
-  }, [location.pathname]);
 
   useEffect(() => {
     const fromIndex = previousMainTabIndexRef.current;

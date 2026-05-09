@@ -66,6 +66,12 @@ function RootIndexPage() {
   return userData ? <Navigate to="/browse" replace /> : <WelcomePage />;
 }
 
+function KeyedChatPage() {
+  const location = useLocation();
+  const characterKey = new URLSearchParams(location.search).get('character') ?? 'no-character';
+  return <ChatPage key={characterKey} />;
+}
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -86,7 +92,7 @@ const router = createBrowserRouter([
       { path: 'scene/edit/:id', element: <ProtectedPage><EntityFormPage /></ProtectedPage> },
       { path: 'scene/fork/:id', element: <ProtectedPage><EntityFormPage /></ProtectedPage> },
       { path: ':type/:id', element: <ProtectedPage><EntityDetailPage /></ProtectedPage> },
-      { path: 'chat', element: <ProtectedPage><ChatPage /></ProtectedPage> },
+      { path: 'chat', element: <ProtectedPage><KeyedChatPage /></ProtectedPage> },
       { path: 'profile', element: <ProtectedPage><ProfilePage /></ProtectedPage> },
       { path: 'profile/:userId', element: <ProtectedPage><ProfilePage publicView={true} /></ProtectedPage> },
       { path: 'settings', element: <ProtectedPage><SettingsPage /></ProtectedPage> },
