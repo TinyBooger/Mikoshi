@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPic from '../assets/images/default-picture.png';
+import defaultAvatar from '../assets/images/default-avatar.png';
 
 export default function InfoCard({
   character,
@@ -32,6 +33,16 @@ export default function InfoCard({
   const resolvedName = entity.name;
   const resolvedCreatorName = entity.creator_name;
   const resolvedCreatorId = entity.creator_id;
+  const creatorAvatarRaw =
+    entity.creator_profile_pic ||
+    entity.creator_avatar ||
+    entity.creator_avatar_picture ||
+    (typeof entity.creator_name === 'object'
+      ? entity.creator_name?.profile_pic || entity.creator_name?.avatar || entity.creator_name?.avatar_picture
+      : null);
+  const creatorAvatar = creatorAvatarRaw
+    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(creatorAvatarRaw).replace(/^\//, '')}`
+    : defaultAvatar;
   // For chatCount/views: all have 'views', fallback to chatCount prop
   const resolvedChatCount = typeof entity.views === 'number' ? entity.views : chatCount;
   const resolvedTags = entity.tags || [];
@@ -64,21 +75,39 @@ export default function InfoCard({
             <div style={{ fontWeight: 700, color: '#18191a', fontSize: '1.02rem', letterSpacing: '0.2px', marginBottom: 2, wordBreak: 'break-word', lineHeight: 1.2 }}>
               {isPlaceholder ? <span style={{ color: '#bbb', fontStyle: 'italic' }}>{t('info_card.no_selection', { name: resolvedName })}</span> : resolvedName}
             </div>
-            <div style={{ color: '#888', fontSize: 13, marginBottom: 2, display: 'flex', alignItems: 'center' }}>
-              <i className="bi bi-person-fill me-1"></i>
+            <div
+              className="d-flex align-items-center"
+              style={{
+                gap: '0.35rem',
+                width: 'fit-content',
+                cursor: resolvedCreatorId ? 'pointer' : 'default',
+                padding: '0.18rem 0.55rem 0.18rem 0.3rem',
+                borderRadius: '999px',
+                color: creatorHover ? '#5f4f8a' : '#6c757d',
+                background: creatorHover ? 'rgba(115, 107, 146, 0.12)' : 'transparent',
+                transition: 'background-color 0.16s ease, color 0.16s ease',
+                marginBottom: 2,
+              }}
+              title={resolvedCreatorName || t('entity_card.unknown')}
+              onClick={onCreatorClick}
+              onMouseEnter={() => setCreatorHover && setCreatorHover(true)}
+              onMouseLeave={() => setCreatorHover && setCreatorHover(false)}
+            >
+              <img
+                src={creatorAvatar}
+                alt={resolvedCreatorName || ''}
+                style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #e5e7eb' }}
+              />
               <span
                 style={{
-                  color: creatorHover ? '#444' : '#888',
-                  fontWeight: 400,
-                  marginLeft: 6,
-                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  fontWeight: 500,
+                  lineHeight: 1.2,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
                   textDecoration: creatorHover ? 'underline' : 'none',
-                  textUnderlineOffset: creatorHover ? 2 : undefined,
-                  transition: 'color 0.15s, textDecoration 0.15s'
                 }}
-                onClick={onCreatorClick}
-                onMouseEnter={() => setCreatorHover && setCreatorHover(true)}
-                onMouseLeave={() => setCreatorHover && setCreatorHover(false)}
               >
                 {resolvedCreatorName || t('entity_card.unknown')}
               </span>
