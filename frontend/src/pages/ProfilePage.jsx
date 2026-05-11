@@ -76,11 +76,74 @@ export default function ProfilePage() {
   
   const [showProBenefits, setShowProBenefits] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [followCounts, setFollowCounts] = useState({ following_count: 0, follower_count: 0 });
+  const [followModal, setFollowModal] = useState(null); // 'following' | 'followers' | null
+  const [followModalUsers, setFollowModalUsers] = useState([]);
+  const [followModalLoading, setFollowModalLoading] = useState(false);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Fetch follow status when viewing another user's profile
+  useEffect(() => {
+    if (isOwnProfile || !sessionToken || !profileUserId) return;
+    fetch(`${window.API_BASE_URL}/api/users/me/following-ids`, {
+      headers: { Authorization: sessionToken },
+    })
+      .then(res => res.json())
+      .then(data => setIsFollowing((data.following_ids || []).includes(profileUserId)))
+      .catch(() => {});
+  }, [isOwnProfile, sessionToken, profileUserId]);
+
+  const handleFollowToggle = async () => {
+    if (!sessionToken || !profileUserId || followLoading) return;
+    setFollowLoading(true);
+    try {
+      const method = isFollowing ? 'DELETE' : 'POST';
+      const res = await fetch(`${window.API_BASE_URL}/api/users/${profileUserId}/follow`, {
+        method,
+        headers: { Authorization: sessionToken },
+      });
+      if (res.ok) {
+        setIsFollowing(f => !f);
+        setFollowCounts(c => ({
+          ...c,
+          follower_count: c.follower_count + (isFollowing ? -1 : 1),
+        }));
+      }
+    } catch { /* ignore */ } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  // Fetch follow counts for the profile being viewed
+  useEffect(() => {
+    const targetId = profileUserId || userData?.id;
+    if (!targetId) return;
+    fetch(`${window.API_BASE_URL}/api/users/${targetId}/follow-counts`)
+      .then(res => res.json())
+      .then(data => setFollowCounts(data))
+      .catch(() => {});
+  }, [profileUserId, userData?.id]);
+
+  const openFollowModal = async (type) => {
+    const targetId = profileUserId || userData?.id;
+    if (!targetId) return;
+    setFollowModal(type);
+    setFollowModalUsers([]);
+    setFollowModalLoading(true);
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/users/${targetId}/${type}`);
+      const data = await res.json();
+      setFollowModalUsers(data.items || []);
+    } catch { /* ignore */ } finally {
+      setFollowModalLoading(false);
+    }
+  };
 
   // Keep own-profile stats (including monthly token usage) fresh when returning to this page.
   useEffect(() => {
@@ -116,6 +179,9 @@ export default function ProfilePage() {
     setLoading(true);
     // If public profile, fetch user data for that user
     if (profileUserId && (!userData || String(userData.id) !== String(profileUserId))) {
+      // Reset immediately so the guard catches it while the fetch is in-flight
+      setPublicUserData(null);
+      setUserLoading(true);
       fetch(`${window.API_BASE_URL}/api/users/${profileUserId}`)
         .then(res => res.ok ? res.json() : null)
         .then(setPublicUserData);
@@ -565,6 +631,8 @@ export default function ProfilePage() {
     );
   }
 
+  if (!displayUser) return null;
+
   return (
     <PageWrapper>
       <div
@@ -655,6 +723,36 @@ export default function ProfilePage() {
                       PRO
                     </span>
                   )}
+                  {!isOwnProfile && sessionToken && (
+                    <button
+                      onClick={handleFollowToggle}
+                      disabled={followLoading}
+                      style={{
+                        padding: '0.28rem 0.9rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 500,
+                        borderRadius: '999px',
+                        border: 'none',
+                        background: isFollowing ? 'rgba(200,193,225,0.18)' : 'rgba(200,193,225,0.55)',
+                        backdropFilter: 'blur(6px)',
+                        WebkitBackdropFilter: 'blur(6px)',
+                        color: isFollowing ? '#a09abf' : '#736B92',
+                        cursor: followLoading ? 'default' : 'pointer',
+                        opacity: followLoading ? 0.5 : 1,
+                        transition: 'background 0.18s ease, color 0.18s ease',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={e => {
+                        if (followLoading) return;
+                        e.currentTarget.style.background = isFollowing ? 'rgba(200,193,225,0.32)' : 'rgba(200,193,225,0.78)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = isFollowing ? 'rgba(200,193,225,0.18)' : 'rgba(200,193,225,0.55)';
+                      }}
+                    >
+                      {isFollowing ? t('user_card.unfollow') : t('user_card.follow')}
+                    </button>
+                  )}
                 </div>
 
               </div>
@@ -666,6 +764,37 @@ export default function ProfilePage() {
                       ? t('profile.bio_prompt')
                       : t('profile.bio_not_set'))}
               </p>
+
+              {/* Following / Followers counts */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginTop: 2 }}>
+                <button
+                  onClick={() => openFollowModal('following')}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
+                  onMouseEnter={e => e.currentTarget.querySelector('span:last-child').style.color = '#736B92'}
+                  onMouseLeave={e => e.currentTarget.querySelector('span:last-child').style.color = '#6b7280'}
+                >
+                  <span style={{ fontSize: isMobile ? '1rem' : '1.1rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>
+                    {followCounts.following_count.toLocaleString()}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2, transition: 'color 0.15s' }}>
+                    {t('profile.following')}
+                  </span>
+                </button>
+                <div style={{ width: 1, height: 28, background: 'rgba(0,0,0,0.1)' }} />
+                <button
+                  onClick={() => openFollowModal('followers')}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
+                  onMouseEnter={e => e.currentTarget.querySelector('span:last-child').style.color = '#736B92'}
+                  onMouseLeave={e => e.currentTarget.querySelector('span:last-child').style.color = '#6b7280'}
+                >
+                  <span style={{ fontSize: isMobile ? '1rem' : '1.1rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>
+                    {followCounts.follower_count.toLocaleString()}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2, transition: 'color 0.15s' }}>
+                    {t('profile.followers')}
+                  </span>
+                </button>
+              </div>
               {isOwnProfile && (
                 <div style={{ marginTop: 6 }}>
                   <button
@@ -1158,6 +1287,108 @@ export default function ProfilePage() {
         </ModalPortal>
       )}
 
+      {/* Follow / Followers modal */}
+      {followModal && (
+        <ModalPortal>
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1050,
+              background: 'rgba(0,0,0,0.28)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '1rem',
+            }}
+            onClick={() => setFollowModal(null)}
+          >
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: 20,
+                width: '100%',
+                maxWidth: 420,
+                maxHeight: '75vh',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+                overflow: 'hidden',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid #f0f0f4' }}>
+                <span style={{ fontWeight: 700, fontSize: '1rem', color: '#18191a' }}>
+                  {followModal === 'following' ? t('profile.following') : t('profile.followers')}
+                  <span style={{ marginLeft: 8, fontSize: '0.82rem', color: '#9ca3af', fontWeight: 500 }}>
+                    {followModal === 'following' ? followCounts.following_count : followCounts.follower_count}
+                  </span>
+                </span>
+                <button
+                  onClick={() => setFollowModal(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '1.2rem', padding: '2px 6px', borderRadius: 8, lineHeight: 1, transition: 'color 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#374151'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#9ca3af'}
+                >
+                  <i className="bi bi-x-lg" />
+                </button>
+              </div>
+              {/* List */}
+              <div style={{ overflowY: 'auto', flex: 1, padding: '0.5rem 0' }}>
+                {followModalLoading ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+                    <div className="spinner-border" style={{ width: 28, height: 28, color: '#736B92' }} role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                ) : followModalUsers.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: '#9ca3af', padding: '2.5rem 1rem', fontSize: '0.9rem' }}>
+                    {followModal === 'following' ? t('profile.no_following') : t('profile.no_followers')}
+                  </div>
+                ) : (
+                  followModalUsers.map(u => (
+                    <div
+                      key={u.id}
+                      onClick={() => { setFollowModal(null); navigate(`/profile/${u.id}`); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '0.6rem 1.25rem',
+                        cursor: 'pointer',
+                        transition: 'background 0.14s',
+                        borderRadius: 12,
+                        margin: '1px 8px',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f5f4fa'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <img
+                        src={u.profile_pic
+                          ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(u.profile_pic).replace(/^\//, '')}`
+                          : defaultAvatar}
+                        alt={u.name}
+                        style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#18191a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {u.name}
+                        </div>
+                        {u.bio ? (
+                          <div style={{ fontSize: '0.77rem', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {u.bio}
+                          </div>
+                        ) : null}
+                      </div>
+                      {typeof u.characters_created === 'number' && u.characters_created > 0 && (
+                        <div style={{ fontSize: '0.72rem', color: '#c4b5d6', fontWeight: 600, flexShrink: 0 }}>
+                          {u.characters_created} {t('user_card.characters_created')}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
 
     </PageWrapper>
   );

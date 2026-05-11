@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Q
 from schemas import UserOut, UserListOut
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona, UserTokenWalletLedger
+from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona, UserTokenWalletLedger, UserFollow
 from utils.session import get_current_user
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
@@ -20,12 +20,29 @@ router = APIRouter()
 
 @router.get("/api/users/browse", response_model=UserListOut)
 def browse_users(
-    sort: str = Query("total_rank", pattern="^(total_rank|recent_hot|recent_updated)$"),
+    sort: str = Query("total_rank", pattern="^(total_rank|recent_hot|recent_updated|following)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get creators with selectable ranking modes."""
+
+    if sort == "following":
+        if not current_user:
+            return UserListOut(items=[], total=0, page=page, page_size=page_size)
+        followed_ids_sq = (
+            db.query(UserFollow.creator_id)
+            .filter(UserFollow.follower_id == current_user.id)
+            .subquery()
+        )
+        query = db.query(User).filter(User.id.in_(followed_ids_sq))
+        query = query.order_by(User.views.desc(), User.id.asc())
+        total = query.count()
+        users = query.offset((page - 1) * page_size).limit(page_size).all()
+        items = [enrich_user_with_character_count(user, db) for user in users]
+        return UserListOut(items=items, total=total, page=page, page_size=page_size)
+
     query = db.query(User)
 
     if sort in {"recent_hot", "recent_updated"}:
@@ -152,6 +169,106 @@ def get_payment_orders(
             for o in orders
         ]
     }
+
+# --- Follow / Unfollow Endpoints (MUST come before {user_id} route) ---
+
+@router.get("/api/users/me/following-ids")
+def get_following_ids(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return the list of creator IDs that the current user follows."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    rows = db.query(UserFollow.creator_id).filter(UserFollow.follower_id == current_user.id).all()
+    return {"following_ids": [r.creator_id for r in rows]}
+
+
+@router.get("/api/users/{target_id}/following")
+def get_user_following(
+    target_id: str,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(30, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Return paginated list of users that target_id follows."""
+    subq = (
+        db.query(UserFollow.creator_id)
+        .filter(UserFollow.follower_id == target_id)
+        .subquery()
+    )
+    query = db.query(User).filter(User.id.in_(subq))
+    total = query.count()
+    users = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = [enrich_user_with_character_count(u, db) for u in users]
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
+@router.get("/api/users/{target_id}/followers")
+def get_user_followers(
+    target_id: str,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(30, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Return paginated list of users who follow target_id."""
+    subq = (
+        db.query(UserFollow.follower_id)
+        .filter(UserFollow.creator_id == target_id)
+        .subquery()
+    )
+    query = db.query(User).filter(User.id.in_(subq))
+    total = query.count()
+    users = query.offset((page - 1) * page_size).limit(page_size).all()
+    items = [enrich_user_with_character_count(u, db) for u in users]
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
+@router.get("/api/users/{target_id}/follow-counts")
+def get_follow_counts(
+    target_id: str,
+    db: Session = Depends(get_db),
+):
+    """Return follower and following counts for a user."""
+    following_count = db.query(UserFollow).filter(UserFollow.follower_id == target_id).count()
+    follower_count = db.query(UserFollow).filter(UserFollow.creator_id == target_id).count()
+    return {"following_count": following_count, "follower_count": follower_count}
+
+
+@router.post("/api/users/{creator_id}/follow")
+def follow_user(
+    creator_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if current_user.id == creator_id:
+        raise HTTPException(status_code=400, detail="Cannot follow yourself")
+    creator = db.query(User).filter(User.id == creator_id).first()
+    if not creator:
+        raise HTTPException(status_code=404, detail="Creator not found")
+    existing = db.query(UserFollow).filter_by(follower_id=current_user.id, creator_id=creator_id).first()
+    if not existing:
+        db.add(UserFollow(follower_id=current_user.id, creator_id=creator_id))
+        db.commit()
+    return {"following": True}
+
+
+@router.delete("/api/users/{creator_id}/follow")
+def unfollow_user(
+    creator_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    follow = db.query(UserFollow).filter_by(follower_id=current_user.id, creator_id=creator_id).first()
+    if follow:
+        db.delete(follow)
+        db.commit()
+    return {"following": False}
+
 
 # --- Single User Endpoints (comes AFTER specific routes above) ---
 

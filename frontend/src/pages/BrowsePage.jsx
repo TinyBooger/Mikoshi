@@ -28,10 +28,12 @@ function BrowsePage() {
     { key: 'recommended', label: t('browse.for_you') },
     { key: 'popular', label: t('browse.popular') },
     { key: 'recent', label: t('browse.recent') },
+    { key: 'following', label: t('browse.following') },
   ];
   const USER_SORT_OPTIONS = [
     { key: 'total_rank', label: t('browse.creator_total_rank') },
     { key: 'recent_updated', label: t('browse.creator_recent_updated') },
+    { key: 'following', label: t('browse.following') },
   ];
   const pathParts = location.pathname.split('/').filter(Boolean);
 
@@ -67,6 +69,7 @@ function BrowsePage() {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showUpdateNotification, setShowUpdateNotification] = useState(false);
   const [showProblemReport, setShowProblemReport] = useState(false);
+  const [followingIds, setFollowingIds] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
@@ -175,11 +178,12 @@ function BrowsePage() {
     recommended: '✨',
     recent: '🕒',
     total_rank: '🏆',
-    recent_updated: '🆕'
+    recent_updated: '🆕',
+    following: '👥',
   };
   const activeSortIcon = sortIconMap[activeSubTab] || '🔎';
   const activeSortLabel = activeMainTab !== 'users'
-    ? ({ popular: '热门', recommended: '为您推荐', recent: '最近' }[activeSubTab] || activeSortOption?.label || t('common.sort'))
+    ? ({ popular: '热门', recommended: '为您推荐', recent: '最近', following: t('browse.following') }[activeSubTab] || activeSortOption?.label || t('common.sort'))
     : (activeSortOption?.label || t('common.sort'));
   const activeMainTabIndex = Math.max(0, MAIN_TABS.findIndex(tab => tab.key === activeMainTab));
   const isPopularSortActive = activeSubTab === 'popular';
@@ -262,6 +266,17 @@ function BrowsePage() {
     };
   }, [activeMainTabIndex]);
 
+  // Fetch following IDs for follow button state
+  useEffect(() => {
+    if (!sessionToken) return;
+    fetch(`${window.API_BASE_URL}/api/users/me/following-ids`, {
+      headers: { Authorization: sessionToken },
+    })
+      .then(res => res.json())
+      .then(data => setFollowingIds(new Set(data.following_ids || [])))
+      .catch(() => {});
+  }, [sessionToken]);
+
   // Reset page when tabs change
   useEffect(() => {
     setPage(1);
@@ -276,6 +291,14 @@ function BrowsePage() {
       ? (USER_SORT_OPTIONS.some(option => option.key === activeSubTab) ? activeSubTab : 'total_rank')
       : (SUBTABS.some(option => option.key === activeSubTab) ? activeSubTab : 'popular');
     navigate(`/browse/${tab}/${nextSubTab}`);
+  };
+
+  const handleFollowToggle = (userId, nowFollowing) => {
+    setFollowingIds(prev => {
+      const next = new Set(prev);
+      if (nowFollowing) next.add(userId); else next.delete(userId);
+      return next;
+    });
   };
   const handleSubTab = (sub) => {
     navigate(`/browse/${activeMainTab}/${sub}`);
@@ -394,6 +417,7 @@ function BrowsePage() {
       if (activeSubTab === 'popular') return t('browse.popular_characters');
       if (activeSubTab === 'recent') return t('browse.recently_uploaded');
       if (activeSubTab === 'recommended') return t('browse.recommended_for_you');
+      if (activeSubTab === 'following') return t('browse.following_characters');
     } else if (activeMainTab === 'scenes') {
       if (activeSubTab === 'popular') return t('browse.popular_scenes');
       if (activeSubTab === 'recent') return t('browse.recent_scenes');
@@ -404,6 +428,7 @@ function BrowsePage() {
       if (activeSubTab === 'recommended') return t('browse.recommended_personas');
     } else if (activeMainTab === 'users') {
       if (activeSubTab === 'recent_updated') return t('browse.creator_recent_updated');
+      if (activeSubTab === 'following') return t('browse.following_creators');
       return t('browse.creator_total_rank');
     }
     return '';
@@ -902,7 +927,12 @@ function BrowsePage() {
               </h6>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
                 {entities.map((user) => (
-                  <UserCard key={user.id} user={user} />
+                  <UserCard
+                    key={user.id}
+                    user={user}
+                    isFollowing={followingIds.has(user.id)}
+                    onFollowChange={(nowFollowing) => handleFollowToggle(user.id, nowFollowing)}
+                  />
                 ))}
               </div>
             </div>

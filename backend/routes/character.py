@@ -744,6 +744,40 @@ def get_recent_characters(
         items.append(char)
     return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
+@router.get("/api/characters/following", response_model=CharacterListOut)
+def get_following_characters(
+    short: bool = Query(False),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get public characters from creators the current user follows, ordered by recency."""
+    from models import UserFollow
+    if not current_user:
+        return CharacterListOut(items=[], total=0, page=page, page_size=page_size, short=short)
+
+    followed_ids_sq = (
+        db.query(UserFollow.creator_id)
+        .filter(UserFollow.follower_id == current_user.id)
+        .subquery()
+    )
+
+    base_query = (
+        db.query(Character, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Character.creator_id == User.id)
+        .filter(Character.is_public == True)
+        .filter(Character.creator_id.in_(followed_ids_sq))
+        .order_by(Character.created_time.desc())
+    )
+    total = base_query.count()
+    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+    items = []
+    for char, creator_profile_pic in rows:
+        char.creator_profile_pic = creator_profile_pic
+        items.append(char)
+    return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=short)
+
 # ----------------------------------------------------------------
 
 from typing import List

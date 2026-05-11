@@ -56,6 +56,9 @@
     "for_you": "为您推荐",
     "popular": "热门",
     "recent": "最近",
+    "following": "已关注",
+    "following_creators": "已关注的创作者",
+    "following_characters": "已关注创作者的角色",
     "popular_characters": "热门角色",
     "recently_uploaded": "最近上传",
     "recommended_for_you": "为您推荐",
@@ -182,6 +185,10 @@
     "settings": "设置",
     "total_chats": "总聊天数",
     "total_likes": "总获赞数",
+    "following": "正在关注",
+    "followers": "粉丝",
+    "no_following": "还没有关注任何人。",
+    "no_followers": "还没有粉丝。",
     "tags_suffix": "个标签",
     "alt_profile": "个人头像",
     "bio_placeholder": "简单介绍一下自己（最多500字）",
@@ -1004,6 +1011,8 @@
     "chats": "聊天",
     "likes": "点赞",
     "characters_created": "角色",
-    "recent_characters": "最近创作"
+    "recent_characters": "最近创作",
+    "follow": "关注",
+    "unfollow": "取消关注"
   }
 }

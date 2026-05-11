@@ -213,6 +213,16 @@ class UserLikedPersona(Base):
         UniqueConstraint('user_id', 'persona_id', name='uix_user_persona'),
     )
 
+# Junction table for creator follows
+class UserFollow(Base):
+    __tablename__ = "user_follows"
+    follower_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+    creator_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+    followed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    __table_args__ = (
+        UniqueConstraint('follower_id', 'creator_id', name='uix_user_follows'),
+    )
+
 # Invitation codes for alpha testing
 class InvitationCode(Base):
     __tablename__ = "invitation_codes"

@@ -1,6 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
+import { useContext } from 'react';
+import { AuthContext } from './AuthProvider';
 import defaultPic from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 
@@ -25,6 +27,8 @@ export default function InfoCard({
   isPlaceholder = false
 }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { userData, sessionToken } = useContext(AuthContext);
   // Pick the first non-null entity, prioritizing scene over character
   const entity = scene || character || {};
   // Determine entity type for field mapping (mutually exclusive: scene > character)
@@ -46,7 +50,6 @@ export default function InfoCard({
   // For chatCount/views: all have 'views', fallback to chatCount prop
   const resolvedChatCount = typeof entity.views === 'number' ? entity.views : chatCount;
   const resolvedTags = entity.tags || [];
-  const navigate = useNavigate();
   // Tagline: 'tagline' for character, 'intro' for scene
   let resolvedTagline = '';
   if (entityType === 'character') {
@@ -61,6 +64,37 @@ export default function InfoCard({
   React.useEffect(() => {
     setLikeCount(initialLikeCount);
   }, [initialLikeCount, entity.id]);
+
+  // Follow state
+  const isSelf = userData && userData.id === resolvedCreatorId;
+  const canFollow = sessionToken && !isSelf && resolvedCreatorId;
+  const [isFollowing, setIsFollowing] = React.useState(false);
+  const [followLoading, setFollowLoading] = React.useState(false);
+  React.useEffect(() => {
+    if (!canFollow) return;
+    fetch(`${window.API_BASE_URL}/api/users/me/following-ids`, {
+      headers: { Authorization: sessionToken },
+    })
+      .then(res => res.json())
+      .then(data => setIsFollowing((data.following_ids || []).includes(resolvedCreatorId)))
+      .catch(() => {});
+  }, [canFollow, resolvedCreatorId, sessionToken]);
+
+  const handleFollowToggle = async (e) => {
+    e.stopPropagation();
+    if (!canFollow || followLoading) return;
+    setFollowLoading(true);
+    try {
+      const method = isFollowing ? 'DELETE' : 'POST';
+      const res = await fetch(`${window.API_BASE_URL}/api/users/${resolvedCreatorId}/follow`, {
+        method,
+        headers: { Authorization: sessionToken },
+      });
+      if (res.ok) setIsFollowing(f => !f);
+    } catch { /* ignore */ } finally {
+      setFollowLoading(false);
+    }
+  };
 
   return (
     <>
@@ -148,6 +182,38 @@ export default function InfoCard({
                 >
                   <i className={`bi ${(hasLiked && hasLiked[entityType]) ? 'bi-heart-fill' : 'bi-heart'}`} style={{ fontSize: 18, color: '#e53935', verticalAlign: 'middle' }}></i>
                   <span style={{ fontWeight: 600, fontSize: '0.78rem', marginLeft: 2 }}>{likeCount}</span>
+                </button>
+              </div>
+            )}
+            {canFollow && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginTop: 2 }}>
+                <button
+                  onClick={handleFollowToggle}
+                  disabled={followLoading}
+                  style={{
+                    padding: '0.22rem 0.8rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    borderRadius: '999px',
+                    border: 'none',
+                    background: isFollowing ? 'rgba(200,193,225,0.18)' : 'rgba(200,193,225,0.55)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                    color: isFollowing ? '#a09abf' : '#736B92',
+                    cursor: followLoading ? 'default' : 'pointer',
+                    opacity: followLoading ? 0.5 : 1,
+                    transition: 'background 0.18s ease, color 0.18s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={e => {
+                    if (followLoading) return;
+                    e.currentTarget.style.background = isFollowing ? 'rgba(200,193,225,0.32)' : 'rgba(200,193,225,0.78)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = isFollowing ? 'rgba(200,193,225,0.18)' : 'rgba(200,193,225,0.55)';
+                  }}
+                >
+                  {isFollowing ? t('user_card.unfollow') : t('user_card.follow')}
                 </button>
               </div>
             )}

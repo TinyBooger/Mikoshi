@@ -24,6 +24,8 @@ export default function EntityDetailPage() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
   const [isCreatorHovered, setIsCreatorHovered] = useState(false);
   const [isForkableBadgeHovered, setIsForkableBadgeHovered] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
@@ -101,6 +103,33 @@ export default function EntityDetailPage() {
       })
       .catch(() => setLiked(false));
   }, [entity, type, sessionToken]);
+
+  // Fetch follow status for the creator
+  useEffect(() => {
+    if (!entity?.creator_id || !sessionToken) return;
+    if (userData && userData.id === entity.creator_id) return;
+    fetch(`${window.API_BASE_URL}/api/users/me/following-ids`, {
+      headers: { Authorization: sessionToken },
+    })
+      .then(res => res.json())
+      .then(data => setIsFollowing((data.following_ids || []).includes(entity.creator_id)))
+      .catch(() => {});
+  }, [entity?.creator_id, sessionToken, userData]);
+
+  const handleFollowToggle = async () => {
+    if (!entity?.creator_id || followLoading) return;
+    setFollowLoading(true);
+    try {
+      const method = isFollowing ? 'DELETE' : 'POST';
+      const res = await fetch(`${window.API_BASE_URL}/api/users/${entity.creator_id}/follow`, {
+        method,
+        headers: { Authorization: sessionToken },
+      });
+      if (res.ok) setIsFollowing(f => !f);
+    } catch { /* ignore */ } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const handleLike = async () => {
     if (!entity || !sessionToken) return;
@@ -387,6 +416,39 @@ export default function EntityDetailPage() {
                     <i className="bi bi-code-fork me-1"></i>
                     {t('entity_detail.forked_from')} {entity.forked_from_name}
                   </p>
+                )}
+                {/* Follow button — visible when not the owner */}
+                {!isOwner && sessionToken && entity.creator_id && (
+                  <div style={{ marginTop: '8px' }}>
+                    <button
+                      onClick={handleFollowToggle}
+                      disabled={followLoading}
+                      style={{
+                        padding: '0.28rem 0.9rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 500,
+                        borderRadius: '999px',
+                        border: 'none',
+                        background: isFollowing ? 'rgba(200,193,225,0.18)' : 'rgba(200,193,225,0.55)',
+                        backdropFilter: 'blur(6px)',
+                        WebkitBackdropFilter: 'blur(6px)',
+                        color: isFollowing ? '#a09abf' : '#736B92',
+                        cursor: followLoading ? 'default' : 'pointer',
+                        opacity: followLoading ? 0.5 : 1,
+                        transition: 'background 0.18s ease, color 0.18s ease',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={e => {
+                        if (followLoading) return;
+                        e.currentTarget.style.background = isFollowing ? 'rgba(200,193,225,0.32)' : 'rgba(200,193,225,0.78)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = isFollowing ? 'rgba(200,193,225,0.18)' : 'rgba(200,193,225,0.55)';
+                      }}
+                    >
+                      {isFollowing ? t('user_card.unfollow') : t('user_card.follow')}
+                    </button>
+                  </div>
                 )}
               </div>
               {!entity.is_public && (

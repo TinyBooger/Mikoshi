@@ -56,6 +56,9 @@
     "for_you": "For You",
     "popular": "Popular",
     "recent": "Recent",
+    "following": "Following",
+    "following_creators": "Following",
+    "following_characters": "From Creators You Follow",
     "popular_characters": "Popular Characters",
     "recently_uploaded": "Recently Uploaded",
     "recommended_for_you": "Recommended for You",
@@ -182,6 +185,10 @@
     "settings": "Settings",
     "total_chats": "total chats",
     "total_likes": "total likes",
+    "following": "Following",
+    "followers": "Followers",
+    "no_following": "Not following anyone yet.",
+    "no_followers": "No followers yet.",
     "tags_suffix": "tags",
     "alt_profile": "Profile",
     "bio_placeholder": "Tell us a little about yourself (max 500 chars)",
@@ -1003,6 +1010,8 @@
     "chats": "Chats",
     "likes": "Likes",
     "characters_created": "Characters",
-    "recent_characters": "Recent Characters"
+    "recent_characters": "Recent Characters",
+    "follow": "Follow",
+    "unfollow": "Unfollow"
   }
 }

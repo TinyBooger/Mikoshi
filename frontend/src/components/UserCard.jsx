@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 import EntityCard from './EntityCard';
+import { AuthContext } from './AuthProvider';
 
 /**
  * UserCard - Display a user profile as a list item
@@ -11,11 +12,14 @@ import EntityCard from './EntityCard';
  *  - onClick?: (user) => void
  *  - disableClick?: boolean
  */
-export default function UserCard({ user, onClick, disableClick = false }) {
+export default function UserCard({ user, onClick, disableClick = false, isFollowing: isFollowingProp, onFollowChange }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { userData, sessionToken } = useContext(AuthContext);
 
   const [hovered, setHovered] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(isFollowingProp ?? false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   const {
     id,
@@ -32,6 +36,31 @@ export default function UserCard({ user, onClick, disableClick = false }) {
   const displayedRecentCharacters = Array.isArray(recent_characters)
     ? recent_characters.slice(0, 10)
     : [];
+
+  const isSelf = userData && userData.id === id;
+  const canFollow = sessionToken && !isSelf;
+
+  const handleFollowToggle = async (e) => {
+    e.stopPropagation();
+    if (!canFollow || followLoading) return;
+    setFollowLoading(true);
+    try {
+      const method = isFollowing ? 'DELETE' : 'POST';
+      const res = await fetch(`${window.API_BASE_URL}/api/users/${id}/follow`, {
+        method,
+        headers: { Authorization: sessionToken },
+      });
+      if (res.ok) {
+        const nowFollowing = !isFollowing;
+        setIsFollowing(nowFollowing);
+        if (onFollowChange) onFollowChange(nowFollowing);
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const handleClick = () => {
     if (clickSuppressed) return;
@@ -123,6 +152,42 @@ export default function UserCard({ user, onClick, disableClick = false }) {
               {typeof characters_created === 'number' ? characters_created.toLocaleString() : 0}
             </div>
           </div>
+          {canFollow && (
+            <button
+              onClick={handleFollowToggle}
+              disabled={followLoading}
+              style={{
+                padding: '0.28rem 0.9rem',
+                fontSize: '0.78rem',
+                fontWeight: 500,
+                borderRadius: '999px',
+                border: 'none',
+                background: isFollowing
+                  ? 'rgba(200,193,225,0.18)'
+                  : 'rgba(200,193,225,0.55)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                color: isFollowing ? '#a09abf' : '#736B92',
+                cursor: followLoading ? 'default' : 'pointer',
+                opacity: followLoading ? 0.5 : 1,
+                transition: 'background 0.18s ease, color 0.18s ease',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => {
+                if (followLoading) return;
+                e.currentTarget.style.background = isFollowing
+                  ? 'rgba(200,193,225,0.32)'
+                  : 'rgba(200,193,225,0.78)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = isFollowing
+                  ? 'rgba(200,193,225,0.18)'
+                  : 'rgba(200,193,225,0.55)';
+              }}
+            >
+              {isFollowing ? t('user_card.unfollow') : t('user_card.follow')}
+            </button>
+          )}
         </div>
       </div>
 
