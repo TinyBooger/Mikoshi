@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Body
-from schemas import UserOut, UserListOut
+from schemas import UserOut, UserListOut, CharacterOut, SceneOut, PersonaOut
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona, UserTokenWalletLedger, UserFollow
@@ -677,3 +677,79 @@ def delete_account(payload: dict = Body(...), current_user: User = Depends(get_c
     return {"message": "Account deleted"}
 
 
+
+
+@router.get("/api/following/feed")
+def get_following_feed(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return a time-ordered mixed feed of characters, scenes, and personas
+    from creators the current user follows."""
+    from datetime import datetime
+
+    if not current_user:
+        return {"items": [], "total": 0, "page": page, "page_size": page_size}
+
+    followed_ids = [
+        r.creator_id
+        for r in db.query(UserFollow.creator_id)
+        .filter(UserFollow.follower_id == current_user.id)
+        .all()
+    ]
+
+    if not followed_ids:
+        return {"items": [], "total": 0, "page": page, "page_size": page_size}
+
+    # Fetch all public items from each type for the followed creators
+    char_rows = (
+        db.query(Character, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Character.creator_id == User.id)
+        .filter(Character.is_public == True, Character.creator_id.in_(followed_ids))
+        .all()
+    )
+    scene_rows = (
+        db.query(Scene, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Scene.creator_id == User.id)
+        .filter(Scene.is_public == True, Scene.creator_id.in_(followed_ids))
+        .all()
+    )
+    persona_rows = (
+        db.query(Persona, User.profile_pic.label("creator_profile_pic"))
+        .outerjoin(User, Persona.creator_id == User.id)
+        .filter(Persona.is_public == True, Persona.creator_id.in_(followed_ids))
+        .all()
+    )
+
+    all_items = []
+    for char, pic in char_rows:
+        char.creator_profile_pic = pic
+        all_items.append(("character", char.created_time, char))
+    for scene, pic in scene_rows:
+        scene.creator_profile_pic = pic
+        all_items.append(("scene", scene.created_time, scene))
+    for persona, pic in persona_rows:
+        persona.creator_profile_pic = pic
+        all_items.append(("persona", persona.created_time, persona))
+
+    # Sort by created_time descending (None treated as oldest)
+    all_items.sort(key=lambda x: x[1] or datetime.min, reverse=True)
+
+    total = len(all_items)
+    offset = (page - 1) * page_size
+    page_slice = all_items[offset : offset + page_size]
+
+    result = []
+    for item_type, _, obj in page_slice:
+        if item_type == "character":
+            d = CharacterOut.from_orm(obj).dict()
+        elif item_type == "scene":
+            d = SceneOut.from_orm(obj).dict()
+        else:
+            d = PersonaOut.from_orm(obj).dict()
+        d["type"] = item_type
+        result.append(d)
+
+    return {"items": result, "total": total, "page": page, "page_size": page_size}

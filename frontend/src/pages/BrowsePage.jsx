@@ -28,12 +28,10 @@ function BrowsePage() {
     { key: 'recommended', label: t('browse.for_you') },
     { key: 'popular', label: t('browse.popular') },
     { key: 'recent', label: t('browse.recent') },
-    { key: 'following', label: t('browse.following') },
   ];
   const USER_SORT_OPTIONS = [
     { key: 'total_rank', label: t('browse.creator_total_rank') },
     { key: 'recent_updated', label: t('browse.creator_recent_updated') },
-    { key: 'following', label: t('browse.following') },
   ];
   const pathParts = location.pathname.split('/').filter(Boolean);
 
@@ -57,12 +55,24 @@ function BrowsePage() {
   }, [location.pathname, activeMainTab]);
 
   const [entities, setEntities] = useState([]);
+  const [activeTopTab, setActiveTopTab] = useState('recommended');
+
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [hasMore, setHasMore] = useState(true);
+
+  // Following feed state
+  const [feedEntities, setFeedEntities] = useState([]);
+  const [isFeedLoading, setIsFeedLoading] = useState(false);
+  const [isFeedLoadingMore, setIsFeedLoadingMore] = useState(false);
+  const [feedPage, setFeedPage] = useState(1);
+  const [feedTotal, setFeedTotal] = useState(0);
+  const [feedHasMore, setFeedHasMore] = useState(true);
+  const feedLoadMoreRef = useRef(null);
+
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -179,11 +189,10 @@ function BrowsePage() {
     recent: '🕒',
     total_rank: '🏆',
     recent_updated: '🆕',
-    following: '👥',
   };
   const activeSortIcon = sortIconMap[activeSubTab] || '🔎';
   const activeSortLabel = activeMainTab !== 'users'
-    ? ({ popular: '热门', recommended: '为您推荐', recent: '最近', following: t('browse.following') }[activeSubTab] || activeSortOption?.label || t('common.sort'))
+    ? ({ popular: '热门', recommended: '为您推荐', recent: '最近' }[activeSubTab] || activeSortOption?.label || t('common.sort'))
     : (activeSortOption?.label || t('common.sort'));
   const activeMainTabIndex = Math.max(0, MAIN_TABS.findIndex(tab => tab.key === activeMainTab));
   const isPopularSortActive = activeSubTab === 'popular';
@@ -196,6 +205,14 @@ function BrowsePage() {
     });
     return columns;
   }, [entities, masonryColumnCount]);
+
+  const feedMasonryColumns = useMemo(() => {
+    const columns = Array.from({ length: masonryColumnCount }, () => []);
+    feedEntities.forEach((entity, index) => {
+      columns[index % masonryColumnCount].push(entity);
+    });
+    return columns;
+  }, [feedEntities, masonryColumnCount]);
 
   useEffect(() => {
     const fromIndex = previousMainTabIndexRef.current;
@@ -276,6 +293,58 @@ function BrowsePage() {
       .then(data => setFollowingIds(new Set(data.following_ids || [])))
       .catch(() => {});
   }, [sessionToken]);
+
+  // Reset following feed when switching to 关注 tab
+  useEffect(() => {
+    if (activeTopTab === 'following') {
+      setFeedPage(1);
+      setFeedEntities([]);
+      setFeedTotal(0);
+      setFeedHasMore(true);
+    }
+  }, [activeTopTab]);
+
+  // Fetch following feed
+  useEffect(() => {
+    if (activeTopTab !== 'following') return;
+    if (!sessionToken) return;
+    if (feedPage === 1) {
+      setIsFeedLoading(true);
+    } else {
+      setIsFeedLoadingMore(true);
+    }
+    fetch(`${window.API_BASE_URL}/api/following/feed?page=${feedPage}&page_size=20`, {
+      headers: { Authorization: sessionToken },
+    })
+      .then(res => res.json())
+      .then(data => {
+        const incoming = data.items || [];
+        const nextTotal = data.total || 0;
+        setFeedEntities(prev => (feedPage === 1 ? incoming : [...prev, ...incoming]));
+        setFeedTotal(nextTotal);
+        setFeedHasMore(nextTotal > feedPage * 20);
+        setIsFeedLoading(false);
+        setIsFeedLoadingMore(false);
+      })
+      .catch(() => {
+        setIsFeedLoading(false);
+        setIsFeedLoadingMore(false);
+        setFeedHasMore(false);
+      });
+  }, [activeTopTab, sessionToken, feedPage]);
+
+  // Infinite scroll for following feed
+  useEffect(() => {
+    if (activeTopTab !== 'following') return;
+    if (isFeedLoading || isFeedLoadingMore || !feedHasMore) return;
+    if (!feedLoadMoreRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) setFeedPage(prev => prev + 1); },
+      { rootMargin: '200px 0px' }
+    );
+    observer.observe(feedLoadMoreRef.current);
+    return () => observer.disconnect();
+  }, [activeTopTab, isFeedLoading, isFeedLoadingMore, feedHasMore]);
 
   // Reset page when tabs change
   useEffect(() => {
@@ -417,7 +486,6 @@ function BrowsePage() {
       if (activeSubTab === 'popular') return t('browse.popular_characters');
       if (activeSubTab === 'recent') return t('browse.recently_uploaded');
       if (activeSubTab === 'recommended') return t('browse.recommended_for_you');
-      if (activeSubTab === 'following') return t('browse.following_characters');
     } else if (activeMainTab === 'scenes') {
       if (activeSubTab === 'popular') return t('browse.popular_scenes');
       if (activeSubTab === 'recent') return t('browse.recent_scenes');
@@ -428,7 +496,6 @@ function BrowsePage() {
       if (activeSubTab === 'recommended') return t('browse.recommended_personas');
     } else if (activeMainTab === 'users') {
       if (activeSubTab === 'recent_updated') return t('browse.creator_recent_updated');
-      if (activeSubTab === 'following') return t('browse.following_creators');
       return t('browse.creator_total_rank');
     }
     return '';
@@ -683,7 +750,58 @@ function BrowsePage() {
           </div>
         </section>
 
+        {/* Top-level header tabs: 推荐 / 关注 */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: isMobile ? '1.2rem' : '1.8rem',
+            marginBottom: '1rem',
+            borderBottom: '2px solid #ece8f4',
+            width: '100%',
+          }}
+        >
+          {[{ key: 'recommended', label: '推荐' }, { key: 'following', label: '关注' }].map(tab => {
+            const isActive = activeTopTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTopTab(tab.key)}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  padding: isMobile ? '0 0 0.6rem' : '0 0 0.7rem',
+                  fontSize: isMobile ? '1.2rem' : '1.4rem',
+                  fontWeight: isActive ? 800 : 400,
+                  color: isActive ? '#3d3557' : '#b8b2cc',
+                  cursor: 'pointer',
+                  letterSpacing: isActive ? '-0.02em' : '0',
+                  position: 'relative',
+                  transition: 'color 0.18s',
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1.2,
+                }}
+              >
+                {tab.label}
+                <span
+                  style={{
+                    position: 'absolute',
+                    bottom: -2,
+                    left: 0,
+                    right: 0,
+                    height: 3,
+                    borderRadius: '3px 3px 0 0',
+                    background: isActive ? '#736B92' : 'transparent',
+                    transition: 'background 0.18s',
+                  }}
+                />
+              </button>
+            );
+          })}
+        </div>
+
         {/* Main Tabs */}
+        {activeTopTab === 'recommended' && (
         <div
           className="browse-main-tabs d-flex flex-row mb-3 w-100 align-items-center"
           style={{
@@ -699,14 +817,14 @@ function BrowsePage() {
               alignItems: 'center',
               flex: 1,
               minWidth: 0,
-              maxWidth: isMobile ? 'none' : 720,
-              borderRadius: 16,
-              padding: 4,
-              background: 'rgba(255, 255, 255, 0.42)',
-              border: '1px solid rgba(255, 255, 255, 0.7)',
-              boxShadow: '0 10px 28px rgba(114, 124, 150, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
+              maxWidth: isMobile ? 'none' : 620,
+              borderRadius: 12,
+              padding: 3,
+              background: 'rgba(248, 246, 252, 0.7)',
+              border: '1px solid rgba(230, 225, 242, 0.8)',
+              boxShadow: '0 2px 8px rgba(114, 124, 150, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
               overflow: 'hidden'
             }}
           >
@@ -715,11 +833,11 @@ function BrowsePage() {
               ref={gooTrailRef}
               style={{
                 position: 'absolute',
-                left: 4,
-                top: 6,
-                bottom: 6,
-                width: `calc((100% - 8px) / ${MAIN_TABS.length})`,
-                borderRadius: 14,
+                left: 3,
+                top: 5,
+                bottom: 5,
+                width: `calc((100% - 6px) / ${MAIN_TABS.length})`,
+                borderRadius: 11,
                 background: 'radial-gradient(120% 90% at 50% 50%, rgba(214, 200, 238, 0.62) 0%, rgba(214, 200, 238, 0.2) 62%, rgba(214, 200, 238, 0) 100%)',
                 filter: 'blur(4px)',
                 opacity: 0.35,
@@ -735,13 +853,13 @@ function BrowsePage() {
               ref={activePillRef}
               style={{
                 position: 'absolute',
-                left: 4,
-                top: 4,
-                bottom: 4,
-                width: `calc((100% - 8px) / ${MAIN_TABS.length})`,
-                borderRadius: 12,
+                left: 3,
+                top: 3,
+                bottom: 3,
+                width: `calc((100% - 6px) / ${MAIN_TABS.length})`,
+                borderRadius: 9,
                 background: 'linear-gradient(180deg, #f3eef9 0%, #ebe5f1 100%)',
-                boxShadow: '0 8px 18px rgba(124, 109, 158, 0.2), inset 0 1px 0 rgba(255,255,255,0.82), inset 0 -1px 2px rgba(124,109,158,0.06)',
+                boxShadow: '0 2px 8px rgba(124, 109, 158, 0.12), inset 0 1px 0 rgba(255,255,255,0.82)',
                 transform: `translateX(${pillTranslatePercent}%) scaleX(1)`,
                 transition: 'none',
                 transformOrigin: 'center center',
@@ -757,11 +875,11 @@ function BrowsePage() {
                 zIndex: 1,
                 border: 'none',
                 background: 'transparent',
-                color: activeMainTab === tab.key ? '#5C5178' : '#52515B',
-                borderRadius: 12,
-                fontSize: isMobile ? '0.9rem' : '0.98rem',
-                padding: isMobile ? '0.42rem 0.3rem' : '0.5rem 0.35rem',
-                fontWeight: activeMainTab === tab.key ? 700 : 600,
+                color: activeMainTab === tab.key ? '#5C5178' : '#7a7889',
+                borderRadius: 9,
+                fontSize: isMobile ? '0.78rem' : '0.84rem',
+                padding: isMobile ? '0.34rem 0.25rem' : '0.4rem 0.3rem',
+                fontWeight: activeMainTab === tab.key ? 600 : 400,
                 cursor: 'pointer',
                 transition: 'color 180ms ease, opacity 180ms ease',
                 whiteSpace: 'nowrap'
@@ -772,7 +890,7 @@ function BrowsePage() {
                 }
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.color = activeMainTab === tab.key ? '#5C5178' : '#52515B';
+                e.currentTarget.style.color = activeMainTab === tab.key ? '#5C5178' : '#7a7889';
               }}
             >
               {tab.label}
@@ -790,9 +908,9 @@ function BrowsePage() {
                   color: showSortDropdown ? '#4C4463' : '#5F5778',
                   border: '1px solid rgba(231, 226, 244, 0.95)',
                   borderRadius: 14,
-                  fontSize: isMobile ? '0.86rem' : '0.98rem',
-                  padding: isMobile ? '0.42rem 0.72rem' : '0.5rem 0.95rem',
-                  fontWeight: 650,
+                  fontSize: isMobile ? '0.78rem' : '0.84rem',
+                  padding: isMobile ? '0.34rem 0.6rem' : '0.4rem 0.8rem',
+                  fontWeight: 500,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -825,13 +943,13 @@ function BrowsePage() {
                   e.currentTarget.style.transform = showSortDropdown ? 'translateY(-1px)' : 'translateY(0)';
                 }}
               >
-                <i className="bi bi-sort-down" style={{ fontSize: '1.1rem' }}></i>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem' }}>
+                <i className="bi bi-sort-down" style={{ fontSize: '0.9rem' }}></i>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.84rem' }}>
                   {!isMobile && (
                     <span
                       aria-hidden="true"
                       style={{
-                        fontSize: '0.95rem',
+                        fontSize: '0.84rem',
                         lineHeight: 1,
                         animation: isPopularSortActive ? 'browseFlamePulse 2.8s ease-in-out infinite' : 'none',
                         transformOrigin: '50% 60%'
@@ -904,7 +1022,9 @@ function BrowsePage() {
             </div>
           )}
         </div>
-      {/* Sub Tabs - Hidden now, using dropdown instead */}
+        )}
+      {/* Recommended content */}
+      {activeTopTab === 'recommended' && (<>
       {/* PC-adapted content wrapper */}
       <div style={{ width: '100%', margin: '0 auto' }}>
         {activeMainTab === 'users' ? (
@@ -1003,6 +1123,64 @@ function BrowsePage() {
       )}
 
       {hasMore && !isLoading && <div ref={loadMoreRef} style={{ height: 1, width: '100%' }} />}
+      </>)}
+
+      {/* Following feed */}
+      {activeTopTab === 'following' && (
+        <div style={{ width: '100%' }}>
+          {isFeedLoading ? (
+            <div className="text-center my-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">{t('browse.loading')}</span>
+              </div>
+            </div>
+          ) : feedEntities.length === 0 ? (
+            <div className="text-center my-5">
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(115,107,146,0.05) 0%, rgba(155,143,184,0.08) 100%)',
+                borderRadius: 16,
+                border: '1px solid rgba(115,107,146,0.15)',
+                padding: '2rem',
+                maxWidth: 480,
+                margin: '0 auto',
+              }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>👥</div>
+                <h5 style={{ fontWeight: 700, color: '#736B92', marginBottom: '0.5rem' }}>还没有关注的创作者</h5>
+                <p style={{ color: '#888', fontSize: '0.92rem', lineHeight: 1.6, margin: 0 }}>
+                  去发现页关注创作者，他们的最新作品会在这里显示
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${masonryColumnCount}, minmax(0, 1fr))`,
+                gap: 16,
+                width: '100%',
+              }}
+            >
+              {feedMasonryColumns.map((column, columnIndex) => (
+                <div key={columnIndex} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {column.map(entity => (
+                    <div key={`${entity.type}-${entity.id}`} className="browse-entity-card">
+                      <DiscoverMasonryCard type={entity.type} entity={entity} />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+          {isFeedLoadingMore && (
+            <div className="text-center my-4">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">{t('browse.loading')}</span>
+              </div>
+            </div>
+          )}
+          {feedHasMore && !isFeedLoading && <div ref={feedLoadMoreRef} style={{ height: 1, width: '100%' }} />}
+        </div>
+      )}
 
       <button
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
