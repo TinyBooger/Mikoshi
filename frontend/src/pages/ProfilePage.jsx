@@ -13,6 +13,7 @@ import CardSection from '../components/CardSection';
 import PaginationBar from '../components/PaginationBar';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
+import ProblemReportModal from '../components/ProblemReportModal';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { formatCompactTokenCount } from '../utils/tokenDisplay';
 
@@ -23,6 +24,7 @@ export default function ProfilePage() {
   const TAB_TYPES = {
     CREATED: 'Created',
     LIKED: 'Liked',
+    MY_PERSONAS: 'MyPersonas',
   };
   const SUBTAB_TYPES = {
     CHARACTERS: 'characters',
@@ -48,6 +50,8 @@ export default function ProfilePage() {
   const [likedPersonas, setLikedPersonas] = useState([]);
   const [activeTab, setActiveTab] = useState(TAB_TYPES.CREATED);
   const [activeSubtab, setActiveSubtab] = useState(SUBTAB_TYPES.CHARACTERS);
+  const [createdExpanded, setCreatedExpanded] = useState(true);
+  const [likedExpanded, setLikedExpanded] = useState(false);
   const [characterSort, setCharacterSort] = useState(ENTITY_SORTS.RECENT);
   const [sceneSort, setSceneSort] = useState(ENTITY_SORTS.RECENT);
   const [personaSort, setPersonaSort] = useState(ENTITY_SORTS.RECENT);
@@ -78,6 +82,8 @@ export default function ProfilePage() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [showReportUser, setShowReportUser] = useState(false);
+  const [reportIconHovered, setReportIconHovered] = useState(false);
   const [followCounts, setFollowCounts] = useState({ following_count: 0, follower_count: 0 });
   const [followModal, setFollowModal] = useState(null); // 'following' | 'followers' | null
   const [followModalUsers, setFollowModalUsers] = useState([]);
@@ -467,6 +473,21 @@ export default function ProfilePage() {
         total = likedPersonasTotal;
         onPageChange = setLikedPersonasPage;
       }
+    } else if (activeTab === TAB_TYPES.MY_PERSONAS) {
+      // Merge created + liked personas, deduplicate by id
+      const seen = new Set();
+      entities = [...personas, ...likedPersonas].filter(p => {
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      });
+      type = 'persona';
+      showEdit = isOwnProfile;
+      editUrlPrefix = 'persona';
+      emptyMsg = t('profile.no_all_personas');
+      page = 1;
+      total = 0; // suppress pagination for combined view
+      onPageChange = () => {};
     }
     return renderEntityCardSection(entities, type, showEdit, editUrlPrefix, emptyMsg, page, total, onPageChange);
   };
@@ -606,7 +627,6 @@ export default function ProfilePage() {
   };
 
   const sortToggleTranslatePercent = activeSort === ENTITY_SORTS.RECENT ? 0 : 100;
-  const subtabPillIndex = activeSubtab === SUBTAB_TYPES.CHARACTERS ? 0 : activeSubtab === SUBTAB_TYPES.SCENES ? 1 : 2;
 
   if (userLoading) {
     return (
@@ -751,6 +771,37 @@ export default function ProfilePage() {
                       }}
                     >
                       {isFollowing ? t('user_card.unfollow') : t('user_card.follow')}
+                    </button>
+                  )}
+                  {!isOwnProfile && sessionToken && (
+                    <button
+                      type="button"
+                      onClick={() => setShowReportUser(true)}
+                      title={t('topbar.report_problem')}
+                      aria-label={t('topbar.report_problem')}
+                      onMouseEnter={() => setReportIconHovered(true)}
+                      onMouseLeave={() => setReportIconHovered(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        padding: '0.28rem 0.7rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 500,
+                        borderRadius: '999px',
+                        border: '1.5px solid rgba(220,53,69,0.25)',
+                        background: reportIconHovered ? 'rgba(220,53,69,0.08)' : 'transparent',
+                        color: '#dc3545',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s, border-color 0.15s',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <i
+                        className={`bi ${reportIconHovered ? 'bi-exclamation-triangle-fill' : 'bi-exclamation-triangle'}`}
+                        style={{ fontSize: '0.85rem' }}
+                      />
+                      {t('problem_report.report_button', 'Report')}
                     </button>
                   )}
                 </div>
@@ -996,197 +1047,314 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="d-flex flex-column w-100" style={{ gap: isMobile ? 3 : 10 }}>
-          {/* Tabs for navigation */}
-          <div className="d-flex w-100" style={{ borderBottom: '1px solid #e8e7f2', paddingBottom: 2, gap: 18 }}>
-            <button
-              className={`flex-fill fw-bold py-2 border-0 ${activeTab === TAB_TYPES.CREATED ? '' : ''}`}
-              style={{
-                background: 'transparent',
-                color: activeTab === TAB_TYPES.CREATED ? '#2f2447' : '#6f6b80',
-                fontWeight: activeTab === TAB_TYPES.CREATED ? 800 : 700,
-                borderRadius: 0,
-                border: 'none',
-                boxShadow: activeTab === TAB_TYPES.CREATED ? 'inset 0 -2px 0 #b59cf3' : 'inset 0 -2px 0 transparent',
-                padding: '0.6rem 0.4rem',
-                transition: 'color 0.2s ease, box-shadow 0.2s ease',
-              }}
-              onClick={() => { setActiveTab(TAB_TYPES.CREATED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); }}
-            >
-              {t('profile.created')}
-            </button>
-            {isOwnProfile && (
-              <button
-                className={`flex-fill fw-bold py-2 border-0 ${activeTab === TAB_TYPES.LIKED ? '' : ''}`}
-                style={{
-                  background: 'transparent',
-                  color: activeTab === TAB_TYPES.LIKED ? '#2f2447' : '#6f6b80',
-                  fontWeight: activeTab === TAB_TYPES.LIKED ? 800 : 700,
-                  borderRadius: 0,
-                  border: 'none',
-                  boxShadow: activeTab === TAB_TYPES.LIKED ? 'inset 0 -2px 0 #b59cf3' : 'inset 0 -2px 0 transparent',
-                  padding: '0.6rem 0.4rem',
-                  transition: 'color 0.2s ease, box-shadow 0.2s ease',
-                }}
-                onClick={() => { setActiveTab(TAB_TYPES.LIKED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); }}
-              >
-                {t('profile.liked')}
-              </button>
-            )}
-          </div>
-          {/* Subtabs for Created/Liked */}
-          {(
-          <div className="d-flex w-100 align-items-center" style={{ borderBottom: '1px solid #e8e7f2', paddingBottom: isMobile ? 8 : 10, marginTop: 10, columnGap: isMobile ? 10 : 14, flexWrap: 'nowrap', overflowX: isMobile ? 'auto' : 'visible', justifyContent: isMobile ? 'flex-start' : 'space-between' }}>
-            <div
-              style={{
-                position: 'relative',
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                alignItems: 'center',
-                flexShrink: 0,
-                minWidth: isMobile ? 220 : 300,
-                borderRadius: 14,
-                padding: 4,
-                background: 'rgba(255, 255, 255, 0.42)',
-                border: '1px solid rgba(255, 255, 255, 0.7)',
-                boxShadow: '0 10px 28px rgba(114, 124, 150, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
-                overflow: 'hidden',
-              }}
-            >
-              {/* sliding pill */}
-              <div
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  left: 4,
-                  top: 4,
-                  bottom: 4,
-                  width: 'calc((100% - 8px) / 3)',
-                  borderRadius: 10,
-                  background: 'linear-gradient(180deg, #f3eef9 0%, #ebe5f1 100%)',
-                  boxShadow: '0 8px 18px rgba(124, 109, 158, 0.2), inset 0 1px 0 rgba(255,255,255,0.82), inset 0 -1px 2px rgba(124,109,158,0.06)',
-                  transform: `translateX(${subtabPillIndex * 100}%)`,
-                  transition: 'transform 220ms cubic-bezier(0.35, 0, 0.25, 1)',
-                  pointerEvents: 'none',
-                  zIndex: 0,
-                }}
-              />
-              {[
-                { key: SUBTAB_TYPES.CHARACTERS, label: t('profile.characters') },
-                { key: SUBTAB_TYPES.SCENES,     label: t('profile.scenes') },
-                { key: SUBTAB_TYPES.PERSONAS,   label: t('profile.personas') },
-              ].map(tab => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  className="border-0"
-                  style={{
-                    position: 'relative',
-                    zIndex: 1,
-                    background: 'transparent',
-                    color: activeSubtab === tab.key ? '#5C5178' : '#7a748a',
-                    borderRadius: 10,
-                    fontSize: isMobile ? '0.82rem' : '0.9rem',
-                    padding: isMobile ? '0.38rem 0.45rem' : '0.46rem 0.6rem',
-                    fontWeight: activeSubtab === tab.key ? 700 : 600,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'color 180ms ease',
-                  }}
-                  onClick={() => setActiveSubtab(tab.key)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+        {/* ── Workstation layout: sidebar + content ── */}
+        <div className="d-flex w-100" style={{ gap: isMobile ? 0 : 20, alignItems: 'flex-start', marginTop: 8 }}>
 
-            <div className="d-flex align-items-center" style={{ gap: 8, flexWrap: 'nowrap', justifyContent: 'flex-end', flexShrink: 0, marginLeft: isMobile ? 2 : 'auto' }}>
-              {!isMobile && (
-                <span
-                title={t('browse.sort_by')}
-                aria-label={t('browse.sort_by')}
-                style={{ color: '#555', fontSize: isMobile ? '0.78rem' : '0.84rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
-              >
-                <i className="bi bi-sort-down" aria-hidden="true" style={{ fontSize: isMobile ? '0.9rem' : '0.95rem', lineHeight: 1 }}></i>
-                <span className="visually-hidden">{t('browse.sort_by')}</span>
-              </span>
-              )}
-              <div
-                style={{
-                  position: 'relative',
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                  alignItems: 'center',
-                  minWidth: isMobile ? 124 : 148,
-                  borderRadius: 8,
-                  padding: 2,
-                  background: 'rgba(0,0,0,0.06)',
-                  flexShrink: 0,
-                }}
-              >
-                <div
-                  aria-hidden="true"
-                  style={{
-                    position: 'absolute',
-                    left: 2,
-                    top: 2,
-                    bottom: 2,
-                    width: 'calc((100% - 4px) / 2)',
-                    borderRadius: 6,
-                    background: '#fff',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-                    transform: `translateX(${sortToggleTranslatePercent}%)`,
-                    transition: 'transform 200ms ease',
-                    pointerEvents: 'none',
-                    zIndex: 0,
-                  }}
-                ></div>
+          {/* Desktop sidebar */}
+          {!isMobile && (
+            <aside style={{
+              width: 152,
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              paddingRight: 12,
+              borderRight: '1px solid rgba(0,0,0,0.07)',
+            }}>
+              {/* 我的创作 */}
+              <div>
                 <button
                   type="button"
-                  className="border-0"
-                  style={{
-                    position: 'relative',
-                    zIndex: 1,
-                    background: 'transparent',
-                    color: activeSort === ENTITY_SORTS.RECENT ? '#2f2447' : '#9088a4',
-                    borderRadius: 6,
-                    fontSize: isMobile ? '0.79rem' : '0.86rem',
-                    fontWeight: activeSort === ENTITY_SORTS.RECENT ? 700 : 500,
-                    padding: isMobile ? '0.28rem 0.5rem' : '0.32rem 0.65rem',
-                    whiteSpace: 'nowrap',
-                    transition: 'color 0.18s ease, font-weight 0.18s ease',
+                  onClick={() => {
+                    if (!createdExpanded) {
+                      setCreatedExpanded(true);
+                      setActiveTab(TAB_TYPES.CREATED);
+                      setActiveSubtab(SUBTAB_TYPES.CHARACTERS);
+                    } else {
+                      setCreatedExpanded(false);
+                    }
                   }}
-                  onClick={() => setActiveSort(ENTITY_SORTS.RECENT)}
-                >
-                  {t('browse.recent')}
-                </button>
-                <button
-                  type="button"
-                  className="border-0"
                   style={{
-                    position: 'relative',
-                    zIndex: 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%', padding: '0.44rem 0.6rem', borderRadius: 8, border: 'none',
                     background: 'transparent',
-                    color: activeSort === ENTITY_SORTS.POPULAR ? '#2f2447' : '#9088a4',
-                    borderRadius: 6,
-                    fontSize: isMobile ? '0.79rem' : '0.86rem',
-                    fontWeight: activeSort === ENTITY_SORTS.POPULAR ? 700 : 500,
-                    padding: isMobile ? '0.28rem 0.5rem' : '0.32rem 0.65rem',
-                    whiteSpace: 'nowrap',
-                    transition: 'color 0.18s ease, font-weight 0.18s ease',
+                    color: activeTab === TAB_TYPES.CREATED ? '#5b2f9b' : '#3a3a3a',
+                    fontSize: '0.875rem', fontWeight: activeTab === TAB_TYPES.CREATED ? 700 : 600,
+                    cursor: 'pointer', transition: 'background 0.15s', textAlign: 'left',
                   }}
-                  onClick={() => setActiveSort(ENTITY_SORTS.POPULAR)}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.06)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                 >
-                  {t('browse.popular')}
+                  <span>{t('profile.my_creations')}</span>
+                  <i className={`bi bi-chevron-${createdExpanded ? 'down' : 'right'}`} style={{ fontSize: '0.65rem', opacity: 0.5, flexShrink: 0 }} />
                 </button>
+                {createdExpanded && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1, paddingLeft: 10, marginTop: 1 }}>
+                    {[
+                      { key: SUBTAB_TYPES.CHARACTERS, label: t('profile.characters') },
+                      { key: SUBTAB_TYPES.SCENES,     label: t('profile.scenes') },
+                      { key: SUBTAB_TYPES.PERSONAS,   label: t('profile.personas') },
+                    ].map(sub => {
+                      const isActive = activeTab === TAB_TYPES.CREATED && activeSubtab === sub.key;
+                      return (
+                        <button
+                          key={sub.key}
+                          type="button"
+                          onClick={() => { setActiveTab(TAB_TYPES.CREATED); setActiveSubtab(sub.key); }}
+                          style={{
+                            display: 'block', width: '100%', padding: '0.33rem 0.55rem',
+                            borderRadius: 7, border: 'none',
+                            background: isActive ? 'rgba(167,139,250,0.15)' : 'transparent',
+                            color: isActive ? '#5b2f9b' : '#555',
+                            fontSize: '0.82rem', fontWeight: isActive ? 700 : 500,
+                            cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(167,139,250,0.07)'; }}
+                          onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                        >
+                          {sub.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
+
+              {isOwnProfile && <div style={{ height: 1, background: 'rgba(0,0,0,0.06)', margin: '4px 2px' }} />}
+
+              {/* 喜欢 */}
+              {isOwnProfile && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!likedExpanded) {
+                        setLikedExpanded(true);
+                        setActiveTab(TAB_TYPES.LIKED);
+                        setActiveSubtab(SUBTAB_TYPES.CHARACTERS);
+                      } else {
+                        setLikedExpanded(false);
+                      }
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      width: '100%', padding: '0.44rem 0.6rem', borderRadius: 8, border: 'none',
+                      background: 'transparent',
+                      color: activeTab === TAB_TYPES.LIKED ? '#5b2f9b' : '#3a3a3a',
+                      fontSize: '0.875rem', fontWeight: activeTab === TAB_TYPES.LIKED ? 700 : 600,
+                      cursor: 'pointer', transition: 'background 0.15s', textAlign: 'left',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.06)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <span>{t('profile.liked')}</span>
+                    <i className={`bi bi-chevron-${likedExpanded ? 'down' : 'right'}`} style={{ fontSize: '0.65rem', opacity: 0.5, flexShrink: 0 }} />
+                  </button>
+                  {likedExpanded && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, paddingLeft: 10, marginTop: 1 }}>
+                      {[
+                        { key: SUBTAB_TYPES.CHARACTERS, label: t('profile.characters') },
+                        { key: SUBTAB_TYPES.SCENES,     label: t('profile.scenes') },
+                      ].map(sub => {
+                        const isActive = activeTab === TAB_TYPES.LIKED && activeSubtab === sub.key;
+                        return (
+                          <button
+                            key={sub.key}
+                            type="button"
+                            onClick={() => { setActiveTab(TAB_TYPES.LIKED); setActiveSubtab(sub.key); }}
+                            style={{
+                              display: 'block', width: '100%', padding: '0.33rem 0.55rem',
+                              borderRadius: 7, border: 'none',
+                              background: isActive ? 'rgba(167,139,250,0.15)' : 'transparent',
+                              color: isActive ? '#5b2f9b' : '#555',
+                              fontSize: '0.82rem', fontWeight: isActive ? 700 : 500,
+                              cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s',
+                            }}
+                            onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(167,139,250,0.07)'; }}
+                            onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            {sub.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isOwnProfile && <div style={{ height: 1, background: 'rgba(0,0,0,0.06)', margin: '4px 2px' }} />}
+
+              {/* 我的人设 */}
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab(TAB_TYPES.MY_PERSONAS); setCreatedExpanded(false); setLikedExpanded(false); }}
+                  style={{
+                    display: 'block', width: '100%', padding: '0.44rem 0.6rem',
+                    borderRadius: 8, border: 'none',
+                    background: activeTab === TAB_TYPES.MY_PERSONAS ? 'rgba(167,139,250,0.15)' : 'transparent',
+                    color: activeTab === TAB_TYPES.MY_PERSONAS ? '#5b2f9b' : '#3a3a3a',
+                    fontSize: '0.875rem', fontWeight: activeTab === TAB_TYPES.MY_PERSONAS ? 700 : 600,
+                    cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => { if (activeTab !== TAB_TYPES.MY_PERSONAS) e.currentTarget.style.background = 'rgba(167,139,250,0.06)'; }}
+                  onMouseLeave={e => { if (activeTab !== TAB_TYPES.MY_PERSONAS) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {t('profile.my_personas')}
+                </button>
+              )}
+            </aside>
           )}
-          {/* Content based on active tab and subtab */}
-          {renderTabContent()}
+
+          {/* Mobile top nav */}
+          {isMobile && (
+            <div style={{ width: '100%', marginBottom: 10 }}>
+              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab(TAB_TYPES.CREATED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); setCreatedExpanded(true); setLikedExpanded(false); }}
+                  style={{
+                    flexShrink: 0, padding: '0.35rem 0.8rem', borderRadius: 999, border: 'none',
+                    background: activeTab === TAB_TYPES.CREATED ? 'rgba(167,139,250,0.18)' : 'rgba(0,0,0,0.05)',
+                    color: activeTab === TAB_TYPES.CREATED ? '#5b2f9b' : '#555',
+                    fontSize: '0.82rem', fontWeight: activeTab === TAB_TYPES.CREATED ? 700 : 500,
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {t('profile.my_creations')}
+                </button>
+                {isOwnProfile && (
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab(TAB_TYPES.LIKED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); setLikedExpanded(true); setCreatedExpanded(false); }}
+                    style={{
+                      flexShrink: 0, padding: '0.35rem 0.8rem', borderRadius: 999, border: 'none',
+                      background: activeTab === TAB_TYPES.LIKED ? 'rgba(167,139,250,0.18)' : 'rgba(0,0,0,0.05)',
+                      color: activeTab === TAB_TYPES.LIKED ? '#5b2f9b' : '#555',
+                      fontSize: '0.82rem', fontWeight: activeTab === TAB_TYPES.LIKED ? 700 : 500,
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {t('profile.liked')}
+                  </button>
+                )}
+                {isOwnProfile && (
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab(TAB_TYPES.MY_PERSONAS); setCreatedExpanded(false); setLikedExpanded(false); }}
+                    style={{
+                      flexShrink: 0, padding: '0.35rem 0.8rem', borderRadius: 999, border: 'none',
+                      background: activeTab === TAB_TYPES.MY_PERSONAS ? 'rgba(167,139,250,0.18)' : 'rgba(0,0,0,0.05)',
+                      color: activeTab === TAB_TYPES.MY_PERSONAS ? '#5b2f9b' : '#555',
+                      fontSize: '0.82rem', fontWeight: activeTab === TAB_TYPES.MY_PERSONAS ? 700 : 500,
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {t('profile.my_personas')}
+                  </button>
+                )}
+              </div>
+              {(activeTab === TAB_TYPES.CREATED || activeTab === TAB_TYPES.LIKED) && (
+                <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 4, marginTop: 2 }}>
+                  {(activeTab === TAB_TYPES.CREATED
+                    ? [
+                        { key: SUBTAB_TYPES.CHARACTERS, label: t('profile.characters') },
+                        { key: SUBTAB_TYPES.SCENES,     label: t('profile.scenes') },
+                        { key: SUBTAB_TYPES.PERSONAS,   label: t('profile.personas') },
+                      ]
+                    : [
+                        { key: SUBTAB_TYPES.CHARACTERS, label: t('profile.characters') },
+                        { key: SUBTAB_TYPES.SCENES,     label: t('profile.scenes') },
+                      ]
+                  ).map(sub => {
+                    const isActive = activeSubtab === sub.key;
+                    return (
+                      <button
+                        key={sub.key}
+                        type="button"
+                        onClick={() => setActiveSubtab(sub.key)}
+                        style={{
+                          flexShrink: 0, padding: '0.26rem 0.65rem', borderRadius: 999, border: 'none',
+                          background: isActive ? 'rgba(167,139,250,0.15)' : 'transparent',
+                          color: isActive ? '#5b2f9b' : '#777',
+                          fontSize: '0.78rem', fontWeight: isActive ? 700 : 500,
+                          cursor: 'pointer', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {sub.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Content area */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Sort toggle (hidden for MY_PERSONAS) */}
+            {activeTab !== TAB_TYPES.MY_PERSONAS && (
+              <div className="d-flex align-items-center justify-content-end" style={{ marginBottom: 12, gap: 8 }}>
+                <span
+                  title={t('browse.sort_by')}
+                  aria-label={t('browse.sort_by')}
+                  style={{ color: '#555', fontSize: '0.84rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
+                >
+                  <i className="bi bi-sort-down" aria-hidden="true" style={{ fontSize: '0.95rem', lineHeight: 1 }} />
+                  <span className="visually-hidden">{t('browse.sort_by')}</span>
+                </span>
+                <div
+                  style={{
+                    position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                    alignItems: 'center', minWidth: isMobile ? 124 : 148,
+                    borderRadius: 8, padding: 2, background: 'rgba(0,0,0,0.06)', flexShrink: 0,
+                  }}
+                >
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute', left: 2, top: 2, bottom: 2,
+                      width: 'calc((100% - 4px) / 2)', borderRadius: 6, background: '#fff',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                      transform: `translateX(${sortToggleTranslatePercent}%)`,
+                      transition: 'transform 200ms ease', pointerEvents: 'none', zIndex: 0,
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="border-0"
+                    style={{
+                      position: 'relative', zIndex: 1, background: 'transparent',
+                      color: activeSort === ENTITY_SORTS.RECENT ? '#2f2447' : '#9088a4',
+                      borderRadius: 6, fontSize: isMobile ? '0.79rem' : '0.86rem',
+                      fontWeight: activeSort === ENTITY_SORTS.RECENT ? 700 : 500,
+                      padding: isMobile ? '0.28rem 0.5rem' : '0.32rem 0.65rem',
+                      whiteSpace: 'nowrap', transition: 'color 0.18s ease',
+                    }}
+                    onClick={() => setActiveSort(ENTITY_SORTS.RECENT)}
+                  >
+                    {t('browse.recent')}
+                  </button>
+                  <button
+                    type="button"
+                    className="border-0"
+                    style={{
+                      position: 'relative', zIndex: 1, background: 'transparent',
+                      color: activeSort === ENTITY_SORTS.POPULAR ? '#2f2447' : '#9088a4',
+                      borderRadius: 6, fontSize: isMobile ? '0.79rem' : '0.86rem',
+                      fontWeight: activeSort === ENTITY_SORTS.POPULAR ? 700 : 500,
+                      padding: isMobile ? '0.28rem 0.5rem' : '0.32rem 0.65rem',
+                      whiteSpace: 'nowrap', transition: 'color 0.18s ease',
+                    }}
+                    onClick={() => setActiveSort(ENTITY_SORTS.POPULAR)}
+                  >
+                    {t('browse.popular')}
+                  </button>
+                </div>
+              </div>
+            )}
+            {renderTabContent()}
+          </div>
         </div>
       </div>
 
@@ -1389,6 +1557,14 @@ export default function ProfilePage() {
           </div>
         </ModalPortal>
       )}
+
+      <ProblemReportModal
+        show={showReportUser}
+        onClose={() => setShowReportUser(false)}
+        targetType="user"
+        targetName={displayUser?.name}
+        targetStringId={displayUser?.id}
+      />
 
     </PageWrapper>
   );

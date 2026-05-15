@@ -32,6 +32,9 @@ export default function EntityCard({
   const [hovered, setHovered] = useState(false);
   const [isCreatorHovered, setIsCreatorHovered] = useState(false);
   const [isDetailCtaActive, setIsDetailCtaActive] = useState(false);
+  const [isPersonaAdded, setIsPersonaAdded] = useState(() => !!(entity?.liked));
+  const [isAddPersonaHovered, setIsAddPersonaHovered] = useState(false);
+  const [isAddPersonaLoading, setIsAddPersonaLoading] = useState(false);
   const navigate = useNavigate();
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
@@ -122,6 +125,31 @@ export default function EntityCard({
 
   const suppressPersonaNavigation = type === 'persona' && !onClick;
   const clickSuppressed = disableClick || suppressPersonaNavigation;
+
+  const handleAddPersona = async (e) => {
+    e.stopPropagation();
+    const token = localStorage.getItem('sessionToken');
+    if (!token || isAddPersonaLoading) return;
+    setIsAddPersonaLoading(true);
+    try {
+      const endpoint = isPersonaAdded ? 'unlike' : 'like';
+      const res = await fetch(`${window.API_BASE_URL}/api/${endpoint}/persona/${id}`, {
+        method: 'POST',
+        headers: { Authorization: token },
+      });
+      if (res.ok) {
+        setIsPersonaAdded(!isPersonaAdded);
+      } else if (res.status === 400) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.detail?.includes('Already liked')) setIsPersonaAdded(true);
+        else if (data?.detail?.includes('not liked')) setIsPersonaAdded(false);
+      }
+    } catch (_) {
+      // silently fail
+    } finally {
+      setIsAddPersonaLoading(false);
+    }
+  };
 
   // Card click logic
   const handleClick = async () => {
@@ -373,16 +401,56 @@ export default function EntityCard({
               </div>
             )}
 
-            <div className="d-flex align-items-center ms-auto" style={{ gap: '0.7rem', flexShrink: 0 }}>
-              <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof likes === 'number' && likes === 0 ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
-                <i className="bi bi-heart" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
-                {typeof likes === 'number' ? likes.toLocaleString() : 0}
-              </span>
-              <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof views === 'number' && views === 0 ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
-                <i className="bi bi-chat" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
-                {typeof views === 'number' ? views.toLocaleString() : 0}
-              </span>
-            </div>
+            {type === 'persona' ? (
+              <button
+                onClick={handleAddPersona}
+                onMouseEnter={() => setIsAddPersonaHovered(true)}
+                onMouseLeave={() => setIsAddPersonaHovered(false)}
+                title={isPersonaAdded ? t('entity_card.added_to_personas') : t('entity_card.add_to_personas')}
+                disabled={isAddPersonaLoading}
+                style={{
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: '50%',
+                  border: isPersonaAdded
+                    ? '1.5px solid #6b5f93'
+                    : '1.5px solid rgba(107, 95, 147, 0.65)',
+                  background: isPersonaAdded
+                    ? 'rgba(107, 95, 147, 0.16)'
+                    : isAddPersonaHovered
+                    ? 'rgba(107, 95, 147, 0.09)'
+                    : 'transparent',
+                  color: isPersonaAdded ? '#6b5f93' : 'rgba(107, 95, 147, 0.75)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: isAddPersonaLoading ? 'wait' : 'pointer',
+                  transition: 'background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.12s ease',
+                  transform: isAddPersonaHovered && !isPersonaAdded ? 'scale(1.1)' : 'scale(1)',
+                  padding: 0,
+                  outline: 'none',
+                  flexShrink: 0,
+                  opacity: isAddPersonaLoading ? 0.55 : 1,
+                  boxShadow: isPersonaAdded && isAddPersonaHovered ? '0 0 0 3px rgba(107, 95, 147, 0.18)' : 'none',
+                }}
+              >
+                {isPersonaAdded
+                  ? <i className="bi bi-check-lg" style={{ fontSize: '0.84rem' }}></i>
+                  : <i className="bi bi-plus-lg" style={{ fontSize: '0.84rem' }}></i>
+                }
+              </button>
+            ) : (
+              <div className="d-flex align-items-center ms-auto" style={{ gap: '0.7rem', flexShrink: 0 }}>
+                <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof likes === 'number' && likes === 0 ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
+                  <i className="bi bi-heart" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
+                  {typeof likes === 'number' ? likes.toLocaleString() : 0}
+                </span>
+                <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof views === 'number' && views === 0 ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
+                  <i className="bi bi-chat" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
+                  {typeof views === 'number' ? views.toLocaleString() : 0}
+                </span>
+              </div>
+            )}
           </div>
 
           {!hideDetailButton && is_forkable && size !== 'mini' && (
@@ -456,16 +524,58 @@ export default function EntityCard({
             </p>
           )}
 
-          <div className="d-flex align-items-center ms-auto" style={{ gap: '0.7rem', flexShrink: 0, fontSize: '0.68rem', color: '#6c757d' }}>
-            <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof likes === 'number' && likes === 0 ? 0.5 : 1 }}>
-              <i className="bi bi-heart" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
-              {typeof likes === 'number' ? likes.toLocaleString() : 0}
-            </span>
-            <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof views === 'number' && views === 0 ? 0.5 : 1 }}>
-              <i className="bi bi-chat" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
-              {typeof views === 'number' ? views.toLocaleString() : 0}
-            </span>
-          </div>
+          {type === 'persona' ? (
+            <div className="d-flex align-items-center" style={{ gap: '0.7rem', flexShrink: 0, fontSize: '0.68rem', color: '#6c757d' }}>
+              <button
+                onClick={handleAddPersona}
+                onMouseEnter={() => setIsAddPersonaHovered(true)}
+                onMouseLeave={() => setIsAddPersonaHovered(false)}
+                title={isPersonaAdded ? t('entity_card.added_to_personas') : t('entity_card.add_to_personas')}
+                disabled={isAddPersonaLoading}
+                style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  border: isPersonaAdded
+                    ? '1.5px solid #6b5f93'
+                    : '1.5px solid rgba(107, 95, 147, 0.65)',
+                  background: isPersonaAdded
+                    ? 'rgba(107, 95, 147, 0.16)'
+                    : isAddPersonaHovered
+                    ? 'rgba(107, 95, 147, 0.09)'
+                    : 'transparent',
+                  color: isPersonaAdded ? '#6b5f93' : 'rgba(107, 95, 147, 0.75)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: isAddPersonaLoading ? 'wait' : 'pointer',
+                  transition: 'background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.12s ease',
+                  transform: isAddPersonaHovered && !isPersonaAdded ? 'scale(1.1)' : 'scale(1)',
+                  padding: 0,
+                  outline: 'none',
+                  flexShrink: 0,
+                  opacity: isAddPersonaLoading ? 0.55 : 1,
+                  boxShadow: isPersonaAdded && isAddPersonaHovered ? '0 0 0 3px rgba(107, 95, 147, 0.18)' : 'none',
+                }}
+              >
+                {isPersonaAdded
+                  ? <i className="bi bi-check-lg" style={{ fontSize: '0.78rem' }}></i>
+                  : <i className="bi bi-plus-lg" style={{ fontSize: '0.78rem' }}></i>
+                }
+              </button>
+            </div>
+          ) : (
+            <div className="d-flex align-items-center ms-auto" style={{ gap: '0.7rem', flexShrink: 0, fontSize: '0.68rem', color: '#6c757d' }}>
+              <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof likes === 'number' && likes === 0 ? 0.5 : 1 }}>
+                <i className="bi bi-heart" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
+                {typeof likes === 'number' ? likes.toLocaleString() : 0}
+              </span>
+              <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof views === 'number' && views === 0 ? 0.5 : 1 }}>
+                <i className="bi bi-chat" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
+                {typeof views === 'number' ? views.toLocaleString() : 0}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>

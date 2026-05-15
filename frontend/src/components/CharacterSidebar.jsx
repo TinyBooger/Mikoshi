@@ -336,7 +336,7 @@ export default function CharacterSidebar({
                   onFocus={() => setReportIconFocused(true)}
                   onBlur={() => setReportIconFocused(false)}
                 >
-                  <i className={`bi ${reportIconFocused ? 'bi-flag-fill' : 'bi-flag'}`} style={{ pointerEvents: 'none' }}></i>
+                  <i className={`bi ${reportIconFocused ? 'bi-exclamation-triangle-fill' : 'bi-exclamation-triangle'}`} style={{ pointerEvents: 'none' }}></i>
                 </button>
               </div>
             )}

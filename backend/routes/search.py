@@ -3,9 +3,10 @@ from fastapi import APIRouter, Request, Depends, HTTPException, Query
 from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 from database import get_db
-from models import SearchTerm, Character, User, Scene, Persona
+from models import SearchTerm, Character, User, Scene, Persona, UserLikedPersona
 from schemas import CharacterOut, SceneOut, PersonaOut, CharacterListOut, SceneListOut, PersonaListOut, UserOut, UserListOut
 from utils.user_utils import enrich_user_with_character_count
+from utils.session import get_optional_current_user
 
 from datetime import datetime, UTC
 
@@ -119,6 +120,7 @@ def search_personas(
     sort: str = "relevance",
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     ilike_pattern = f"%{q}%"
@@ -156,6 +158,14 @@ def search_personas(
         query = base_query.order_by(Persona.name.asc())
         total = query.count()
         personas = query.offset((page - 1) * page_size).limit(page_size).all()
+    liked_ids = set()
+    if current_user:
+        liked_ids = {
+            r.persona_id for r in
+            db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id).all()
+        }
+    for persona in personas:
+        persona.liked = persona.id in liked_ids
     return PersonaListOut(items=personas, total=total, page=page, page_size=page_size, short=False)
 
 @router.post("/api/update-search-term")

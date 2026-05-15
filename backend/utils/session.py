@@ -35,6 +35,22 @@ def get_current_user(
     return user
 
 
+def get_optional_current_user(
+    db: Session = Depends(get_db),
+    session_token: str = Header(None, alias="Authorization")
+):
+    """Like get_current_user but returns None instead of raising for unauthenticated requests."""
+    if not session_token:
+        return None
+    user_id = verify_session_token(session_token)
+    if not user_id:
+        return None
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return None
+    return user
+
+
 def get_current_admin_user(
     current_user: User = Depends(get_current_user)
 ):

@@ -116,20 +116,22 @@ export default function ProblemReportsPage() {
     <div className="container-fluid">
       <h2 className="mb-4">Problem Reports</h2>
       
-      <div className="mb-4 d-flex justify-content-between align-items-center">
-        <div>
-          <label className="me-2 fw-semibold">Filter by Status:</label>
-          <select 
-            className="form-select d-inline-block w-auto"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="all">All Reports</option>
-            <option value="pending">Pending</option>
-            <option value="in-progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
-          </select>
+      <div className="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div className="d-flex gap-3 flex-wrap align-items-center">
+          <div>
+            <label className="me-2 fw-semibold">Status:</label>
+            <select 
+              className="form-select d-inline-block w-auto"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">All Reports</option>
+              <option value="pending">Pending</option>
+              <option value="in-progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
         </div>
         <div className="text-muted">
           Total: {reports.length} reports
@@ -150,14 +152,14 @@ export default function ProblemReportsPage() {
             <table className="table table-hover">
               <thead>
                 <tr>
-                  <th style={{ width: '5%' }}>ID</th>
-                  <th style={{ width: '15%' }}>User</th>
-                  <th style={{ width: '35%' }}>Description</th>
+                  <th style={{ width: '4%' }}>ID</th>
+                  <th style={{ width: '13%' }}>User</th>
+                  <th style={{ width: '12%' }}>Reason</th>
+                  <th style={{ width: '28%' }}>Description</th>
                   <th style={{ width: '15%' }}>Target</th>
-                  <th style={{ width: '10%' }}>Screenshot</th>
-                  <th style={{ width: '10%' }}>Status</th>
-                  <th style={{ width: '12%' }}>Created</th>
-                  <th style={{ width: '13%' }}>Actions</th>
+                  <th style={{ width: '8%' }}>Status</th>
+                  <th style={{ width: '10%' }}>Created</th>
+                  <th style={{ width: '10%' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -175,8 +177,17 @@ export default function ProblemReportsPage() {
                     </div>
                   </td>
                   <td>
-                    <div style={{ maxHeight: '80px', overflow: 'auto' }}>
-                      {report.description}
+                    {report.reason ? (
+                      <span className="badge bg-secondary text-capitalize" style={{ fontSize: '0.78rem' }}>
+                        {report.reason.replace(/_/g, ' ')}
+                      </span>
+                    ) : (
+                      <span className="text-muted small">—</span>
+                    )}
+                  </td>
+                  <td>
+                    <div style={{ maxHeight: '80px', overflow: 'auto', fontSize: '0.85rem' }}>
+                      {report.description || <span className="text-muted">No description</span>}
                     </div>
                     {report.admin_notes && (
                       <small className="text-muted d-block mt-1">
@@ -189,9 +200,21 @@ export default function ProblemReportsPage() {
                       <div className="small">
                         <div className="text-capitalize fw-semibold">{report.target_type}</div>
                         <div className="text-truncate" style={{ maxWidth: '160px' }}>
-                          {report.target_name || 'Unnamed'} (ID: {report.target_id})
+                          {report.target_name || 'Unnamed'}
+                          {(report.target_id || report.target_string_id) && (
+                            <span className="text-muted"> (ID: {report.target_id || report.target_string_id?.substring(0, 8)}...)</span>
+                          )}
                         </div>
-                        {report.target_id && (
+                        {report.target_type === 'user' && report.target_string_id ? (
+                          <a
+                            className="small"
+                            href={`/profile/${report.target_string_id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            View Profile
+                          </a>
+                        ) : report.target_id && report.target_type !== 'user' ? (
                           <a
                             className="small"
                             href={
@@ -204,26 +227,10 @@ export default function ProblemReportsPage() {
                           >
                             Open in Chat
                           </a>
-                        )}
+                        ) : null}
                       </div>
                     ) : (
                       <span className="text-muted">General</span>
-                    )}
-                  </td>
-                  <td>
-                    {report.screenshot ? (
-                      <button
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() => {
-                          setSelectedReport(report);
-                          setShowImageModal(true);
-                        }}
-                      >
-                        <i className="bi bi-image me-1"></i>
-                        View
-                      </button>
-                    ) : (
-                      <span className="text-muted">None</span>
                     )}
                   </td>
                   <td>
@@ -235,7 +242,7 @@ export default function ProblemReportsPage() {
                     <small>{formatDate(report.created_time)}</small>
                   </td>
                   <td>
-                    <div className="btn-group btn-group-sm">
+                    <div className="d-flex flex-column gap-1">
                       <select
                         className="form-select form-select-sm"
                         value={report.status}
@@ -255,7 +262,8 @@ export default function ProblemReportsPage() {
                         onClick={() => handleDelete(report.id)}
                         title="Delete report"
                       >
-                        <i className="bi bi-trash"></i>
+                        <i className="bi bi-trash me-1"></i>
+                        Delete
                       </button>
                     </div>
                   </td>

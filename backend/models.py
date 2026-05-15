@@ -249,9 +249,11 @@ class ProblemReport(Base):
     description = Column(Text, nullable=False)
     screenshot = Column(String, nullable=True)  # URL or path to screenshot
     # Target context of the report (optional)
-    target_type = Column(String, nullable=True)  # 'character' | 'scene' | 'persona'
+    target_type = Column(String, nullable=True)  # 'character' | 'scene' | 'persona' | 'user'
     target_id = Column(Integer, nullable=True)
     target_name = Column(String, nullable=True)
+    target_string_id = Column(String, nullable=True)  # For string IDs (e.g. user Firebase UIDs)
+    reason = Column(String, nullable=True)  # Report reason category
     status = Column(String, default="pending", nullable=False)  # pending, in-progress, resolved, closed
     created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     resolved_time = Column(DateTime(timezone=True), nullable=True)

@@ -6,6 +6,7 @@ import PageWrapper from '../components/PageWrapper';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
+import ProblemReportModal from '../components/ProblemReportModal';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 
@@ -26,6 +27,8 @@ export default function EntityDetailPage() {
   const [isForkableBadgeHovered, setIsForkableBadgeHovered] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [showProblemReport, setShowProblemReport] = useState(false);
+  const [reportIconHovered, setReportIconHovered] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
@@ -583,6 +586,36 @@ export default function EntityDetailPage() {
                     {t('entity_detail.edit', 'Edit')}
                   </SecondaryButton>
                 )}
+                {!isOwner && sessionToken && (
+                  <button
+                    type="button"
+                    onClick={() => setShowProblemReport(true)}
+                    title={t('topbar.report_problem')}
+                    aria-label={t('topbar.report_problem')}
+                    onMouseEnter={() => setReportIconHovered(true)}
+                    onMouseLeave={() => setReportIconHovered(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      padding: '0.4rem 0.75rem',
+                      borderRadius: '999px',
+                      border: '1.5px solid rgba(220,53,69,0.3)',
+                      background: reportIconHovered ? 'rgba(220,53,69,0.08)' : 'transparent',
+                      color: '#dc3545',
+                      cursor: 'pointer',
+                      fontSize: '0.82rem',
+                      fontWeight: 500,
+                      transition: 'background 0.15s, border-color 0.15s',
+                    }}
+                  >
+                    <i
+                      className={`bi ${reportIconHovered ? 'bi-exclamation-triangle-fill' : 'bi-exclamation-triangle'}`}
+                      style={{ fontSize: '0.9rem' }}
+                    />
+                    {t('problem_report.report_button', 'Report')}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -689,6 +722,13 @@ export default function EntityDetailPage() {
           </>
         )}
       </div>
+      <ProblemReportModal
+        show={showProblemReport}
+        onClose={() => setShowProblemReport(false)}
+        targetType={type}
+        targetId={entity?.id}
+        targetName={entity?.name}
+      />
     </PageWrapper>
   );
 }

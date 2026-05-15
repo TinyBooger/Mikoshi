@@ -41,6 +41,7 @@ class PersonaOut(BaseModel):
     is_forkable: bool = False
     forked_from_id: Optional[int] = None
     forked_from_name: Optional[str] = None
+    liked: bool = False
 
     class Config:
         from_attributes = True
@@ -179,11 +180,13 @@ class VerifyPhoneNewUserOut(BaseModel):
 VerifyPhoneOut = Union[VerifyPhoneExistingUserOut, VerifyPhoneNewUserOut]
 
 class ProblemReportCreate(BaseModel):
-    description: str
+    description: Optional[str] = None
     screenshot: Optional[str] = None
     target_type: Optional[str] = None
     target_id: Optional[int] = None
     target_name: Optional[str] = None
+    target_string_id: Optional[str] = None
+    reason: Optional[str] = None
 
 class ProblemReportOut(BaseModel):
     id: int
@@ -194,6 +197,8 @@ class ProblemReportOut(BaseModel):
     target_type: Optional[str] = None
     target_id: Optional[int] = None
     target_name: Optional[str] = None
+    target_string_id: Optional[str] = None
+    reason: Optional[str] = None
     status: str
     created_time: Any
     resolved_time: Optional[Any] = None

@@ -8,7 +8,7 @@ from models import Persona, User, Tag, UserLikedPersona
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
-from utils.session import get_current_user
+from utils.session import get_current_user, get_optional_current_user
 from datetime import datetime, UTC
 from schemas import PersonaOut, PersonaListOut
 from utils.content_censor import censor_form_payload
@@ -24,6 +24,7 @@ def get_popular_personas(
     short: bool = Query(True),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     total = db.query(Persona).filter(Persona.is_public == True).count()
@@ -33,17 +34,25 @@ def get_popular_personas(
         .filter(Persona.is_public == True)
         .order_by(Persona.views.desc())
     )
+    liked_ids = set()
+    if current_user:
+        liked_ids = {
+            r.persona_id for r in
+            db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id).all()
+        }
     if short:
         rows = base_query.limit(10).all()
         items = []
         for persona, creator_profile_pic in rows:
             persona.creator_profile_pic = creator_profile_pic
+            persona.liked = persona.id in liked_ids
             items.append(persona)
         return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
     rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
     items = []
     for persona, creator_profile_pic in rows:
         persona.creator_profile_pic = creator_profile_pic
+        persona.liked = persona.id in liked_ids
         items.append(persona)
     return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
@@ -53,6 +62,7 @@ def get_recent_personas(
     short: bool = Query(True),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     total = db.query(Persona).filter(Persona.is_public == True).count()
@@ -62,17 +72,25 @@ def get_recent_personas(
         .filter(Persona.is_public == True)
         .order_by(Persona.created_time.desc())
     )
+    liked_ids = set()
+    if current_user:
+        liked_ids = {
+            r.persona_id for r in
+            db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id).all()
+        }
     if short:
         rows = base_query.limit(10).all()
         items = []
         for persona, creator_profile_pic in rows:
             persona.creator_profile_pic = creator_profile_pic
+            persona.liked = persona.id in liked_ids
             items.append(persona)
         return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
     rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
     items = []
     for persona, creator_profile_pic in rows:
         persona.creator_profile_pic = creator_profile_pic
+        persona.liked = persona.id in liked_ids
         items.append(persona)
     return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
@@ -82,6 +100,7 @@ def get_recommended_personas(
     short: bool = Query(True),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     base_query = (
@@ -91,17 +110,25 @@ def get_recommended_personas(
         .order_by(Persona.views.desc(), Persona.created_time.desc())
     )
     total = base_query.count()
+    liked_ids = set()
+    if current_user:
+        liked_ids = {
+            r.persona_id for r in
+            db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id).all()
+        }
     if short:
         rows = base_query.limit(10).all()
         items = []
         for persona, creator_profile_pic in rows:
             persona.creator_profile_pic = creator_profile_pic
+            persona.liked = persona.id in liked_ids
             items.append(persona)
         return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
     rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
     items = []
     for persona, creator_profile_pic in rows:
         persona.creator_profile_pic = creator_profile_pic
+        persona.liked = persona.id in liked_ids
         items.append(persona)
     return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
@@ -198,23 +225,39 @@ async def create_persona(
 
 # Read all Personas or search by name
 @router.get("/api/personas/", response_model=List[PersonaOut])
-def get_personas(search: str = None, db: Session = Depends(get_db)):
+def get_personas(
+    search: str = None,
+    current_user: User = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
     query = db.query(Persona).filter(Persona.is_public == True)
     if search:
-        # Case-insensitive search by name
         query = query.filter(Persona.name.ilike(f"%{search}%"))
     personas = query.all()
+    liked_ids = set()
+    if current_user:
+        liked_ids = {
+            r.persona_id for r in
+            db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id).all()
+        }
+    for persona in personas:
+        persona.liked = persona.id in liked_ids
     return personas
 
 # Read single Persona
 @router.get("/api/personas/{persona_id}", response_model=PersonaOut)
-def get_persona(persona_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_persona(persona_id: int, current_user: User = Depends(get_optional_current_user), db: Session = Depends(get_db)):
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(status_code=404, detail="Persona not found")
     if not persona.is_public:
         if not current_user or (persona.creator_id != current_user.id and not current_user.is_admin):
             raise HTTPException(status_code=404, detail="Persona not found")
+    if current_user:
+        liked = db.query(UserLikedPersona).filter_by(user_id=current_user.id, persona_id=persona_id).first()
+        persona.liked = liked is not None
+    else:
+        persona.liked = False
     return persona
 
 # Update Persona
@@ -381,9 +424,16 @@ def get_personas_created(
     
     total = query.count()
     rows = query.offset((page - 1) * page_size).limit(page_size).all()
+    liked_ids = set()
+    if current_user:
+        liked_ids = {
+            r.persona_id for r in
+            db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id).all()
+        }
     items = []
     for persona, creator_profile_pic in rows:
         persona.creator_profile_pic = creator_profile_pic
+        persona.liked = persona.id in liked_ids
         items.append(persona)
     return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
@@ -426,5 +476,6 @@ def get_personas_liked(
     items = []
     for persona, creator_profile_pic in rows:
         persona.creator_profile_pic = creator_profile_pic
+        persona.liked = True  # all results in this endpoint are already liked by target_user
         items.append(persona)
     return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
