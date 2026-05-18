@@ -68,12 +68,12 @@ def get_problem_reports(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
-    """Get all problem reports - Admin only"""
-    query = db.query(ProblemReport)
-    
+    """Get bug/website problem reports (not entity reports) - Admin only"""
+    query = db.query(ProblemReport).filter(ProblemReport.target_type.is_(None))
+
     if status:
         query = query.filter(ProblemReport.status == status)
-    
+
     reports = query.order_by(desc(ProblemReport.created_time)).offset(skip).limit(limit).all()
     return reports
 

@@ -114,7 +114,8 @@ export default function ProblemReportsPage() {
 
   return (
     <div className="container-fluid">
-      <h2 className="mb-4">Problem Reports</h2>
+      <h2 className="mb-1">Problem Reports</h2>
+      <p className="text-muted small mb-4">Bug and website issue reports. Entity reports (characters, scenes, personas, users) are handled in the <strong>Moderation</strong> tab.</p>
       
       <div className="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div className="d-flex gap-3 flex-wrap align-items-center">

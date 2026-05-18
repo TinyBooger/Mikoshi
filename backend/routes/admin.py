@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_, and_
 from datetime import datetime, timedelta, UTC
 from database import get_db
-from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger, ContentReviewQueue, ProblemReport, SystemSettings
+from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger, ContentReviewQueue, ProblemReport, SystemSettings, Scene, Persona
 from utils.session import get_current_admin_user
 from utils.security_middleware import get_rate_limit_status
 from utils.user_utils import enrich_user_with_character_count, build_user_response
@@ -57,6 +57,19 @@ class TokenTopupPackageItem(BaseModel):
 
 class TokenTopupPackagesUpdateRequest(BaseModel):
     packages: List[TokenTopupPackageItem]
+
+
+class UserModerationActionRequest(BaseModel):
+    action: str  # warn | temp_ban | permanent_ban | shadow_ban | ignore | keep | hide | delete
+    notes: Optional[str] = None
+    ban_until: Optional[datetime] = None  # required for temp_ban
+
+
+class BatchModerationActionRequest(BaseModel):
+    report_ids: List[int]
+    action: str
+    notes: Optional[str] = None
+    ban_until: Optional[datetime] = None
 
 
 @router.get("/user-stats")
@@ -450,6 +463,236 @@ def resolve_content_review_queue_item(
             "resolution_notes": item.resolution_notes,
         }
     }
+
+
+@router.get("/moderation/reports")
+def get_moderation_reports(
+    status: str = "pending",
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Get entity reports (character/scene/persona/user) for moderation - Admin only"""
+    query = db.query(ProblemReport).filter(ProblemReport.target_type.isnot(None))
+    if status and status != "all":
+        query = query.filter(ProblemReport.status == status)
+
+    reports = query.order_by(desc(ProblemReport.created_time)).all()
+    result = []
+
+    for report in reports:
+        reporter = None
+        if report.user_id:
+            reporter = db.query(User).filter(User.id == report.user_id).first()
+
+        target_info = {}
+        if report.target_type == "user":
+            target_user = None
+            if report.target_string_id:
+                target_user = db.query(User).filter(User.id == report.target_string_id).first()
+            if target_user:
+                target_info = {
+                    "exists": True,
+                    "name": target_user.name,
+                    "email": target_user.email,
+                    "is_banned": target_user.is_banned,
+                    "is_shadow_banned": target_user.is_shadow_banned,
+                    "ban_type": target_user.ban_type,
+                }
+            else:
+                target_info = {"exists": False, "name": report.target_name}
+        elif report.target_type == "character" and report.target_id:
+            character = db.query(Character).filter(Character.id == report.target_id).first()
+            if character:
+                target_info = {
+                    "exists": True,
+                    "name": character.name,
+                    "is_public": character.is_public,
+                    "creator_name": character.creator_name,
+                }
+            else:
+                target_info = {"exists": False, "name": report.target_name}
+        elif report.target_type in ("scene", "persona") and report.target_id:
+            model_cls = Scene if report.target_type == "scene" else Persona
+            entity = db.query(model_cls).filter(model_cls.id == report.target_id).first()
+            if entity:
+                target_info = {
+                    "exists": True,
+                    "name": entity.name,
+                    "is_public": entity.is_public,
+                    "creator_name": entity.creator_name,
+                }
+            else:
+                target_info = {"exists": False, "name": report.target_name}
+
+        resolver = None
+        if report.resolved_by:
+            resolver = db.query(User).filter(User.id == report.resolved_by).first()
+
+        result.append({
+            "id": report.id,
+            "reporter_id": report.user_id,
+            "reporter_name": reporter.name if reporter else None,
+            "reporter_email": report.user_email,
+            "target_type": report.target_type,
+            "target_id": report.target_id,
+            "target_string_id": report.target_string_id,
+            "target_name": report.target_name,
+            "target_info": target_info,
+            "reason": report.reason,
+            "description": report.description,
+            "status": report.status,
+            "action_taken": report.action_taken,
+            "created_time": report.created_time,
+            "resolved_time": report.resolved_time,
+            "resolved_by_name": resolver.name if resolver else None,
+            "admin_notes": report.admin_notes,
+        })
+
+    return result
+
+
+@router.post("/moderation/reports/{report_id}/action")
+def take_moderation_action(
+    report_id: int,
+    payload: UserModerationActionRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Take a moderation action on an entity report - Admin only"""
+    report = db.query(ProblemReport).filter(ProblemReport.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    if report.target_type is None:
+        raise HTTPException(status_code=400, detail="This report is a bug report, not an entity report")
+
+    action = (payload.action or "").strip().lower()
+    now = datetime.now(UTC)
+
+    if report.target_type == "user":
+        valid_actions = {"warn", "temp_ban", "permanent_ban", "shadow_ban", "ignore"}
+        if action not in valid_actions:
+            raise HTTPException(status_code=400, detail=f"Invalid action for user report. Expected one of: {', '.join(sorted(valid_actions))}")
+
+        target_user = None
+        if report.target_string_id:
+            target_user = db.query(User).filter(User.id == report.target_string_id).first()
+
+        if action == "temp_ban":
+            if not payload.ban_until:
+                raise HTTPException(status_code=400, detail="ban_until is required for temp_ban")
+            if target_user:
+                target_user.is_banned = True
+                target_user.ban_type = "temp"
+                target_user.ban_until = payload.ban_until
+                target_user.ban_reason = payload.notes
+        elif action == "permanent_ban":
+            if target_user:
+                target_user.is_banned = True
+                target_user.ban_type = "permanent"
+                target_user.ban_until = None
+                target_user.ban_reason = payload.notes
+        elif action == "shadow_ban":
+            if target_user:
+                target_user.is_shadow_banned = True
+                target_user.ban_type = "shadow"
+                target_user.ban_reason = payload.notes
+        # warn: no user model changes — report is resolved with notes only
+
+    else:
+        valid_actions = {"keep", "hide", "delete", "ignore"}
+        if action not in valid_actions:
+            raise HTTPException(status_code=400, detail=f"Invalid action for content report. Expected one of: {', '.join(sorted(valid_actions))}")
+
+        model_map = {
+            "character": Character,
+            "scene": Scene,
+            "persona": Persona,
+        }
+
+        if report.target_type in model_map and report.target_id and action in ("hide", "delete"):
+            model_cls = model_map[report.target_type]
+            entity = db.query(model_cls).filter(model_cls.id == report.target_id).first()
+            if entity:
+                if action == "hide":
+                    entity.is_public = False
+                elif action == "delete":
+                    db.delete(entity)
+
+    report.status = "resolved"
+    report.action_taken = action
+    report.resolved_time = now
+    report.resolved_by = current_admin.id
+    report.admin_notes = payload.notes
+
+    db.commit()
+
+    return {"message": f"Action '{action}' applied to report #{report_id}"}
+
+
+@router.post("/moderation/batch-action")
+def take_batch_moderation_action(
+    payload: BatchModerationActionRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Apply a moderation action to multiple pending entity reports - Admin only"""
+    reports = db.query(ProblemReport).filter(
+        ProblemReport.id.in_(payload.report_ids),
+        ProblemReport.target_type.isnot(None),
+        ProblemReport.status == "pending",
+    ).all()
+
+    if not reports:
+        raise HTTPException(status_code=404, detail="No matching pending reports found")
+
+    action = (payload.action or "").strip().lower()
+    now = datetime.now(UTC)
+    model_map = {"character": Character, "scene": Scene, "persona": Persona}
+    applied = 0
+
+    for report in reports:
+        if report.target_type == "user":
+            if action not in {"warn", "temp_ban", "permanent_ban", "shadow_ban", "ignore"}:
+                continue
+            target_user = None
+            if report.target_string_id:
+                target_user = db.query(User).filter(User.id == report.target_string_id).first()
+            if action == "temp_ban" and payload.ban_until and target_user:
+                target_user.is_banned = True
+                target_user.ban_type = "temp"
+                target_user.ban_until = payload.ban_until
+                target_user.ban_reason = payload.notes
+            elif action == "permanent_ban" and target_user:
+                target_user.is_banned = True
+                target_user.ban_type = "permanent"
+                target_user.ban_until = None
+                target_user.ban_reason = payload.notes
+            elif action == "shadow_ban" and target_user:
+                target_user.is_shadow_banned = True
+                target_user.ban_type = "shadow"
+                target_user.ban_reason = payload.notes
+        else:
+            if action not in {"keep", "hide", "delete", "ignore"}:
+                continue
+            if report.target_type in model_map and report.target_id and action in ("hide", "delete"):
+                model_cls = model_map[report.target_type]
+                entity = db.query(model_cls).filter(model_cls.id == report.target_id).first()
+                if entity:
+                    if action == "hide":
+                        entity.is_public = False
+                    elif action == "delete":
+                        db.delete(entity)
+
+        report.status = "resolved"
+        report.action_taken = action
+        report.resolved_time = now
+        report.resolved_by = current_admin.id
+        report.admin_notes = payload.notes
+        applied += 1
+
+    db.commit()
+    return {"message": f"Action '{action}' applied to {applied} reports", "count": applied}
 
 
 @router.get("/tags")

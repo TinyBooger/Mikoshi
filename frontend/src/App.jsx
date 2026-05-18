@@ -22,7 +22,7 @@ import TagsPage from './admin/pages/TagsPage.jsx';
 import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
 import InvitationCodesPage from './admin/pages/InvitationCodesPage.jsx';
 import ProblemReportsPage from './admin/pages/ProblemReportsPage.jsx';
-import ContentReviewPage from './admin/pages/ContentReviewPage.jsx';
+import ModerationPage from './admin/pages/ModerationPage.jsx';
 import NotificationsPage from './admin/pages/NotificationsPage.jsx';
 import ErrorLogsPage from './admin/pages/ErrorLogsPage.jsx';
 import AuditLogsPage from './admin/pages/AuditLogsPage.jsx';
@@ -119,7 +119,7 @@ const router = createBrowserRouter([
       { path: 'search-terms', element: <SearchTermsPage /> },
       { path: 'invitations', element: <InvitationCodesPage /> },
       { path: 'problem-reports', element: <ProblemReportsPage /> },
-      { path: 'content-review', element: <ContentReviewPage /> },
+      { path: 'moderation', element: <ModerationPage /> },
       { path: 'notifications', element: <NotificationsPage /> },
       { path: 'error-logs', element: <ErrorLogsPage /> },
       { path: 'audit-logs', element: <AuditLogsPage /> },
