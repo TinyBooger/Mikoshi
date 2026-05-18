@@ -103,6 +103,7 @@ class UserOut(BaseModel):
     likes: int = 0
     characters_created: int = 0
     recent_characters: list[dict[str, Any]] = []
+    recent_content: list[dict[str, Any]] = []
     is_admin: bool = False
     default_persona_id: Optional[int] = None
     default_persona: Optional[PersonaOut] = None

@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
+import { AuthContext } from './AuthProvider';
 
 /**
  * EntityCard - Unified card for Character, Scene, Persona
@@ -27,6 +28,7 @@ export default function EntityCard({
   hideDetailButton = false,
 }) {
   const { t } = useTranslation();
+  const { userData } = useContext(AuthContext);
   // Mobile viewport detection
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
   const [hovered, setHovered] = useState(false);
@@ -123,8 +125,7 @@ export default function EntityCard({
     ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(creatorAvatarRaw).replace(/^\//, '')}`
     : defaultAvatar;
 
-  const suppressPersonaNavigation = type === 'persona' && !onClick;
-  const clickSuppressed = disableClick || suppressPersonaNavigation;
+  const clickSuppressed = disableClick;
 
   const handleAddPersona = async (e) => {
     e.stopPropagation();
@@ -156,14 +157,14 @@ export default function EntityCard({
     if (clickSuppressed) return;
     if (onClick) {
       onClick(entity);
-    } else if (type === 'character') {
-      navigate(`/chat?character=${encodeURIComponent(id)}`);
       return;
+    }
+    if (type === 'character') {
+      navigate(`/chat?character=${encodeURIComponent(id)}`);
     } else if (type === 'scene') {
-      // Navigate to scene page (adjust route as needed)
       navigate(`/chat?scene=${encodeURIComponent(id)}`);
     } else if (type === 'persona') {
-      return;
+      navigate(`/persona/${encodeURIComponent(id)}`);
     }
   };
 
@@ -401,7 +402,7 @@ export default function EntityCard({
               </div>
             )}
 
-            {type === 'persona' ? (
+            {type === 'persona' && !(userData && userData.id === creator_id) ? (
               <button
                 onClick={handleAddPersona}
                 onMouseEnter={() => setIsAddPersonaHovered(true)}
@@ -524,7 +525,7 @@ export default function EntityCard({
             </p>
           )}
 
-          {type === 'persona' ? (
+          {type === 'persona' && !(userData && userData.id === creator_id) ? (
             <div className="d-flex align-items-center" style={{ gap: '0.7rem', flexShrink: 0, fontSize: '0.68rem', color: '#6c757d' }}>
               <button
                 onClick={handleAddPersona}

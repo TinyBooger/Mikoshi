@@ -6,7 +6,7 @@ from datetime import datetime, UTC, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from models import Persona, User, Character
+from models import Persona, User, Character, Scene
 from schemas import PersonaOut
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.token_cap import get_token_cap_info
@@ -41,7 +41,21 @@ def enrich_user_with_character_count(user: User, db: Session) -> dict:
         db.query(Character)
         .filter(Character.creator_id == user.id, Character.is_public == True)
         .order_by(Character.created_time.desc())
-        .limit(6)
+        .limit(4)
+        .all()
+    )
+    recent_scenes = (
+        db.query(Scene)
+        .filter(Scene.creator_id == user.id, Scene.is_public == True)
+        .order_by(Scene.created_time.desc())
+        .limit(3)
+        .all()
+    )
+    recent_personas = (
+        db.query(Persona)
+        .filter(Persona.creator_id == user.id, Persona.is_public == True)
+        .order_by(Persona.created_time.desc())
+        .limit(3)
         .all()
     )
 
@@ -74,6 +88,69 @@ def enrich_user_with_character_count(user: User, db: Session) -> dict:
             }
             for character in recent_characters
         ],
+        "recent_content": sorted(
+            [
+                {
+                    "type": "character",
+                    "id": c.id,
+                    "name": c.name,
+                    "tagline": c.tagline or "",
+                    "intro": "",
+                    "tags": c.tags or [],
+                    "picture": c.picture,
+                    "views": c.views or 0,
+                    "likes": c.likes or 0,
+                    "is_public": bool(c.is_public),
+                    "is_forkable": bool(c.is_forkable),
+                    "context_label": c.context_label or "standard",
+                    "creator_id": c.creator_id or user.id,
+                    "creator_name": c.creator_name or user.name,
+                    "creator_profile_pic": user.profile_pic,
+                    "_sort_key": c.created_time,
+                }
+                for c in recent_characters
+            ] + [
+                {
+                    "type": "scene",
+                    "id": s.id,
+                    "name": s.name,
+                    "tagline": "",
+                    "intro": s.intro or "",
+                    "tags": s.tags or [],
+                    "picture": s.picture,
+                    "views": s.views or 0,
+                    "likes": s.likes or 0,
+                    "is_public": bool(s.is_public),
+                    "is_forkable": bool(s.is_forkable),
+                    "creator_id": s.creator_id or user.id,
+                    "creator_name": s.creator_name or user.name,
+                    "creator_profile_pic": user.profile_pic,
+                    "_sort_key": s.created_time,
+                }
+                for s in recent_scenes
+            ] + [
+                {
+                    "type": "persona",
+                    "id": p.id,
+                    "name": p.name,
+                    "tagline": "",
+                    "intro": p.intro or "",
+                    "tags": p.tags or [],
+                    "picture": p.picture,
+                    "views": p.views or 0,
+                    "likes": p.likes or 0,
+                    "is_public": bool(p.is_public),
+                    "is_forkable": bool(p.is_forkable),
+                    "creator_id": p.creator_id or user.id,
+                    "creator_name": p.creator_name or user.name,
+                    "creator_profile_pic": user.profile_pic,
+                    "_sort_key": p.created_time,
+                }
+                for p in recent_personas
+            ],
+            key=lambda x: x.pop("_sort_key") or datetime.min.replace(tzinfo=UTC),
+            reverse=True,
+        )[:8],
         "is_admin": user.is_admin or False,
         "default_persona_id": user.default_persona_id,
         "purchased_token_balance": int(getattr(user, "purchased_token_balance", 0) or 0),

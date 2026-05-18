@@ -18,8 +18,15 @@ export default function UserCard({ user, onClick, disableClick = false, isFollow
   const { userData, sessionToken } = useContext(AuthContext);
 
   const [hovered, setHovered] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
   const [isFollowing, setIsFollowing] = useState(isFollowingProp ?? false);
   const [followLoading, setFollowLoading] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 600);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const {
     id,
@@ -29,13 +36,19 @@ export default function UserCard({ user, onClick, disableClick = false, isFollow
     views = 0,
     likes = 0,
     characters_created = 0,
-    recent_characters = [],
+    recent_content = [],
   } = user;
 
   const clickSuppressed = disableClick;
-  const displayedRecentCharacters = Array.isArray(recent_characters)
-    ? recent_characters.slice(0, 10)
+  const displayedRecentContent = Array.isArray(recent_content)
+    ? recent_content.slice(0, 8)
     : [];
+
+  const handleEntityClick = (item) => {
+    if (item.type === 'character') navigate(`/chat?character=${encodeURIComponent(item.id)}`);
+    else if (item.type === 'scene') navigate(`/chat?scene=${encodeURIComponent(item.id)}`);
+    else if (item.type === 'persona') navigate(`/persona/${encodeURIComponent(item.id)}`);
+  };
 
   const isSelf = userData && userData.id === id;
   const canFollow = sessionToken && !isSelf;
@@ -191,7 +204,7 @@ export default function UserCard({ user, onClick, disableClick = false, isFollow
         </div>
       </div>
 
-      {displayedRecentCharacters.length > 0 && (
+      {displayedRecentContent.length > 0 && (
         <div style={{ marginTop: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
           <div style={{ fontSize: '0.72rem', color: '#888', marginBottom: '0.35rem', fontWeight: 600 }}>
             {t('user_card.recent_characters')}
@@ -205,20 +218,15 @@ export default function UserCard({ user, onClick, disableClick = false, isFollow
               scrollbarWidth: 'thin',
             }}
           >
-            {displayedRecentCharacters.map((character) => {
-              return (
-                <div key={character.id} style={{ width: 180, minWidth: 180, flexShrink: 0 }}>
-                  <EntityCard
-                    type="character"
-                    entity={{
-                      ...character,
-                      creator_name: character?.creator_name || name,
-                    }}
-                    onClick={() => navigate(`/chat?character=${encodeURIComponent(character.id)}`)}
-                  />
-                </div>
-              );
-            })}
+            {displayedRecentContent.map((item) => (
+              <div key={`${item.type}-${item.id}`} style={{ width: isMobile ? 140 : 180, minWidth: isMobile ? 140 : 180, flexShrink: 0 }}>
+                <EntityCard
+                  type={item.type}
+                  entity={{ ...item, creator_name: item.creator_name || name }}
+                  onClick={() => handleEntityClick(item)}
+                />
+              </div>
+            ))}
           </div>
         </div>
       )}

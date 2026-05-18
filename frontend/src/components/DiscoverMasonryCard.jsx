@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
+import { AuthContext } from './AuthProvider';
 
 export default function DiscoverMasonryCard({ type, entity, onClick, disableClick = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { userData } = useContext(AuthContext);
   const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 640 : false));
   const [isCreatorHovered, setIsCreatorHovered] = useState(false);
   const [isCardHovered, setIsCardHovered] = useState(false);
@@ -90,8 +92,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
     ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(creatorAvatarRaw).replace(/^\//, '')}`
     : defaultAvatar;
 
-  const suppressPersonaNavigation = type === 'persona' && !onClick;
-  const clickSuppressed = disableClick || suppressPersonaNavigation;
+  const clickSuppressed = disableClick;
   const isAdvancedCharacter = type === 'character' && entity?.context_label === 'advanced';
 
   const handleClick = () => {
@@ -102,10 +103,10 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
     }
     if (type === 'character') {
       navigate(`/chat?character=${encodeURIComponent(id)}`);
-      return;
-    }
-    if (type === 'scene') {
+    } else if (type === 'scene') {
       navigate(`/chat?scene=${encodeURIComponent(id)}`);
+    } else if (type === 'persona') {
+      navigate(`/persona/${encodeURIComponent(id)}`);
     }
   };
 
@@ -407,7 +408,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
             </span>
           </div>
 
-          {type === 'persona' ? (
+          {type === 'persona' && !(userData && userData.id === creator_id) ? (
             <button
               onClick={handleAddPersona}
               onMouseEnter={() => setIsAddPersonaHovered(true)}
