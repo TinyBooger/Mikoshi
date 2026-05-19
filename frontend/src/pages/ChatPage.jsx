@@ -593,6 +593,12 @@ export default function ChatPage() {
   };
 
   const getChatErrorMessage = (errorPayload) => {
+    if (errorPayload?.error === 'ACCOUNT_BANNED') {
+      const until = errorPayload?.ban_until
+        ? `，封禁将于 ${new Date(errorPayload.ban_until).toLocaleDateString()} 解除`
+        : '，该封禁为永久封禁';
+      return `您的账号已被封禁${until}，无法发送消息。`;
+    }
     if (errorPayload?.error === 'TOKEN_CAP_REACHED') {
       return errorPayload?.message || '已达到 token 上限，当前与 token 相关操作已受限。';
     }
@@ -2350,6 +2356,30 @@ export default function ChatPage() {
           }}
         >
           <div style={chatContentRailStyle}>
+          {userData?.ban_type === 'full_ban' && (
+            <div
+              style={{
+                width: '100%',
+                marginBottom: 8,
+                padding: '0.55rem 0.75rem',
+                borderRadius: 10,
+                border: '1px solid #fca5a5',
+                background: '#fff1f2',
+                color: '#b91c1c',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+            >
+              <i className="bi bi-slash-circle-fill" />
+              <span>
+                您的账号已被封禁，无法发送消息。
+                {userData?.ban_until && `封禁将于 ${new Date(userData.ban_until).toLocaleDateString()} 解除。`}
+              </span>
+            </div>
+          )}
           {tokenLimits?.cap_reached && (
             <div
               style={{

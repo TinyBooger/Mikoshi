@@ -29,6 +29,7 @@ from utils.context_window import compact_conversation_messages, resolve_context_
 from utils.usage_utils import normalize_usage
 from utils.token_usage_ledger import apply_token_usage_with_wallet
 from utils.token_cap import can_consume_tokens, get_token_cap_info, build_token_cap_reached_payload
+from utils.user_utils import is_chat_banned
 
 router = APIRouter()
 
@@ -382,6 +383,17 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
     if not isinstance(context_messages, list) or not context_messages:
         context_messages = messages
+
+    if is_chat_banned(current_user):
+        ban_until = getattr(current_user, "ban_until", None)
+        return JSONResponse(
+            content={
+                "error": "ACCOUNT_BANNED",
+                "ban_type": "full_ban",
+                "ban_until": ban_until.isoformat() if ban_until else None,
+            },
+            status_code=403,
+        )
 
     limit_check = can_send_user_message(current_user, full_messages)
     limit_info = limit_check.get("limit") or {}

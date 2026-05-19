@@ -19,14 +19,24 @@ const TARGET_TYPE_BADGE = {
 
 const ACTION_LABELS = {
   warn: 'Warned',
-  temp_ban: 'Temp Banned',
-  permanent_ban: 'Perm Banned',
+  upload_ban: 'Upload Banned',
+  full_ban: 'Full Banned',
   shadow_ban: 'Shadow Banned',
+  unban: 'Unbanned',
   ignore: 'Ignored',
   keep: 'Kept',
   hide: 'Hidden',
   delete: 'Deleted',
 };
+
+const BAN_REASON_OPTIONS = [
+  { value: 'harassment', label: 'Harassment' },
+  { value: 'spam', label: 'Spam' },
+  { value: 'abuse', label: 'Abuse / Hate Speech' },
+  { value: 'underage', label: 'Underage Content' },
+  { value: 'impersonation', label: 'Impersonation' },
+  { value: 'other', label: 'Other' },
+];
 
 export default function ModerationPage() {
   const { sessionToken } = useContext(AuthContext);
@@ -46,6 +56,13 @@ export default function ModerationPage() {
 
   const [activeTab, setActiveTab] = useState('queue');
   const pageSize = 20;
+
+  // Ban dialog state
+  const [banDialog, setBanDialog] = useState(null); // { report, action } | null
+  const [banDialogBatch, setBanDialogBatch] = useState(null); // { action } | null
+  const [banForm, setBanForm] = useState({ ban_reason: '', ban_note: '', days: '' });
+
+  const resetBanForm = () => setBanForm({ ban_reason: '', ban_note: '', days: '' });
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
@@ -113,14 +130,53 @@ export default function ModerationPage() {
     }
   };
 
-  const handleTempBan = (report) => {
-    const daysStr = prompt('Ban duration in days:');
-    if (!daysStr) return;
-    const days = parseInt(daysStr, 10);
-    if (isNaN(days) || days <= 0) { alert('Please enter a valid number of days.'); return; }
-    const ban_until = new Date(Date.now() + days * 86400000).toISOString();
-    const notes = prompt('Add ban reason/notes (optional):') || '';
-    applyAction(report, 'temp_ban', { notes, ban_until });
+  // Open the ban dialog for a single report
+  const handleOpenBanDialog = (report, action) => {
+    resetBanForm();
+    setBanDialog({ report, action });
+  };
+
+  // Submit ban from dialog (single)
+  const handleSubmitBanDialog = () => {
+    if (!banDialog) return;
+    const { report, action } = banDialog;
+    const extra = {
+      ban_reason: banForm.ban_reason || undefined,
+      ban_note: banForm.ban_note || undefined,
+    };
+    if (banForm.days) {
+      const days = parseInt(banForm.days, 10);
+      if (!isNaN(days) && days > 0) {
+        extra.ban_until = new Date(Date.now() + days * 86400000).toISOString();
+      }
+    }
+    setBanDialog(null);
+    applyAction(report, action, extra);
+  };
+
+  // Open ban dialog for batch
+  const handleOpenBatchBanDialog = (action) => {
+    if (selectedIds.size === 0) return;
+    resetBanForm();
+    setBanDialogBatch({ action });
+  };
+
+  // Submit ban from dialog (batch)
+  const handleSubmitBatchBanDialog = () => {
+    if (!banDialogBatch) return;
+    const { action } = banDialogBatch;
+    const extra = {
+      ban_reason: banForm.ban_reason || undefined,
+      ban_note: banForm.ban_note || undefined,
+    };
+    if (banForm.days) {
+      const days = parseInt(banForm.days, 10);
+      if (!isNaN(days) && days > 0) {
+        extra.ban_until = new Date(Date.now() + days * 86400000).toISOString();
+      }
+    }
+    setBanDialogBatch(null);
+    applyBatchAction(action, extra);
   };
 
   const handleActionWithNotes = (report, action) => {
@@ -133,18 +189,6 @@ export default function ModerationPage() {
     if (selectedIds.size === 0) return;
     if (!confirm(`Apply "${action}" to ${selectedIds.size} selected report(s)?`)) return;
 
-    let finalExtra = { ...extra };
-    if (action === 'temp_ban' && !finalExtra.ban_until) {
-      const daysStr = prompt('Ban duration in days (applies to all selected):');
-      if (!daysStr) return;
-      const days = parseInt(daysStr, 10);
-      if (isNaN(days) || days <= 0) { alert('Invalid duration.'); return; }
-      finalExtra.ban_until = new Date(Date.now() + days * 86400000).toISOString();
-    }
-    if (finalExtra.notes === undefined) {
-      finalExtra.notes = prompt('Add notes (optional):') || '';
-    }
-
     setBatchActioning(true);
     try {
       const res = await fetch(
@@ -152,7 +196,7 @@ export default function ModerationPage() {
         {
           method: 'POST',
           headers: { Authorization: sessionToken, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ report_ids: Array.from(selectedIds), action, ...finalExtra }),
+          body: JSON.stringify({ report_ids: Array.from(selectedIds), action, ...extra }),
         }
       );
       if (!res.ok) {
@@ -209,11 +253,13 @@ export default function ModerationPage() {
             {info.is_public ? 'Public' : 'Hidden'}
           </span>
         : null;
-    const banBadge = info.is_banned
-      ? <span className="badge bg-danger ms-1">Banned</span>
-      : info.is_shadow_banned
-        ? <span className="badge bg-secondary ms-1">Shadow Banned</span>
-        : null;
+    const banBadge = info.ban_type === 'full_ban'
+      ? <span className="badge bg-danger ms-1">Full Banned</span>
+      : info.ban_type === 'upload_ban'
+        ? <span className="badge bg-warning text-dark ms-1">Upload Banned</span>
+        : info.ban_type === 'shadow_ban'
+          ? <span className="badge bg-secondary ms-1">Shadow Banned</span>
+          : null;
     const profileLink = report.target_type === 'user' && report.target_string_id
       ? <Link className="small" to={`/profile/${report.target_string_id}`} target="_blank" rel="noreferrer">View Profile</Link>
       : null;
@@ -223,6 +269,15 @@ export default function ModerationPage() {
         {info.creator_name && <div className="text-muted">by {info.creator_name}</div>}
         {info.email && <div className="text-muted">{info.email}</div>}
         <div>{statusBadge}{banBadge}</div>
+        {info.ban_type && info.ban_reason && (
+          <div className="text-muted">Reason: <em>{info.ban_reason}</em></div>
+        )}
+        {info.ban_type && info.ban_note && (
+          <div className="text-muted">Note: <em>{info.ban_note}</em></div>
+        )}
+        {info.ban_type && info.ban_until && (
+          <div className="text-muted">Until: {new Date(info.ban_until).toLocaleDateString()}</div>
+        )}
         {profileLink}
       </div>
     );
@@ -231,13 +286,17 @@ export default function ModerationPage() {
   const renderActions = (report) => {
     const disabled = actioningId === report.id;
     if (report.target_type === 'user') {
+      const isBanned = !!report.target_info?.ban_type;
       return (
         <div className="d-flex flex-wrap gap-1">
           <button className="btn btn-sm btn-outline-secondary" disabled={disabled} onClick={() => handleActionWithNotes(report, 'ignore')}>Ignore</button>
           <button className="btn btn-sm btn-outline-secondary" disabled={disabled} onClick={() => handleActionWithNotes(report, 'warn')}>Warn</button>
-          <button className="btn btn-sm btn-outline-warning" disabled={disabled} onClick={() => handleTempBan(report)}>Temp Ban</button>
-          <button className="btn btn-sm btn-outline-danger" disabled={disabled} onClick={() => handleActionWithNotes(report, 'permanent_ban')}>Perm Ban</button>
-          <button className="btn btn-sm btn-outline-dark" disabled={disabled} onClick={() => handleActionWithNotes(report, 'shadow_ban')}>Shadow Ban</button>
+          <button className="btn btn-sm btn-outline-warning" disabled={disabled} onClick={() => handleOpenBanDialog(report, 'upload_ban')}>Upload Ban</button>
+          <button className="btn btn-sm btn-outline-danger" disabled={disabled} onClick={() => handleOpenBanDialog(report, 'full_ban')}>Full Ban</button>
+          <button className="btn btn-sm btn-outline-dark" disabled={disabled} onClick={() => handleOpenBanDialog(report, 'shadow_ban')}>Shadow Ban</button>
+          {isBanned && (
+            <button className="btn btn-sm btn-outline-success" disabled={disabled} onClick={() => applyAction(report, 'unban', {})}>Unban</button>
+          )}
         </div>
       );
     }
@@ -257,6 +316,7 @@ export default function ModerationPage() {
 
   // ── Render ─────────────────────────────────────────────────
   return (
+    <>
     <div className="container-fluid">
       <h2 className="mb-3">Moderation</h2>
 
@@ -294,9 +354,10 @@ export default function ModerationPage() {
                 {(allUserSelected || (!allContentSelected)) && (
                   <>
                     <button className="btn btn-sm btn-outline-secondary" disabled={batchActioning || !allUserSelected} onClick={() => applyBatchAction('warn', { notes: '' })}>Warn</button>
-                    <button className="btn btn-sm btn-outline-warning" disabled={batchActioning || !allUserSelected} onClick={() => applyBatchAction('temp_ban')}>Temp Ban</button>
-                    <button className="btn btn-sm btn-outline-danger" disabled={batchActioning || !allUserSelected} onClick={() => applyBatchAction('permanent_ban', { notes: '' })}>Perm Ban</button>
-                    <button className="btn btn-sm btn-outline-dark" disabled={batchActioning || !allUserSelected} onClick={() => applyBatchAction('shadow_ban', { notes: '' })}>Shadow Ban</button>
+                    <button className="btn btn-sm btn-outline-warning" disabled={batchActioning || !allUserSelected} onClick={() => handleOpenBatchBanDialog('upload_ban')}>Upload Ban</button>
+                    <button className="btn btn-sm btn-outline-danger" disabled={batchActioning || !allUserSelected} onClick={() => handleOpenBatchBanDialog('full_ban')}>Full Ban</button>
+                    <button className="btn btn-sm btn-outline-dark" disabled={batchActioning || !allUserSelected} onClick={() => handleOpenBatchBanDialog('shadow_ban')}>Shadow Ban</button>
+                    <button className="btn btn-sm btn-outline-success" disabled={batchActioning || !allUserSelected} onClick={() => applyBatchAction('unban', {})}>Unban</button>
                   </>
                 )}
                 {(allContentSelected || (!allUserSelected)) && (
@@ -464,5 +525,77 @@ export default function ModerationPage() {
         </>
       )}
     </div>
+
+    {/* ── Ban Dialog Modal ── */}    {(banDialog || banDialogBatch) && (() => {
+      const action = banDialog ? banDialog.action : banDialogBatch.action;
+      const title = { upload_ban: 'Upload Ban', full_ban: 'Full Ban', shadow_ban: 'Shadow Ban' }[action] || action;
+      const onSubmit = banDialog ? handleSubmitBanDialog : handleSubmitBatchBanDialog;
+      const onCancel = banDialog ? () => setBanDialog(null) : () => setBanDialogBatch(null);
+      return (
+        <div className="modal d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Apply {title}</h5>
+                <button type="button" className="btn-close" onClick={onCancel} />
+              </div>
+              <div className="modal-body">
+                {banDialog && (
+                  <div className="mb-2 small text-muted">
+                    Target: <strong>{banDialog.report.target_info?.name || banDialog.report.target_name || `#${banDialog.report.id}`}</strong>
+                    {banDialog.report.target_info?.email && ` (${banDialog.report.target_info.email})`}
+                  </div>
+                )}
+                {banDialogBatch && (
+                  <div className="mb-2 small text-muted">Applying to <strong>{selectedIds.size}</strong> selected reports.</div>
+                )}
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Ban Reason <span className="text-muted fw-normal">(internal tag)</span></label>
+                  <select
+                    className="form-select"
+                    value={banForm.ban_reason}
+                    onChange={(e) => setBanForm((f) => ({ ...f, ban_reason: e.target.value }))}
+                  >
+                    <option value="">— select reason —</option>
+                    {BAN_REASON_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Moderator Note <span className="text-muted fw-normal">(optional, visible to mods)</span></label>
+                  <textarea
+                    className="form-control"
+                    rows={2}
+                    placeholder="Add any additional context..."
+                    value={banForm.ban_note}
+                    onChange={(e) => setBanForm((f) => ({ ...f, ban_note: e.target.value }))}
+                  />
+                </div>
+
+                <div className="mb-1">
+                  <label className="form-label fw-semibold">Duration <span className="text-muted fw-normal">(days, optional — leave blank for permanent)</span></label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    min="1"
+                    placeholder="e.g. 7 for one week"
+                    value={banForm.days}
+                    onChange={(e) => setBanForm((f) => ({ ...f, days: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+                <button className="btn btn-danger" onClick={onSubmit}>Apply {title}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+    </>
   );
 }

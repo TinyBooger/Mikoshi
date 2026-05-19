@@ -12,6 +12,7 @@ import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/tokenDisplay';
+import BanNotice from '../components/BanNotice';
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
@@ -442,6 +443,7 @@ export default function CharacterFormPage() {
           <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>{mode === 'edit' ? t('character_form.edit_title') : mode === 'fork' ? t('character_form.fork_title') : t('character_form.create_title')}</h2>
 
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
+          <BanNotice banType={userData?.ban_type} banUntil={userData?.ban_until} context="upload" />
           {/* Forked From - Display only */}
           {charData.forked_from_id && charData.forked_from_name && (
             <div className="alert alert-info mb-4" role="alert">

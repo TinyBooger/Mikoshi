@@ -12,6 +12,7 @@ from utils.session import get_current_user, get_optional_current_user
 from datetime import datetime, UTC
 from schemas import PersonaOut, PersonaListOut
 from utils.content_censor import censor_form_payload
+from utils.user_utils import get_active_ban_type, is_upload_banned
 
 router = APIRouter()
 
@@ -149,6 +150,11 @@ async def create_persona(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    active_ban = get_active_ban_type(current_user)
+    if is_upload_banned(current_user):
+        raise HTTPException(status_code=403, detail="UPLOAD_BANNED")
+    shadow = active_ban == "shadow_ban"
+
     text_safe, _, blocked_field, blocked_label, _, _ = moderate_form_payload_with_review({
         "name": name,
         "description": description,
@@ -196,7 +202,7 @@ async def create_persona(
         creator_id=current_user.id,
         creator_name=current_user.name,
         created_time=datetime.now(UTC),
-        is_public=is_public,
+        is_public=False if shadow else is_public,
         is_forkable=is_forkable,
         picture=None,
         forked_from_id=forked_from_id,
@@ -280,6 +286,11 @@ async def update_persona(
     if persona.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
+    active_ban = get_active_ban_type(current_user)
+    if is_upload_banned(current_user):
+        raise HTTPException(status_code=403, detail="UPLOAD_BANNED")
+    shadow = active_ban == "shadow_ban"
+
     text_safe, _, blocked_field, blocked_label, _, _ = moderate_form_payload_with_review({
         "name": name,
         "description": description,
@@ -324,7 +335,7 @@ async def update_persona(
     if tags is not None:
         persona.tags = tags
     if is_public is not None:
-        persona.is_public = is_public
+        persona.is_public = False if shadow else is_public
     if is_forkable is not None:
         persona.is_forkable = is_forkable
     if picture:

@@ -11,6 +11,7 @@ import UgcPolicyModal from '../components/UgcPolicyModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
+import BanNotice from '../components/BanNotice';
 
 export default function EntityFormPage() {
   const { t } = useTranslation();
@@ -282,6 +283,7 @@ export default function EntityFormPage() {
         </h2>
         
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
+          <BanNotice banType={userData?.ban_type} banUntil={userData?.ban_until} context="upload" />
           {/* Forked From - Display only */}
           {entityData.forked_from_id && entityData.forked_from_name && (
             <div className="alert alert-info mb-4" role="alert">

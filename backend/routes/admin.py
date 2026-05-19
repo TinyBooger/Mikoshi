@@ -60,9 +60,11 @@ class TokenTopupPackagesUpdateRequest(BaseModel):
 
 
 class UserModerationActionRequest(BaseModel):
-    action: str  # warn | temp_ban | permanent_ban | shadow_ban | ignore | keep | hide | delete
-    notes: Optional[str] = None
-    ban_until: Optional[datetime] = None  # required for temp_ban
+    action: str  # warn | upload_ban | full_ban | shadow_ban | unban | ignore | keep | hide | delete
+    notes: Optional[str] = None          # saved as admin_notes on the report
+    ban_until: Optional[datetime] = None  # optional expiry for any ban type
+    ban_reason: Optional[str] = None      # categorical tag: harassment/spam/abuse/underage/other
+    ban_note: Optional[str] = None        # moderator-visible free text note on the ban
 
 
 class BatchModerationActionRequest(BaseModel):
@@ -70,6 +72,8 @@ class BatchModerationActionRequest(BaseModel):
     action: str
     notes: Optional[str] = None
     ban_until: Optional[datetime] = None
+    ban_reason: Optional[str] = None
+    ban_note: Optional[str] = None
 
 
 @router.get("/user-stats")
@@ -494,9 +498,10 @@ def get_moderation_reports(
                     "exists": True,
                     "name": target_user.name,
                     "email": target_user.email,
-                    "is_banned": target_user.is_banned,
-                    "is_shadow_banned": target_user.is_shadow_banned,
                     "ban_type": target_user.ban_type,
+                    "ban_until": target_user.ban_until.isoformat() if target_user.ban_until else None,
+                    "ban_reason": target_user.ban_reason,
+                    "ban_note": target_user.ban_note,
                 }
             else:
                 target_info = {"exists": False, "name": report.target_name}
@@ -570,7 +575,7 @@ def take_moderation_action(
     now = datetime.now(UTC)
 
     if report.target_type == "user":
-        valid_actions = {"warn", "temp_ban", "permanent_ban", "shadow_ban", "ignore"}
+        valid_actions = {"warn", "upload_ban", "full_ban", "shadow_ban", "unban", "ignore"}
         if action not in valid_actions:
             raise HTTPException(status_code=400, detail=f"Invalid action for user report. Expected one of: {', '.join(sorted(valid_actions))}")
 
@@ -578,26 +583,19 @@ def take_moderation_action(
         if report.target_string_id:
             target_user = db.query(User).filter(User.id == report.target_string_id).first()
 
-        if action == "temp_ban":
-            if not payload.ban_until:
-                raise HTTPException(status_code=400, detail="ban_until is required for temp_ban")
+        if action in {"upload_ban", "full_ban", "shadow_ban"}:
             if target_user:
-                target_user.is_banned = True
-                target_user.ban_type = "temp"
+                target_user.ban_type = action
                 target_user.ban_until = payload.ban_until
-                target_user.ban_reason = payload.notes
-        elif action == "permanent_ban":
+                target_user.ban_reason = payload.ban_reason
+                target_user.ban_note = payload.ban_note
+        elif action == "unban":
             if target_user:
-                target_user.is_banned = True
-                target_user.ban_type = "permanent"
+                target_user.ban_type = None
                 target_user.ban_until = None
-                target_user.ban_reason = payload.notes
-        elif action == "shadow_ban":
-            if target_user:
-                target_user.is_shadow_banned = True
-                target_user.ban_type = "shadow"
-                target_user.ban_reason = payload.notes
-        # warn: no user model changes — report is resolved with notes only
+                target_user.ban_reason = None
+                target_user.ban_note = None
+        # warn/ignore: no user model changes — report is resolved with notes only
 
     else:
         valid_actions = {"keep", "hide", "delete", "ignore"}
@@ -653,25 +651,21 @@ def take_batch_moderation_action(
 
     for report in reports:
         if report.target_type == "user":
-            if action not in {"warn", "temp_ban", "permanent_ban", "shadow_ban", "ignore"}:
+            if action not in {"warn", "upload_ban", "full_ban", "shadow_ban", "unban", "ignore"}:
                 continue
             target_user = None
             if report.target_string_id:
                 target_user = db.query(User).filter(User.id == report.target_string_id).first()
-            if action == "temp_ban" and payload.ban_until and target_user:
-                target_user.is_banned = True
-                target_user.ban_type = "temp"
+            if action in {"upload_ban", "full_ban", "shadow_ban"} and target_user:
+                target_user.ban_type = action
                 target_user.ban_until = payload.ban_until
-                target_user.ban_reason = payload.notes
-            elif action == "permanent_ban" and target_user:
-                target_user.is_banned = True
-                target_user.ban_type = "permanent"
+                target_user.ban_reason = payload.ban_reason
+                target_user.ban_note = payload.ban_note
+            elif action == "unban" and target_user:
+                target_user.ban_type = None
                 target_user.ban_until = None
-                target_user.ban_reason = payload.notes
-            elif action == "shadow_ban" and target_user:
-                target_user.is_shadow_banned = True
-                target_user.ban_type = "shadow"
-                target_user.ban_reason = payload.notes
+                target_user.ban_reason = None
+                target_user.ban_note = None
         else:
             if action not in {"keep", "hide", "delete", "ignore"}:
                 continue

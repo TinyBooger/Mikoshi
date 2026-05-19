@@ -69,11 +69,11 @@ class User(Base):
     default_persona_id = Column(Integer, ForeignKey('personas.id', ondelete='SET NULL'), nullable=True)
 
     # Moderation / ban fields
-    is_banned = Column(Boolean, default=False, nullable=False)
-    is_shadow_banned = Column(Boolean, default=False, nullable=False)
-    ban_type = Column(String(20), nullable=True)  # 'temp' | 'permanent' | 'shadow'
+    # ban_type: null = no ban | 'upload_ban' | 'full_ban' | 'shadow_ban'
+    ban_type = Column(String(20), nullable=True)
     ban_until = Column(DateTime(timezone=True), nullable=True)
-    ban_reason = Column(Text, nullable=True)
+    ban_reason = Column(String(50), nullable=True)  # categorical tag: harassment/spam/abuse/underage/other
+    ban_note = Column(Text, nullable=True)  # moderator-visible free text
 
     chat_histories = relationship("ChatHistory", back_populates="user", cascade="all, delete-orphan")
 
@@ -265,7 +265,7 @@ class ProblemReport(Base):
     created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     resolved_time = Column(DateTime(timezone=True), nullable=True)
     admin_notes = Column(Text, nullable=True)
-    action_taken = Column(String(30), nullable=True)  # warn | temp_ban | permanent_ban | shadow_ban | ignore | keep | hide | delete
+    action_taken = Column(String(30), nullable=True)  # warn | upload_ban | full_ban | shadow_ban | unban | ignore | keep | hide | delete
     resolved_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
 

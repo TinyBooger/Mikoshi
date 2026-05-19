@@ -125,6 +125,8 @@ class UserOut(BaseModel):
     pro_active: bool = False
     pro_days_remaining: int = 0
     pro_status: str = "free"
+    ban_type: Optional[str] = None
+    ban_until: Optional[Any] = None
     
     class Config:
         from_attributes = True

@@ -12,6 +12,32 @@ from utils.chat_history_utils import fetch_user_chat_history
 from utils.token_cap import get_token_cap_info
 
 
+# ── Ban helpers ────────────────────────────────────────────────────────────────
+
+def get_active_ban_type(user: User) -> Optional[str]:
+    """Return the active ban_type ('upload_ban' | 'full_ban' | 'shadow_ban') or None.
+
+    A timed ban is considered expired when ban_until has passed.
+    """
+    ban_type = getattr(user, "ban_type", None)
+    if not ban_type:
+        return None
+    ban_until = getattr(user, "ban_until", None)
+    if ban_until and datetime.now(UTC) > ban_until:
+        return None
+    return ban_type
+
+
+def is_upload_banned(user: User) -> bool:
+    """True for upload_ban and full_ban (all non-shadow upload restrictions)."""
+    return get_active_ban_type(user) in ("upload_ban", "full_ban")
+
+
+def is_chat_banned(user: User) -> bool:
+    """True only for full_ban."""
+    return get_active_ban_type(user) == "full_ban"
+
+
 def get_pro_state(user: User) -> dict[str, Any]:
     """Single source of truth for Pro subscription state.
 
@@ -178,6 +204,11 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
     pro_state = get_pro_state(user)
     token_limits = get_token_cap_info(user, db)
 
+    # Expose ban status — shadow_ban is intentionally hidden from the user
+    active_ban = get_active_ban_type(user)
+    exposed_ban_type = active_ban if active_ban != "shadow_ban" else None
+    exposed_ban_until = getattr(user, "ban_until", None) if exposed_ban_type else None
+
     return {
         "id": user.id,
         "email": user.email,
@@ -211,6 +242,8 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
         "pro_active": pro_state["active"],
         "pro_days_remaining": pro_state["days_remaining"],
         "pro_status": pro_state["status"],
+        "ban_type": exposed_ban_type,
+        "ban_until": exposed_ban_until,
     }
 
 

@@ -21,6 +21,7 @@ from utils.content_review_queue import enqueue_character_review
 from utils.usage_utils import normalize_usage
 from utils.token_usage_ledger import apply_token_usage_with_wallet
 from utils.token_cap import can_consume_tokens, get_token_cap_info, build_token_cap_reached_payload
+from utils.user_utils import get_active_ban_type, is_upload_banned
 
 router = APIRouter()
 
@@ -189,6 +190,11 @@ async def create_character(
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    active_ban = get_active_ban_type(current_user)
+    if is_upload_banned(current_user):
+        raise HTTPException(status_code=403, detail="UPLOAD_BANNED")
+    shadow = active_ban == "shadow_ban"
+
     text_safe, needs_text_review, blocked_field, blocked_label, review_field, review_label = moderate_form_payload_with_review({
         "name": name,
         "persona": persona,
@@ -312,7 +318,7 @@ async def create_character(
         frequency_penalty=chat_config["frequency_penalty"],
         creator_id=current_user.id,
         creator_name=current_user.name,
-        is_public=is_public,
+        is_public=False if shadow else is_public,
         is_forkable=is_forkable,
         views=0,
         picture=None,
@@ -405,6 +411,11 @@ async def update_character(
     char = db.query(Character).filter(Character.id == id).first()
     if not char or char.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not allowed")
+
+    active_ban = get_active_ban_type(current_user)
+    if is_upload_banned(current_user):
+        raise HTTPException(status_code=403, detail="UPLOAD_BANNED")
+    shadow = active_ban == "shadow_ban"
 
     text_safe, needs_text_review, blocked_field, blocked_label, review_field, review_label = moderate_form_payload_with_review({
         "name": name,
@@ -522,7 +533,7 @@ async def update_character(
     char.frequency_penalty = chat_config["frequency_penalty"]
 
     if is_public is not None:
-        char.is_public = is_public
+        char.is_public = False if shadow else is_public
     if is_forkable is not None:
         char.is_forkable = is_forkable
 
