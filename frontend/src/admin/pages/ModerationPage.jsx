@@ -294,9 +294,7 @@ export default function ModerationPage() {
           <button className="btn btn-sm btn-outline-warning" disabled={disabled} onClick={() => handleOpenBanDialog(report, 'upload_ban')}>Upload Ban</button>
           <button className="btn btn-sm btn-outline-danger" disabled={disabled} onClick={() => handleOpenBanDialog(report, 'full_ban')}>Full Ban</button>
           <button className="btn btn-sm btn-outline-dark" disabled={disabled} onClick={() => handleOpenBanDialog(report, 'shadow_ban')}>Shadow Ban</button>
-          {isBanned && (
-            <button className="btn btn-sm btn-outline-success" disabled={disabled} onClick={() => applyAction(report, 'unban', {})}>Unban</button>
-          )}
+          <button className="btn btn-sm btn-outline-success" disabled={disabled || !isBanned} onClick={() => applyAction(report, 'unban', {})}>Unban</button>
         </div>
       );
     }

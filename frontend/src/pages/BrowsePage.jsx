@@ -7,7 +7,7 @@ import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
 import OnboardingTour from '../components/OnboardingTour';
 import UpdateNotificationModal from '../components/UpdateNotificationModal';
-import ProblemReportModal from '../components/ProblemReportModal';
+import MessageCenter from '../components/MessageCenter';
 import textLogo from '../assets/images/logo_text.png';
 
 
@@ -78,7 +78,6 @@ function BrowsePage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showUpdateNotification, setShowUpdateNotification] = useState(false);
-  const [showProblemReport, setShowProblemReport] = useState(false);
   const [followingIds, setFollowingIds] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchSuggestions, setSearchSuggestions] = useState([]);
@@ -724,28 +723,7 @@ function BrowsePage() {
               <i className="bi bi-megaphone" style={{ fontSize: '1.2rem' }}></i>
             </button>
 
-            <button
-              onClick={() => setShowProblemReport(true)}
-              aria-label={t('topbar.report_problem')}
-              title={t('topbar.report_problem')}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                color: '#736B92',
-                fontSize: '1.2rem',
-                padding: '0.35rem 0.55rem',
-                borderRadius: 8,
-                cursor: 'pointer',
-                transition: 'background 0.16s, color 0.16s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              <i className="bi bi-flag" style={{ fontSize: '1.2rem' }}></i>
-            </button>
+            <MessageCenter />
           </div>
           </div>
         </section>
@@ -1212,7 +1190,6 @@ function BrowsePage() {
         <i className="bi bi-arrow-up" style={{ fontSize: isMobile ? '1rem' : '1.1rem' }}></i>
       </button>
       <UpdateNotificationModal show={showUpdateNotification} onClose={() => setShowUpdateNotification(false)} />
-      <ProblemReportModal show={showProblemReport} onClose={() => setShowProblemReport(false)} />
       </div>
     </PageWrapper>
   );

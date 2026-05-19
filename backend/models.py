@@ -345,3 +345,19 @@ class SystemSettings(Base):
     value = Column(Text, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
     updated_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+
+
+class UserMessage(Base):
+    """User inbox messages: warn/ban notices, edit advice, or generic system messages."""
+    __tablename__ = "user_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    # type: warn | ban | unban | advice | system
+    msg_type = Column(String(20), nullable=False, default='system', index=True)
+    title = Column(String(200), nullable=False)
+    body = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False, nullable=False, index=True)
+    extra = Column(JSONB, default={}, nullable=False)  # e.g. ban_until, ban_reason, target info
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+    created_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)  # admin who sent it

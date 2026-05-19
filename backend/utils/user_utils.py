@@ -188,6 +188,11 @@ def enrich_user_with_character_count(user: User, db: Session) -> dict:
         "pro_active": pro_state["active"],
         "pro_days_remaining": pro_state["days_remaining"],
         "pro_status": pro_state["status"],
+        # Ban status (all fields returned for admin use)
+        "ban_type": getattr(user, "ban_type", None),
+        "ban_until": getattr(user, "ban_until", None),
+        "ban_reason": getattr(user, "ban_reason", None),
+        "ban_note": getattr(user, "ban_note", None),
     }
 
 

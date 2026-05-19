@@ -13,6 +13,7 @@ from schemas import UserOut, UserMessageOut
 from utils.audit_logger import AuditLog
 from utils.chat_history_utils import count_chat_history_messages
 from utils.token_wallet import get_token_topup_packages, set_token_topup_packages
+from routes.user_messages import create_moderation_message
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -343,7 +344,7 @@ def get_single_user_token_usage(
     }
 
 
-@router.get("/users", response_model=List[UserOut])
+@router.get("/users")
 def get_all_users(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
@@ -623,6 +624,18 @@ def take_moderation_action(
     report.resolved_by = current_admin.id
     report.admin_notes = payload.notes
 
+    # Send an inbox message to the affected user for user-targeted moderation actions
+    if report.target_type == "user" and report.target_string_id:
+        create_moderation_message(
+            db=db,
+            user_id=report.target_string_id,
+            action=action,
+            notes=payload.notes,
+            admin_id=current_admin.id,
+            ban_until=payload.ban_until,
+            ban_reason=payload.ban_reason,
+        )
+
     db.commit()
 
     return {"message": f"Action '{action}' applied to report #{report_id}"}
@@ -797,6 +810,64 @@ def toggle_admin_status(
     return {
         "message": f"User {'granted' if user.is_admin else 'revoked'} admin privileges",
         "is_admin": user.is_admin
+    }
+
+
+class DirectModerationRequest(BaseModel):
+    action: str               # warn | upload_ban | full_ban | shadow_ban | unban
+    notes: Optional[str] = None
+    ban_until: Optional[datetime] = None
+    ban_reason: Optional[str] = None
+    ban_note: Optional[str] = None
+
+
+@router.post("/users/{user_id}/moderate")
+def moderate_user_directly(
+    user_id: str,
+    payload: DirectModerationRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user),
+):
+    """Apply a moderation action directly to a user (no report required) — Admin only."""
+    valid_actions = {"warn", "upload_ban", "full_ban", "shadow_ban", "unban"}
+    action = (payload.action or "").strip().lower()
+    if action not in valid_actions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid action. Expected one of: {', '.join(sorted(valid_actions))}",
+        )
+
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if action in {"upload_ban", "full_ban", "shadow_ban"}:
+        target.ban_type = action
+        target.ban_until = payload.ban_until
+        target.ban_reason = payload.ban_reason
+        target.ban_note = payload.ban_note
+    elif action == "unban":
+        target.ban_type = None
+        target.ban_until = None
+        target.ban_reason = None
+        target.ban_note = None
+
+    # Send inbox message to the affected user
+    from routes.user_messages import create_moderation_message
+    create_moderation_message(
+        db=db,
+        user_id=user_id,
+        action=action,
+        notes=payload.notes,
+        admin_id=current_admin.id,
+        ban_until=payload.ban_until,
+        ban_reason=payload.ban_reason,
+    )
+
+    db.commit()
+    return {
+        "message": f"Action '{action}' applied to user {user_id}",
+        "ban_type": target.ban_type,
     }
 
 

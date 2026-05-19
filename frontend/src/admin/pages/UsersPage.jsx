@@ -5,9 +5,26 @@ import EditModal from "../components/EditModal";
 import PaginationBar from "../../components/PaginationBar";
 import "./UsersPage.css";
 
+const BAN_REASON_OPTIONS = [
+  { value: 'harassment', label: 'Harassment / Bullying' },
+  { value: 'spam', label: 'Spam / Flooding' },
+  { value: 'abuse', label: 'Platform Abuse' },
+  { value: 'underage', label: 'Underage / NSFW' },
+  { value: 'other', label: 'Other Violation' },
+];
+
+const BAN_TYPE_LABELS = {
+  upload_ban: { label: 'Upload Ban', cls: 'bg-warning text-dark' },
+  full_ban: { label: 'Full Ban', cls: 'bg-danger' },
+  shadow_ban: { label: 'Shadow Ban', cls: 'bg-secondary' },
+};
+
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
+  const [modDialog, setModDialog] = useState(null); // { user }
+  const [modForm, setModForm] = useState({ action: 'warn', ban_reason: '', ban_note: '', days: '' });
+  const [modLoading, setModLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -121,8 +138,46 @@ export default function UsersPage() {
     }
   };
 
+  const applyModerationAction = async () => {
+    const { action, ban_reason, ban_note, days } = modForm;
+    const user = modDialog?.user;
+    if (!user) return;
+    const isBanAction = ['upload_ban', 'full_ban', 'shadow_ban'].includes(action);
+    let ban_until = null;
+    if (isBanAction && days) {
+      const d = new Date();
+      d.setDate(d.getDate() + Number(days));
+      ban_until = d.toISOString();
+    }
+    setModLoading(true);
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/admin/users/${user.id}/moderate`, {
+        method: 'POST',
+        headers: { 'Authorization': sessionToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          ban_reason: isBanAction ? ban_reason || null : null,
+          ban_note: ban_note || null,
+          ban_until,
+          notes: ban_note || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(`Error: ${err.detail || 'Moderation failed'}`);
+        return;
+      }
+      setModDialog(null);
+      fetchUsers();
+    } catch (e) {
+      console.error(e);
+      alert('Moderation request failed');
+    } finally {
+      setModLoading(false);
+    }
+  };
+
   const userFields = [
-    { name: 'email', label: 'Email', type: 'email', required: true, readOnly: true },
     { name: 'phone_number', label: 'Phone Number', type: 'tel' },
     { name: 'name', label: 'Name', type: 'text', required: true },
     { name: 'bio', label: 'Bio', type: 'textarea', rows: 3 },
@@ -164,22 +219,15 @@ export default function UsersPage() {
     'Status': (
       <div style={{ fontSize: '0.85rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
         {user.is_admin && (
-          <span style={{
-            background: '#ff9800',
-            color: '#fff',
-            padding: '0.25rem 0.5rem',
-            borderRadius: '0.25rem',
-            fontWeight: 600
-          }}>Admin</span>
+          <span className="badge bg-warning text-dark">Admin</span>
         )}
         {user.is_pro && (
-          <span style={{
-            background: '#4CAF50',
-            color: '#fff',
-            padding: '0.25rem 0.5rem',
-            borderRadius: '0.25rem',
-            fontWeight: 600
-          }}>Pro</span>
+          <span className="badge bg-success">Pro</span>
+        )}
+        {user.ban_type && BAN_TYPE_LABELS[user.ban_type] && (
+          <span className={`badge ${BAN_TYPE_LABELS[user.ban_type].cls}`}>
+            {BAN_TYPE_LABELS[user.ban_type].label}
+          </span>
         )}
       </div>
     ),
@@ -263,6 +311,18 @@ export default function UsersPage() {
               data={displayUsers}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              customActions={[
+                {
+                  icon: 'bi-shield-exclamation',
+                  text: 'Moderate',
+                  className: 'btn-outline-warning',
+                  onClick: (row) => {
+                    const user = paginatedUsers.find(u => u.id === row.id);
+                    setModForm({ action: 'warn', ban_reason: '', ban_note: '', days: '' });
+                    setModDialog({ user });
+                  },
+                },
+              ]}
             />
           </div>
         </div>
@@ -284,6 +344,107 @@ export default function UsersPage() {
           onSave={handleSave}
           onClose={() => setEditingUser(null)}
         />
+      )}
+
+      {/* Moderation Modal */}
+      {modDialog && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={(e) => { if (e.target === e.currentTarget) setModDialog(null); }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="bi bi-shield-exclamation me-2 text-warning" />
+                  Moderate: <strong>{modDialog.user.name}</strong>
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setModDialog(null)} />
+              </div>
+              <div className="modal-body">
+                {/* Current ban status */}
+                {modDialog.user.ban_type && (
+                  <div className="alert alert-warning py-2 mb-3">
+                    Currently: <strong>{BAN_TYPE_LABELS[modDialog.user.ban_type]?.label || modDialog.user.ban_type}</strong>
+                    {modDialog.user.ban_until && <> until {new Date(modDialog.user.ban_until).toLocaleDateString()}</>}
+                  </div>
+                )}
+
+                {/* Action selector */}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Action</label>
+                  <div className="d-flex flex-wrap gap-1">
+                    {[
+                      { key: 'warn', label: 'Warn', cls: 'outline-secondary' },
+                      { key: 'upload_ban', label: 'Upload Ban', cls: 'outline-warning' },
+                      { key: 'full_ban', label: 'Full Ban', cls: 'outline-danger' },
+                      { key: 'shadow_ban', label: 'Shadow Ban', cls: 'outline-dark' },
+                      { key: 'unban', label: 'Unban', cls: 'outline-success' },
+                    ].map(({ key, label, cls }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        className={`btn btn-sm btn-${modForm.action === key ? cls.replace('outline-', '') : cls}`}
+                        onClick={() => setModForm(f => ({ ...f, action: key }))}
+                      >{label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Ban reason — only for ban actions */}
+                {['upload_ban', 'full_ban', 'shadow_ban'].includes(modForm.action) && (
+                  <>
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold">Reason</label>
+                      <select
+                        className="form-select"
+                        value={modForm.ban_reason}
+                        onChange={e => setModForm(f => ({ ...f, ban_reason: e.target.value }))}
+                      >
+                        <option value="">— select reason —</option>
+                        {BAN_REASON_OPTIONS.map(o => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold">Duration (days, blank = permanent)</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        min="1"
+                        placeholder="Leave blank for permanent ban"
+                        value={modForm.days}
+                        onChange={e => setModForm(f => ({ ...f, days: e.target.value }))}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Moderator note — always visible */}
+                {modForm.action !== 'unban' && (
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Moderator Note</label>
+                    <textarea
+                      className="form-control"
+                      rows={3}
+                      placeholder="Optional internal note / message to user"
+                      value={modForm.ban_note}
+                      onChange={e => setModForm(f => ({ ...f, ban_note: e.target.value }))}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setModDialog(null)}>Cancel</button>
+                <button
+                  className="btn btn-primary"
+                  disabled={modLoading}
+                  onClick={applyModerationAction}
+                >
+                  {modLoading ? 'Applying…' : 'Apply'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
