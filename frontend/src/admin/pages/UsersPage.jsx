@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useContext } from "react";
+import { useLocation } from "react-router";
 import { AuthContext } from "../../components/AuthProvider";
 import Table from "../components/Table";
 import EditModal from "../components/EditModal";
 import PaginationBar from "../../components/PaginationBar";
+import { ViolationHistoryModal } from "./ModerationPage";
 import "./UsersPage.css";
 
 const BAN_REASON_OPTIONS = [
@@ -25,6 +27,9 @@ export default function UsersPage() {
   const [modDialog, setModDialog] = useState(null); // { user }
   const [modForm, setModForm] = useState({ action: 'warn', ban_reason: '', ban_note: '', days: '' });
   const [modLoading, setModLoading] = useState(false);
+  const [historyDialog, setHistoryDialog] = useState(null); // { user, data }
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyTab, setHistoryTab] = useState('account'); // 'account' | 'content'
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -32,6 +37,13 @@ export default function UsersPage() {
   const [filterPro, setFilterPro] = useState("all");
   const pageSize = 20;
   const { sessionToken } = useContext(AuthContext);
+  const location = useLocation();
+
+  // Pre-fill search when navigated here with a specific user ID
+  useEffect(() => {
+    const uid = location.state?.highlightUserId;
+    if (uid) setSearchQuery(uid);
+  }, [location.state?.highlightUserId]);
 
   const toDateTimeLocalValue = (dateValue) => {
     if (!dateValue) return '';
@@ -138,6 +150,26 @@ export default function UsersPage() {
     }
   };
 
+  const openHistory = async (user) => {
+    setHistoryTab('account');
+    setHistoryDialog({ user, data: null });
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/admin/users/${user.id}/violation-history`, {
+        headers: { 'Authorization': sessionToken },
+      });
+      if (!res.ok) throw new Error('Failed to load history');
+      const data = await res.json();
+      setHistoryDialog({ user, data });
+    } catch (e) {
+      console.error(e);
+      alert('Failed to load violation history');
+      setHistoryDialog(null);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   const applyModerationAction = async () => {
     const { action, ban_reason, ban_note, days } = modForm;
     const user = modDialog?.user;
@@ -190,10 +222,12 @@ export default function UsersPage() {
 
   // Filter and search users
   const filteredUsers = users.filter(user => {
+    const q = searchQuery.toLowerCase();
     const matchesSearch = 
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (user.phone_number && user.phone_number.toLowerCase().includes(searchQuery.toLowerCase()));
+      (user.name && user.name.toLowerCase().includes(q)) ||
+      (user.email && user.email.toLowerCase().includes(q)) ||
+      (user.phone_number && user.phone_number.toLowerCase().includes(q)) ||
+      (user.id && user.id.toLowerCase().includes(q));
     
     const matchesFilter = 
       filterPro === 'all' || 
@@ -322,6 +356,15 @@ export default function UsersPage() {
                     setModDialog({ user });
                   },
                 },
+                {
+                  icon: 'bi-clock-history',
+                  text: 'History',
+                  className: 'btn-outline-secondary',
+                  onClick: (row) => {
+                    const user = paginatedUsers.find(u => u.id === row.id);
+                    openHistory(user);
+                  },
+                },
               ]}
             />
           </div>
@@ -445,6 +488,19 @@ export default function UsersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Violation History Modal */}
+      {historyDialog && (
+        <ViolationHistoryModal
+          userId={historyDialog.user.id}
+          userName={historyDialog.user.name}
+          data={historyDialog.data}
+          loading={historyLoading}
+          tab={historyTab}
+          onTabChange={setHistoryTab}
+          onClose={() => setHistoryDialog(null)}
+        />
       )}
 
     </div>

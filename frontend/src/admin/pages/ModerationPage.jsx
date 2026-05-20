@@ -81,6 +81,11 @@ export default function ModerationPage() {
   const [banDialogBatch, setBanDialogBatch] = useState(null); // { action } | null
   const [banForm, setBanForm] = useState({ ban_reason: '', ban_note: '', days: '' });
 
+  // Violation history modal
+  const [violationModal, setViolationModal] = useState(null); // { userId, userName, data } | null
+  const [violationModalLoading, setViolationModalLoading] = useState(false);
+  const [violationTab, setViolationTab] = useState('account');
+
   const resetBanForm = () => setBanForm({ ban_reason: '', ban_note: '', days: '' });
 
   const fetchAppeals = useCallback(async () => {
@@ -164,6 +169,28 @@ export default function ModerationPage() {
   useEffect(() => {
     if (activeTab === 'contentAppeals') fetchContentAppeals();
   }, [activeTab, fetchContentAppeals]);
+
+  // ── Violation history modal ────────────────────────────────
+  const openViolationHistory = async (userId, userName) => {
+    setViolationTab('account');
+    setViolationModal({ userId, userName, data: null });
+    setViolationModalLoading(true);
+    try {
+      const res = await fetch(
+        `${window.API_BASE_URL}/api/admin/users/${userId}/violation-history`,
+        { headers: { Authorization: sessionToken } }
+      );
+      if (!res.ok) throw new Error('Failed to fetch history');
+      const data = await res.json();
+      setViolationModal({ userId, userName, data });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to load violation history');
+      setViolationModal(null);
+    } finally {
+      setViolationModalLoading(false);
+    }
+  };
 
   // ── Single action ──────────────────────────────────────────
   const applyAction = async (report, action, extra = {}) => {
@@ -405,6 +432,28 @@ export default function ModerationPage() {
     const profileLink = report.target_type === 'user' && report.target_string_id
       ? <Link className="small" to={`/profile/${report.target_string_id}`} target="_blank" rel="noreferrer">View Profile</Link>
       : null;
+
+    // Determine which user ID to use for violation history
+    const historyUserId = report.target_type === 'user'
+      ? report.target_string_id
+      : info.creator_id || null;
+    const historyUserName = report.target_type === 'user'
+      ? (info.name || report.target_name)
+      : info.creator_name || null;
+
+    const snapshot = info.violation_snapshot;
+    const totalViolations = snapshot
+      ? (snapshot.account_action_count || 0) + (snapshot.content_action_count || 0)
+      : null;
+
+    const ACCT_ACTION_BADGE = {
+      warn:        { label: 'Warn',       cls: 'bg-warning text-dark' },
+      upload_ban:  { label: 'Upload Ban', cls: 'bg-warning text-dark' },
+      full_ban:    { label: 'Full Ban',   cls: 'bg-danger' },
+      shadow_ban:  { label: 'Shadow Ban', cls: 'bg-secondary' },
+      unban:       { label: 'Unban',      cls: 'bg-success' },
+    };
+
     return (
       <div className="small">
         <div className="fw-semibold">{label}</div>
@@ -421,6 +470,55 @@ export default function ModerationPage() {
           <div className="text-muted">Until: {new Date(info.ban_until).toLocaleDateString()}</div>
         )}
         {profileLink}
+
+        {/* Violation snapshot */}
+        {snapshot && totalViolations !== null && (
+          <div className="mt-1 pt-1" style={{ borderTop: '1px dashed #dee2e6' }}>
+            {totalViolations === 0 ? (
+              <span className="text-success" style={{ fontSize: '0.75rem' }}>✓ No prior violations</span>
+            ) : (
+              <span className="text-danger fw-semibold" style={{ fontSize: '0.75rem' }}>
+                ⚠ {totalViolations} prior violation{totalViolations !== 1 ? 's' : ''}
+              </span>
+            )}
+            {snapshot.account_action_count > 0 && (
+              <span className="text-muted ms-1" style={{ fontSize: '0.72rem' }}>
+                ({snapshot.account_action_count} acct
+                {snapshot.content_action_count > 0 ? `, ${snapshot.content_action_count} content` : ''})
+              </span>
+            )}
+            {snapshot.last_action && (
+              <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                Last:{' '}
+                <span className={`badge ${(ACCT_ACTION_BADGE[snapshot.last_action] || {}).cls || 'bg-secondary'}`} style={{ fontSize: '0.65rem' }}>
+                  {(ACCT_ACTION_BADGE[snapshot.last_action] || {}).label || snapshot.last_action}
+                </span>
+                {' '}{snapshot.last_action_at ? new Date(snapshot.last_action_at).toLocaleDateString() : ''}
+              </div>
+            )}
+            {historyUserId && (
+              <div className="mt-1">
+                <button
+                  type="button"
+                  className="btn btn-link btn-sm p-0"
+                  style={{ fontSize: '0.75rem' }}
+                  onClick={() => openViolationHistory(historyUserId, historyUserName)}
+                >
+                  <i className="bi bi-clock-history me-1" />Full History
+                </button>
+                <Link
+                  className="ms-2"
+                  style={{ fontSize: '0.75rem' }}
+                  to={`/admin/users`}
+                  state={{ highlightUserId: historyUserId }}
+                  title="Go to Users panel"
+                >
+                  Users Panel ↗
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -1123,6 +1221,137 @@ export default function ModerationPage() {
         </div>
       );
     })()}
+
+    {/* ── Violation History Modal ── */}
+    {violationModal && (
+      <ViolationHistoryModal
+        userId={violationModal.userId}
+        userName={violationModal.userName}
+        data={violationModal.data}
+        loading={violationModalLoading}
+        tab={violationTab}
+        onTabChange={setViolationTab}
+        onClose={() => setViolationModal(null)}
+      />
+    )}
     </>
+  );
+}
+
+// Violation history modal (shared between moderation queue & history)
+export function ViolationHistoryModal({ userId, userName, data, loading, tab, onTabChange, onClose }) {
+  const ACCT_BADGE = {
+    warn:       { label: 'Warn',       cls: 'bg-warning text-dark' },
+    upload_ban: { label: 'Upload Ban', cls: 'bg-warning text-dark' },
+    full_ban:   { label: 'Full Ban',   cls: 'bg-danger' },
+    shadow_ban: { label: 'Shadow Ban', cls: 'bg-secondary' },
+    unban:      { label: 'Unban',      cls: 'bg-success' },
+  };
+  const CONTENT_BADGE = {
+    restrict: { label: 'Restricted', cls: 'bg-warning text-dark' },
+    takedown: { label: 'Taken Down', cls: 'bg-danger' },
+    delete:   { label: 'Deleted',    cls: 'bg-dark' },
+    hide:     { label: 'Hidden',     cls: 'bg-secondary' },
+    unban:    { label: 'Restored',   cls: 'bg-success' },
+  };
+  return (
+    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">
+              <i className="bi bi-clock-history me-2 text-secondary" />
+              Violation History: <strong>{userName || userId}</strong>
+            </h5>
+            <button type="button" className="btn-close" onClick={onClose} />
+          </div>
+          <div className="modal-body">
+            {loading ? (
+              <div className="text-center py-4">
+                <div className="spinner-border text-secondary" role="status" />
+                <div className="mt-2 text-muted">Loading…</div>
+              </div>
+            ) : data ? (
+              <>
+                <ul className="nav nav-tabs mb-3">
+                  <li className="nav-item">
+                    <button className={`nav-link${tab === 'account' ? ' active' : ''}`} onClick={() => onTabChange('account')}>
+                      Account Actions
+                      <span className="badge bg-secondary ms-1">{data.account_actions.length}</span>
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button className={`nav-link${tab === 'content' ? ' active' : ''}`} onClick={() => onTabChange('content')}>
+                      Content Bans
+                      <span className="badge bg-secondary ms-1">{data.content_actions.length}</span>
+                    </button>
+                  </li>
+                </ul>
+
+                {tab === 'account' && (
+                  data.account_actions.length === 0
+                    ? <p className="text-muted text-center py-3">No account-level actions recorded.</p>
+                    : <div className="list-group">
+                        {data.account_actions.map(log => {
+                          const b = ACCT_BADGE[log.action] || { label: log.action, cls: 'bg-secondary' };
+                          return (
+                            <div key={log.id} className="list-group-item flex-column align-items-start py-3">
+                              <div className="d-flex justify-content-between align-items-start mb-1">
+                                <span>
+                                  <span className={`badge ${b.cls}`}>{b.label}</span>
+                                  {log.ban_reason && <span className="badge bg-light text-dark border ms-1" style={{ fontSize: '0.75rem' }}>{log.ban_reason}</span>}
+                                </span>
+                                <small className="text-muted ms-3 text-nowrap">{new Date(log.created_at).toLocaleString()}</small>
+                              </div>
+                              {log.ban_until && <div style={{ fontSize: '0.83rem', color: '#888' }}>Until: {new Date(log.ban_until).toLocaleDateString()}</div>}
+                              {(log.ban_note || log.notes) && <div style={{ fontSize: '0.83rem', color: '#555' }}>{log.ban_note || log.notes}</div>}
+                              <div style={{ fontSize: '0.78rem', color: '#999', marginTop: '0.2rem' }}>
+                                By <strong>{log.admin_name || '—'}</strong>
+                                {log.source === 'report' && log.source_report_id && <> · Report #{log.source_report_id}</>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                )}
+
+                {tab === 'content' && (
+                  data.content_actions.length === 0
+                    ? <p className="text-muted text-center py-3">No content moderation actions recorded.</p>
+                    : <div className="list-group">
+                        {data.content_actions.map(log => {
+                          const b = CONTENT_BADGE[log.action] || { label: log.action, cls: 'bg-secondary' };
+                          return (
+                            <div key={log.id} className="list-group-item flex-column align-items-start py-3">
+                              <div className="d-flex justify-content-between align-items-start mb-1">
+                                <span>
+                                  <span className={`badge ${b.cls}`}>{b.label}</span>
+                                  <span className="badge bg-light text-dark border ms-1" style={{ textTransform: 'capitalize', fontSize: '0.75rem' }}>{log.entity_type}</span>
+                                  <span className="ms-1" style={{ fontSize: '0.88rem', fontWeight: 500 }}>{log.entity_name || `#${log.entity_id}`}</span>
+                                </span>
+                                <small className="text-muted ms-3 text-nowrap">{new Date(log.created_at).toLocaleString()}</small>
+                              </div>
+                              {log.notes && <div style={{ fontSize: '0.83rem', color: '#555' }}>{log.notes}</div>}
+                              <div style={{ fontSize: '0.78rem', color: '#999', marginTop: '0.2rem' }}>
+                                By <strong>{log.admin_name || '—'}</strong>
+                                {log.source === 'report' && log.source_report_id && <> · Report #{log.source_report_id}</>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                )}
+              </>
+            ) : null}
+          </div>
+          <div className="modal-footer d-flex justify-content-between">
+            <Link to="/admin/users" state={{ highlightUserId: userId }} className="btn btn-outline-secondary btn-sm">
+              <i className="bi bi-people me-1" />Open in Users Panel
+            </Link>
+            <button className="btn btn-secondary" onClick={onClose}>Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

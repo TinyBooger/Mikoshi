@@ -12,7 +12,7 @@ export default function AdminSidebar({ mobileOpen = false }) {
         <li><Link className="nav-link text-white" to="/admin/user-stats">User Statistics</Link></li>
         <li><Link className="nav-link text-white" to="/admin/users">Users</Link></li>
         <li><Link className="nav-link text-white" to="/admin/invitations">Invitation Codes</Link></li>
-        <li><Link className="nav-link text-white" to="/admin/characters">Characters</Link></li>
+        <li><Link className="nav-link text-white" to="/admin/content">Content Management</Link></li>
         <li><Link className="nav-link text-white" to="/admin/tags">Tags</Link></li>
         <li><Link className="nav-link text-white" to="/admin/search-terms">Search Keywords</Link></li>
         <li><Link className="nav-link text-white" to="/admin/problem-reports">Problem Reports</Link></li>

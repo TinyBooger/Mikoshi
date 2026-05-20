@@ -17,7 +17,7 @@ import SearchPage from "./pages/SearchPage";
 import { AuthContext } from './components/AuthProvider';
 import DashboardPage from "./admin/pages/DashboardPage";
 import UsersPage from "./admin/pages/UsersPage";
-import CharactersPage from './admin/pages/CharactersPage.jsx';
+import ContentManagementPage from './admin/pages/ContentManagementPage.jsx';
 import TagsPage from './admin/pages/TagsPage.jsx';
 import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
 import InvitationCodesPage from './admin/pages/InvitationCodesPage.jsx';
@@ -114,7 +114,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'users', element: <UsersPage /> },
-      { path: 'characters', element: <CharactersPage /> },
+      { path: 'content', element: <ContentManagementPage /> },
+      { path: 'characters', element: <ContentManagementPage /> },
       { path: 'tags', element: <TagsPage /> },
       { path: 'search-terms', element: <SearchTermsPage /> },
       { path: 'invitations', element: <InvitationCodesPage /> },

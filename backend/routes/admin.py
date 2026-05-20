@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_, and_
 from datetime import datetime, timedelta, UTC
 from database import get_db
-from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger, ContentReviewQueue, ProblemReport, SystemSettings, Scene, Persona, BanAppeal, ContentBanAppeal
+from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger, ContentReviewQueue, ProblemReport, SystemSettings, Scene, Persona, BanAppeal, ContentBanAppeal, UserModerationLog, ContentModerationLog
 from utils.session import get_current_admin_user
 from utils.security_middleware import get_rate_limit_status
 from utils.user_utils import enrich_user_with_character_count, build_user_response
@@ -16,6 +16,66 @@ from utils.token_wallet import get_token_topup_packages, set_token_topup_package
 from routes.user_messages import create_moderation_message, create_content_moderation_message
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+# ---------------------------------------------------------------------------
+# Moderation log helpers
+# ---------------------------------------------------------------------------
+
+def _log_user_moderation(
+    db: Session,
+    *,
+    user_id: str,
+    action: str,
+    admin: User,
+    ban_reason: Optional[str] = None,
+    ban_note: Optional[str] = None,
+    ban_until=None,
+    notes: Optional[str] = None,
+    source: str = "direct",
+    source_report_id: Optional[int] = None,
+):
+    """Insert a UserModerationLog row (does not commit)."""
+    db.add(UserModerationLog(
+        user_id=user_id,
+        action=action,
+        ban_reason=ban_reason,
+        ban_note=ban_note,
+        ban_until=ban_until,
+        admin_id=admin.id,
+        admin_name=admin.name,
+        source=source,
+        source_report_id=source_report_id,
+        notes=notes,
+    ))
+
+
+def _log_content_moderation(
+    db: Session,
+    *,
+    creator_id: str,
+    entity_type: str,
+    entity_id: int,
+    entity_name: Optional[str],
+    action: str,
+    admin: User,
+    notes: Optional[str] = None,
+    source: str = "direct",
+    source_report_id: Optional[int] = None,
+):
+    """Insert a ContentModerationLog row (does not commit)."""
+    db.add(ContentModerationLog(
+        creator_id=creator_id,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        entity_name=entity_name,
+        action=action,
+        admin_id=admin.id,
+        admin_name=admin.name,
+        source=source,
+        source_report_id=source_report_id,
+        notes=notes,
+    ))
 
 
 # Pydantic models for request bodies
@@ -38,6 +98,30 @@ class CharacterUpdate(BaseModel):
     tags: Optional[List[str]] = None
     is_public: Optional[bool] = None
     is_forkable: Optional[bool] = None
+
+
+class SceneUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    intro: Optional[str] = None
+    greeting: Optional[str] = None
+    tags: Optional[List[str]] = None
+    is_public: Optional[bool] = None
+    is_forkable: Optional[bool] = None
+
+
+class PersonaUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    intro: Optional[str] = None
+    tags: Optional[List[str]] = None
+    is_public: Optional[bool] = None
+    is_forkable: Optional[bool] = None
+
+
+class ContentModerationRequest(BaseModel):
+    action: str               # restrict | takedown | unban | delete
+    notes: Optional[str] = None
 
 
 class TagUpdate(BaseModel):
@@ -378,6 +462,56 @@ def get_all_characters(
     ]
 
 
+@router.get("/scenes")
+def get_all_scenes(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Get all scenes - Admin only"""
+    scenes = db.query(Scene).all()
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "intro": s.intro,
+            "creator_name": s.creator_name,
+            "is_public": s.is_public,
+            "is_forkable": s.is_forkable,
+            "views": s.views,
+            "likes": s.likes,
+            "moderation_status": s.moderation_status,
+            "created_time": s.created_time,
+            "tags": s.tags,
+        }
+        for s in scenes
+    ]
+
+
+@router.get("/personas")
+def get_all_personas(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Get all personas - Admin only"""
+    personas = db.query(Persona).all()
+    return [
+        {
+            "id": p.id,
+            "name": p.name,
+            "intro": p.intro,
+            "creator_name": p.creator_name,
+            "is_public": p.is_public,
+            "is_forkable": p.is_forkable,
+            "views": p.views,
+            "likes": p.likes,
+            "moderation_status": p.moderation_status,
+            "created_time": p.created_time,
+            "tags": p.tags,
+        }
+        for p in personas
+    ]
+
+
 @router.get("/review-queue")
 def get_content_review_queue(
     status: str = "pending",
@@ -450,6 +584,20 @@ def resolve_content_review_queue_item(
     elif action == "delete" and character:
         db.delete(character)
 
+    # Log the action if it affects the content
+    if action in {"hide", "delete"} and character:
+        _log_content_moderation(
+            db,
+            creator_id=character.creator_id,
+            entity_type="character",
+            entity_id=item.character_id,
+            entity_name=item.character_name,
+            action=action,
+            admin=current_admin,
+            notes=payload.notes,
+            source="content_review",
+        )
+
     item.status = f"resolved_{action}"
     item.resolved_time = now
     item.resolved_by = current_admin.id
@@ -484,6 +632,29 @@ def get_moderation_reports(
     reports = query.order_by(desc(ProblemReport.created_time)).all()
     result = []
 
+    def _violation_snapshot(user_id: str) -> dict:
+        """Return lightweight violation counts + last action for a given user."""
+        acct_count = db.query(func.count(UserModerationLog.id)).filter(
+            UserModerationLog.user_id == user_id,
+            UserModerationLog.action.in_(["warn", "upload_ban", "full_ban", "shadow_ban"]),
+        ).scalar() or 0
+        content_count = db.query(func.count(ContentModerationLog.id)).filter(
+            ContentModerationLog.creator_id == user_id,
+            ContentModerationLog.action.in_(["restrict", "takedown", "delete", "hide"]),
+        ).scalar() or 0
+        last_log = (
+            db.query(UserModerationLog)
+            .filter(UserModerationLog.user_id == user_id)
+            .order_by(desc(UserModerationLog.created_at))
+            .first()
+        )
+        return {
+            "account_action_count": acct_count,
+            "content_action_count": content_count,
+            "last_action": last_log.action if last_log else None,
+            "last_action_at": last_log.created_at.isoformat() if last_log else None,
+        }
+
     for report in reports:
         reporter = None
         if report.user_id:
@@ -503,6 +674,7 @@ def get_moderation_reports(
                     "ban_until": target_user.ban_until.isoformat() if target_user.ban_until else None,
                     "ban_reason": target_user.ban_reason,
                     "ban_note": target_user.ban_note,
+                    "violation_snapshot": _violation_snapshot(target_user.id),
                 }
             else:
                 target_info = {"exists": False, "name": report.target_name}
@@ -516,6 +688,7 @@ def get_moderation_reports(
                     "creator_name": character.creator_name,
                     "creator_id": character.creator_id,
                     "moderation_status": character.moderation_status,
+                    "violation_snapshot": _violation_snapshot(character.creator_id) if character.creator_id else None,
                 }
             else:
                 target_info = {"exists": False, "name": report.target_name}
@@ -530,6 +703,7 @@ def get_moderation_reports(
                     "creator_name": entity.creator_name,
                     "creator_id": entity.creator_id,
                     "moderation_status": entity.moderation_status,
+                    "violation_snapshot": _violation_snapshot(entity.creator_id) if entity.creator_id else None,
                 }
             else:
                 target_info = {"exists": False, "name": report.target_name}
@@ -602,6 +776,21 @@ def take_moderation_action(
                 target_user.ban_note = None
         # warn/ignore: no user model changes — report is resolved with notes only
 
+        # Log this user moderation action
+        if report.target_string_id and action != "ignore":
+            _log_user_moderation(
+                db,
+                user_id=report.target_string_id,
+                action=action,
+                admin=current_admin,
+                ban_reason=payload.ban_reason,
+                ban_note=payload.ban_note,
+                ban_until=payload.ban_until,
+                notes=payload.notes,
+                source="report",
+                source_report_id=report_id,
+            )
+
     else:
         valid_actions = {"keep", "restrict", "takedown", "delete", "unban", "ignore"}
         if action not in valid_actions:
@@ -642,6 +831,18 @@ def take_moderation_action(
                             notes=payload.notes,
                             admin_id=current_admin.id,
                         )
+                        _log_content_moderation(
+                            db,
+                            creator_id=creator_id,
+                            entity_type=report.target_type,
+                            entity_id=report.target_id,
+                            entity_name=entity_name,
+                            action="delete",
+                            admin=current_admin,
+                            notes=payload.notes,
+                            source="report",
+                            source_report_id=report_id,
+                        )
                     report.status = "resolved"
                     report.action_taken = action
                     report.resolved_time = now
@@ -661,6 +862,21 @@ def take_moderation_action(
                         entity_id=report.target_id,
                         notes=payload.notes,
                         admin_id=current_admin.id,
+                    )
+
+                # Log the content moderation action
+                if action != "keep" and action != "ignore" and entity.creator_id:
+                    _log_content_moderation(
+                        db,
+                        creator_id=entity.creator_id,
+                        entity_type=report.target_type,
+                        entity_id=report.target_id,
+                        entity_name=entity.name,
+                        action=action,
+                        admin=current_admin,
+                        notes=payload.notes,
+                        source="report",
+                        source_report_id=report_id,
                     )
 
     report.status = "resolved"
@@ -724,6 +940,19 @@ def take_batch_moderation_action(
                 target_user.ban_until = None
                 target_user.ban_reason = None
                 target_user.ban_note = None
+            if report.target_string_id and action != "ignore":
+                _log_user_moderation(
+                    db,
+                    user_id=report.target_string_id,
+                    action=action,
+                    admin=current_admin,
+                    ban_reason=payload.ban_reason,
+                    ban_note=payload.ban_note,
+                    ban_until=payload.ban_until,
+                    notes=payload.notes,
+                    source="report",
+                    source_report_id=report.id,
+                )
         else:
             if action not in {"keep", "restrict", "takedown", "delete", "unban", "ignore"}:
                 continue
@@ -766,6 +995,23 @@ def take_batch_moderation_action(
                             notes=payload.notes,
                             admin_id=current_admin.id,
                         )
+                    # Log content action
+                    if action not in {"keep", "ignore"}:
+                        _creator_id_for_log = entity.creator_id if action != "delete" else _creator_id
+                        _name_for_log = entity.name if action != "delete" else _entity_name
+                        if _creator_id_for_log:
+                            _log_content_moderation(
+                                db,
+                                creator_id=_creator_id_for_log,
+                                entity_type=report.target_type,
+                                entity_id=report.target_id,
+                                entity_name=_name_for_log,
+                                action=action,
+                                admin=current_admin,
+                                notes=payload.notes,
+                                source="report",
+                                source_report_id=report.id,
+                            )
 
         report.status = "resolved"
         report.action_taken = action
@@ -849,6 +1095,103 @@ def delete_character(
     return {"message": "Character deleted successfully"}
 
 
+@router.delete("/scenes/{scene_id}")
+def delete_scene(
+    scene_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Delete a scene - Admin only"""
+    scene = db.query(Scene).filter(Scene.id == scene_id).first()
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    db.delete(scene)
+    db.commit()
+    return {"message": "Scene deleted successfully"}
+
+
+@router.delete("/personas/{persona_id}")
+def delete_persona(
+    persona_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Delete a persona - Admin only"""
+    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    db.delete(persona)
+    db.commit()
+    return {"message": "Persona deleted successfully"}
+
+
+@router.post("/content/{content_type}/{item_id}/moderate")
+def moderate_content_item(
+    content_type: str,
+    item_id: int,
+    payload: ContentModerationRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Apply a direct moderation action to a character, scene, or persona - Admin only"""
+    model_map = {"character": Character, "scene": Scene, "persona": Persona}
+    if content_type not in model_map:
+        raise HTTPException(status_code=400, detail="Invalid content type. Expected character, scene, or persona")
+
+    valid_actions = {"restrict", "takedown", "unban", "delete"}
+    action = (payload.action or "").strip().lower()
+    if action not in valid_actions:
+        raise HTTPException(status_code=400, detail=f"Invalid action. Expected one of: {', '.join(sorted(valid_actions))}")
+
+    model_cls = model_map[content_type]
+    entity = db.query(model_cls).filter(model_cls.id == item_id).first()
+    if not entity:
+        raise HTTPException(status_code=404, detail=f"{content_type.capitalize()} not found")
+
+    if action == "restrict":
+        entity.moderation_status = "restricted"
+        entity.is_public = False
+    elif action == "takedown":
+        entity.moderation_status = "takedown"
+        entity.is_public = False
+    elif action == "unban":
+        entity.moderation_status = None
+        entity.is_public = True
+    elif action == "delete":
+        creator_id = entity.creator_id
+        entity_name = entity.name
+        db.delete(entity)
+        db.flush()
+        if creator_id:
+            create_content_moderation_message(
+                db=db,
+                user_id=creator_id,
+                action="delete",
+                entity_type=content_type,
+                entity_name=entity_name,
+                entity_id=item_id,
+                notes=payload.notes,
+                admin_id=current_admin.id,
+            )
+        db.commit()
+        return {"message": f"{content_type.capitalize()} deleted successfully"}
+
+    if action in {"restrict", "takedown"} and entity.creator_id:
+        create_content_moderation_message(
+            db=db,
+            user_id=entity.creator_id,
+            action=action,
+            entity_type=content_type,
+            entity_name=entity.name,
+            entity_id=item_id,
+            notes=payload.notes,
+            admin_id=current_admin.id,
+        )
+
+    db.commit()
+    return {"message": f"Action '{action}' applied to {content_type} #{item_id}"}
+
+
 @router.delete("/tags/{tag_id}")
 def delete_tag(
     tag_id: int,
@@ -928,6 +1271,19 @@ def moderate_user_directly(
         target.ban_reason = None
         target.ban_note = None
 
+    # Log this moderation action
+    _log_user_moderation(
+        db,
+        user_id=user_id,
+        action=action,
+        admin=current_admin,
+        ban_reason=payload.ban_reason,
+        ban_note=payload.ban_note,
+        ban_until=payload.ban_until,
+        notes=payload.notes,
+        source="direct",
+    )
+
     # Send inbox message to the affected user
     from routes.user_messages import create_moderation_message
     create_moderation_message(
@@ -944,6 +1300,66 @@ def moderate_user_directly(
     return {
         "message": f"Action '{action}' applied to user {user_id}",
         "ban_type": target.ban_type,
+    }
+
+
+@router.get("/users/{user_id}/violation-history")
+def get_user_violation_history(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user),
+):
+    """Return the full violation/punishment history for a user — Admin only."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    account_logs = (
+        db.query(UserModerationLog)
+        .filter(UserModerationLog.user_id == user_id)
+        .order_by(desc(UserModerationLog.created_at))
+        .all()
+    )
+
+    content_logs = (
+        db.query(ContentModerationLog)
+        .filter(ContentModerationLog.creator_id == user_id)
+        .order_by(desc(ContentModerationLog.created_at))
+        .all()
+    )
+
+    return {
+        "user_id": user_id,
+        "account_actions": [
+            {
+                "id": log.id,
+                "action": log.action,
+                "ban_reason": log.ban_reason,
+                "ban_note": log.ban_note,
+                "ban_until": log.ban_until.isoformat() if log.ban_until else None,
+                "admin_name": log.admin_name,
+                "source": log.source,
+                "source_report_id": log.source_report_id,
+                "notes": log.notes,
+                "created_at": log.created_at.isoformat(),
+            }
+            for log in account_logs
+        ],
+        "content_actions": [
+            {
+                "id": log.id,
+                "entity_type": log.entity_type,
+                "entity_id": log.entity_id,
+                "entity_name": log.entity_name,
+                "action": log.action,
+                "admin_name": log.admin_name,
+                "source": log.source,
+                "source_report_id": log.source_report_id,
+                "notes": log.notes,
+                "created_at": log.created_at.isoformat(),
+            }
+            for log in content_logs
+        ],
     }
 
 
@@ -1056,6 +1472,88 @@ def update_character(
             "tags": character.tags,
             "is_public": character.is_public,
             "is_forkable": character.is_forkable,
+        }
+    }
+
+
+@router.patch("/scenes/{scene_id}")
+def update_scene(
+    scene_id: int,
+    update_data: SceneUpdate,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Update scene details - Admin only"""
+    scene = db.query(Scene).filter(Scene.id == scene_id).first()
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+
+    if update_data.name is not None:
+        scene.name = update_data.name
+    if update_data.description is not None:
+        scene.description = update_data.description
+    if update_data.intro is not None:
+        scene.intro = update_data.intro
+    if update_data.greeting is not None:
+        scene.greeting = update_data.greeting
+    if update_data.tags is not None:
+        scene.tags = update_data.tags
+    if update_data.is_public is not None:
+        scene.is_public = update_data.is_public
+    if update_data.is_forkable is not None:
+        scene.is_forkable = update_data.is_forkable
+
+    db.commit()
+    db.refresh(scene)
+    return {
+        "message": "Scene updated successfully",
+        "scene": {
+            "id": scene.id,
+            "name": scene.name,
+            "intro": scene.intro,
+            "tags": scene.tags,
+            "is_public": scene.is_public,
+            "is_forkable": scene.is_forkable,
+        }
+    }
+
+
+@router.patch("/personas/{persona_id}")
+def update_persona(
+    persona_id: int,
+    update_data: PersonaUpdate,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Update persona details - Admin only"""
+    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+
+    if update_data.name is not None:
+        persona.name = update_data.name
+    if update_data.description is not None:
+        persona.description = update_data.description
+    if update_data.intro is not None:
+        persona.intro = update_data.intro
+    if update_data.tags is not None:
+        persona.tags = update_data.tags
+    if update_data.is_public is not None:
+        persona.is_public = update_data.is_public
+    if update_data.is_forkable is not None:
+        persona.is_forkable = update_data.is_forkable
+
+    db.commit()
+    db.refresh(persona)
+    return {
+        "message": "Persona updated successfully",
+        "persona": {
+            "id": persona.id,
+            "name": persona.name,
+            "intro": persona.intro,
+            "tags": persona.tags,
+            "is_public": persona.is_public,
+            "is_forkable": persona.is_forkable,
         }
     }
 

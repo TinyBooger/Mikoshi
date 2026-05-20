@@ -404,3 +404,39 @@ class ContentBanAppeal(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     resolved_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+
+
+class UserModerationLog(Base):
+    """Permanent record of every account-level moderation action taken against a user."""
+    __tablename__ = "user_moderation_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    action = Column(String(30), nullable=False)          # warn | upload_ban | full_ban | shadow_ban | unban
+    ban_reason = Column(String(50), nullable=True)       # harassment/spam/abuse/underage/other
+    ban_note = Column(Text, nullable=True)               # moderator-visible note
+    ban_until = Column(DateTime(timezone=True), nullable=True)
+    admin_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    admin_name = Column(String, nullable=True)           # denormalised so record survives admin deletion
+    source = Column(String(20), nullable=False, default='direct')  # direct | report
+    source_report_id = Column(Integer, ForeignKey('problem_reports.id', ondelete='SET NULL'), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+
+
+class ContentModerationLog(Base):
+    """Permanent record of every content-level moderation action taken on user-created content."""
+    __tablename__ = "content_moderation_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    creator_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    entity_type = Column(String(20), nullable=False)     # character | scene | persona
+    entity_id = Column(Integer, nullable=False)
+    entity_name = Column(String, nullable=True)          # denormalised for retention after deletion
+    action = Column(String(20), nullable=False)          # restrict | takedown | unban | delete | hide
+    admin_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    admin_name = Column(String, nullable=True)
+    source = Column(String(20), nullable=False, default='direct')  # direct | report | content_review
+    source_report_id = Column(Integer, ForeignKey('problem_reports.id', ondelete='SET NULL'), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
