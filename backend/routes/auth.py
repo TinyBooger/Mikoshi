@@ -11,7 +11,7 @@ from utils.validators import validate_account_fields
 from utils.sms_utils import send_verification_code, verify_code, create_verified_phone_token, verify_phone_token
 from utils.captcha_utils import verify_captcha_param, get_captcha_verifier
 from utils.audit_logger import record_audit
-from utils.request_utils import get_client_ip, get_user_agent, get_request_metadata
+from utils.request_utils import get_client_ip, get_user_agent, get_request_metadata, get_device_fingerprint, update_tracking_array
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 import re
@@ -156,12 +156,16 @@ def register_user(
     if error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
     hashed_password = pwd_context.hash(password)
+    client_ip = get_client_ip(request)
+    fingerprint = get_device_fingerprint(request)
     user = User(
         id=email,  # Use email as unique ID for simplicity
         email=email,
         name=name,
         bio=bio,
-        profile_pic=None
+        profile_pic=None,
+        last_known_ips=update_tracking_array([], client_ip),
+        device_fingerprints=update_tracking_array([], fingerprint),
     )
     # Store hashed password in a separate field if you add it to User model
     setattr(user, "hashed_password", hashed_password)
@@ -252,6 +256,12 @@ def login_user(
             metadata=get_request_metadata(request, {"login_method": login_method})
         )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+    # Update tracking arrays
+    client_ip = get_client_ip(request)
+    fingerprint = get_device_fingerprint(request)
+    user.last_known_ips = update_tracking_array(list(user.last_known_ips or []), client_ip)
+    user.device_fingerprints = update_tracking_array(list(user.device_fingerprints or []), fingerprint)
+    db.commit()
     token = create_session_token(user)
     user_response = build_user_response(user, db)
     record_audit(
@@ -433,6 +443,7 @@ def verify_phone(
 # Phone number registration endpoint
 @router.post("/api/register-with-phone", response_model=AuthUserOut)
 def register_with_phone(
+    request: Request,
     verified_phone_token: str = Form(...),
     name: str = Form(...),
     invitation_code: Optional[str] = Form(None),
@@ -533,6 +544,8 @@ def register_with_phone(
     if password and password.strip():
         hashed_pw = pwd_context.hash(password.strip())
     
+    client_ip = get_client_ip(request)
+    fingerprint = get_device_fingerprint(request)
     user = User(
         id=user_id,
         phone_number=phone_number,
@@ -540,7 +553,9 @@ def register_with_phone(
         email=email.strip() if email and email.strip() else None,
         bio=bio,
         hashed_password=hashed_pw,
-        profile_pic=None
+        profile_pic=None,
+        last_known_ips=update_tracking_array([], client_ip),
+        device_fingerprints=update_tracking_array([], fingerprint),
     )
     
     db.add(user)

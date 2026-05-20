@@ -71,6 +71,10 @@ class User(Base):
     
     default_persona_id = Column(Integer, ForeignKey('personas.id', ondelete='SET NULL'), nullable=True)
 
+    # IP / device tracking (last 5 unique values, most-recent first)
+    last_known_ips = Column(ARRAY(Text), nullable=False, default=list)
+    device_fingerprints = Column(ARRAY(Text), nullable=False, default=list)
+
     # Moderation / ban fields
     # ban_type: null = no ban | 'upload_ban' | 'full_ban' | 'shadow_ban'
     ban_type = Column(String(20), nullable=True)

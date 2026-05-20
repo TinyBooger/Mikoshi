@@ -30,6 +30,7 @@ export default function UsersPage() {
   const [historyDialog, setHistoryDialog] = useState(null); // { user, data }
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyTab, setHistoryTab] = useState('account'); // 'account' | 'content'
+  const [linkedDialog, setLinkedDialog] = useState(null); // { user, data, loading }
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -167,6 +168,22 @@ export default function UsersPage() {
       setHistoryDialog(null);
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  const openLinkedAccounts = async (user) => {
+    setLinkedDialog({ user, data: null, loading: true });
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/admin/users/${user.id}/linked-accounts`, {
+        headers: { 'Authorization': sessionToken },
+      });
+      if (!res.ok) throw new Error('Failed to load linked accounts');
+      const data = await res.json();
+      setLinkedDialog({ user, data, loading: false });
+    } catch (e) {
+      console.error(e);
+      alert('Failed to load linked accounts');
+      setLinkedDialog(null);
     }
   };
 
@@ -365,6 +382,15 @@ export default function UsersPage() {
                     openHistory(user);
                   },
                 },
+                {
+                  icon: 'bi-diagram-3',
+                  text: 'Linked',
+                  className: 'btn-outline-info',
+                  onClick: (row) => {
+                    const user = paginatedUsers.find(u => u.id === row.id);
+                    openLinkedAccounts(user);
+                  },
+                },
               ]}
             />
           </div>
@@ -501,6 +527,67 @@ export default function UsersPage() {
           onTabChange={setHistoryTab}
           onClose={() => setHistoryDialog(null)}
         />
+      )}
+
+      {/* Linked Accounts Modal */}
+      {linkedDialog && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={(e) => { if (e.target === e.currentTarget) setLinkedDialog(null); }}>
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="bi bi-diagram-3 me-2 text-info" />
+                  Linked Accounts: <strong>{linkedDialog.user.name}</strong>
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setLinkedDialog(null)} />
+              </div>
+              <div className="modal-body">
+                {linkedDialog.loading ? (
+                  <div className="text-center py-4"><div className="spinner-border text-info" /></div>
+                ) : linkedDialog.data?.linked?.length === 0 ? (
+                  <p className="text-muted mb-0">No linked accounts found (no shared IPs or device fingerprints).</p>
+                ) : (
+                  <table className="table table-sm table-hover">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email / Phone</th>
+                        <th>Ban</th>
+                        <th>Shared IPs</th>
+                        <th>Shared Fingerprints</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {linkedDialog.data?.linked?.map(u => (
+                        <tr key={u.id}>
+                          <td>{u.name}</td>
+                          <td style={{ fontSize: '0.85rem' }}>
+                            <div>{u.email}</div>
+                            {u.phone_number && <div className="text-muted">{u.phone_number}</div>}
+                          </td>
+                          <td>
+                            {u.ban_type
+                              ? <span className={`badge ${BAN_TYPE_LABELS[u.ban_type]?.cls || 'bg-secondary'}`}>{BAN_TYPE_LABELS[u.ban_type]?.label || u.ban_type}</span>
+                              : <span className="text-muted">—</span>}
+                          </td>
+                          <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                            {u.shared_ips.length ? u.shared_ips.join(', ') : <span className="text-muted">—</span>}
+                          </td>
+                          <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                            {u.shared_fingerprints.length ? u.shared_fingerprints.join(', ') : <span className="text-muted">—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setLinkedDialog(null)}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

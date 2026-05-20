@@ -7,6 +7,33 @@ import { getApiErrorMessage } from '../utils/apiErrorUtils';
 
 export const AuthContext = createContext();
 
+/**
+ * Generate a lightweight, stable device fingerprint from browser environment signals.
+ * This is intentionally simple — it is only used as a soft signal to help admins
+ * spot possibly linked accounts, not as a security control.
+ */
+function getDeviceFingerprint() {
+  try {
+    const raw = [
+      navigator.userAgent,
+      navigator.language,
+      navigator.platform,
+      String(screen.width),
+      String(screen.height),
+      String(screen.colorDepth),
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+    ].join('|');
+    // Simple non-cryptographic hash (djb2)
+    let hash = 5381;
+    for (let i = 0; i < raw.length; i++) {
+      hash = ((hash << 5) + hash) ^ raw.charCodeAt(i);
+    }
+    return (hash >>> 0).toString(16);
+  } catch {
+    return null;
+  }
+}
+
 
 export function AuthProvider({ children }) {
   const [sessionToken, setSessionToken] = useState(() => localStorage.getItem('sessionToken'));
@@ -56,7 +83,10 @@ export function AuthProvider({ children }) {
     try {
       const response = await fetch(`${window.API_BASE_URL}/api/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          ...(getDeviceFingerprint() ? { 'X-Device-Fingerprint': getDeviceFingerprint() } : {}),
+        },
         body: new URLSearchParams({ email, password })
       });
       const result = await response.json();
@@ -90,6 +120,8 @@ export function AuthProvider({ children }) {
     setError(null);
     try {
       let response;
+      const fp = getDeviceFingerprint();
+      const fpHeader = fp ? { 'X-Device-Fingerprint': fp } : {};
       if (profileFile) {
         const formData = new FormData();
         formData.append('email', email);
@@ -100,12 +132,13 @@ export function AuthProvider({ children }) {
         formData.append('profile_pic', profileFile);
         response = await fetch(`${window.API_BASE_URL}/api/users`, {
           method: 'POST',
+          headers: { ...fpHeader },
           body: formData
         });
       } else {
         response = await fetch(`${window.API_BASE_URL}/api/users`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...fpHeader },
           body: new URLSearchParams({ email, name, password, invitation_code: invitationCode, bio })
         });
       }
@@ -216,6 +249,8 @@ export function AuthProvider({ children }) {
     setError(null);
     try {
       let response;
+      const fp = getDeviceFingerprint();
+      const fpHeader = fp ? { 'X-Device-Fingerprint': fp } : {};
       if (profileFile) {
         const formData = new FormData();
         formData.append('verified_phone_token', verifiedPhoneToken);
@@ -227,6 +262,7 @@ export function AuthProvider({ children }) {
         formData.append('profile_pic', profileFile);
         response = await fetch(`${window.API_BASE_URL}/api/register-with-phone`, {
           method: 'POST',
+          headers: { ...fpHeader },
           body: formData
         });
       } else {
@@ -240,7 +276,7 @@ export function AuthProvider({ children }) {
         if (password) params.password = password;
         response = await fetch(`${window.API_BASE_URL}/api/register-with-phone`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...fpHeader },
           body: new URLSearchParams(params)
         });
       }

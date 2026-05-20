@@ -438,6 +438,50 @@ def get_all_users(
     return [enrich_user_with_character_count(user, db) for user in users]
 
 
+@router.get("/users/{user_id}/linked-accounts")
+def get_linked_accounts(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Return other users who share an IP or device fingerprint with the given user."""
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    target_ips = list(target.last_known_ips or [])
+    target_fps = list(target.device_fingerprints or [])
+
+    if not target_ips and not target_fps:
+        return {"user_id": user_id, "linked": []}
+
+    # Find users sharing at least one IP or fingerprint
+    from sqlalchemy import cast
+    from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
+    from sqlalchemy import Text as SAText
+
+    candidates = db.query(User).filter(User.id != user_id).all()
+
+    linked = []
+    for u in candidates:
+        u_ips = list(u.last_known_ips or [])
+        u_fps = list(u.device_fingerprints or [])
+        shared_ips = list(set(target_ips) & set(u_ips))
+        shared_fps = list(set(target_fps) & set(u_fps))
+        if shared_ips or shared_fps:
+            linked.append({
+                "id": u.id,
+                "name": u.name,
+                "email": u.email,
+                "phone_number": u.phone_number,
+                "ban_type": u.ban_type,
+                "shared_ips": shared_ips,
+                "shared_fingerprints": shared_fps,
+            })
+
+    return {"user_id": user_id, "linked": linked}
+
+
 @router.get("/characters")
 def get_all_characters(
     db: Session = Depends(get_db),

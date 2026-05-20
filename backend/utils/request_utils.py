@@ -77,3 +77,19 @@ def get_request_metadata(request: Request, additional_data: Optional[Dict[str, A
         metadata.update(additional_data)
     
     return metadata
+
+
+def get_device_fingerprint(request: Request) -> Optional[str]:
+    """Extract device fingerprint from the X-Device-Fingerprint header."""
+    return request.headers.get("X-Device-Fingerprint") or None
+
+
+def update_tracking_array(existing: list, new_value: Optional[str], max_size: int = 5) -> list:
+    """
+    Prepend new_value to a list, deduplicate, and keep at most max_size entries.
+    Returns the existing list unchanged if new_value is None/empty.
+    """
+    if not new_value:
+        return existing or []
+    combined = [new_value] + [v for v in (existing or []) if v != new_value]
+    return combined[:max_size]
