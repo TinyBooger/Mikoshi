@@ -256,9 +256,15 @@ def get_persona(persona_id: int, current_user: User = Depends(get_optional_curre
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(status_code=404, detail="Persona not found")
-    if not persona.is_public:
+
+    # Enforce content moderation visibility rules
+    if persona.moderation_status == "takedown":
         if not current_user or (persona.creator_id != current_user.id and not current_user.is_admin):
             raise HTTPException(status_code=404, detail="Persona not found")
+    elif not persona.is_public and persona.moderation_status != "restricted":
+        if not current_user or (persona.creator_id != current_user.id and not current_user.is_admin):
+            raise HTTPException(status_code=404, detail="Persona not found")
+    # moderation_status == 'restricted': accessible via URL to everyone
     if current_user:
         liked = db.query(UserLikedPersona).filter_by(user_id=current_user.id, persona_id=persona_id).first()
         persona.liked = liked is not None

@@ -25,8 +25,11 @@ const ACTION_LABELS = {
   unban: 'Unbanned',
   ignore: 'Ignored',
   keep: 'Kept',
-  hide: 'Hidden',
+  restrict: 'Restricted',
+  takedown: 'Taken Down',
   delete: 'Deleted',
+  // legacy
+  hide: 'Hidden',
 };
 
 const BAN_REASON_OPTIONS = [
@@ -54,6 +57,22 @@ export default function ModerationPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
 
+  // Appeal queue state
+  const [appeals, setAppeals] = useState([]);
+  const [appealsLoading, setAppealsLoading] = useState(false);
+  const [appealsPage, setAppealsPage] = useState(1);
+  const [appealActioningId, setAppealActioningId] = useState(null);
+  const [appealDialog, setAppealDialog] = useState(null); // { appeal, action } | null
+  const [appealReply, setAppealReply] = useState('');
+
+  // Content appeal queue state
+  const [contentAppeals, setContentAppeals] = useState([]);
+  const [contentAppealsLoading, setContentAppealsLoading] = useState(false);
+  const [contentAppealsPage, setContentAppealsPage] = useState(1);
+  const [contentAppealActioningId, setContentAppealActioningId] = useState(null);
+  const [contentAppealDialog, setContentAppealDialog] = useState(null); // { appeal, action } | null
+  const [contentAppealReply, setContentAppealReply] = useState('');
+
   const [activeTab, setActiveTab] = useState('queue');
   const pageSize = 20;
 
@@ -63,6 +82,40 @@ export default function ModerationPage() {
   const [banForm, setBanForm] = useState({ ban_reason: '', ban_note: '', days: '' });
 
   const resetBanForm = () => setBanForm({ ban_reason: '', ban_note: '', days: '' });
+
+  const fetchAppeals = useCallback(async () => {
+    setAppealsLoading(true);
+    try {
+      const res = await fetch(
+        `${window.API_BASE_URL}/api/admin/moderation/appeals?status=pending`,
+        { headers: { Authorization: sessionToken } }
+      );
+      const data = await res.json();
+      setAppeals(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch appeals:', err);
+      setAppeals([]);
+    } finally {
+      setAppealsLoading(false);
+    }
+  }, [sessionToken]);
+
+  const fetchContentAppeals = useCallback(async () => {
+    setContentAppealsLoading(true);
+    try {
+      const res = await fetch(
+        `${window.API_BASE_URL}/api/admin/moderation/content-appeals?status=pending`,
+        { headers: { Authorization: sessionToken } }
+      );
+      const data = await res.json();
+      setContentAppeals(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch content appeals:', err);
+      setContentAppeals([]);
+    } finally {
+      setContentAppealsLoading(false);
+    }
+  }, [sessionToken]);
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
@@ -104,6 +157,14 @@ export default function ModerationPage() {
     if (activeTab === 'history') fetchHistory();
   }, [activeTab, fetchHistory]);
 
+  useEffect(() => {
+    if (activeTab === 'appeals') fetchAppeals();
+  }, [activeTab, fetchAppeals]);
+
+  useEffect(() => {
+    if (activeTab === 'contentAppeals') fetchContentAppeals();
+  }, [activeTab, fetchContentAppeals]);
+
   // ── Single action ──────────────────────────────────────────
   const applyAction = async (report, action, extra = {}) => {
     setActioningId(report.id);
@@ -127,6 +188,78 @@ export default function ModerationPage() {
       alert('Failed to apply action');
     } finally {
       setActioningId(null);
+    }
+  };
+
+  // ── Appeal actions ─────────────────────────────────────────
+  const handleOpenAppealDialog = (appeal, action) => {
+    setAppealReply('');
+    setAppealDialog({ appeal, action });
+  };
+
+  const handleSubmitAppealDialog = async () => {
+    if (!appealDialog) return;
+    const { appeal, action } = appealDialog;
+    const reply = appealReply.trim();
+    if (!reply) { alert('A reply message is required.'); return; }
+    setAppealActioningId(appeal.id);
+    setAppealDialog(null);
+    try {
+      const res = await fetch(
+        `${window.API_BASE_URL}/api/admin/moderation/appeals/${appeal.id}/action`,
+        {
+          method: 'POST',
+          headers: { Authorization: sessionToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, reply }),
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        alert(`Error: ${err.detail || 'Unknown error'}`);
+        return;
+      }
+      fetchAppeals();
+    } catch (err) {
+      console.error('Failed to resolve appeal:', err);
+      alert('Failed to resolve appeal');
+    } finally {
+      setAppealActioningId(null);
+    }
+  };
+
+  // ── Content appeal actions ─────────────────────────────────
+  const handleOpenContentAppealDialog = (appeal, action) => {
+    setContentAppealReply('');
+    setContentAppealDialog({ appeal, action });
+  };
+
+  const handleSubmitContentAppealDialog = async () => {
+    if (!contentAppealDialog) return;
+    const { appeal, action } = contentAppealDialog;
+    const reply = contentAppealReply.trim();
+    if (!reply) { alert('A reply message is required.'); return; }
+    setContentAppealActioningId(appeal.id);
+    setContentAppealDialog(null);
+    try {
+      const res = await fetch(
+        `${window.API_BASE_URL}/api/admin/moderation/content-appeals/${appeal.id}/action`,
+        {
+          method: 'POST',
+          headers: { Authorization: sessionToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, reply }),
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        alert(`Error: ${err.detail || 'Unknown error'}`);
+        return;
+      }
+      fetchContentAppeals();
+    } catch (err) {
+      console.error('Failed to resolve content appeal:', err);
+      alert('Failed to resolve content appeal');
+    } finally {
+      setContentAppealActioningId(null);
     }
   };
 
@@ -246,13 +379,22 @@ export default function ModerationPage() {
   const renderTargetCell = (report) => {
     const info = report.target_info || {};
     const label = info.name || report.target_name || `#${report.target_id || report.target_string_id || '-'}`;
+
+    let contentStatusBadge = null;
+    if (report.target_type !== 'user' && info.exists !== false) {
+      if (info.moderation_status === 'takedown') {
+        contentStatusBadge = <span className="badge bg-danger ms-1">Taken Down</span>;
+      } else if (info.moderation_status === 'restricted') {
+        contentStatusBadge = <span className="badge bg-warning text-dark ms-1">Restricted</span>;
+      } else if (info.is_public) {
+        contentStatusBadge = <span className="badge bg-success ms-1">Public</span>;
+      } else {
+        contentStatusBadge = <span className="badge bg-secondary ms-1">Private</span>;
+      }
+    }
     const statusBadge = info.exists === false
       ? <span className="badge bg-secondary ms-1">Deleted</span>
-      : report.target_type !== 'user'
-        ? <span className={`badge ms-1 ${info.is_public ? 'bg-success' : 'bg-warning text-dark'}`}>
-            {info.is_public ? 'Public' : 'Hidden'}
-          </span>
-        : null;
+      : contentStatusBadge;
     const banBadge = info.ban_type === 'full_ban'
       ? <span className="badge bg-danger ms-1">Full Banned</span>
       : info.ban_type === 'upload_ban'
@@ -299,11 +441,15 @@ export default function ModerationPage() {
       );
     }
     return (
-      <div className="btn-group btn-group-sm">
-        <button className="btn btn-outline-secondary" disabled={disabled} onClick={() => handleActionWithNotes(report, 'ignore')}>Ignore</button>
-        <button className="btn btn-outline-success" disabled={disabled} onClick={() => handleActionWithNotes(report, 'keep')}>Keep</button>
-        <button className="btn btn-outline-warning" disabled={disabled} onClick={() => handleActionWithNotes(report, 'hide')}>Hide</button>
-        <button className="btn btn-outline-danger" disabled={disabled} onClick={() => handleActionWithNotes(report, 'delete')}>Delete</button>
+      <div className="d-flex flex-wrap gap-1">
+        <button className="btn btn-sm btn-outline-secondary" disabled={disabled} onClick={() => handleActionWithNotes(report, 'ignore')}>Ignore</button>
+        <button className="btn btn-sm btn-outline-success" disabled={disabled} onClick={() => handleActionWithNotes(report, 'keep')}>Keep</button>
+        <button className="btn btn-sm btn-outline-warning" disabled={disabled} onClick={() => handleActionWithNotes(report, 'restrict')}>Restrict</button>
+        <button className="btn btn-sm btn-outline-danger" disabled={disabled} onClick={() => handleActionWithNotes(report, 'takedown')}>Takedown</button>
+        <button className="btn btn-sm btn-outline-dark" disabled={disabled} onClick={() => handleActionWithNotes(report, 'delete')}>Delete</button>
+        {report.target_info?.moderation_status && (
+          <button className="btn btn-sm btn-outline-info" disabled={disabled} onClick={() => handleActionWithNotes(report, 'unban')}>Unban</button>
+        )}
       </div>
     );
   };
@@ -327,6 +473,28 @@ export default function ModerationPage() {
             Report Queue
             {reports.length > 0 && (
               <span className="badge bg-danger ms-2">{reports.length}</span>
+            )}
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === 'appeals' ? 'active' : ''}`}
+            onClick={() => setActiveTab('appeals')}
+          >
+            Appeal Queue
+            {appeals.length > 0 && (
+              <span className="badge bg-warning text-dark ms-2">{appeals.length}</span>
+            )}
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === 'contentAppeals' ? 'active' : ''}`}
+            onClick={() => setActiveTab('contentAppeals')}
+          >
+            Content Appeals
+            {contentAppeals.length > 0 && (
+              <span className="badge bg-warning text-dark ms-2">{contentAppeals.length}</span>
             )}
           </button>
         </li>
@@ -361,8 +529,9 @@ export default function ModerationPage() {
                 {(allContentSelected || (!allUserSelected)) && (
                   <>
                     <button className="btn btn-sm btn-outline-success" disabled={batchActioning || !allContentSelected} onClick={() => applyBatchAction('keep', { notes: '' })}>Keep</button>
-                    <button className="btn btn-sm btn-outline-warning" disabled={batchActioning || !allContentSelected} onClick={() => applyBatchAction('hide', { notes: '' })}>Hide</button>
-                    <button className="btn btn-sm btn-outline-danger" disabled={batchActioning || !allContentSelected} onClick={() => applyBatchAction('delete', { notes: '' })}>Delete</button>
+                    <button className="btn btn-sm btn-outline-warning" disabled={batchActioning || !allContentSelected} onClick={() => applyBatchAction('restrict', { notes: '' })}>Restrict</button>
+                    <button className="btn btn-sm btn-outline-danger" disabled={batchActioning || !allContentSelected} onClick={() => applyBatchAction('takedown', { notes: '' })}>Takedown</button>
+                    <button className="btn btn-sm btn-outline-dark" disabled={batchActioning || !allContentSelected} onClick={() => applyBatchAction('delete', { notes: '' })}>Delete</button>
                   </>
                 )}
               </div>
@@ -443,6 +612,201 @@ export default function ModerationPage() {
                 </table>
               </div>
               <PaginationBar page={page} total={reports.length} pageSize={pageSize} loading={loading} onPageChange={(p) => { setPage(p); setSelectedIds(new Set()); }} />
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── APPEALS TAB ── */}
+      {activeTab === 'appeals' && (
+        <>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="text-muted small">Pending appeals: {appeals.length}</span>
+            <button className="btn btn-sm btn-outline-secondary" onClick={fetchAppeals} disabled={appealsLoading}>
+              {appealsLoading ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
+
+          {appealsLoading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border" role="status"><span className="visually-hidden">Loading...</span></div>
+            </div>
+          ) : appeals.length === 0 ? (
+            <div className="alert alert-success">No pending appeals.</div>
+          ) : (
+            <>
+              <div className="table-responsive">
+                <table className="table table-hover align-middle">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>User</th>
+                      <th>Ban Type</th>
+                      <th>Ban Reason</th>
+                      <th>Appeal Reason</th>
+                      <th>Submitted</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {appeals.slice((appealsPage - 1) * pageSize, appealsPage * pageSize).map((appeal) => {
+                      const disabled = appealActioningId === appeal.id;
+                      const BAN_TYPE_LABELS = { full_ban: 'Full Ban', upload_ban: 'Upload Ban', shadow_ban: 'Shadow Ban' };
+                      return (
+                        <tr key={appeal.id}>
+                          <td>#{appeal.id}</td>
+                          <td>
+                            <div className="small">
+                              <div className="fw-semibold">{appeal.user_name || '—'}</div>
+                              <div className="text-muted">{appeal.user_email || ''}</div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`badge ${appeal.ban_type === 'full_ban' ? 'bg-danger' : appeal.ban_type === 'upload_ban' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
+                              {BAN_TYPE_LABELS[appeal.ban_type] || appeal.ban_type}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="small">
+                              {appeal.ban_reason || <span className="text-muted">—</span>}
+                              {appeal.ban_note && <div className="text-muted">{appeal.ban_note}</div>}
+                              {appeal.ban_until && <div className="text-muted">Until: {new Date(appeal.ban_until).toLocaleDateString()}</div>}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="small" style={{ maxWidth: 300, maxHeight: 80, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+                              {appeal.reason}
+                            </div>
+                          </td>
+                          <td className="small">{formatDate(appeal.created_at)}</td>
+                          <td>
+                            <div className="d-flex gap-1">
+                              <button
+                                className="btn btn-sm btn-outline-success"
+                                disabled={disabled}
+                                onClick={() => handleOpenAppealDialog(appeal, 'approve')}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                disabled={disabled}
+                                onClick={() => handleOpenAppealDialog(appeal, 'reject')}
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <PaginationBar page={appealsPage} total={appeals.length} pageSize={pageSize} loading={appealsLoading} onPageChange={setAppealsPage} />
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── CONTENT APPEALS TAB ── */}
+      {activeTab === 'contentAppeals' && (
+        <>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="text-muted small">Pending content appeals: {contentAppeals.length}</span>
+            <button className="btn btn-sm btn-outline-secondary" onClick={fetchContentAppeals} disabled={contentAppealsLoading}>
+              {contentAppealsLoading ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
+
+          {contentAppealsLoading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border" role="status"><span className="visually-hidden">Loading...</span></div>
+            </div>
+          ) : contentAppeals.length === 0 ? (
+            <div className="alert alert-success">No pending content appeals.</div>
+          ) : (
+            <>
+              <div className="table-responsive">
+                <table className="table table-hover align-middle">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Type</th>
+                      <th>Content</th>
+                      <th>Creator</th>
+                      <th>Status</th>
+                      <th>Appeal Reason</th>
+                      <th>Submitted</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contentAppeals.slice((contentAppealsPage - 1) * pageSize, contentAppealsPage * pageSize).map((appeal) => {
+                      const disabled = contentAppealActioningId === appeal.id;
+                      const ENTITY_TYPE_BADGE = { character: 'bg-primary', scene: 'bg-success', persona: 'bg-info text-dark' };
+                      return (
+                        <tr key={appeal.id}>
+                          <td>#{appeal.id}</td>
+                          <td>
+                            <span className={`badge ${ENTITY_TYPE_BADGE[appeal.entity_type] || 'bg-secondary'}`}>
+                              {appeal.entity_type}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="small">
+                              <a href={`/${appeal.entity_type}/${appeal.entity_id}`} target="_blank" rel="noopener noreferrer" className="fw-semibold text-decoration-none">
+                                {appeal.entity_name || `#${appeal.entity_id}`}
+                              </a>
+                              {appeal.entity_moderation_status && (
+                                <span className={`badge ms-1 ${appeal.entity_moderation_status === 'takedown' ? 'bg-danger' : 'bg-warning text-dark'}`}>
+                                  {appeal.entity_moderation_status}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="small">
+                              <div className="fw-semibold">{appeal.creator_name || '—'}</div>
+                              <div className="text-muted">{appeal.creator_email || ''}</div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`badge ${appeal.status === 'pending' ? 'bg-warning text-dark' : appeal.status === 'approved' ? 'bg-success' : 'bg-danger'}`}>
+                              {appeal.status}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="small" style={{ maxWidth: 300, maxHeight: 80, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+                              {appeal.appeal_reason}
+                            </div>
+                          </td>
+                          <td className="small">{formatDate(appeal.created_at)}</td>
+                          <td>
+                            <div className="d-flex gap-1">
+                              <button
+                                className="btn btn-sm btn-outline-success"
+                                disabled={disabled}
+                                onClick={() => handleOpenContentAppealDialog(appeal, 'approve')}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                disabled={disabled}
+                                onClick={() => handleOpenContentAppealDialog(appeal, 'reject')}
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <PaginationBar page={contentAppealsPage} total={contentAppeals.length} pageSize={pageSize} loading={contentAppealsLoading} onPageChange={setContentAppealsPage} />
             </>
           )}
         </>
@@ -588,6 +952,171 @@ export default function ModerationPage() {
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
                 <button className="btn btn-danger" onClick={onSubmit}>Apply {title}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+
+    {/* ── Appeal Action Dialog ── */}
+    {appealDialog && (() => {
+      const { appeal, action } = appealDialog;
+      const isApprove = action === 'approve';
+      const BAN_TYPE_LABELS = { full_ban: 'Full Ban', upload_ban: 'Upload Ban', shadow_ban: 'Shadow Ban' };
+      return (
+        <div className="modal d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  {isApprove ? '✅ Approve Appeal' : '❌ Reject Appeal'}
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setAppealDialog(null)} />
+              </div>
+              <div className="modal-body">
+                <div className="mb-3 small text-muted">
+                  <div><strong>{appeal.user_name || '—'}</strong>{appeal.user_email && ` (${appeal.user_email})`}</div>
+                  <div>Ban type: {BAN_TYPE_LABELS[appeal.ban_type] || appeal.ban_type}</div>
+                </div>
+                <div className="mb-3">
+                  <div className="fw-semibold small mb-1">User's Appeal Reason</div>
+                  <div
+                    className="border rounded p-2 small bg-light"
+                    style={{ whiteSpace: 'pre-wrap', maxHeight: 100, overflowY: 'auto' }}
+                  >
+                    {appeal.reason}
+                  </div>
+                </div>
+                <div className="mb-1">
+                  <label className="form-label fw-semibold">
+                    Reply to User <span className="text-danger">*</span>
+                    <span className="text-muted fw-normal ms-1">(sent as inbox message)</span>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows={4}
+                    placeholder={isApprove
+                      ? 'e.g. We have reviewed your appeal and determined the ban was applied in error. Your account has been reinstated.'
+                      : 'e.g. We have reviewed your appeal but our decision stands because the violation was confirmed.'}
+                    value={appealReply}
+                    onChange={(e) => setAppealReply(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                {isApprove && (
+                  <div className="alert alert-success small py-2 mt-3 mb-0">
+                    The user's ban will be lifted and they will receive your reply as an inbox message.
+                  </div>
+                )}
+                {!isApprove && (
+                  <div className="alert alert-warning small py-2 mt-3 mb-0">
+                    The ban will remain in effect. The user will receive your reply as an inbox message.
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setAppealDialog(null)}>Cancel</button>
+                <button
+                  className={`btn ${isApprove ? 'btn-success' : 'btn-danger'}`}
+                  onClick={handleSubmitAppealDialog}
+                  disabled={!appealReply.trim()}
+                >
+                  {isApprove ? 'Approve & Unban' : 'Reject Appeal'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+
+    {/* ── Content Appeal Action Dialog ── */}
+    {contentAppealDialog && (() => {
+      const { appeal, action } = contentAppealDialog;
+      const isApprove = action === 'approve';
+      return (
+        <div className="modal d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  {isApprove ? '✅ Approve Content Appeal' : '❌ Reject Content Appeal'}
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setContentAppealDialog(null)} />
+              </div>
+              <div className="modal-body">
+                <div className="mb-3 small text-muted">
+                  <div>
+                    <strong>{appeal.creator_name || '—'}</strong>{appeal.creator_email && ` (${appeal.creator_email})`}
+                  </div>
+                  <div>
+                    {appeal.entity_type} —{' '}
+                    <a href={`/${appeal.entity_type}/${appeal.entity_id}`} target="_blank" rel="noopener noreferrer">
+                      {appeal.entity_name || `#${appeal.entity_id}`}
+                    </a>
+                    {appeal.entity_moderation_status && (
+                      <span className={`badge ms-1 ${appeal.entity_moderation_status === 'takedown' ? 'bg-danger' : 'bg-warning text-dark'}`}>
+                        {appeal.entity_moderation_status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <div className="fw-semibold small mb-1">Creator's Appeal Reason</div>
+                  <div
+                    className="border rounded p-2 small bg-light"
+                    style={{ whiteSpace: 'pre-wrap', maxHeight: 120, overflowY: 'auto' }}
+                  >
+                    {appeal.appeal_reason}
+                  </div>
+                </div>
+                {appeal.snapshot && (
+                  <div className="mb-3">
+                    <details>
+                      <summary className="fw-semibold small mb-1" style={{ cursor: 'pointer' }}>Content Snapshot at Submission</summary>
+                      <pre className="border rounded p-2 small bg-light mt-1" style={{ maxHeight: 180, overflow: 'auto' }}>
+                        {JSON.stringify(appeal.snapshot, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
+                )}
+                <div className="mb-1">
+                  <label className="form-label fw-semibold">
+                    Reply to Creator <span className="text-danger">*</span>
+                    <span className="text-muted fw-normal ms-1">(sent as inbox message)</span>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows={4}
+                    placeholder={isApprove
+                      ? 'e.g. Your revised content meets our guidelines. The restriction has been lifted.'
+                      : 'e.g. The content still violates our guidelines. Please review our rules and try again.'}
+                    value={contentAppealReply}
+                    onChange={(e) => setContentAppealReply(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                {isApprove && (
+                  <div className="alert alert-success small py-2 mt-3 mb-0">
+                    The content restriction will be lifted and the creator will receive your reply.
+                  </div>
+                )}
+                {!isApprove && (
+                  <div className="alert alert-warning small py-2 mt-3 mb-0">
+                    The restriction stays in effect. The creator will receive your reply as an inbox message.
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setContentAppealDialog(null)}>Cancel</button>
+                <button
+                  className={`btn ${isApprove ? 'btn-success' : 'btn-danger'}`}
+                  onClick={handleSubmitContentAppealDialog}
+                  disabled={!contentAppealReply.trim()}
+                >
+                  {isApprove ? 'Approve & Lift Restriction' : 'Reject Appeal'}
+                </button>
               </div>
             </div>
           </div>

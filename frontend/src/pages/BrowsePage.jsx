@@ -8,6 +8,8 @@ import PageWrapper from '../components/PageWrapper';
 import OnboardingTour from '../components/OnboardingTour';
 import UpdateNotificationModal from '../components/UpdateNotificationModal';
 import MessageCenter from '../components/MessageCenter';
+import BanNotice from '../components/BanNotice';
+import AppealModal from '../components/AppealModal';
 import textLogo from '../assets/images/logo_text.png';
 
 
@@ -78,6 +80,7 @@ function BrowsePage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showUpdateNotification, setShowUpdateNotification] = useState(false);
+  const [showAppealModal, setShowAppealModal] = useState(false);
   const [followingIds, setFollowingIds] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchSuggestions, setSearchSuggestions] = useState([]);
@@ -515,6 +518,22 @@ function BrowsePage() {
         sidebarVisible={sidebarVisible}
         setSidebarVisible={setSidebarVisible}
       />
+
+      {showAppealModal && (
+        <AppealModal onClose={() => setShowAppealModal(false)} />
+      )}
+
+      {/* Ban notice banner — visible when user is banned */}
+      {(userData?.ban_type === 'full_ban' || userData?.ban_type === 'upload_ban') && (
+        <div style={{ width: '100%', maxWidth: 1400, margin: '0 auto', padding: '0.75rem 1rem 0' }}>
+          <BanNotice
+            banType={userData.ban_type}
+            banUntil={userData.ban_until}
+            context="browse"
+            onAppeal={() => setShowAppealModal(true)}
+          />
+        </div>
+      )}
 
       <div
         className="flex-grow-1 d-flex flex-column align-items-center"

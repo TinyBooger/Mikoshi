@@ -282,9 +282,15 @@ def get_scene(scene_id: int, current_user: User = Depends(get_current_user), db:
     scene = row[0] if row else None
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
-    if not scene.is_public:
+
+    # Enforce content moderation visibility rules
+    if scene.moderation_status == "takedown":
         if not current_user or (scene.creator_id != current_user.id and not current_user.is_admin):
             raise HTTPException(status_code=404, detail="Scene not found")
+    elif not scene.is_public and scene.moderation_status != "restricted":
+        if not current_user or (scene.creator_id != current_user.id and not current_user.is_admin):
+            raise HTTPException(status_code=404, detail="Scene not found")
+    # moderation_status == 'restricted': accessible via URL to everyone
     scene.creator_profile_pic = row[1] if row else None
     return scene
 

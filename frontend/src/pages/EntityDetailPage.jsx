@@ -29,6 +29,9 @@ export default function EntityDetailPage() {
   const [followLoading, setFollowLoading] = useState(false);
   const [showProblemReport, setShowProblemReport] = useState(false);
   const [reportIconHovered, setReportIconHovered] = useState(false);
+  const [contentAppeals, setContentAppeals] = useState([]);
+  const [appealsLoading, setAppealsLoading] = useState(false);
+  const [showAppealHistory, setShowAppealHistory] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
@@ -106,6 +109,22 @@ export default function EntityDetailPage() {
       })
       .catch(() => setLiked(false));
   }, [entity, type, sessionToken]);
+
+  // Fetch content ban appeals when the entity is banned and user is owner/admin
+  useEffect(() => {
+    if (!entity || !sessionToken) return;
+    const ownerOrAdmin = userData?.id === entity.creator_id || userData?.is_admin;
+    if (!ownerOrAdmin) return;
+    if (!entity.moderation_status && contentAppeals.length === 0) return; // only fetch if banned or already loaded
+    setAppealsLoading(true);
+    fetch(`${window.API_BASE_URL}/api/content-ban-appeal/${type}/${id}`, {
+      headers: { Authorization: sessionToken },
+    })
+      .then(res => (res.ok ? res.json() : []))
+      .then(data => setContentAppeals(Array.isArray(data) ? data : []))
+      .catch(() => setContentAppeals([]))
+      .finally(() => setAppealsLoading(false));
+  }, [entity?.moderation_status, entity?.creator_id, sessionToken, type, id, userData]);
 
   // Fetch follow status for the creator
   useEffect(() => {
@@ -296,6 +315,74 @@ export default function EntityDetailPage() {
           margin: '0 auto'
         }}
       >
+        {/* Moderation notice banners */}
+        {entity.moderation_status === 'restricted' && (() => {
+          const hasPending = contentAppeals.some(a => a.status === 'pending');
+          const editPath = type === 'character' ? `/character/edit/${id}` : type === 'persona' ? `/persona/edit/${id}` : `/scene/edit/${id}`;
+          return (
+            <div
+              className="d-flex align-items-start gap-3 mb-4 p-3"
+              style={{ background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: '10px' }}
+            >
+              <i className="bi bi-eye-slash-fill" style={{ color: '#d97706', fontSize: '1.1rem', flexShrink: 0, marginTop: '2px' }}></i>
+              <div className="flex-grow-1">
+                <div style={{ fontWeight: 700, color: '#92400e', marginBottom: '2px' }}>
+                  {t('entity_detail.restricted_title', '内容可见性已限制')}
+                </div>
+                <div style={{ fontSize: '0.88rem', color: '#78350f', marginBottom: isOwner ? '0.6rem' : 0 }}>
+                  {isOwner
+                    ? t('entity_detail.restricted_owner_body', '您的内容因违反社区规范，已被限制在公开推荐及搜索中显示。仍可通过本链接访问，但不会出现在浏览或推荐页面中。')
+                    : t('entity_detail.restricted_visitor_body', '此内容目前不在公开推荐列表中，但可通过此链接访问。')}
+                </div>
+                {isOwner && (
+                  <button
+                    className={`btn btn-sm ${hasPending ? 'btn-outline-secondary' : 'btn-warning'}`}
+                    disabled={hasPending}
+                    onClick={() => navigate(editPath, { state: { appealMode: true } })}
+                    style={{ fontSize: '0.82rem' }}
+                  >
+                    <i className="bi bi-megaphone me-1"></i>
+                    {hasPending ? t('entity_detail.appeal_pending', '申诉审核中') : t('entity_detail.appeal_action', '编辑并提交申诉')}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+        {entity.moderation_status === 'takedown' && (() => {
+          const hasPending = contentAppeals.some(a => a.status === 'pending');
+          const editPath = type === 'character' ? `/character/edit/${id}` : type === 'persona' ? `/persona/edit/${id}` : `/scene/edit/${id}`;
+          return (
+            <div
+              className="d-flex align-items-start gap-3 mb-4 p-3"
+              style={{ background: '#fff1f2', border: '1px solid #f43f5e', borderRadius: '10px' }}
+            >
+              <i className="bi bi-ban" style={{ color: '#e11d48', fontSize: '1.1rem', flexShrink: 0, marginTop: '2px' }}></i>
+              <div className="flex-grow-1">
+                <div style={{ fontWeight: 700, color: '#9f1239', marginBottom: '2px' }}>
+                  {t('entity_detail.takedown_title', '内容已被下架')}
+                </div>
+                <div style={{ fontSize: '0.88rem', color: '#881337', marginBottom: isOwner ? '0.6rem' : 0 }}>
+                  {isOwner
+                    ? t('entity_detail.takedown_owner_body', '您的内容因违反社区规范已被下架，其他用户无法访问。您可以修改内容后提交申诉，由管理员审核。')
+                    : t('entity_detail.takedown_body', '此内容因违反社区规范已被下架，其他用户无法访问。')}
+                </div>
+                {isOwner && (
+                  <button
+                    className={`btn btn-sm ${hasPending ? 'btn-outline-secondary' : 'btn-danger'}`}
+                    disabled={hasPending}
+                    onClick={() => navigate(editPath, { state: { appealMode: true } })}
+                    style={{ fontSize: '0.82rem' }}
+                  >
+                    <i className="bi bi-megaphone me-1"></i>
+                    {hasPending ? t('entity_detail.appeal_pending', '申诉审核中') : t('entity_detail.appeal_action', '编辑并提交申诉')}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Header with image and basic info */}
         <div className="row mb-5">
           <div className={isMobile ? 'col-12 mb-3' : 'col-md-4'}>
@@ -722,6 +809,80 @@ export default function EntityDetailPage() {
           </>
         )}
       </div>
+      {/* Appeal History — visible to owner and admin */}
+      {(userData?.id === entity.creator_id || userData?.is_admin) && contentAppeals.length > 0 && (
+        <div
+          style={{
+            maxWidth: '900px',
+            margin: '0 auto',
+            paddingBottom: '2rem',
+            paddingLeft: '1rem',
+            paddingRight: '1rem',
+          }}
+        >
+          <button
+            type="button"
+            className="w-100 d-flex align-items-center justify-content-between mb-2"
+            onClick={() => setShowAppealHistory(p => !p)}
+            style={{
+              background: 'transparent',
+              border: '1px solid #e2e8f0',
+              borderRadius: '10px',
+              padding: '0.6rem 1rem',
+              cursor: 'pointer',
+              color: '#475569',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+            }}
+          >
+            <span><i className="bi bi-clock-history me-2"></i>{t('entity_detail.appeal_history_title', '申诉历史')} ({contentAppeals.length})</span>
+            <i className={`bi ${showAppealHistory ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i>
+          </button>
+          {showAppealHistory && (
+            <div className="d-flex flex-column gap-3">
+              {contentAppeals.map((appeal) => {
+                const statusColors = {
+                  pending:  { bg: '#eff6ff', border: '#3b82f6', badge: 'bg-primary', label: t('entity_detail.appeal_status_pending',  '审核中') },
+                  approved: { bg: '#f0fdf4', border: '#22c55e', badge: 'bg-success', label: t('entity_detail.appeal_status_approved', '已通过') },
+                  rejected: { bg: '#fff1f2', border: '#f43f5e', badge: 'bg-danger',  label: t('entity_detail.appeal_status_rejected', '未通过') },
+                };
+                const sc = statusColors[appeal.status] || statusColors.pending;
+                return (
+                  <div
+                    key={appeal.id}
+                    style={{ background: sc.bg, border: `1px solid ${sc.border}`, borderRadius: '10px', padding: '0.9rem 1rem' }}
+                  >
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <span className="small text-muted">
+                        {new Date(appeal.created_at).toLocaleString()}
+                      </span>
+                      <span className={`badge ${sc.badge}`}>{sc.label}</span>
+                    </div>
+                    <div style={{ fontSize: '0.88rem', marginBottom: '0.4rem' }}>
+                      <strong>{t('entity_detail.appeal_reason_label', '申诉理由')}：</strong>{appeal.appeal_reason}
+                    </div>
+                    {appeal.admin_reply && (
+                      <div style={{ fontSize: '0.88rem', color: '#475569' }}>
+                        <strong>{t('entity_detail.appeal_admin_reply', '管理员回复')}：</strong>{appeal.admin_reply}
+                      </div>
+                    )}
+                    {appeal.snapshot && (
+                      <details style={{ marginTop: '0.6rem' }}>
+                        <summary style={{ fontSize: '0.82rem', color: '#64748b', cursor: 'pointer' }}>
+                          {t('entity_detail.appeal_snapshot', '提交时内容快照')}
+                        </summary>
+                        <pre style={{ fontSize: '0.78rem', background: '#f8fafc', borderRadius: 6, padding: '0.5rem', marginTop: '0.4rem', overflow: 'auto', maxHeight: 200 }}>
+                          {JSON.stringify(appeal.snapshot, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
       <ProblemReportModal
         show={showProblemReport}
         onClose={() => setShowProblemReport(false)}

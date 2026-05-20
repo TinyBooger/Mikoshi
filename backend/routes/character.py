@@ -610,9 +610,16 @@ def get_character(character_id: int, current_user: User = Depends(get_current_us
     if not c:
         raise HTTPException(status_code=404, detail="Character not found")
 
-    if not c.is_public:
+    # Enforce content moderation visibility rules
+    if c.moderation_status == "takedown":
+        # Taken-down: only the creator or admin may access
         if not current_user or (c.creator_id != current_user.id and not current_user.is_admin):
             raise HTTPException(status_code=404, detail="Character not found")
+    elif not c.is_public and c.moderation_status != "restricted":
+        # Privately set: only owner or admin
+        if not current_user or (c.creator_id != current_user.id and not current_user.is_admin):
+            raise HTTPException(status_code=404, detail="Character not found")
+    # moderation_status == 'restricted': accessible via URL to everyone; no extra check
     c.creator_profile_pic = row[1] if row else None
     return c
 

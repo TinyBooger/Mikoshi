@@ -38,6 +38,9 @@ class Character(Base):
     forked_from_id = Column(Integer, ForeignKey('characters.id', ondelete='SET NULL'), nullable=True)
     forked_from_name = Column(String, nullable=True)
 
+    # Content moderation status: null = normal | 'restricted' | 'takedown'
+    moderation_status = Column(String(20), nullable=True)
+
 class User(Base):
     __tablename__ = "users"
 
@@ -154,6 +157,9 @@ class Persona(Base):
     forked_from_id = Column(Integer, ForeignKey('personas.id', ondelete='SET NULL'), nullable=True)
     forked_from_name = Column(String, nullable=True)
 
+    # Content moderation status: null = normal | 'restricted' | 'takedown'
+    moderation_status = Column(String(20), nullable=True)
+
 
 class SearchTerm(Base):
     __tablename__ = "search_term"
@@ -189,6 +195,9 @@ class Scene(Base):
     # Fork tracking - give credit to original creator
     forked_from_id = Column(Integer, ForeignKey('scenes.id', ondelete='SET NULL'), nullable=True)
     forked_from_name = Column(String, nullable=True)
+
+    # Content moderation status: null = normal | 'restricted' | 'takedown'
+    moderation_status = Column(String(20), nullable=True)
 
 # Junction table for character likes
 class UserLikedCharacter(Base):
@@ -361,3 +370,37 @@ class UserMessage(Base):
     extra = Column(JSONB, default={}, nullable=False)  # e.g. ban_until, ban_reason, target info
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
     created_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)  # admin who sent it
+
+
+class BanAppeal(Base):
+    """User-submitted appeal for a ban. One pending appeal per user at a time."""
+    __tablename__ = "ban_appeals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    ban_type = Column(String(20), nullable=False)   # ban type at time of submission
+    reason = Column(Text, nullable=False)            # user's appeal message
+    # status: pending | approved | rejected
+    status = Column(String(20), nullable=False, default='pending', index=True)
+    admin_reply = Column(Text, nullable=True)        # moderator reply sent to user
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+
+
+class ContentBanAppeal(Base):
+    """Creator-submitted appeal for a restricted or taken-down content item."""
+    __tablename__ = "content_ban_appeals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_type = Column(String(20), nullable=False)    # character | scene | persona
+    entity_id = Column(Integer, nullable=False, index=True)
+    creator_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    appeal_reason = Column(Text, nullable=False)         # creator's explanation
+    # status: pending | approved | rejected
+    status = Column(String(20), nullable=False, default='pending', index=True)
+    snapshot = Column(JSONB, nullable=True)              # entity field values at submission time
+    admin_reply = Column(Text, nullable=True)            # moderator reply sent to creator
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_, and_
 from datetime import datetime, timedelta, UTC
 from database import get_db
-from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger, ContentReviewQueue, ProblemReport, SystemSettings, Scene, Persona
+from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger, ContentReviewQueue, ProblemReport, SystemSettings, Scene, Persona, BanAppeal, ContentBanAppeal
 from utils.session import get_current_admin_user
 from utils.security_middleware import get_rate_limit_status
 from utils.user_utils import enrich_user_with_character_count, build_user_response
@@ -13,7 +13,7 @@ from schemas import UserOut, UserMessageOut
 from utils.audit_logger import AuditLog
 from utils.chat_history_utils import count_chat_history_messages
 from utils.token_wallet import get_token_topup_packages, set_token_topup_packages
-from routes.user_messages import create_moderation_message
+from routes.user_messages import create_moderation_message, create_content_moderation_message
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -514,6 +514,8 @@ def get_moderation_reports(
                     "name": character.name,
                     "is_public": character.is_public,
                     "creator_name": character.creator_name,
+                    "creator_id": character.creator_id,
+                    "moderation_status": character.moderation_status,
                 }
             else:
                 target_info = {"exists": False, "name": report.target_name}
@@ -526,6 +528,8 @@ def get_moderation_reports(
                     "name": entity.name,
                     "is_public": entity.is_public,
                     "creator_name": entity.creator_name,
+                    "creator_id": entity.creator_id,
+                    "moderation_status": entity.moderation_status,
                 }
             else:
                 target_info = {"exists": False, "name": report.target_name}
@@ -599,7 +603,7 @@ def take_moderation_action(
         # warn/ignore: no user model changes — report is resolved with notes only
 
     else:
-        valid_actions = {"keep", "hide", "delete", "ignore"}
+        valid_actions = {"keep", "restrict", "takedown", "delete", "unban", "ignore"}
         if action not in valid_actions:
             raise HTTPException(status_code=400, detail=f"Invalid action for content report. Expected one of: {', '.join(sorted(valid_actions))}")
 
@@ -609,14 +613,55 @@ def take_moderation_action(
             "persona": Persona,
         }
 
-        if report.target_type in model_map and report.target_id and action in ("hide", "delete"):
+        if report.target_type in model_map and report.target_id:
             model_cls = model_map[report.target_type]
             entity = db.query(model_cls).filter(model_cls.id == report.target_id).first()
             if entity:
-                if action == "hide":
+                if action == "restrict":
+                    entity.moderation_status = "restricted"
                     entity.is_public = False
+                elif action == "takedown":
+                    entity.moderation_status = "takedown"
+                    entity.is_public = False
+                elif action == "unban":
+                    entity.moderation_status = None
+                    entity.is_public = True  # restore visibility after ban is lifted
                 elif action == "delete":
+                    creator_id = entity.creator_id
+                    entity_name = entity.name
                     db.delete(entity)
+                    db.flush()
+                    if creator_id:
+                        create_content_moderation_message(
+                            db=db,
+                            user_id=creator_id,
+                            action="delete",
+                            entity_type=report.target_type,
+                            entity_name=entity_name,
+                            entity_id=report.target_id,
+                            notes=payload.notes,
+                            admin_id=current_admin.id,
+                        )
+                    report.status = "resolved"
+                    report.action_taken = action
+                    report.resolved_time = now
+                    report.resolved_by = current_admin.id
+                    report.admin_notes = payload.notes
+                    db.commit()
+                    return {"message": f"Action '{action}' applied to report #{report_id}"}
+
+                # Send message for restrict / takedown / unban
+                if action in {"restrict", "takedown"} and entity.creator_id:
+                    create_content_moderation_message(
+                        db=db,
+                        user_id=entity.creator_id,
+                        action=action,
+                        entity_type=report.target_type,
+                        entity_name=entity.name,
+                        entity_id=report.target_id,
+                        notes=payload.notes,
+                        admin_id=current_admin.id,
+                    )
 
     report.status = "resolved"
     report.action_taken = action
@@ -680,16 +725,47 @@ def take_batch_moderation_action(
                 target_user.ban_reason = None
                 target_user.ban_note = None
         else:
-            if action not in {"keep", "hide", "delete", "ignore"}:
+            if action not in {"keep", "restrict", "takedown", "delete", "unban", "ignore"}:
                 continue
-            if report.target_type in model_map and report.target_id and action in ("hide", "delete"):
+            if report.target_type in model_map and report.target_id:
                 model_cls = model_map[report.target_type]
                 entity = db.query(model_cls).filter(model_cls.id == report.target_id).first()
                 if entity:
-                    if action == "hide":
+                    if action == "restrict":
+                        entity.moderation_status = "restricted"
                         entity.is_public = False
+                    elif action == "takedown":
+                        entity.moderation_status = "takedown"
+                        entity.is_public = False
+                    elif action == "unban":
+                        entity.moderation_status = None
+                        entity.is_public = True  # restore visibility after ban is lifted
                     elif action == "delete":
+                        _creator_id = entity.creator_id
+                        _entity_name = entity.name
                         db.delete(entity)
+                        if _creator_id:
+                            create_content_moderation_message(
+                                db=db,
+                                user_id=_creator_id,
+                                action="delete",
+                                entity_type=report.target_type,
+                                entity_name=_entity_name,
+                                entity_id=report.target_id,
+                                notes=payload.notes,
+                                admin_id=current_admin.id,
+                            )
+                    if action in {"restrict", "takedown"} and entity.creator_id:
+                        create_content_moderation_message(
+                            db=db,
+                            user_id=entity.creator_id,
+                            action=action,
+                            entity_type=report.target_type,
+                            entity_name=entity.name,
+                            entity_id=report.target_id,
+                            notes=payload.notes,
+                            admin_id=current_admin.id,
+                        )
 
         report.status = "resolved"
         report.action_taken = action
@@ -1192,3 +1268,204 @@ def update_system_setting(
         updated_by=setting.updated_by
     )
 # --- End System Settings Admin API ---
+
+
+# ──────────────────────────────────────────────
+# Appeal Queue Admin API
+# ──────────────────────────────────────────────
+
+class AppealActionRequest(BaseModel):
+    action: str           # "approve" | "reject"
+    reply: str            # required reply message sent to user
+
+
+@router.get("/moderation/appeals")
+def get_appeals(
+    status: str = "pending",
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user),
+):
+    """List ban appeals. status=pending|approved|rejected|all — Admin only."""
+    query = db.query(BanAppeal)
+    if status and status != "all":
+        query = query.filter(BanAppeal.status == status)
+
+    appeals = query.order_by(desc(BanAppeal.created_at)).all()
+    result = []
+    for appeal in appeals:
+        appellant = db.query(User).filter(User.id == appeal.user_id).first()
+        resolver = None
+        if appeal.resolved_by:
+            resolver = db.query(User).filter(User.id == appeal.resolved_by).first()
+        result.append({
+            "id": appeal.id,
+            "user_id": appeal.user_id,
+            "user_name": appellant.name if appellant else None,
+            "user_email": appellant.email if appellant else None,
+            "ban_type": appeal.ban_type,
+            "ban_reason": appellant.ban_reason if appellant else None,
+            "ban_note": appellant.ban_note if appellant else None,
+            "ban_until": appellant.ban_until.isoformat() if appellant and appellant.ban_until else None,
+            "current_ban_type": appellant.ban_type if appellant else None,
+            "reason": appeal.reason,
+            "status": appeal.status,
+            "admin_reply": appeal.admin_reply,
+            "created_at": appeal.created_at.isoformat(),
+            "resolved_at": appeal.resolved_at.isoformat() if appeal.resolved_at else None,
+            "resolved_by_name": resolver.name if resolver else None,
+        })
+    return result
+
+
+@router.post("/moderation/appeals/{appeal_id}/action")
+def resolve_appeal(
+    appeal_id: int,
+    payload: AppealActionRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user),
+):
+    """Approve or reject a ban appeal with a required reply message — Admin only."""
+    appeal = db.query(BanAppeal).filter(BanAppeal.id == appeal_id).first()
+    if not appeal:
+        raise HTTPException(status_code=404, detail="Appeal not found")
+    if appeal.status != "pending":
+        raise HTTPException(status_code=400, detail="Appeal has already been resolved")
+
+    action = (payload.action or "").strip().lower()
+    if action not in {"approve", "reject"}:
+        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+
+    reply = (payload.reply or "").strip()
+    if not reply:
+        raise HTTPException(status_code=422, detail="A reply message is required")
+
+    now = datetime.now(UTC)
+    appeal.status = "approved" if action == "approve" else "rejected"
+    appeal.admin_reply = reply
+    appeal.resolved_at = now
+    appeal.resolved_by = current_admin.id
+
+    if action == "approve":
+        user = db.query(User).filter(User.id == appeal.user_id).first()
+        if user:
+            user.ban_type = None
+            user.ban_until = None
+            user.ban_reason = None
+            user.ban_note = None
+
+    # Send inbox message to the user
+    from routes.user_messages import _send_appeal_result_message
+    _send_appeal_result_message(
+        db=db,
+        user_id=appeal.user_id,
+        action=action,
+        reply=reply,
+        admin_id=current_admin.id,
+    )
+
+    db.commit()
+    return {"message": f"Appeal #{appeal_id} {appeal.status}", "ok": True}
+
+
+# ──────────────────────────────────────────────
+# Content Appeal Queue Admin API
+# ──────────────────────────────────────────────
+
+def _get_entity_for_appeal(entity_type: str, entity_id: int, db: Session):
+    if entity_type == "character":
+        return db.query(Character).filter(Character.id == entity_id).first()
+    if entity_type == "scene":
+        return db.query(Scene).filter(Scene.id == entity_id).first()
+    if entity_type == "persona":
+        return db.query(Persona).filter(Persona.id == entity_id).first()
+    return None
+
+
+@router.get("/moderation/content-appeals")
+def get_content_appeals(
+    status: str = "pending",
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user),
+):
+    """List content ban appeals. status=pending|approved|rejected|all — Admin only."""
+    query = db.query(ContentBanAppeal)
+    if status and status != "all":
+        query = query.filter(ContentBanAppeal.status == status)
+
+    appeals = query.order_by(desc(ContentBanAppeal.created_at)).all()
+    result = []
+    for appeal in appeals:
+        creator = db.query(User).filter(User.id == appeal.creator_id).first()
+        resolver = None
+        if appeal.resolved_by:
+            resolver = db.query(User).filter(User.id == appeal.resolved_by).first()
+        entity = _get_entity_for_appeal(appeal.entity_type, appeal.entity_id, db)
+        result.append({
+            "id": appeal.id,
+            "entity_type": appeal.entity_type,
+            "entity_id": appeal.entity_id,
+            "entity_name": entity.name if entity else None,
+            "entity_moderation_status": entity.moderation_status if entity else None,
+            "creator_id": appeal.creator_id,
+            "creator_name": creator.name if creator else None,
+            "creator_email": creator.email if creator else None,
+            "appeal_reason": appeal.appeal_reason,
+            "status": appeal.status,
+            "snapshot": appeal.snapshot,
+            "admin_reply": appeal.admin_reply,
+            "created_at": appeal.created_at.isoformat(),
+            "resolved_at": appeal.resolved_at.isoformat() if appeal.resolved_at else None,
+            "resolved_by_name": resolver.name if resolver else None,
+        })
+    return result
+
+
+@router.post("/moderation/content-appeals/{appeal_id}/action")
+def resolve_content_appeal(
+    appeal_id: int,
+    payload: AppealActionRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user),
+):
+    """Approve or reject a content ban appeal with a required reply message — Admin only."""
+    appeal = db.query(ContentBanAppeal).filter(ContentBanAppeal.id == appeal_id).first()
+    if not appeal:
+        raise HTTPException(status_code=404, detail="Content appeal not found")
+    if appeal.status != "pending":
+        raise HTTPException(status_code=400, detail="Appeal has already been resolved")
+
+    action = (payload.action or "").strip().lower()
+    if action not in {"approve", "reject"}:
+        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+
+    reply = (payload.reply or "").strip()
+    if not reply:
+        raise HTTPException(status_code=422, detail="A reply message is required")
+
+    now = datetime.now(UTC)
+    appeal.status = "approved" if action == "approve" else "rejected"
+    appeal.admin_reply = reply
+    appeal.resolved_at = now
+    appeal.resolved_by = current_admin.id
+
+    entity = _get_entity_for_appeal(appeal.entity_type, appeal.entity_id, db)
+    entity_name = entity.name if entity else f"{appeal.entity_type} #{appeal.entity_id}"
+
+    if action == "approve" and entity:
+        entity.moderation_status = None
+        entity.is_public = True  # snapshot is taken after ban so is_public=False there; always restore on approval
+
+    from routes.user_messages import _send_content_appeal_result_message
+    _send_content_appeal_result_message(
+        db=db,
+        user_id=appeal.creator_id,
+        action=action,
+        reply=reply,
+        entity_type=appeal.entity_type,
+        entity_name=entity_name,
+        entity_id=appeal.entity_id,
+        admin_id=current_admin.id,
+    )
+
+    db.commit()
+    return {"message": f"Content appeal #{appeal_id} {appeal.status}", "ok": True}

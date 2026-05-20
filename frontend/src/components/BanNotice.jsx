@@ -6,12 +6,14 @@ import React from 'react';
  * Props:
  *  - banType: 'upload_ban' | 'full_ban'  (shadow_ban is never exposed)
  *  - banUntil: ISO date string or null
- *  - context: 'upload' | 'chat'  (controls the message copy)
+ *  - context: 'upload' | 'chat' | 'browse'  (controls the message copy)
+ *  - onAppeal: optional callback — when provided, shows an appeal button
  */
-export default function BanNotice({ banType, banUntil, context = 'upload' }) {
+export default function BanNotice({ banType, banUntil, context = 'upload', onAppeal }) {
   if (!banType) return null;
   if (context === 'chat' && banType !== 'full_ban') return null;
   if (context === 'upload' && banType !== 'upload_ban' && banType !== 'full_ban') return null;
+  if (context === 'browse' && banType !== 'upload_ban' && banType !== 'full_ban') return null;
 
   const formatUntil = (iso) => {
     if (!iso) return null;
@@ -35,6 +37,11 @@ export default function BanNotice({ banType, banUntil, context = 'upload' }) {
     detail = isPermanent
       ? '您无法发送消息，该限制为永久封禁。'
       : `您无法发送消息，封禁将于 ${untilStr} 解除。`;
+  } else if (context === 'browse') {
+    headline = banType === 'full_ban' ? '您的账号已被封禁。' : '您的内容发布权限已被限制。';
+    detail = banType === 'full_ban'
+      ? (isPermanent ? '您无法使用大部分平台功能，该限制为永久封禁。' : `您无法使用大部分平台功能，封禁将于 ${untilStr} 解除。`)
+      : (isPermanent ? '您无法创建或编辑内容，该限制为永久封禁。' : `您无法创建或编辑内容，限制将于 ${untilStr} 解除。`);
   } else {
     headline = '您的内容发布权限已被限制。';
     detail = isPermanent
@@ -49,13 +56,27 @@ export default function BanNotice({ banType, banUntil, context = 'upload' }) {
       style={{ borderLeft: '4px solid #dc3545' }}
     >
       <i className="bi bi-slash-circle-fill fs-5 mt-1 flex-shrink-0" />
-      <div>
+      <div className="flex-grow-1">
         <div className="fw-semibold">{headline}</div>
         <div className="small">{detail}</div>
         <div className="small mt-1 text-muted">
-          如果您认为此处理有误，请联系客服申诉。
+          如果您认为此处理有误，您可以提交申诉。
+          {onAppeal && (
+            <>
+              {' '}
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-danger py-0 px-2 ms-1"
+                style={{ fontSize: '0.8rem' }}
+                onClick={onAppeal}
+              >
+                提交申诉
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
 }
+

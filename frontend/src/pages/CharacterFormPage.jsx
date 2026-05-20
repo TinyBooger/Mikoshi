@@ -100,6 +100,7 @@ export default function CharacterFormPage() {
   const location = useLocation();
   const isForkMode = location.pathname.includes('/fork/');
   const mode = id ? (isForkMode ? 'fork' : 'edit') : 'create';
+  const isAppealMode = mode === 'edit' && !!(location.state?.appealMode);
   const MAX_GREETING_LENGTH = 200;
   const MAX_SAMPLE_LENGTH = 200;
   const MAX_TAGS = 20;
@@ -146,6 +147,7 @@ export default function CharacterFormPage() {
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit' || mode === 'fork');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [appealReason, setAppealReason] = useState('');
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const selectedTokenLimits = getTokenLimits(charData.model || DEFAULT_CHAT_CONFIG.model);
   const selectedTokenTiers = getTokenTiers(charData.model || DEFAULT_CHAT_CONFIG.model);
@@ -386,8 +388,21 @@ export default function CharacterFormPage() {
         if (refreshUserData) {
           refreshUserData({ silent: true });
         }
-        toast.show(mode === 'edit' ? t('character_form.updated') : mode === 'fork' ? t('character_form.forked') : t('character_form.created'));
-        navigate(mode === 'edit' ? "/profile" : "/profile");
+        // If in appeal mode, submit the content ban appeal after saving
+        if (isAppealMode && appealReason.trim()) {
+          try {
+            await fetch(`${window.API_BASE_URL}/api/content-ban-appeal`, {
+              method: 'POST',
+              headers: { 'Authorization': sessionToken, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ entity_type: 'character', entity_id: Number(id), appeal_reason: appealReason.trim() }),
+            });
+          } catch (_) { /* best effort */ }
+          toast.show(t('character_form.appeal_submitted', '内容已保存并提交申诉'));
+          navigate(`/character/${id}`);
+        } else {
+          toast.show(mode === 'edit' ? t('character_form.updated') : mode === 'fork' ? t('character_form.forked') : t('character_form.created'));
+          navigate(mode === 'edit' ? "/profile" : "/profile");
+        }
       } else {
         const tokenCapMessage = formatTokenCapError(data);
         if (tokenCapMessage) {
@@ -440,10 +455,19 @@ export default function CharacterFormPage() {
             opacity: 1;
           }
         `}</style>
-          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>{mode === 'edit' ? t('character_form.edit_title') : mode === 'fork' ? t('character_form.fork_title') : t('character_form.create_title')}</h2>
+          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>{isAppealMode ? t('character_form.appeal_title', '修改并申诉') : mode === 'edit' ? t('character_form.edit_title') : mode === 'fork' ? t('character_form.fork_title') : t('character_form.create_title')}</h2>
 
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           <BanNotice banType={userData?.ban_type} banUntil={userData?.ban_until} context="upload" />
+          {isAppealMode && (
+            <div className="alert alert-warning mb-4" role="alert" style={{ borderRadius: 10 }}>
+              <i className="bi bi-megaphone-fill me-2"></i>
+              <strong>{t('character_form.appeal_notice_title', '申诉模式')}</strong>
+              <div className="mt-1" style={{ fontSize: '0.88rem' }}>
+                {t('character_form.appeal_notice_body', '您可以修改内容后提交申诉。管理员将审核修改后的版本并决定是否解除限制。')}
+              </div>
+            </div>
+          )}
           {/* Forked From - Display only */}
           {charData.forked_from_id && charData.forked_from_name && (
             <div className="alert alert-info mb-4" role="alert">
@@ -1047,6 +1071,37 @@ export default function CharacterFormPage() {
             </p>
           )}
 
+          {/* Appeal reason — shown only in appeal mode */}
+          {isAppealMode && (
+            <div className="mb-4">
+              <label className="form-label fw-bold" style={{ color: '#232323' }}>
+                {t('character_form.appeal_reason_label', '申诉理由')}
+                <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
+                <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
+                  {t('character_form.appeal_reason_hint', '请说明您已如何修改内容，以及为何认为应解除限制')}
+                </small>
+              </label>
+              <textarea
+                className="form-control"
+                rows={4}
+                value={appealReason}
+                maxLength={1000}
+                placeholder={t('character_form.appeal_reason_placeholder', '请描述您对内容的修改，以及申诉理由…')}
+                onChange={e => setAppealReason(e.target.value)}
+                required={isAppealMode}
+                style={{
+                  background: '#fffbeb',
+                  border: '1.5px solid #f59e0b',
+                  borderRadius: 16,
+                  fontSize: '1rem',
+                  padding: '0.7rem 1.2rem',
+                  resize: 'vertical',
+                }}
+              />
+              <small className="text-muted">{appealReason.length}/1000</small>
+            </div>
+          )}
+
           <div className="d-flex gap-3 mt-4 justify-content-end">
             <PrimaryButton type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
@@ -1056,7 +1111,8 @@ export default function CharacterFormPage() {
                 </>
               ) : (
                 <>
-                  <i className="bi bi-save me-2"></i>{mode === 'edit' ? t('character_form.save') : t('character_form.create')}
+                  <i className={`bi ${isAppealMode ? 'bi-megaphone' : 'bi-save'} me-2`}></i>
+                  {isAppealMode ? t('character_form.save_and_appeal', '保存并提交申诉') : mode === 'edit' ? t('character_form.save') : t('character_form.create')}
                 </>
               )}
             </PrimaryButton>

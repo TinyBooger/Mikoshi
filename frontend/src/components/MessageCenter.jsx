@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import ReactDOM from 'react-dom';
+import { useNavigate } from 'react-router';
 import { AuthContext } from './AuthProvider';
 
 const TYPE_META = {
@@ -22,6 +23,7 @@ function fmt(isoStr) {
 export default function MessageCenter() {
   const btnRef = useRef(null);
   const { sessionToken } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [unread, setUnread] = useState(0);
@@ -215,6 +217,33 @@ export default function MessageCenter() {
                   }}>
                     {msg.body}
                   </div>
+                  {isExpanded && msg.extra?.entity_url && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpen(false);
+                        navigate(msg.extra.entity_url);
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginTop: '8px',
+                        padding: '4px 10px',
+                        border: '1px solid #c4b8e8',
+                        borderRadius: '6px',
+                        background: '#f5f3ff',
+                        color: '#5b4fa8',
+                        fontSize: '0.8rem',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <i className="bi bi-box-arrow-up-right" style={{ fontSize: '0.75rem' }} />
+                      {msg.extra.entity_name || '查看内容'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
