@@ -100,7 +100,8 @@ export default function CharacterFormPage() {
   const location = useLocation();
   const isForkMode = location.pathname.includes('/fork/');
   const mode = id ? (isForkMode ? 'fork' : 'edit') : 'create';
-  const isAppealMode = mode === 'edit' && !!(location.state?.appealMode);
+  const [isAppealMode, setIsAppealMode] = useState(false);
+  const [hasPendingAppeal, setHasPendingAppeal] = useState(false);
   const MAX_GREETING_LENGTH = 200;
   const MAX_SAMPLE_LENGTH = 200;
   const MAX_TAGS = 20;
@@ -285,6 +286,19 @@ export default function CharacterFormPage() {
           } else {
             setAvatarPreview(null);
           }
+          if (mode === 'edit' && data.moderation_status) {
+            setIsAppealMode(true);
+            fetch(`${window.API_BASE_URL}/api/content-ban-appeal/character/${id}`, {
+              headers: { 'Authorization': sessionToken }
+            })
+              .then(res => res.ok ? res.json() : [])
+              .then(appeals => {
+                if (Array.isArray(appeals) && appeals.some(a => a.status === 'pending')) {
+                  setHasPendingAppeal(true);
+                }
+              })
+              .catch(() => {});
+          }
         });
     }
   }, [mode, id, navigate, sessionToken]);
@@ -388,8 +402,8 @@ export default function CharacterFormPage() {
         if (refreshUserData) {
           refreshUserData({ silent: true });
         }
-        // If in appeal mode, submit the content ban appeal after saving
-        if (isAppealMode && appealReason.trim()) {
+        // If in appeal mode and no pending appeal, submit the content ban appeal after saving
+        if (isAppealMode && !hasPendingAppeal && appealReason.trim()) {
           try {
             await fetch(`${window.API_BASE_URL}/api/content-ban-appeal`, {
               method: 'POST',
@@ -1074,31 +1088,43 @@ export default function CharacterFormPage() {
           {/* Appeal reason — shown only in appeal mode */}
           {isAppealMode && (
             <div className="mb-4">
-              <label className="form-label fw-bold" style={{ color: '#232323' }}>
-                {t('character_form.appeal_reason_label', '申诉理由')}
-                <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
-                <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
-                  {t('character_form.appeal_reason_hint', '请说明您已如何修改内容，以及为何认为应解除限制')}
-                </small>
-              </label>
-              <textarea
-                className="form-control"
-                rows={4}
-                value={appealReason}
-                maxLength={1000}
-                placeholder={t('character_form.appeal_reason_placeholder', '请描述您对内容的修改，以及申诉理由…')}
-                onChange={e => setAppealReason(e.target.value)}
-                required={isAppealMode}
-                style={{
-                  background: '#fffbeb',
-                  border: '1.5px solid #f59e0b',
-                  borderRadius: 16,
-                  fontSize: '1rem',
-                  padding: '0.7rem 1.2rem',
-                  resize: 'vertical',
-                }}
-              />
-              <small className="text-muted">{appealReason.length}/1000</small>
+              {hasPendingAppeal ? (
+                <div className="alert alert-info" role="alert" style={{ borderRadius: 10 }}>
+                  <i className="bi bi-hourglass-split me-2"></i>
+                  <strong>{t('character_form.appeal_pending_title', '申诉审核中')}</strong>
+                  <div className="mt-1" style={{ fontSize: '0.88rem' }}>
+                    {t('character_form.appeal_pending_body', '您已有一份申诉正在审核中。您仍可保存内容修改，但无法再次提交申诉，直到当前申诉处理完毕。')}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <label className="form-label fw-bold" style={{ color: '#232323' }}>
+                    {t('character_form.appeal_reason_label', '申诉理由')}
+                    <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
+                    <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
+                      {t('character_form.appeal_reason_hint', '请说明您已如何修改内容，以及为何认为应解除限制')}
+                    </small>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows={4}
+                    value={appealReason}
+                    maxLength={1000}
+                    placeholder={t('character_form.appeal_reason_placeholder', '请描述您对内容的修改，以及申诉理由…')}
+                    onChange={e => setAppealReason(e.target.value)}
+                    required={isAppealMode && !hasPendingAppeal}
+                    style={{
+                      background: '#fffbeb',
+                      border: '1.5px solid #f59e0b',
+                      borderRadius: 16,
+                      fontSize: '1rem',
+                      padding: '0.7rem 1.2rem',
+                      resize: 'vertical',
+                    }}
+                  />
+                  <small className="text-muted">{appealReason.length}/1000</small>
+                </>
+              )}
             </div>
           )}
 
@@ -1111,8 +1137,8 @@ export default function CharacterFormPage() {
                 </>
               ) : (
                 <>
-                  <i className={`bi ${isAppealMode ? 'bi-megaphone' : 'bi-save'} me-2`}></i>
-                  {isAppealMode ? t('character_form.save_and_appeal', '保存并提交申诉') : mode === 'edit' ? t('character_form.save') : t('character_form.create')}
+                  <i className={`bi ${isAppealMode && !hasPendingAppeal ? 'bi-megaphone' : 'bi-save'} me-2`}></i>
+                  {isAppealMode && !hasPendingAppeal ? t('character_form.save_and_appeal', '保存并提交申诉') : mode === 'edit' ? t('character_form.save') : t('character_form.create')}
                 </>
               )}
             </PrimaryButton>

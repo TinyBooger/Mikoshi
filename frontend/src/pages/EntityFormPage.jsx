@@ -22,7 +22,8 @@ export default function EntityFormPage() {
   const location = useLocation();
   const isForkMode = location.pathname.includes('/fork/');
   const mode = id ? (isForkMode ? 'fork' : 'edit') : 'create';
-  const isAppealMode = mode === 'edit' && !!(location.state?.appealMode);
+  const [isAppealMode, setIsAppealMode] = useState(false);
+  const [hasPendingAppeal, setHasPendingAppeal] = useState(false);
   
   // Determine entity type from route
   const entityType = location.pathname.includes('persona') ? 'persona' : location.pathname.includes('scene') ? 'scene' : null;
@@ -166,6 +167,19 @@ export default function EntityFormPage() {
             });
           }
           setPicture(null);
+          if (mode === 'edit' && data.moderation_status) {
+            setIsAppealMode(true);
+            fetch(`${window.API_BASE_URL}/api/content-ban-appeal/${entityType}/${id}`, {
+              headers: { 'Authorization': sessionToken }
+            })
+              .then(res => res.ok ? res.json() : [])
+              .then(appeals => {
+                if (Array.isArray(appeals) && appeals.some(a => a.status === 'pending')) {
+                  setHasPendingAppeal(true);
+                }
+              })
+              .catch(() => {});
+          }
           setLoading(false);
         });
     } else {
@@ -233,8 +247,8 @@ export default function EntityFormPage() {
       );
       const data = await res.json();
       if (res.ok) {
-        // If in appeal mode, submit the content ban appeal after saving
-        if (isAppealMode && appealReason.trim()) {
+        // If in appeal mode and no pending appeal, submit the content ban appeal after saving
+        if (isAppealMode && !hasPendingAppeal && appealReason.trim()) {
           try {
             await fetch(`${window.API_BASE_URL}/api/content-ban-appeal`, {
               method: 'POST',
@@ -684,31 +698,43 @@ export default function EntityFormPage() {
           {/* Appeal reason — shown only in appeal mode */}
           {isAppealMode && (
             <div className="mb-4">
-              <label className="form-label fw-bold" style={{ color: '#232323' }}>
-                {t(`${entityConfig.transactionKeyPrefix}.appeal_reason_label`, '申诉理由')}
-                <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
-                <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
-                  {t(`${entityConfig.transactionKeyPrefix}.appeal_reason_hint`, '请说明您已如何修改内容，以及为何认为应解除限制')}
-                </small>
-              </label>
-              <textarea
-                className="form-control"
-                rows={4}
-                value={appealReason}
-                maxLength={1000}
-                placeholder={t(`${entityConfig.transactionKeyPrefix}.appeal_reason_placeholder`, '请描述您对内容的修改，以及申诉理由…')}
-                onChange={e => setAppealReason(e.target.value)}
-                required={isAppealMode}
-                style={{
-                  background: '#fffbeb',
-                  border: '1.5px solid #f59e0b',
-                  borderRadius: 16,
-                  fontSize: '1rem',
-                  padding: '0.7rem 1.2rem',
-                  resize: 'vertical',
-                }}
-              />
-              <small className="text-muted">{appealReason.length}/1000</small>
+              {hasPendingAppeal ? (
+                <div className="alert alert-info" role="alert" style={{ borderRadius: 10 }}>
+                  <i className="bi bi-hourglass-split me-2"></i>
+                  <strong>{t(`${entityConfig.transactionKeyPrefix}.appeal_pending_title`, '申诉审核中')}</strong>
+                  <div className="mt-1" style={{ fontSize: '0.88rem' }}>
+                    {t(`${entityConfig.transactionKeyPrefix}.appeal_pending_body`, '您已有一份申诉正在审核中。您仍可保存内容修改，但无法再次提交申诉，直到当前申诉处理完毕。')}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <label className="form-label fw-bold" style={{ color: '#232323' }}>
+                    {t(`${entityConfig.transactionKeyPrefix}.appeal_reason_label`, '申诉理由')}
+                    <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
+                    <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
+                      {t(`${entityConfig.transactionKeyPrefix}.appeal_reason_hint`, '请说明您已如何修改内容，以及为何认为应解除限制')}
+                    </small>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows={4}
+                    value={appealReason}
+                    maxLength={1000}
+                    placeholder={t(`${entityConfig.transactionKeyPrefix}.appeal_reason_placeholder`, '请描述您对内容的修改，以及申诉理由…')}
+                    onChange={e => setAppealReason(e.target.value)}
+                    required={isAppealMode && !hasPendingAppeal}
+                    style={{
+                      background: '#fffbeb',
+                      border: '1.5px solid #f59e0b',
+                      borderRadius: 16,
+                      fontSize: '1rem',
+                      padding: '0.7rem 1.2rem',
+                      resize: 'vertical',
+                    }}
+                  />
+                  <small className="text-muted">{appealReason.length}/1000</small>
+                </>
+              )}
             </div>
           )}
 
@@ -722,8 +748,8 @@ export default function EntityFormPage() {
                 </>
               ) : (
                 <>
-                  <i className={`bi ${isAppealMode ? 'bi-megaphone' : 'bi-save'} me-2`}></i>
-                  {isAppealMode ? t(`${entityConfig.transactionKeyPrefix}.save_and_appeal`, '保存并提交申诉') : mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.save`) : t(`${entityConfig.transactionKeyPrefix}.create`)}
+                  <i className={`bi ${isAppealMode && !hasPendingAppeal ? 'bi-megaphone' : 'bi-save'} me-2`}></i>
+                  {isAppealMode && !hasPendingAppeal ? t(`${entityConfig.transactionKeyPrefix}.save_and_appeal`, '保存并提交申诉') : mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.save`) : t(`${entityConfig.transactionKeyPrefix}.create`)}
                 </>
               )}
             </PrimaryButton>

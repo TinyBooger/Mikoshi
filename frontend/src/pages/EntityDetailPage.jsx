@@ -318,7 +318,6 @@ export default function EntityDetailPage() {
         {/* Moderation notice banners */}
         {entity.moderation_status === 'restricted' && (() => {
           const hasPending = contentAppeals.some(a => a.status === 'pending');
-          const editPath = type === 'character' ? `/character/edit/${id}` : type === 'persona' ? `/persona/edit/${id}` : `/scene/edit/${id}`;
           return (
             <div
               className="d-flex align-items-start gap-3 mb-4 p-3"
@@ -329,21 +328,16 @@ export default function EntityDetailPage() {
                 <div style={{ fontWeight: 700, color: '#92400e', marginBottom: '2px' }}>
                   {t('entity_detail.restricted_title', '内容可见性已限制')}
                 </div>
-                <div style={{ fontSize: '0.88rem', color: '#78350f', marginBottom: isOwner ? '0.6rem' : 0 }}>
+                <div style={{ fontSize: '0.88rem', color: '#78350f', marginBottom: isOwner && hasPending ? '0.6rem' : 0 }}>
                   {isOwner
-                    ? t('entity_detail.restricted_owner_body', '您的内容因违反社区规范，已被限制在公开推荐及搜索中显示。仍可通过本链接访问，但不会出现在浏览或推荐页面中。')
+                    ? t('entity_detail.restricted_owner_body', '您的内容因违反社区规范，已被限制在公开推荐及搜索中显示。仍可通过本链接访问，但不会出现在浏览或推荐页面中。点击“编辑”可修改内容并提交申诉。')
                     : t('entity_detail.restricted_visitor_body', '此内容目前不在公开推荐列表中，但可通过此链接访问。')}
                 </div>
-                {isOwner && (
-                  <button
-                    className={`btn btn-sm ${hasPending ? 'btn-outline-secondary' : 'btn-warning'}`}
-                    disabled={hasPending}
-                    onClick={() => navigate(editPath, { state: { appealMode: true } })}
-                    style={{ fontSize: '0.82rem' }}
-                  >
-                    <i className="bi bi-megaphone me-1"></i>
-                    {hasPending ? t('entity_detail.appeal_pending', '申诉审核中') : t('entity_detail.appeal_action', '编辑并提交申诉')}
-                  </button>
+                {isOwner && hasPending && (
+                  <span className="badge bg-secondary" style={{ fontSize: '0.82rem' }}>
+                    <i className="bi bi-hourglass-split me-1"></i>
+                    {t('entity_detail.appeal_pending', '申诉审核中')}
+                  </span>
                 )}
               </div>
             </div>
@@ -351,7 +345,6 @@ export default function EntityDetailPage() {
         })()}
         {entity.moderation_status === 'takedown' && (() => {
           const hasPending = contentAppeals.some(a => a.status === 'pending');
-          const editPath = type === 'character' ? `/character/edit/${id}` : type === 'persona' ? `/persona/edit/${id}` : `/scene/edit/${id}`;
           return (
             <div
               className="d-flex align-items-start gap-3 mb-4 p-3"
@@ -362,21 +355,16 @@ export default function EntityDetailPage() {
                 <div style={{ fontWeight: 700, color: '#9f1239', marginBottom: '2px' }}>
                   {t('entity_detail.takedown_title', '内容已被下架')}
                 </div>
-                <div style={{ fontSize: '0.88rem', color: '#881337', marginBottom: isOwner ? '0.6rem' : 0 }}>
+                <div style={{ fontSize: '0.88rem', color: '#881337', marginBottom: isOwner && hasPending ? '0.6rem' : 0 }}>
                   {isOwner
-                    ? t('entity_detail.takedown_owner_body', '您的内容因违反社区规范已被下架，其他用户无法访问。您可以修改内容后提交申诉，由管理员审核。')
+                    ? t('entity_detail.takedown_owner_body', '您的内容因违反社区规范已被下架，其他用户无法访问。点击“编辑”可修改内容并提交申诉，由管理员审核。')
                     : t('entity_detail.takedown_body', '此内容因违反社区规范已被下架，其他用户无法访问。')}
                 </div>
-                {isOwner && (
-                  <button
-                    className={`btn btn-sm ${hasPending ? 'btn-outline-secondary' : 'btn-danger'}`}
-                    disabled={hasPending}
-                    onClick={() => navigate(editPath, { state: { appealMode: true } })}
-                    style={{ fontSize: '0.82rem' }}
-                  >
-                    <i className="bi bi-megaphone me-1"></i>
-                    {hasPending ? t('entity_detail.appeal_pending', '申诉审核中') : t('entity_detail.appeal_action', '编辑并提交申诉')}
-                  </button>
+                {isOwner && hasPending && (
+                  <span className="badge bg-secondary" style={{ fontSize: '0.82rem' }}>
+                    <i className="bi bi-hourglass-split me-1"></i>
+                    {t('entity_detail.appeal_pending', '申诉审核中')}
+                  </span>
                 )}
               </div>
             </div>
