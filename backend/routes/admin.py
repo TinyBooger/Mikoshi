@@ -1,7 +1,9 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_, and_
 from datetime import datetime, timedelta, UTC
+from passlib.context import CryptContext
 from database import get_db
 from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger, ContentReviewQueue, ProblemReport, SystemSettings, Scene, Persona, BanAppeal, ContentBanAppeal, UserModerationLog, ContentModerationLog
 from utils.session import get_current_admin_user
@@ -16,6 +18,7 @@ from utils.token_wallet import get_token_topup_packages, set_token_topup_package
 from routes.user_messages import create_moderation_message, create_content_moderation_message
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # ---------------------------------------------------------------------------
@@ -79,6 +82,14 @@ def _log_content_moderation(
 
 
 # Pydantic models for request bodies
+class AdminCreateUserRequest(BaseModel):
+    email: str
+    name: str
+    password: str
+    bio: Optional[str] = None
+    is_admin: bool = False
+
+
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     phone_number: Optional[str] = None
@@ -1101,6 +1112,60 @@ def get_search_terms(
         }
         for term in terms
     ]
+
+
+@router.post("/users", status_code=201)
+def admin_create_user(
+    payload: AdminCreateUserRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user),
+):
+    """Create a user account directly — Admin only. Bypasses phone verification, captcha, and invitation codes."""
+    email = payload.email.strip().lower()
+
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        raise HTTPException(status_code=400, detail="Invalid email format")
+    if len(email) > 100:
+        raise HTTPException(status_code=400, detail="Email too long (max 100 characters)")
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    if len(name) > 50:
+        raise HTTPException(status_code=400, detail="Name too long (max 50 characters)")
+
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if len(payload.password) > 128:
+        raise HTTPException(status_code=400, detail="Password too long (max 128 characters)")
+
+    if db.query(User).filter(User.email == email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    hashed_password = _pwd_context.hash(payload.password)
+
+    user = User(
+        id=email,
+        email=email,
+        name=name,
+        bio=payload.bio or None,
+        hashed_password=hashed_password,
+        is_admin=payload.is_admin,
+        profile_pic=None,
+        last_known_ips=[],
+        device_fingerprints=[],
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "is_admin": user.is_admin,
+        "message": "User created successfully",
+    }
 
 
 @router.delete("/users/{user_id}")

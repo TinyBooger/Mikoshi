@@ -5,7 +5,7 @@ import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import { useTranslation } from 'react-i18next';
 
-export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, mode = 'avatar' }) {
+export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, mode = 'avatar', hideOriginal = false }) {
   const { t } = useTranslation();
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 600);
   useEffect(() => {
@@ -115,7 +115,7 @@ export default function ImageCropModal({ srcFile, onCancel, onSave, size = 200, 
                 flexWrap: 'wrap',
               }}
             >
-              {!isMobile && (
+              {!isMobile && !hideOriginal && (
               <div style={{ flex: '1 1 300px', minWidth: 280 }}>
                 <div className="fw-semibold" style={{ marginBottom: 4 }}>{originalTitle}</div>
                 <div className="text-muted" style={{ fontSize: '0.82rem', marginBottom: 8 }}>{originalDescription}</div>

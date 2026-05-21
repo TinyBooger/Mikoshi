@@ -31,6 +31,9 @@ export default function UsersPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyTab, setHistoryTab] = useState('account'); // 'account' | 'content'
   const [linkedDialog, setLinkedDialog] = useState(null); // { user, data, loading }
+  const [createDialog, setCreateDialog] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: '', email: '', password: '', is_admin: false, bio: '' });
+  const [createLoading, setCreateLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -187,6 +190,31 @@ export default function UsersPage() {
     }
   };
 
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setCreateLoading(true);
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/admin/users`, {
+        method: 'POST',
+        headers: { 'Authorization': sessionToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify(createForm),
+      });
+      if (res.ok) {
+        setCreateDialog(false);
+        setCreateForm({ name: '', email: '', password: '', is_admin: false, bio: '' });
+        fetchUsers();
+      } else {
+        const err = await res.json();
+        alert(`Error: ${err.detail || 'Failed to create user'}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to create user');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   const applyModerationAction = async () => {
     const { action, ban_reason, ban_note, days } = modForm;
     const user = modDialog?.user;
@@ -298,6 +326,7 @@ export default function UsersPage() {
             Manage users and update permissions
           </p>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <div style={{
           background: '#f5f5f5',
           padding: '1rem',
@@ -308,6 +337,15 @@ export default function UsersPage() {
           <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#2196F3' }}>
             {total}
           </div>
+        </div>
+        <button
+          className="btn btn-success"
+          onClick={() => setCreateDialog(true)}
+          style={{ whiteSpace: 'nowrap' }}
+        >
+          <i className="bi bi-person-plus me-2" />
+          Create Account
+        </button>
         </div>
       </div>
 
@@ -585,6 +623,88 @@ export default function UsersPage() {
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setLinkedDialog(null)}>Close</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Account Modal */}
+      {createDialog && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={(e) => { if (e.target === e.currentTarget) setCreateDialog(false); }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="bi bi-person-plus me-2 text-success" />
+                  Create Account
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setCreateDialog(false)} />
+              </div>
+              <form onSubmit={handleCreate}>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Name <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      required
+                      maxLength={50}
+                      value={createForm.name}
+                      onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Email <span className="text-danger">*</span></label>
+                    <input
+                      type="email"
+                      className="form-control"
+                      required
+                      value={createForm.email}
+                      onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Password <span className="text-danger">*</span></label>
+                    <input
+                      type="password"
+                      className="form-control"
+                      required
+                      minLength={6}
+                      maxLength={128}
+                      value={createForm.password}
+                      onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                    />
+                    <div className="form-text">Minimum 6 characters.</div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Bio</label>
+                    <textarea
+                      className="form-control"
+                      rows={2}
+                      value={createForm.bio}
+                      onChange={e => setCreateForm(f => ({ ...f, bio: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-check">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      id="createIsAdmin"
+                      checked={createForm.is_admin}
+                      onChange={e => setCreateForm(f => ({ ...f, is_admin: e.target.checked }))}
+                    />
+                    <label className="form-check-label" htmlFor="createIsAdmin">
+                      Grant admin privileges
+                    </label>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setCreateDialog(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-success" disabled={createLoading}>
+                    {createLoading ? 'Creating…' : 'Create Account'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

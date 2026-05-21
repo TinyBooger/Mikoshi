@@ -1451,6 +1451,7 @@ export default function ProfilePage() {
               setRawSelectedFile(null);
             }}
             size={96}
+            hideOriginal
           />
         </ModalPortal>
       )}
