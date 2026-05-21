@@ -459,27 +459,7 @@ export default function ChatPage() {
     setSelectedWallpaperId(wallpaperId);
   };
 
-  // Update IDs instantly when URL searchParams change
-  useEffect(() => {
-    setCharacterId(searchParams.get('character'));
-    setSceneId(searchParams.get('scene'));
-    if (!searchParams.get('character')) {
-      setSelectedCharacter(null);
-    }
-    if (!searchParams.get('scene')) {
-      setSelectedScene(null);
-    }
-    setSelectedPersona(null);
-    setSelectedChat(null);
-    setMessages([]);
-    setEditingMessageId(null);
-    setEditingMessageText('');
-    setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
-    setServerContextWindowUsage(null);
-    isNewChat.current = true;
-    setInitModal(false);
-    initialized.current = false;
-  }, [searchParams]);
+
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -521,6 +501,7 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const initialized = useRef(false);
   const isNewChat = useRef(true);
+  const prevSearchParamsRef = useRef(searchParams);
   const lastLimitReminderCountRef = useRef(null);
   const lastTokenLimitReminderRef = useRef(null);
 
@@ -955,18 +936,43 @@ export default function ChatPage() {
     }
   };
 
-  // Initialize data based on URL entry (character or scene)
+  // Reset chat state on navigation, then trigger initialization once auth is ready.
+  // Keeping these in one effect guarantees the reset and the initialization guard
+  // are always evaluated in the same React batch — eliminating the race where the
+  // reset effect would clear initialized.current while the async handler was
+  // mid-flight (most visible as a double-fire in React StrictMode).
   useEffect(() => {
-    if (loading) return;
+    const searchParamsChanged = searchParams !== prevSearchParamsRef.current;
+    prevSearchParamsRef.current = searchParams;
 
-    if (!loading && !sessionToken) {
-      navigate('/');
-      return;
+    if (searchParamsChanged) {
+      setCharacterId(searchParams.get('character'));
+      setSceneId(searchParams.get('scene'));
+      if (!searchParams.get('character')) setSelectedCharacter(null);
+      if (!searchParams.get('scene')) setSelectedScene(null);
+      setSelectedPersona(null);
+      setSelectedChat(null);
+      setMessages([]);
+      setEditingMessageId(null);
+      setEditingMessageText('');
+      setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
+      setServerContextWindowUsage(null);
+      isNewChat.current = true;
+      setInitModal(false);
+      initialized.current = false;
     }
 
+    if (loading) return;
+    if (!sessionToken) { navigate('/'); return; }
     if (initialized.current) return;
 
-    const entryMode = sceneId ? 'scene' : (characterId ? 'character' : null);
+    // Claim the slot synchronously so concurrent calls (e.g. StrictMode
+    // double-fire, rapid auth state changes) see it as taken immediately.
+    initialized.current = true;
+
+    const entryMode = searchParams.get('scene')
+      ? 'scene'
+      : (searchParams.get('character') ? 'character' : null);
 
     switch (entryMode) {
       case 'scene':
@@ -978,7 +984,6 @@ export default function ChatPage() {
       default:
         return;
     }
-
   }, [navigate, sessionToken, loading, searchParams]);
 
   // Reusable function to start chat with current selections (used by modal and direct entry)
