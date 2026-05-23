@@ -325,7 +325,7 @@ async def update_profile(
 
     db.commit()
     db.refresh(current_user)
-    return {"message": "Profile updated"}
+    return {"message": "个人资料已更新"}
 
 # -------------------------- Like/Unlike Endpoints --------------------------
 
