@@ -10,9 +10,9 @@ from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 from utils.session import get_current_user
+from utils.collaborative_filtering import get_cf_scenes
 from datetime import datetime, UTC
 from schemas import SceneOut, SceneListOut
-from sqlalchemy.dialects.postgresql import array, TEXT
 from utils.content_censor import censor_form_payload
 from utils.user_utils import get_active_ban_type, is_upload_banned
 
@@ -236,7 +236,7 @@ def get_recent_scenes(
     return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 
-# Recommended Scenes (personalized by liked_tags)
+# Recommended Scenes (collaborative filtering)
 @router.get("/api/scenes/recommended", response_model=SceneListOut)
 def get_recommended_scenes(
     short: bool = Query(True),
@@ -245,31 +245,10 @@ def get_recommended_scenes(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if not current_user.liked_tags:
-        return SceneListOut(items=[], total=0, page=1, page_size=0, short=short)
-    user_tags = current_user.liked_tags or []
-    tags_array = array(user_tags, type_=TEXT)
-    base_query = (
-        db.query(Scene, User.profile_pic.label("creator_profile_pic"))
-        .outerjoin(User, Scene.creator_id == User.id)
-        .filter(Scene.is_public == True)
-        .filter(Scene.tags.overlap(tags_array))
-        .order_by(Scene.views.desc())
-    )
-    total = base_query.count()
+    items, total = get_cf_scenes(db, current_user.id, page, page_size, short)
     if short:
-        rows = base_query.limit(10).all()
-        items = []
-        for scene, creator_profile_pic in rows:
-            scene.creator_profile_pic = creator_profile_pic
-            items.append(SceneOut.from_orm(scene))
-        return SceneListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
-    items = []
-    for scene, creator_profile_pic in rows:
-        scene.creator_profile_pic = creator_profile_pic
-        items.append(SceneOut.from_orm(scene))
-    return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+        return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=1, page_size=len(items), short=True)
+    return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=page, page_size=page_size, short=False)
 
 # Read single Scene
 @router.get("/api/scenes/{scene_id}", response_model=SceneOut)

@@ -10,6 +10,7 @@ from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 from utils.session import get_current_user, get_optional_current_user
+from utils.collaborative_filtering import get_cf_personas
 from datetime import datetime, UTC
 from schemas import PersonaOut, PersonaListOut
 from utils.content_censor import censor_form_payload
@@ -96,7 +97,7 @@ def get_recent_personas(
         items.append(persona)
     return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
-# Recommended Personas (simple: most liked, fallback to recent)
+# Recommended Personas (collaborative filtering)
 @router.get("/api/personas/recommended", response_model=PersonaListOut)
 def get_recommended_personas(
     short: bool = Query(True),
@@ -105,33 +106,18 @@ def get_recommended_personas(
     current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
-    base_query = (
-        db.query(Persona, User.profile_pic.label("creator_profile_pic"))
-        .outerjoin(User, Persona.creator_id == User.id)
-        .filter(Persona.is_public == True)
-        .order_by(Persona.views.desc(), Persona.created_time.desc())
-    )
-    total = base_query.count()
+    user_id = current_user.id if current_user else None
+    items, total = get_cf_personas(db, user_id, page, page_size, short)
     liked_ids = set()
     if current_user:
         liked_ids = {
             r.persona_id for r in
             db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id).all()
         }
-    if short:
-        rows = base_query.limit(10).all()
-        items = []
-        for persona, creator_profile_pic in rows:
-            persona.creator_profile_pic = creator_profile_pic
-            persona.liked = persona.id in liked_ids
-            items.append(persona)
-        return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
-    items = []
-    for persona, creator_profile_pic in rows:
-        persona.creator_profile_pic = creator_profile_pic
+    for persona in items:
         persona.liked = persona.id in liked_ids
-        items.append(persona)
+    if short:
+        return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
     return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 # ------------------- PERSONA CRUD ROUTES -------------------

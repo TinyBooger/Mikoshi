@@ -13,6 +13,7 @@ from utils.session import get_current_user
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.chat_history_utils import fetch_user_chat_history
+from utils.collaborative_filtering import get_cf_characters
 from utils.validators import validate_character_fields
 from utils.content_censor import censor_form_payload
 from utils.text_moderation import moderate_form_payload_with_review
@@ -679,46 +680,9 @@ def get_recommended_characters(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
     ):
-    if not current_user.liked_tags:
-        return CharacterListOut(items=[], total=0, page=1, page_size=0, short=short)
-    
-    # Collect character IDs to exclude (already viewed or chatted with)
-    excluded_ids = set()
-    
-    # Add character IDs from chat history
-    chat_history = fetch_user_chat_history(db, current_user.id)
-    for chat in chat_history:
-        if chat.get("character_id"):
-            excluded_ids.add(chat["character_id"])
-    
-    user_tags = current_user.liked_tags or []
-    tags_array = array(user_tags, type_=TEXT)
-    
-    # Query characters matching user tags, excluding already viewed ones
-    query = (
-        db.query(Character, User.profile_pic.label("creator_profile_pic"))
-        .outerjoin(User, Character.creator_id == User.id)
-        .filter(Character.is_public == True)
-        .filter(Character.tags.overlap(tags_array))
-    )
-    
-    if excluded_ids:
-        query = query.filter(~Character.id.in_(excluded_ids))
-    
-    query = query.order_by(Character.views.desc())
-    total = query.count()
+    items, total = get_cf_characters(db, current_user.id, page, page_size, short)
     if short:
-        rows = query.limit(10).all()
-        items = []
-        for char, creator_profile_pic in rows:
-            char.creator_profile_pic = creator_profile_pic
-            items.append(char)
         return CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    rows = query.offset((page - 1) * page_size).limit(page_size).all()
-    items = []
-    for char, creator_profile_pic in rows:
-        char.creator_profile_pic = creator_profile_pic
-        items.append(char)
     return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
 @router.get("/api/characters/by-tag/{tag_name}", response_model=List[CharacterOut])
