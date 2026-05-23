@@ -53,7 +53,7 @@ def search_characters(
         results = query.offset((page - 1) * page_size).limit(page_size).all()
         chars = [r[0] for r in results]  # Extract the Character objects
     elif sort == "popularity":
-        query = base_query.order_by(Character.views.desc())
+        query = base_query.order_by(((Character.views + Character.likes * 3) / (func.extract('epoch', func.now() - Character.created_time) / 86400.0 + 2)).desc())
         total = query.count()
         chars = query.offset((page - 1) * page_size).limit(page_size).all()
     elif sort == "recent":
@@ -100,7 +100,7 @@ def search_scenes(
         results = query.offset((page - 1) * page_size).limit(page_size).all()
         scenes = [r[0] for r in results]
     elif sort == "popularity":
-        query = base_query.order_by(Scene.views.desc())
+        query = base_query.order_by(((Scene.views + Scene.likes * 3) / (func.extract('epoch', func.now() - Scene.created_time) / 86400.0 + 2)).desc())
         total = query.count()
         scenes = query.offset((page - 1) * page_size).limit(page_size).all()
     elif sort == "recent":
@@ -147,7 +147,7 @@ def search_personas(
         results = query.offset((page - 1) * page_size).limit(page_size).all()
         personas = [r[0] for r in results]
     elif sort == "popularity":
-        query = base_query.order_by(Persona.views.desc())
+        query = base_query.order_by(((Persona.views + Persona.likes * 3) / (func.extract('epoch', func.now() - Persona.created_time) / 86400.0 + 2)).desc())
         total = query.count()
         personas = query.offset((page - 1) * page_size).limit(page_size).all()
     elif sort == "recent":

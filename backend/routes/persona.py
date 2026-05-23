@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, Form, UploadFile, File, Query
 from fastapi.responses import JSONResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -33,7 +34,7 @@ def get_popular_personas(
         db.query(Persona, User.profile_pic.label("creator_profile_pic"))
         .outerjoin(User, Persona.creator_id == User.id)
         .filter(Persona.is_public == True)
-        .order_by(Persona.views.desc())
+        .order_by(((Persona.views + Persona.likes * 3) / (func.extract('epoch', func.now() - Persona.created_time) / 86400.0 + 2)).desc())
     )
     liked_ids = set()
     if current_user:

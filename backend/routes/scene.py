@@ -1,6 +1,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File, Query
 from fastapi.responses import JSONResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from database import get_db
@@ -189,7 +190,7 @@ def get_popular_scenes(
         db.query(Scene, User.profile_pic.label("creator_profile_pic"))
         .outerjoin(User, Scene.creator_id == User.id)
         .filter(Scene.is_public == True)
-        .order_by(Scene.views.desc())
+        .order_by(((Scene.views + Scene.likes * 3) / (func.extract('epoch', func.now() - Scene.created_time) / 86400.0 + 2)).desc())
     )
     if short:
         rows = base_query.limit(10).all()

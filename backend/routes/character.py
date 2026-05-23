@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import JSONResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import array, TEXT
 from typing import List, Optional
@@ -654,7 +655,7 @@ def get_popular_characters(
         db.query(Character, User.profile_pic.label("creator_profile_pic"))
         .outerjoin(User, Character.creator_id == User.id)
         .filter(Character.is_public == True)
-        .order_by(Character.views.desc())
+        .order_by(((Character.views + Character.likes * 3) / (func.extract('epoch', func.now() - Character.created_time) / 86400.0 + 2)).desc())
     )
     if short:
         rows = base_query.limit(10).all()
