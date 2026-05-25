@@ -9,7 +9,7 @@ from models import Scene, User, UserLikedScene
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
-from utils.session import get_current_user
+from utils.session import get_current_user, get_optional_current_user
 from utils.collaborative_filtering import get_cf_scenes
 from datetime import datetime, UTC
 from schemas import SceneOut, SceneListOut
@@ -171,8 +171,10 @@ def get_scenes_created(
     total = query.count()
     rows = query.offset((page - 1) * page_size).limit(page_size).all()
     items = []
+    liked_ids = {r.scene_id for r in db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == current_user.id).all()} if current_user else set()
     for scene, creator_profile_pic in rows:
         scene.creator_profile_pic = creator_profile_pic
+        scene.liked = scene.id in liked_ids
         items.append(SceneOut.from_orm(scene))
     return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
@@ -183,6 +185,7 @@ def get_popular_scenes(
     short: bool = Query(True),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     total = db.query(Scene).filter(Scene.is_public == True).count()
@@ -192,17 +195,22 @@ def get_popular_scenes(
         .filter(Scene.is_public == True)
         .order_by(((Scene.views + Scene.likes * 3) / (func.extract('epoch', func.now() - Scene.created_time) / 86400.0 + 2)).desc())
     )
+    liked_ids = set()
+    if current_user:
+        liked_ids = {r.scene_id for r in db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == current_user.id).all()}
     if short:
         rows = base_query.limit(10).all()
         items = []
         for scene, creator_profile_pic in rows:
             scene.creator_profile_pic = creator_profile_pic
+            scene.liked = scene.id in liked_ids
             items.append(SceneOut.from_orm(scene))
         return SceneListOut(items=items, total=total, page=1, page_size=len(items), short=True)
     rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
     items = []
     for scene, creator_profile_pic in rows:
         scene.creator_profile_pic = creator_profile_pic
+        scene.liked = scene.id in liked_ids
         items.append(SceneOut.from_orm(scene))
     return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
@@ -212,6 +220,7 @@ def get_recent_scenes(
     short: bool = Query(True),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     total = db.query(Scene).filter(Scene.is_public == True).count()
@@ -221,17 +230,22 @@ def get_recent_scenes(
         .filter(Scene.is_public == True)
         .order_by(Scene.created_time.desc())
     )
+    liked_ids = set()
+    if current_user:
+        liked_ids = {r.scene_id for r in db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == current_user.id).all()}
     if short:
         rows = base_query.limit(10).all()
         items = []
         for scene, creator_profile_pic in rows:
             scene.creator_profile_pic = creator_profile_pic
+            scene.liked = scene.id in liked_ids
             items.append(SceneOut.from_orm(scene))
         return SceneListOut(items=items, total=total, page=1, page_size=len(items), short=True)
     rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
     items = []
     for scene, creator_profile_pic in rows:
         scene.creator_profile_pic = creator_profile_pic
+        scene.liked = scene.id in liked_ids
         items.append(SceneOut.from_orm(scene))
     return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
@@ -246,6 +260,9 @@ def get_recommended_scenes(
     db: Session = Depends(get_db)
 ):
     items, total = get_cf_scenes(db, current_user.id, page, page_size, short)
+    liked_ids = {r.scene_id for r in db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == current_user.id).all()}
+    for scene in items:
+        scene.liked = scene.id in liked_ids
     if short:
         return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=1, page_size=len(items), short=True)
     return SceneListOut(items=[SceneOut.from_orm(s) for s in items], total=total, page=page, page_size=page_size, short=False)
@@ -272,6 +289,10 @@ def get_scene(scene_id: int, current_user: User = Depends(get_current_user), db:
             raise HTTPException(status_code=404, detail="Scene not found")
     # moderation_status == 'restricted': accessible via URL to everyone
     scene.creator_profile_pic = row[1] if row else None
+    scene.liked = bool(current_user and db.query(UserLikedScene).filter(
+        UserLikedScene.user_id == current_user.id,
+        UserLikedScene.scene_id == scene.id
+    ).first())
     return scene
 
 # Update Scene
@@ -415,10 +436,9 @@ def get_scenes_liked(
     else:
         query = query.order_by(Scene.created_time.desc())
 
-    total = query.count()
-    rows = query.offset((page - 1) * page_size).limit(page_size).all()
     items = []
     for scene, creator_profile_pic in rows:
         scene.creator_profile_pic = creator_profile_pic
+        scene.liked = True
         items.append(SceneOut.from_orm(scene))
     return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)

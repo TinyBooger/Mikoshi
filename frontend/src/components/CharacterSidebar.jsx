@@ -538,8 +538,8 @@ export default function CharacterSidebar({
               {selectedPersona ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <img
-                    src={selectedPersona.picture
-                      ? `${window.API_BASE_URL.replace(/\/$/, '')}/${selectedPersona.picture.replace(/^\//, '')}`
+                    src={(selectedPersona.avatar_picture || selectedPersona.picture)
+                      ? `${window.API_BASE_URL.replace(/\/$/, '')}/${(selectedPersona.avatar_picture || selectedPersona.picture).replace(/^\//, '')}`
                       : `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect fill='%23a28bff' width='40' height='40'/%3E%3C/svg%3E`
                       }
                     alt={selectedPersona.name}

@@ -167,6 +167,15 @@ export default function EntityFormPage() {
             });
           }
           setPicture(null);
+          if (entityType === 'persona') {
+            if (data.avatar_picture) {
+              setAvatarPreview(`${window.API_BASE_URL.replace(/\/$/, '')}/${String(data.avatar_picture).replace(/^\//, '')}`);
+            } else if (data.picture) {
+              setAvatarPreview(`${window.API_BASE_URL.replace(/\/$/, '')}/${String(data.picture).replace(/^\//, '')}`);
+            } else {
+              setAvatarPreview(null);
+            }
+          }
           if (mode === 'edit' && data.moderation_status) {
             setIsAppealMode(true);
             fetch(`${window.API_BASE_URL}/api/content-ban-appeal/${entityType}/${id}`, {

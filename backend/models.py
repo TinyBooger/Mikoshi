@@ -150,6 +150,7 @@ class Persona(Base):
     intro = Column(Text, nullable=True)  # Short intro for display
     tags = Column(ARRAY(Text), default=[])  # array of strings
     picture = Column(String, nullable=True)  # path or URL to the picture
+    avatar_picture = Column(String, nullable=True)  # cropped square avatar derived from picture
     creator_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     creator_name = Column(String, nullable=True)
     created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

@@ -6,7 +6,7 @@ from datetime import datetime, UTC, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from models import Persona, User, Character, Scene
+from models import Persona, User, Character, Scene, UserLikedCharacter, UserLikedScene, UserLikedPersona
 from schemas import PersonaOut
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.token_cap import get_token_cap_info
@@ -60,9 +60,16 @@ def get_pro_state(user: User) -> dict[str, Any]:
     }
 
 
-def enrich_user_with_character_count(user: User, db: Session) -> dict:
+def enrich_user_with_character_count(user: User, db: Session, current_user: Optional[User] = None) -> dict:
     """Convert User to dict with characters_created count"""
     pro_state = get_pro_state(user)
+    liked_char_ids: set = set()
+    liked_scene_ids: set = set()
+    liked_persona_ids: set = set()
+    if current_user:
+        liked_char_ids = {r.character_id for r in db.query(UserLikedCharacter.character_id).filter(UserLikedCharacter.user_id == current_user.id).all()}
+        liked_scene_ids = {r.scene_id for r in db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == current_user.id).all()}
+        liked_persona_ids = {r.persona_id for r in db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id).all()}
     recent_characters = (
         db.query(Character)
         .filter(Character.creator_id == user.id, Character.is_public == True)
@@ -126,6 +133,7 @@ def enrich_user_with_character_count(user: User, db: Session) -> dict:
                     "picture": c.picture,
                     "views": c.views or 0,
                     "likes": c.likes or 0,
+                    "liked": c.id in liked_char_ids,
                     "is_public": bool(c.is_public),
                     "is_forkable": bool(c.is_forkable),
                     "context_label": c.context_label or "standard",
@@ -146,6 +154,7 @@ def enrich_user_with_character_count(user: User, db: Session) -> dict:
                     "picture": s.picture,
                     "views": s.views or 0,
                     "likes": s.likes or 0,
+                    "liked": s.id in liked_scene_ids,
                     "is_public": bool(s.is_public),
                     "is_forkable": bool(s.is_forkable),
                     "creator_id": s.creator_id or user.id,
@@ -165,6 +174,7 @@ def enrich_user_with_character_count(user: User, db: Session) -> dict:
                     "picture": p.picture,
                     "views": p.views or 0,
                     "likes": p.likes or 0,
+                    "liked": p.id in liked_persona_ids,
                     "is_public": bool(p.is_public),
                     "is_forkable": bool(p.is_forkable),
                     "creator_id": p.creator_id or user.id,

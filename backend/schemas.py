@@ -20,6 +20,7 @@ class SceneOut(BaseModel):
     is_forkable: bool = False
     forked_from_id: Optional[int] = None
     forked_from_name: Optional[str] = None
+    liked: bool = False
     moderation_status: Optional[str] = None
 
     class Config:
@@ -36,6 +37,7 @@ class PersonaOut(BaseModel):
     creator_profile_pic: Optional[str] = None
     created_time: Any
     picture: Optional[str] = None
+    avatar_picture: Optional[str] = None
     likes: int = 0
     views: int = 0
     is_public: bool = False
@@ -77,6 +79,7 @@ class CharacterOut(BaseModel):
     is_forkable: bool = False
     forked_from_id: Optional[int] = None
     forked_from_name: Optional[str] = None
+    liked: bool = False
     moderation_status: Optional[str] = None
 
     class Config:

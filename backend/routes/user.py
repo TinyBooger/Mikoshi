@@ -3,7 +3,7 @@ from schemas import UserOut, UserListOut, CharacterOut, SceneOut, PersonaOut
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona, UserTokenWalletLedger, UserFollow
-from utils.session import get_current_user
+from utils.session import get_current_user, get_optional_current_user
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
@@ -40,7 +40,7 @@ def browse_users(
         query = query.order_by(User.views.desc(), User.id.asc())
         total = query.count()
         users = query.offset((page - 1) * page_size).limit(page_size).all()
-        items = [enrich_user_with_character_count(user, db) for user in users]
+        items = [enrich_user_with_character_count(user, db, current_user) for user in users]
         return UserListOut(items=items, total=total, page=page, page_size=page_size)
 
     query = db.query(User)
@@ -72,33 +72,35 @@ def browse_users(
 
     total = query.count()
     users = query.offset((page - 1) * page_size).limit(page_size).all()
-    items = [enrich_user_with_character_count(user, db) for user in users]
+    items = [enrich_user_with_character_count(user, db, current_user) for user in users]
     return UserListOut(items=items, total=total, page=page, page_size=page_size)
 
 @router.get("/api/users/popular", response_model=UserListOut)
 def get_popular_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """Get popular users sorted by views."""
     query = db.query(User).order_by(User.views.desc(), User.id.asc())
     total = query.count()
     users = query.offset((page - 1) * page_size).limit(page_size).all()
-    items = [enrich_user_with_character_count(user, db) for user in users]
+    items = [enrich_user_with_character_count(user, db, current_user) for user in users]
     return UserListOut(items=items, total=total, page=page, page_size=page_size)
 
 @router.get("/api/users/recent", response_model=UserListOut)
 def get_recent_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """Get recently active users."""
     query = db.query(User).order_by(User.id.desc())
     total = query.count()
     users = query.offset((page - 1) * page_size).limit(page_size).all()
-    items = [enrich_user_with_character_count(user, db) for user in users]
+    items = [enrich_user_with_character_count(user, db, current_user) for user in users]
     return UserListOut(items=items, total=total, page=page, page_size=page_size)
 
 @router.get("/api/users/recommended", response_model=UserListOut)
@@ -114,9 +116,9 @@ def get_recommended_users(
         query = db.query(User).order_by(User.views.desc(), User.id.asc())
         total = query.count()
         users = query.offset((page - 1) * page_size).limit(page_size).all()
-        items = [enrich_user_with_character_count(user, db) for user in users]
+        items = [enrich_user_with_character_count(user, db, current_user) for user in users]
         return UserListOut(items=items, total=total, page=page, page_size=page_size)
-    
+
     # Recommend users with high engagement.
     # Exclude current user
     query = db.query(User).filter(User.id != current_user.id)
@@ -124,7 +126,7 @@ def get_recommended_users(
     query = query.order_by(User.views.desc(), User.id.asc())
     total = query.count()
     users = query.offset((page - 1) * page_size).limit(page_size).all()
-    items = [enrich_user_with_character_count(user, db) for user in users]
+    items = [enrich_user_with_character_count(user, db, current_user) for user in users]
     return UserListOut(items=items, total=total, page=page, page_size=page_size)
 
 
@@ -189,6 +191,7 @@ def get_user_following(
     target_id: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(30, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """Return paginated list of users that target_id follows."""
@@ -200,7 +203,7 @@ def get_user_following(
     query = db.query(User).filter(User.id.in_(subq))
     total = query.count()
     users = query.offset((page - 1) * page_size).limit(page_size).all()
-    items = [enrich_user_with_character_count(u, db) for u in users]
+    items = [enrich_user_with_character_count(u, db, current_user) for u in users]
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
@@ -209,6 +212,7 @@ def get_user_followers(
     target_id: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(30, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """Return paginated list of users who follow target_id."""
@@ -220,7 +224,7 @@ def get_user_followers(
     query = db.query(User).filter(User.id.in_(subq))
     total = query.count()
     users = query.offset((page - 1) * page_size).limit(page_size).all()
-    items = [enrich_user_with_character_count(u, db) for u in users]
+    items = [enrich_user_with_character_count(u, db, current_user) for u in users]
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
@@ -741,13 +745,20 @@ def get_following_feed(
     offset = (page - 1) * page_size
     page_slice = all_items[offset : offset + page_size]
 
+    char_liked_ids = {r.character_id for r in db.query(UserLikedCharacter.character_id).filter(UserLikedCharacter.user_id == current_user.id).all()}
+    scene_liked_ids = {r.scene_id for r in db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == current_user.id).all()}
+    persona_liked_ids = {r.persona_id for r in db.query(UserLikedPersona.persona_id).filter(UserLikedPersona.user_id == current_user.id).all()}
+
     result = []
     for item_type, _, obj in page_slice:
         if item_type == "character":
+            obj.liked = obj.id in char_liked_ids
             d = CharacterOut.from_orm(obj).dict()
         elif item_type == "scene":
+            obj.liked = obj.id in scene_liked_ids
             d = SceneOut.from_orm(obj).dict()
         else:
+            obj.liked = obj.id in persona_liked_ids
             d = PersonaOut.from_orm(obj).dict()
         d["type"] = item_type
         result.append(d)

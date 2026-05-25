@@ -325,8 +325,8 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                           }}
                         >
                           <img
-                            src={persona.picture
-                              ? `${window.API_BASE_URL.replace(/\/$/, '')}/${persona.picture.replace(/^\//, '')}`
+                            src={(persona.avatar_picture || persona.picture)
+                              ? `${window.API_BASE_URL.replace(/\/$/, '')}/${(persona.avatar_picture || persona.picture).replace(/^\//, '')}`
                               : `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect fill='%23a28bff' width='40' height='40'/%3E%3C/svg%3E`
                             }
                             alt={persona.name}
@@ -432,8 +432,8 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                           }}
                         >
                           <img
-                            src={persona.picture
-                              ? `${window.API_BASE_URL.replace(/\/$/, '')}/${persona.picture.replace(/^\//, '')}`
+                            src={(persona.avatar_picture || persona.picture)
+                              ? `${window.API_BASE_URL.replace(/\/$/, '')}/${(persona.avatar_picture || persona.picture).replace(/^\//, '')}`
                               : `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect fill='%23a28bff' width='40' height='40'/%3E%3C/svg%3E`
                               }
                             alt={persona.name}
@@ -482,8 +482,8 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                         }}
                       >
                         <img
-                          src={persona.picture
-                            ? `${window.API_BASE_URL.replace(/\/$/, '')}/${persona.picture.replace(/^\//, '')}`
+                          src={(persona.avatar_picture || persona.picture)
+                            ? `${window.API_BASE_URL.replace(/\/$/, '')}/${(persona.avatar_picture || persona.picture).replace(/^\//, '')}`
                             : `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect fill='%23a28bff' width='40' height='40'/%3E%3C/svg%3E`
                             }
                           alt={persona.name}

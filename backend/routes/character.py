@@ -9,7 +9,7 @@ import json
 
 from database import get_db
 from models import Character, User, Tag, UserLikedCharacter, ChatHistory
-from utils.session import get_current_user
+from utils.session import get_current_user, get_optional_current_user
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.chat_history_utils import fetch_user_chat_history
@@ -623,6 +623,10 @@ def get_character(character_id: int, current_user: User = Depends(get_current_us
             raise HTTPException(status_code=404, detail="Character not found")
     # moderation_status == 'restricted': accessible via URL to everyone; no extra check
     c.creator_profile_pic = row[1] if row else None
+    c.liked = bool(current_user and db.query(UserLikedCharacter).filter(
+        UserLikedCharacter.user_id == current_user.id,
+        UserLikedCharacter.character_id == c.id
+    ).first())
     return c
 
 @router.delete("/api/character/{character_id}/delete")
@@ -649,6 +653,7 @@ def get_popular_characters(
     short: bool = Query(True),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     total = db.query(Character).filter(Character.is_public == True).count()
@@ -658,17 +663,22 @@ def get_popular_characters(
         .filter(Character.is_public == True)
         .order_by(((Character.views + Character.likes * 3) / (func.extract('epoch', func.now() - Character.created_time) / 86400.0 + 2)).desc())
     )
+    liked_ids = set()
+    if current_user:
+        liked_ids = {r.character_id for r in db.query(UserLikedCharacter.character_id).filter(UserLikedCharacter.user_id == current_user.id).all()}
     if short:
         rows = base_query.limit(10).all()
         items = []
         for char, creator_profile_pic in rows:
             char.creator_profile_pic = creator_profile_pic
+            char.liked = char.id in liked_ids
             items.append(char)
         return CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
     rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
     items = []
     for char, creator_profile_pic in rows:
         char.creator_profile_pic = creator_profile_pic
+        char.liked = char.id in liked_ids
         items.append(char)
     return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
@@ -681,6 +691,9 @@ def get_recommended_characters(
     db: Session = Depends(get_db)
     ):
     items, total = get_cf_characters(db, current_user.id, page, page_size, short)
+    liked_ids = {r.character_id for r in db.query(UserLikedCharacter.character_id).filter(UserLikedCharacter.user_id == current_user.id).all()}
+    for char in items:
+        char.liked = char.id in liked_ids
     if short:
         return CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
     return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
@@ -689,6 +702,7 @@ def get_recommended_characters(
 def get_characters_by_tag(
     tag_name: str,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_optional_current_user),
     limit: int = 12
 ):
     chars = db.query(Character).filter(
@@ -697,6 +711,11 @@ def get_characters_by_tag(
     ).order_by(
         Character.views.desc()
     ).limit(limit).all()
+    liked_ids = set()
+    if current_user:
+        liked_ids = {r.character_id for r in db.query(UserLikedCharacter.character_id).filter(UserLikedCharacter.user_id == current_user.id).all()}
+    for char in chars:
+        char.liked = char.id in liked_ids
     return chars
 
 @router.get("/api/characters/recent", response_model=CharacterListOut)
@@ -704,6 +723,7 @@ def get_recent_characters(
     short: bool = Query(True),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     total = db.query(Character).filter(Character.is_public == True).count()
@@ -713,17 +733,22 @@ def get_recent_characters(
         .filter(Character.is_public == True)
         .order_by(Character.created_time.desc())
     )
+    liked_ids = set()
+    if current_user:
+        liked_ids = {r.character_id for r in db.query(UserLikedCharacter.character_id).filter(UserLikedCharacter.user_id == current_user.id).all()}
     if short:
         rows = base_query.limit(10).all()
         items = []
         for char, creator_profile_pic in rows:
             char.creator_profile_pic = creator_profile_pic
+            char.liked = char.id in liked_ids
             items.append(char)
         return CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
     rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
     items = []
     for char, creator_profile_pic in rows:
         char.creator_profile_pic = creator_profile_pic
+        char.liked = char.id in liked_ids
         items.append(char)
     return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
@@ -756,8 +781,10 @@ def get_following_characters(
     total = base_query.count()
     rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
     items = []
+    liked_ids = {r.character_id for r in db.query(UserLikedCharacter.character_id).filter(UserLikedCharacter.user_id == current_user.id).all()}
     for char, creator_profile_pic in rows:
         char.creator_profile_pic = creator_profile_pic
+        char.liked = char.id in liked_ids
         items.append(char)
     return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=short)
 
@@ -804,8 +831,10 @@ def get_user_created_characters(
     total = query.count()
     rows = query.offset((page - 1) * page_size).limit(page_size).all()
     items = []
+    liked_ids = {r.character_id for r in db.query(UserLikedCharacter.character_id).filter(UserLikedCharacter.user_id == current_user.id).all()} if current_user else set()
     for char, creator_profile_pic in rows:
         char.creator_profile_pic = creator_profile_pic
+        char.liked = char.id in liked_ids
         items.append(char)
     return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
@@ -837,6 +866,7 @@ def get_user_liked_characters(
     items = []
     for char, creator_profile_pic in rows:
         char.creator_profile_pic = creator_profile_pic
+        char.liked = True
         items.append(char)
     return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
@@ -880,8 +910,10 @@ def get_recent_chat_characters(
     )
 
     items = []
+    liked_ids = {r.character_id for r in db.query(UserLikedCharacter.character_id).filter(UserLikedCharacter.user_id == current_user.id).all()}
     for char, creator_profile_pic in rows:
         char.creator_profile_pic = creator_profile_pic
+        char.liked = char.id in liked_ids
         items.append(char)
     return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
 
@@ -892,4 +924,7 @@ def get_user_characters(user_id: str, current_user: User = Depends(get_current_u
     if not current_user or current_user.id != user_id:
         query = query.filter(Character.is_public == True)
     characters = query.all()
+    liked_ids = {r.character_id for r in db.query(UserLikedCharacter.character_id).filter(UserLikedCharacter.user_id == current_user.id).all()} if current_user else set()
+    for char in characters:
+        char.liked = char.id in liked_ids
     return characters

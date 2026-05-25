@@ -37,6 +37,10 @@ export default function EntityCard({
   const [isPersonaAdded, setIsPersonaAdded] = useState(() => !!(entity?.liked));
   const [isAddPersonaHovered, setIsAddPersonaHovered] = useState(false);
   const [isAddPersonaLoading, setIsAddPersonaLoading] = useState(false);
+  const [isLiked, setIsLiked] = useState(() => !!(entity?.liked));
+  const [likeCount, setLikeCount] = useState(() => typeof entity?.likes === 'number' ? entity.likes : 0);
+  const [isLikeLoading, setIsLikeLoading] = useState(false);
+  const [isLikeHovered, setIsLikeHovered] = useState(false);
   const navigate = useNavigate();
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
@@ -126,6 +130,32 @@ export default function EntityCard({
     : defaultAvatar;
 
   const clickSuppressed = disableClick;
+
+  const handleLike = async (e) => {
+    e.stopPropagation();
+    const token = localStorage.getItem('sessionToken');
+    if (!token || isLikeLoading) return;
+    setIsLikeLoading(true);
+    try {
+      const endpoint = isLiked ? 'unlike' : 'like';
+      const res = await fetch(`${window.API_BASE_URL}/api/${endpoint}/${type}/${id}`, {
+        method: 'POST',
+        headers: { Authorization: token },
+      });
+      if (res.ok) {
+        setIsLiked(prev => !prev);
+        setLikeCount(prev => isLiked ? Math.max(0, prev - 1) : prev + 1);
+      } else if (res.status === 400) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.detail?.includes('Already liked')) setIsLiked(true);
+        else if (data?.detail?.includes('not liked')) setIsLiked(false);
+      }
+    } catch (_) {
+      // silently fail
+    } finally {
+      setIsLikeLoading(false);
+    }
+  };
 
   const handleAddPersona = async (e) => {
     e.stopPropagation();
@@ -442,11 +472,31 @@ export default function EntityCard({
               </button>
             ) : (
               <div className="d-flex align-items-center ms-auto" style={{ gap: '0.7rem', flexShrink: 0 }}>
-                <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof likes === 'number' && likes === 0 ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
-                  <i className="bi bi-heart" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
-                  {typeof likes === 'number' ? likes.toLocaleString() : 0}
-                </span>
-                <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof views === 'number' && views === 0 ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
+              <button
+                onClick={handleLike}
+                onMouseEnter={() => setIsLikeHovered(true)}
+                onMouseLeave={() => setIsLikeHovered(false)}
+                title={isLiked ? t('entity_card.unlike') : t('entity_card.like')}
+                disabled={isLikeLoading}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  cursor: isLikeLoading ? 'wait' : 'pointer',
+                  color: isLiked || isLikeHovered ? '#e53935' : '#6c757d',
+                  opacity: isLikeLoading ? 0.55 : 1,
+                  transition: 'color 0.16s ease, opacity 0.2s ease',
+                  fontSize: '0.68rem',
+                }}
+              >
+                <i className={`bi ${isLiked ? 'bi-heart-fill' : 'bi-heart'}`} style={{ fontSize: '0.65rem' }}></i>
+                {likeCount.toLocaleString()}
+              </button>
+              <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof views === 'number' && views === 0 ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
                   <i className="bi bi-chat" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
                   {typeof views === 'number' ? views.toLocaleString() : 0}
                 </span>
@@ -567,10 +617,30 @@ export default function EntityCard({
             </div>
           ) : (
             <div className="d-flex align-items-center ms-auto" style={{ gap: '0.7rem', flexShrink: 0, fontSize: '0.68rem', color: '#6c757d' }}>
-              <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof likes === 'number' && likes === 0 ? 0.5 : 1 }}>
-                <i className="bi bi-heart" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
-                {typeof likes === 'number' ? likes.toLocaleString() : 0}
-              </span>
+              <button
+                onClick={handleLike}
+                onMouseEnter={() => setIsLikeHovered(true)}
+                onMouseLeave={() => setIsLikeHovered(false)}
+                title={isLiked ? t('entity_card.unlike') : t('entity_card.like')}
+                disabled={isLikeLoading}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  cursor: isLikeLoading ? 'wait' : 'pointer',
+                  color: isLiked || isLikeHovered ? '#e53935' : '#6c757d',
+                  opacity: isLikeLoading ? 0.55 : 1,
+                  transition: 'color 0.16s ease, opacity 0.2s ease',
+                  fontSize: '0.68rem',
+                }}
+              >
+                <i className={`bi ${isLiked ? 'bi-heart-fill' : 'bi-heart'}`} style={{ fontSize: '0.65rem' }}></i>
+                {likeCount.toLocaleString()}
+              </button>
               <span className="d-flex align-items-center" style={{ gap: '0.25rem', opacity: typeof views === 'number' && views === 0 ? 0.5 : 1 }}>
                 <i className="bi bi-chat" style={{ fontSize: '0.65rem', fontWeight: 300 }}></i>
                 {typeof views === 'number' ? views.toLocaleString() : 0}

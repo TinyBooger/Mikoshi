@@ -134,6 +134,7 @@ async def create_persona(
     forked_from_id: Optional[int] = Form(None),
     forked_from_name: Optional[str] = Form(None),
     picture: UploadFile = File(None),
+    avatar_picture: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -207,6 +208,21 @@ async def create_persona(
         persona.picture = save_image(io.BytesIO(image_bytes), 'persona', persona.id, picture.filename)
         db.commit()
         db.refresh(persona)
+    if avatar_picture:
+        avatar_bytes = await avatar_picture.read()
+        is_safe, label, _ = moderate_image_with_decision(avatar_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Avatar image rejected by content moderation ({label})")
+        import io
+        persona.avatar_picture = save_image(
+            io.BytesIO(avatar_bytes),
+            'persona',
+            persona.id,
+            avatar_picture.filename,
+            filename_prefix=f"persona_avatar_{persona.id}",
+        )
+        db.commit()
+        db.refresh(persona)
     
     return JSONResponse(content={
         "id": persona.id,
@@ -270,6 +286,7 @@ async def update_persona(
     is_public: Optional[bool] = Form(None),
     is_forkable: Optional[bool] = Form(None),
     picture: UploadFile = File(None),
+    avatar_picture: UploadFile = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -338,6 +355,19 @@ async def update_persona(
             raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
         import io
         persona.picture = save_image(io.BytesIO(image_bytes), 'persona', persona.id, picture.filename)
+    if avatar_picture:
+        avatar_bytes = await avatar_picture.read()
+        is_safe, label, _ = moderate_image_with_decision(avatar_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Avatar image rejected by content moderation ({label})")
+        import io
+        persona.avatar_picture = save_image(
+            io.BytesIO(avatar_bytes),
+            'persona',
+            persona.id,
+            avatar_picture.filename,
+            filename_prefix=f"persona_avatar_{persona.id}",
+        )
     db.commit()
     db.refresh(persona)
     return JSONResponse(content={

@@ -1085,6 +1085,8 @@ export default function ChatPage() {
       if (userData?.default_persona && !selectedPersona) {
         persona = userData.default_persona;
         setSelectedPersona(persona);
+      } else if (selectedPersona) {
+        persona = selectedPersona;
       } else {
         setSelectedPersona(null);
       }
@@ -2087,14 +2089,16 @@ export default function ChatPage() {
                         <img
                           src={
                             m.role === 'user'
-                              ? (userData?.profile_pic
+                              ? ((selectedPersona?.avatar_picture || selectedPersona?.picture)
+                                  ? `${window.API_BASE_URL.replace(/\/$/, '')}/${(selectedPersona.avatar_picture || selectedPersona.picture).replace(/^\//, '')}`
+                                  : userData?.profile_pic
                                   ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}`
                                   : defaultPic)
                                 : ((selectedCharacter?.avatar_picture || selectedCharacter?.picture)
                                   ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(selectedCharacter.avatar_picture || selectedCharacter.picture).replace(/^\//, '')}`
                                   : defaultPic)
                           }
-                          alt={m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
+                          alt={m.role === 'user' ? (selectedPersona?.name || t('chat.you')) : selectedCharacter?.name}
                           style={{ width: 77, height: 77, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef', flexShrink: 0 }}
                         />
 

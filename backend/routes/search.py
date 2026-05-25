@@ -3,7 +3,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException, Query
 from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 from database import get_db
-from models import SearchTerm, Character, User, Scene, Persona, UserLikedPersona
+from models import SearchTerm, Character, User, Scene, Persona, UserLikedPersona, UserLikedCharacter, UserLikedScene
 from schemas import CharacterOut, SceneOut, PersonaOut, CharacterListOut, SceneListOut, PersonaListOut, UserOut, UserListOut
 from utils.user_utils import enrich_user_with_character_count
 from utils.session import get_optional_current_user
@@ -18,6 +18,7 @@ def search_characters(
     sort: str = "relevance",
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     # Create a case-insensitive pattern
@@ -65,6 +66,11 @@ def search_characters(
         total = query.count()
         chars = query.offset((page - 1) * page_size).limit(page_size).all()
     
+    liked_ids = set()
+    if current_user:
+        liked_ids = {r.character_id for r in db.query(UserLikedCharacter.character_id).filter(UserLikedCharacter.user_id == current_user.id).all()}
+    for char in chars:
+        char.liked = char.id in liked_ids
     return CharacterListOut(items=chars, total=total, page=page, page_size=page_size, short=False)
 
 # --- Scene Search Endpoint ---
@@ -74,6 +80,7 @@ def search_scenes(
     sort: str = "relevance",
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     ilike_pattern = f"%{q}%"
@@ -111,6 +118,11 @@ def search_scenes(
         query = base_query.order_by(Scene.name.asc())
         total = query.count()
         scenes = query.offset((page - 1) * page_size).limit(page_size).all()
+    liked_ids = set()
+    if current_user:
+        liked_ids = {r.scene_id for r in db.query(UserLikedScene.scene_id).filter(UserLikedScene.user_id == current_user.id).all()}
+    for scene in scenes:
+        scene.liked = scene.id in liked_ids
     return SceneListOut(items=[SceneOut.from_orm(s) for s in scenes], total=total, page=page, page_size=page_size, short=False)
 
 # --- Persona Search Endpoint ---
@@ -214,6 +226,7 @@ def search_users(
     sort: str = "relevance",
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     ilike_pattern = f"%{q}%"
@@ -256,5 +269,5 @@ def search_users(
         total = query.count()
         users = query.offset((page - 1) * page_size).limit(page_size).all()
     
-    items = [enrich_user_with_character_count(user, db) for user in users]
+    items = [enrich_user_with_character_count(user, db, current_user) for user in users]
     return UserListOut(items=items, total=total, page=page, page_size=page_size)
