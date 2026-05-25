@@ -135,6 +135,7 @@ class ChatHistory(Base):
     messages = Column(JSONB, default=[])
     chat_config = Column(JSONB, nullable=False, default={})
     is_pinned = Column(Boolean, default=False, nullable=False)
+    hidden_from_recent = Column(Boolean, default=False, nullable=False)
     last_updated = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 

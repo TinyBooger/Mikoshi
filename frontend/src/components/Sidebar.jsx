@@ -114,40 +114,29 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       }
     );
 
-    // Keep only the most recent item per entity (scene or character)
+    // Keep only the most recent chat per character (scene or not)
     const seen = new Set();
     const items = [];
 
     for (const chat of sorted) {
-      const isScene = !!chat.scene_id;
-      const key = isScene ? `scene:${chat.scene_id}_character:${chat.character_id}` : (chat.character_id ? `character:${chat.character_id}` : null);
+      const key = chat.character_id ? `character:${chat.character_id}` : null;
       if (!key) continue;
       if (seen.has(key)) continue;
       seen.add(key);
 
-      if (isScene) {
-        items.push({
-          type: 'scene',
-          chat_id: chat.chat_id,
-          id: chat.scene_id,
-          character_id: chat.character_id,
-          name: chat.scene_name || 'Unknown Scene',
-          picture: chat.scene_picture,
-          character_picture: chat.character_picture,
-          is_pinned: !!chat.is_pinned,
-          last_updated: chat.last_updated,
-        });
-      } else if (chat.character_id) {
-        items.push({
-          type: 'character',
-          chat_id: chat.chat_id,
-          id: chat.character_id,
-          name: chat.character_name || 'Unknown Character',
-          picture: chat.character_picture,
-          is_pinned: !!chat.is_pinned,
-          last_updated: chat.last_updated,
-        });
-      }
+      items.push({
+        type: 'character',
+        chat_id: chat.chat_id,
+        id: chat.character_id,
+        character_id: chat.character_id,
+        name: chat.character_name || 'Unknown Character',
+        picture: chat.character_picture,
+        scene_id: chat.scene_id || null,
+        scene_name: chat.scene_name || null,
+        scene_picture: chat.scene_picture || null,
+        is_pinned: !!chat.is_pinned,
+        last_updated: chat.last_updated,
+      });
     }
 
     return items.slice(0, 10);
@@ -251,14 +240,14 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
     if (!sessionToken || !chatId) return;
 
     const confirmed = window.confirm(
-      t('sidebar.confirm_delete_chat') || 'Delete this recent chat? This action cannot be undone.'
+      t('sidebar.confirm_remove_from_recent') || 'Remove this chat from recent? You can still access it from your profile.'
     );
     if (!confirmed) return;
 
     setChatMenuOpenId(null);
 
     try {
-      const response = await fetch(`${window.API_BASE_URL}/api/chat/delete`, {
+      const response = await fetch(`${window.API_BASE_URL}/api/chat/hide-from-recent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -268,7 +257,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete chat');
+        throw new Error('Failed to hide chat');
       }
 
       setUserData((prev) => {
@@ -279,7 +268,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         };
       });
 
-      toast.show(t('sidebar.chat_deleted_success') || 'Chat deleted.', { type: 'success' });
+      toast.show(t('sidebar.removed_from_recent') || 'Removed from recent chats.', { type: 'success' });
       refreshUserData?.({ silent: true });
     } catch (error) {
       toast.show(t('sidebar.chat_action_failed') || 'Failed to update chat.', { type: 'error' });
@@ -845,8 +834,8 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                         padding: '0.45rem 2.2rem 0.45rem 0.4rem',
                       }}
                       onClick={() => {
-                        if (item.type === 'scene') {
-                          handleNavigate(`/chat?scene=${item.id}`);
+                        if (item.scene_id) {
+                          handleNavigate(`/chat?scene=${item.scene_id}`);
                         } else {
                           handleNavigate(`/chat?character=${item.id}`);
                         }
@@ -854,41 +843,38 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                       onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#232323'; }}
                     >
-                      {item.type === 'scene' ? (
-                        <div style={{ position: 'relative', width: 38, height: 38, flexShrink: 0 }}>
-                          <img
-                            src={item.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${item.picture.replace(/^\//, '')}` : defaultPicture}
-                            alt={item.name}
-                            className="rounded-circle border"
-                            style={{ width: 38, height: 38, objectFit: 'cover', border: '1.6px solid #e9ecef' }}
-                          />
-                          {item.character_picture && (
-                            <img
-                              src={`${window.API_BASE_URL.replace(/\/$/, '')}/${item.character_picture.replace(/^\//, '')}`}
-                              alt="Character"
-                              className="rounded-circle border"
-                              style={{
-                                width: 18,
-                                height: 18,
-                                objectFit: 'cover',
-                                border: '1.2px solid #fff',
-                                position: 'absolute',
-                                bottom: -2,
-                                right: -2,
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                              }}
-                            />
-                          )}
-                        </div>
-                      ) : (
+                      {/* Character = big image, scene = small overlay */}
+                      <div style={{ position: 'relative', width: 38, height: 38, flexShrink: 0 }}>
                         <img
                           src={item.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${item.picture.replace(/^\//, '')}` : defaultPicture}
                           alt={item.name}
                           className="rounded-circle border"
-                          style={{ width: 38, height: 38, objectFit: 'cover', border: '1.6px solid #e9ecef', flexShrink: 0 }}
+                          style={{ width: 38, height: 38, objectFit: 'cover', border: '1.6px solid #e9ecef' }}
                         />
-                      )}
-                      <span className="fw-bold text-truncate" style={{ color: '#232323', fontWeight: 700, flex: 1, minWidth: 0 }}>{item.name}</span>
+                        {item.scene_picture && (
+                          <img
+                            src={`${window.API_BASE_URL.replace(/\/$/, '')}/${item.scene_picture.replace(/^\//, '')}`}
+                            alt={item.scene_name || 'Scene'}
+                            className="rounded-circle border"
+                            style={{
+                              width: 18,
+                              height: 18,
+                              objectFit: 'cover',
+                              border: '1.2px solid #fff',
+                              position: 'absolute',
+                              bottom: -2,
+                              right: -2,
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                            }}
+                          />
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <span className="fw-bold text-truncate" style={{ color: '#232323', fontWeight: 700, lineHeight: 1.25 }}>{item.name}</span>
+                        {item.scene_name && (
+                          <span className="text-truncate" style={{ color: '#9ca3af', fontSize: '0.71rem', fontWeight: 500, lineHeight: 1.2 }}>{item.scene_name}</span>
+                        )}
+                      </div>
                       {item.is_pinned && (
                         <i className="bi bi-pin-angle-fill" style={{ fontSize: '0.7rem', color: '#334155', flexShrink: 0 }}></i>
                       )}
@@ -970,7 +956,9 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
           <button
             type="button"
             className="dropdown-item"
-            style={{ borderRadius: 8, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 8 }}
+            style={{ borderRadius: 8, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.13s, color 0.13s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.1)'; e.currentTarget.style.color = '#5b2f9b'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = ''; }}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -985,15 +973,17 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
           <button
             type="button"
             className="dropdown-item text-danger"
-            style={{ borderRadius: 8, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 8 }}
+            style={{ borderRadius: 8, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.13s, color 0.13s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,0.07)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = ''; }}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
               handleDeleteRecentChat(activeChatMenuItem);
             }}
           >
-            <i className="bi bi-trash"></i>
-            {t('sidebar.delete_chat') || 'Delete chat'}
+            <i className="bi bi-eye-slash"></i>
+            {t('sidebar.remove_from_recent') || 'Remove from recent'}
           </button>
         </div>,
         document.body

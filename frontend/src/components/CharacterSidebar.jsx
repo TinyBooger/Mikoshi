@@ -748,14 +748,8 @@ export default function CharacterSidebar({
               <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 12, background: '#f8f7fc', padding: 8, border: '1px solid #ece9f4' }}>
                 {userData.chat_history
                   .filter(chat => {
-                    if (isSceneMode) {
-                      // In scene mode: show chats matching the scene_id
-                      return String(chat.scene_id) === String(selectedScene?.id);
-                    } else if (isCharacterMode) {
-                      // In character mode: show chats matching character_id AND without scene_id
-                      return String(chat.character_id) === String(characterId) && !chat.scene_id;
-                    }
-                    return false;
+                    // Always filter by character — show all chats of this character, with or without a scene
+                    return String(chat.character_id) === String(characterId);
                   })
                   .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated))
                   .map((chat) => (
@@ -825,8 +819,15 @@ export default function CharacterSidebar({
                         </div>
                       ) : (
                         <>
-                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {chat.title || chat.messages.find(m => m.role === 'user')?.content || t('chat.new_chat_title')}
+                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                            <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {chat.title || chat.messages.find(m => m.role === 'user')?.content || t('chat.new_chat_title')}
+                            </span>
+                            {chat.scene_name && (
+                              <span style={{ display: 'block', fontSize: '0.75rem', color: '#9d8ec0', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
+                                {chat.scene_name}
+                              </span>
+                            )}
                           </span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <small style={{ color: selectedChat?.chat_id === chat.chat_id ? '#6b6186' : '#8b859d', fontWeight: 500 }}>

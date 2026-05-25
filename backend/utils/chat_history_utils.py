@@ -4,6 +4,7 @@ from datetime import datetime, UTC
 import uuid
 from typing import Any, List, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from models import ChatHistory
@@ -271,21 +272,100 @@ def serialize_chat_history_entry(entry: ChatHistory) -> dict:
         "message_store_version": payload["version"],
         "chat_config": entry.chat_config or {},
         "is_pinned": bool(getattr(entry, "is_pinned", False)),
+        "hidden_from_recent": bool(getattr(entry, "hidden_from_recent", False)),
         "last_updated": entry.last_updated.isoformat() if entry.last_updated else None,
         "created_at": entry.created_at.isoformat() if entry.created_at else None,
     }
 
 
 def fetch_user_chat_history(db: Session, user_id: str, limit: int = 30) -> List[dict]:
-    """Return the most recent chat history entries for a user, newest first."""
+    """Return the most recent visible (not hidden_from_recent) chat history entries for a user."""
     entries = (
         db.query(ChatHistory)
-        .filter(ChatHistory.user_id == user_id)
+        .filter(ChatHistory.user_id == user_id, ChatHistory.hidden_from_recent == False)  # noqa: E712
         .order_by(ChatHistory.last_updated.desc(), ChatHistory.id.desc())
         .limit(limit)
         .all()
     )
     return [serialize_chat_history_entry(entry) for entry in entries]
+
+
+def fetch_user_chat_history_paginated(db: Session, user_id: str, page: int = 1, page_size: int = 20) -> dict:
+    """Return all chat history entries (including hidden) for the profile history tab, with pagination."""
+    offset = (page - 1) * page_size
+    query = (
+        db.query(ChatHistory)
+        .filter(ChatHistory.user_id == user_id)
+        .order_by(ChatHistory.last_updated.desc(), ChatHistory.id.desc())
+    )
+    total = query.count()
+    entries = query.offset(offset).limit(page_size).all()
+    return {
+        "items": [serialize_chat_history_entry(entry) for entry in entries],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
+
+
+def fetch_user_chat_history_grouped_by_character(db: Session, user_id: str, page: int = 1, page_size: int = 20) -> dict:
+    """Return one entry per character (the most recent chat) for the profile history tab."""
+    # Subquery: most recent last_updated and chat count per character
+    sub = (
+        db.query(
+            ChatHistory.character_id,
+            func.max(ChatHistory.last_updated).label("max_updated"),
+            func.count(ChatHistory.id).label("chat_count"),
+        )
+        .filter(ChatHistory.user_id == user_id, ChatHistory.character_id.isnot(None))
+        .group_by(ChatHistory.character_id)
+        .subquery()
+    )
+
+    total_rows = db.query(func.count()).select_from(sub).scalar() or 0
+
+    # Join to get the full most-recent entry per character
+    rows = (
+        db.query(ChatHistory, sub.c.chat_count)
+        .join(
+            sub,
+            (ChatHistory.character_id == sub.c.character_id)
+            & (ChatHistory.last_updated == sub.c.max_updated)
+            & (ChatHistory.user_id == user_id),
+        )
+        .order_by(sub.c.max_updated.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    items = []
+    for entry, chat_count in rows:
+        items.append({
+            "chat_id": entry.chat_id,
+            "character_id": entry.character_id,
+            "character_name": entry.character_name,
+            "character_picture": entry.character_picture,
+            "scene_id": entry.scene_id,
+            "scene_name": entry.scene_name,
+            "scene_picture": entry.scene_picture,
+            "hidden_from_recent": bool(getattr(entry, "hidden_from_recent", False)),
+            "last_updated": entry.last_updated.isoformat() if entry.last_updated else None,
+            "chat_count": chat_count,
+        })
+
+    return {"items": items, "total": total_rows, "page": page, "page_size": page_size}
+
+
+def delete_user_chat_history_by_character(db: Session, user_id: str, character_id: str) -> int:
+    """Delete all chat history entries for a user+character. Returns the number of rows deleted."""
+    deleted = (
+        db.query(ChatHistory)
+        .filter(ChatHistory.user_id == user_id, ChatHistory.character_id == character_id)
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    return deleted
 
 
 def fetch_chat_history_entry(db: Session, user_id: str, chat_id: str) -> Optional[ChatHistory]:

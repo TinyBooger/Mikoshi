@@ -17,6 +17,9 @@ from utils.chat_history_utils import (
     replace_chat_history_branch_messages,
     fork_chat_history_branch,
     generate_chat_message_id,
+    fetch_user_chat_history_paginated,
+    fetch_user_chat_history_grouped_by_character,
+    delete_user_chat_history_by_character,
 )
 import uuid
 import json
@@ -199,13 +202,14 @@ def inject_chunk_context_message(messages: list[dict], context_message: dict | N
     return injected
 
 def generate_chat_title(messages, existing_title=None):
-    """Generate a title from the first user message if no title exists"""
+    """Generate a title from the first user message, or first assistant message as fallback"""
     if existing_title:
         return existing_title
-    user_messages = [m for m in messages if m.get("role") == "user"]
-    if user_messages:
-        first_msg = user_messages[0].get("content", "")
-        return first_msg[:30] + ("..." if len(first_msg) > 30 else "")
+    for role in ("user", "assistant"):
+        for m in messages:
+            if m.get("role") == role:
+                content = m.get("content", "")
+                return content[:30] + ("..." if len(content) > 30 else "")
     return "New Chat"
 
 
@@ -324,7 +328,7 @@ def _persist_chat_history_turn(
         "character_id": character_id,
         "character_name": character.name if character else None,
         "character_picture": character.picture if character else None,
-        "title": generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
+        "title": generate_chat_title(updated_messages, existing_entry.title if existing_entry else None),
         "messages": message_payload,
         "chat_config": persisted_chat_config,
         "last_updated": datetime.now(UTC),
@@ -921,3 +925,90 @@ async def pin_chat_message(request: Request, current_user: User = Depends(get_cu
         "branch_id": branch_id,
         "pinned_messages_count": pinned_count,
     }
+
+
+@router.post("/api/chat/hide-from-recent")
+async def hide_chat_from_recent(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        data = await request.json()
+    except ClientDisconnect:
+        return Response(status_code=499)
+
+    chat_id = data.get("chat_id")
+    if not isinstance(chat_id, str) or not chat_id.strip():
+        return JSONResponse(content={"error": "Missing chat_id"}, status_code=400)
+
+    entry = fetch_chat_history_entry(db, current_user.id, chat_id)
+    if not entry:
+        return JSONResponse(content={"error": "Chat not found"}, status_code=404)
+
+    entry.hidden_from_recent = True
+    db.commit()
+    return {"status": "success", "chat_id": chat_id}
+
+
+@router.post("/api/chat/restore-to-recent")
+async def restore_chat_to_recent(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        data = await request.json()
+    except ClientDisconnect:
+        return Response(status_code=499)
+
+    chat_id = data.get("chat_id")
+    if not isinstance(chat_id, str) or not chat_id.strip():
+        return JSONResponse(content={"error": "Missing chat_id"}, status_code=400)
+
+    entry = fetch_chat_history_entry(db, current_user.id, chat_id)
+    if not entry:
+        return JSONResponse(content={"error": "Chat not found"}, status_code=404)
+
+    entry.hidden_from_recent = False
+    db.commit()
+    return {"status": "success", "chat_id": chat_id}
+
+
+@router.get("/api/chat/history")
+async def get_chat_history(
+    page: int = 1,
+    page_size: int = 20,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if page < 1:
+        page = 1
+    if page_size < 1 or page_size > 100:
+        page_size = 20
+    return fetch_user_chat_history_paginated(db, current_user.id, page=page, page_size=page_size)
+
+
+@router.get("/api/chat/history-by-character")
+async def get_chat_history_by_character(
+    page: int = 1,
+    page_size: int = 20,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if page < 1:
+        page = 1
+    if page_size < 1 or page_size > 100:
+        page_size = 20
+    return fetch_user_chat_history_grouped_by_character(db, current_user.id, page=page, page_size=page_size)
+
+
+@router.post("/api/chat/delete-by-character")
+async def delete_chat_history_by_character(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        data = await request.json()
+    except ClientDisconnect:
+        return Response(status_code=499)
+
+    character_id = data.get("character_id")
+    if not character_id:
+        return JSONResponse(content={"error": "Missing character_id"}, status_code=400)
+
+    deleted_count = delete_user_chat_history_by_character(db, current_user.id, str(character_id))
+    return {"status": "success", "deleted": deleted_count}

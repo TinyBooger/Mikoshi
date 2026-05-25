@@ -25,6 +25,7 @@ export default function ProfilePage() {
     CREATED: 'Created',
     LIKED: 'Liked',
     MY_PERSONAS: 'MyPersonas',
+    CHAT_HISTORY: 'ChatHistory',
   };
   const SUBTAB_TYPES = {
     CHARACTERS: 'characters',
@@ -72,6 +73,13 @@ export default function ProfilePage() {
   const [likedPersonasPage, setLikedPersonasPage] = useState(1);
   const [likedPersonasTotal, setLikedPersonasTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  // Chat history tab state (own profile only)
+  const [chatHistoryItems, setChatHistoryItems] = useState([]);
+  const [chatHistoryPage, setChatHistoryPage] = useState(1);
+  const [chatHistoryTotal, setChatHistoryTotal] = useState(0);
+  const [chatHistoryLoading, setChatHistoryLoading] = useState(false);
+  const [deletingChatId, setDeletingChatId] = useState(null);
   const pageSize = 20;
 
   // Total stats for all created characters
@@ -315,6 +323,46 @@ export default function ProfilePage() {
     setLikedPersonasPage(1);
   }, [personaSort]);
 
+  // Fetch chat history when own-profile tab is active
+  useEffect(() => {
+    if (!isOwnProfile || activeTab !== TAB_TYPES.CHAT_HISTORY || !sessionToken) return;
+    setChatHistoryLoading(true);
+    fetch(`${window.API_BASE_URL}/api/chat/history-by-character?page=${chatHistoryPage}&page_size=20`, {
+      headers: { Authorization: sessionToken },
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          setChatHistoryItems(data.items || []);
+          setChatHistoryTotal(data.total || 0);
+        }
+      })
+      .finally(() => setChatHistoryLoading(false));
+  }, [isOwnProfile, activeTab, chatHistoryPage, sessionToken]);
+
+  const handleDeleteChatByCharacter = async (characterId, characterName) => {
+    const label = characterName || t('profile.this_character') || 'this character';
+    if (!window.confirm(
+      (t('profile.confirm_delete_all_chats') || 'Permanently delete all chats with {character}? This cannot be undone.')
+        .replace('{character}', label)
+    )) return;
+    setDeletingChatId(characterId);
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/chat/delete-by-character`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: sessionToken },
+        body: JSON.stringify({ character_id: characterId }),
+      });
+      if (res.ok) {
+        setChatHistoryItems(prev => prev.filter(c => c.character_id !== characterId));
+        setChatHistoryTotal(prev => Math.max(0, prev - 1));
+        toast.show(t('profile.all_chats_deleted') || 'All chats deleted.', { type: 'success' });
+      }
+    } finally {
+      setDeletingChatId(null);
+    }
+  };
+
   // Calculate total chats and likes from all created characters
   useEffect(() => {
     if (createdCharacters.length > 0) {
@@ -486,8 +534,154 @@ export default function ProfilePage() {
       editUrlPrefix = 'persona';
       emptyMsg = t('profile.no_all_personas');
       page = 1;
-      total = 0; // suppress pagination for combined view
+      total = 0;
       onPageChange = () => {};
+    } else if (activeTab === TAB_TYPES.CHAT_HISTORY) {
+      return (
+        <div>
+          {chatHistoryLoading ? (
+            <div className="text-center my-5">
+              <div className="spinner-border text-primary" role="status" />
+            </div>
+          ) : chatHistoryItems.length === 0 ? (
+            <div className="text-center" style={{ color: '#9ca3af', padding: '3rem 0', fontSize: '0.95rem' }}>
+              {t('profile.no_chat_history') || 'No chat history yet.'}
+            </div>
+          ) : (() => {
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            const yesterdayStart = todayStart - 86400000;
+
+            const formatChatDate = (iso) => {
+              if (!iso) return '—';
+              const d = new Date(iso);
+              const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+              if (dayStart === todayStart)
+                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              if (dayStart === yesterdayStart)
+                return t('profile.yesterday') || 'Yesterday';
+              return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            };
+
+            const getBucket = (iso) => {
+              if (!iso) return 'earlier';
+              const dayStart = new Date(new Date(iso)).setHours(0, 0, 0, 0);
+              if (dayStart === todayStart) return 'today';
+              if (dayStart === yesterdayStart) return 'yesterday';
+              return 'earlier';
+            };
+
+            const bucketLabels = {
+              today: t('profile.today') || 'Today',
+              yesterday: t('profile.yesterday') || 'Yesterday',
+              earlier: t('profile.earlier') || 'Earlier',
+            };
+
+            const groups = ['today', 'yesterday', 'earlier']
+              .map(key => ({ key, label: bucketLabels[key], items: chatHistoryItems.filter(c => getBucket(c.last_updated) === key) }))
+              .filter(g => g.items.length > 0);
+
+            const renderCard = (chat) => (
+              <div
+                key={chat.character_id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  background: '#fff',
+                  border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12,
+                  padding: '10px 14px',
+                }}
+              >
+                {/* Avatar: character big, scene small overlay */}
+                <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+                  {chat.character_picture ? (
+                    <img
+                      src={`${window.API_BASE_URL.replace(/\/$/, '')}/${chat.character_picture.replace(/^\//, '')}`}
+                      alt=""
+                      style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(167,139,250,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="bi bi-person" style={{ color: '#9d7fcf', fontSize: '1.3rem' }} />
+                    </div>
+                  )}
+                  {chat.scene_picture && (
+                    <img
+                      src={`${window.API_BASE_URL.replace(/\/$/, '')}/${chat.scene_picture.replace(/^\//, '')}`}
+                      alt=""
+                      style={{ width: 20, height: 20, borderRadius: 6, objectFit: 'cover', border: '1.5px solid #fff', position: 'absolute', bottom: -3, right: -3, boxShadow: '0 1px 3px rgba(0,0,0,0.18)' }}
+                    />
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#18191a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {chat.character_name || t('chat.unknown_character') || 'Unknown Character'}
+                  </div>
+                  <div style={{ fontSize: '0.77rem', color: '#6b7280', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                    {chat.scene_name && (
+                      <span style={{ color: '#9d7fcf', fontWeight: 500 }}>{chat.scene_name}</span>
+                    )}
+                    {chat.scene_name && <span style={{ opacity: 0.4 }}>·</span>}
+                    <span>{chat.chat_count} {chat.chat_count === 1 ? (t('profile.session') || 'session') : (t('profile.sessions') || 'sessions')}</span>
+                    <span style={{ opacity: 0.4 }}>·</span>
+                    <span>{formatChatDate(chat.last_updated)}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/chat?character=${chat.character_id}`)}
+                    style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: 8, border: '1px solid rgba(167,139,250,0.4)', background: 'transparent', color: '#7c5cbf', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    {t('profile.open_chat') || 'Open'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={deletingChatId === chat.character_id}
+                    onClick={() => handleDeleteChatByCharacter(chat.character_id, chat.character_name)}
+                    style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: 8, border: '1px solid rgba(220,38,38,0.25)', background: 'transparent', color: '#dc2626', cursor: 'pointer', fontWeight: 600, opacity: deletingChatId === chat.character_id ? 0.5 : 1 }}
+                  >
+                    {t('common.delete') || 'Delete'}
+                  </button>
+                </div>
+              </div>
+            );
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {groups.map((group, gi) => (
+                  <div key={group.key}>
+                    {gi > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 8px' }}>
+                        <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.07)' }} />
+                        <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 600, whiteSpace: 'nowrap' }}>{group.label}</span>
+                        <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.07)' }} />
+                      </div>
+                    )}
+                    {gi === 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 600 }}>{group.label}</span>
+                        <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.07)' }} />
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {group.items.map(renderCard)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+          {chatHistoryTotal > 20 && (
+            <PaginationBar
+              page={chatHistoryPage}
+              total={chatHistoryTotal}
+              pageSize={20}
+              loading={chatHistoryLoading}
+              onPageChange={setChatHistoryPage}
+            />
+          )}
+        </div>
+      );
     }
     return renderEntityCardSection(entities, type, showEdit, editUrlPrefix, emptyMsg, page, total, onPageChange);
   };
@@ -1203,6 +1397,26 @@ export default function ProfilePage() {
                   {t('profile.my_personas')}
                 </button>
               )}
+
+              {/* Chat History */}
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab(TAB_TYPES.CHAT_HISTORY); setChatHistoryPage(1); setCreatedExpanded(false); setLikedExpanded(false); }}
+                  style={{
+                    display: 'block', width: '100%', padding: '0.44rem 0.6rem',
+                    borderRadius: 8, border: 'none',
+                    background: activeTab === TAB_TYPES.CHAT_HISTORY ? 'rgba(167,139,250,0.15)' : 'transparent',
+                    color: activeTab === TAB_TYPES.CHAT_HISTORY ? '#5b2f9b' : '#3a3a3a',
+                    fontSize: '0.875rem', fontWeight: activeTab === TAB_TYPES.CHAT_HISTORY ? 700 : 600,
+                    cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => { if (activeTab !== TAB_TYPES.CHAT_HISTORY) e.currentTarget.style.background = 'rgba(167,139,250,0.06)'; }}
+                  onMouseLeave={e => { if (activeTab !== TAB_TYPES.CHAT_HISTORY) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {t('profile.chat_history') || 'Chat History'}
+                </button>
+              )}
             </aside>
           )}
 
@@ -1253,6 +1467,21 @@ export default function ProfilePage() {
                     {t('profile.my_personas')}
                   </button>
                 )}
+                {isOwnProfile && (
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab(TAB_TYPES.CHAT_HISTORY); setChatHistoryPage(1); setCreatedExpanded(false); setLikedExpanded(false); }}
+                    style={{
+                      flexShrink: 0, padding: '0.35rem 0.8rem', borderRadius: 999, border: 'none',
+                      background: activeTab === TAB_TYPES.CHAT_HISTORY ? 'rgba(167,139,250,0.18)' : 'rgba(0,0,0,0.05)',
+                      color: activeTab === TAB_TYPES.CHAT_HISTORY ? '#5b2f9b' : '#555',
+                      fontSize: '0.82rem', fontWeight: activeTab === TAB_TYPES.CHAT_HISTORY ? 700 : 500,
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {t('profile.chat_history') || 'Chat History'}
+                  </button>
+                )}
               </div>
               {(activeTab === TAB_TYPES.CREATED || activeTab === TAB_TYPES.LIKED) && (
                 <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 4, marginTop: 2 }}>
@@ -1292,8 +1521,8 @@ export default function ProfilePage() {
 
           {/* Content area */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Sort toggle (hidden for MY_PERSONAS) */}
-            {activeTab !== TAB_TYPES.MY_PERSONAS && (
+            {/* Sort toggle (hidden for MY_PERSONAS and CHAT_HISTORY) */}
+            {activeTab !== TAB_TYPES.MY_PERSONAS && activeTab !== TAB_TYPES.CHAT_HISTORY && (
               <div className="d-flex align-items-center justify-content-end" style={{ marginBottom: 12, gap: 8 }}>
                 <span
                   title={t('browse.sort_by')}

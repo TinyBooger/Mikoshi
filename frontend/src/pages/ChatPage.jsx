@@ -886,8 +886,7 @@ export default function ChatPage() {
       const fetchedData = await fetchInitialData();
       const existingChats = userData?.chat_history?.filter(h => {
         const characterMatches = String(h.character_id) === String(characterId);
-        const hasNoScene = !h.scene_id; // Only load chats without a scene
-        return characterMatches && hasNoScene;
+        return characterMatches;
       }) || [];
 
       if (existingChats.length > 0) {
@@ -1174,6 +1173,7 @@ export default function ChatPage() {
       setMessages([sys]);
       await sendChatTurn({
         nextMessages: [sys],
+        chatId: null,
         sourceBranchId: null,
         restoreMessagesOnError: [sys],
         errorMessage: t('chat.error_generating_greeting') || 'Failed to generate greeting.',
@@ -1198,6 +1198,7 @@ export default function ChatPage() {
 
   const sendChatTurn = async ({
     nextMessages,
+    chatId = selectedChat?.chat_id,
     forkFromMessageId = null,
     sourceBranchId = selectedChat?.active_branch_id || null,
     restoreMessagesOnError = nextMessages,
@@ -1226,7 +1227,7 @@ export default function ChatPage() {
         },
         body: JSON.stringify({
           character_id: characterOverride?.id || characterId,
-          chat_id: selectedChat?.chat_id,
+          chat_id: chatId,
           branch_id: sourceBranchId,
           fork_from_message_id: forkFromMessageId,
           scene_id: sceneOverride?.id || null,
