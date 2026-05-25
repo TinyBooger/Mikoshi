@@ -891,7 +891,7 @@ export default function CharacterSidebar({
           )}
 
         {activeTab === 'advanced' && (
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16, position: 'relative' }}>
             <div style={{
               background: '#f5f6fa',
               borderRadius: '0.9rem',
@@ -1027,11 +1027,6 @@ export default function CharacterSidebar({
               <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4 }}>
                 {t('chat.advanced_hint')}
               </div>
-              {!canUseAdvancedChatConfig && (
-                <div style={{ marginTop: 8, fontSize: '0.76rem', color: '#b45309', lineHeight: 1.4 }}>
-                  {t('chat.advanced_locked_notice')}
-                </div>
-              )}
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
                 <button
                   type="button"
@@ -1044,6 +1039,14 @@ export default function CharacterSidebar({
                 </button>
               </div>
             </div>
+            {!canUseAdvancedChatConfig && (
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(245, 246, 250, 0.90)', borderRadius: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+                <a href="/pro-upgrade" onClick={e => { e.preventDefault(); navigate('/pro-upgrade'); }} style={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.88rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <i className="bi bi-lock-fill" style={{ fontSize: '0.85rem' }}></i>
+                  升级 Pro 解锁高级选项
+                </a>
+              </div>
+            )}
           </div>
         )}
         </aside>

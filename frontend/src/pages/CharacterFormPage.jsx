@@ -794,7 +794,7 @@ export default function CharacterFormPage() {
             <div>
               <span style={{ fontWeight: 700, color: '#232323', fontSize: '0.97rem' }}>启用详细人物设定</span>
               {!canUseAdvancedCharacter ? (
-                <small style={{ display: 'block', color: '#9333ea', marginTop: 2 }}>升级为Pro用户可填写最多10000字的详细人物设定</small>
+                <small style={{ display: 'block', color: '#9333ea', marginTop: 2 }}>升级为Pro用户可填写最多10000字的详细人物设定 <a href="/pro-upgrade" onClick={e => { e.preventDefault(); navigate('/pro-upgrade'); }} style={{ color: '#7c3aed', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}>立即升级</a></small>
               ) : effectiveContextLabel === 'advanced' ? (
                 <small style={{ display: 'block', color: '#7c3aed', marginTop: 2 }}>可填写最多10000字的详细人物设定，用于构建更丰富的角色背景</small>
               ) : (
@@ -876,7 +876,15 @@ export default function CharacterFormPage() {
           </div>
 
           {showAdvancedOptions && (
-            <>
+            <div style={{ position: 'relative' }}>
+              {!canUseAdvancedConfig && (
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(248, 249, 250, 0.90)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+                  <a href="/pro-upgrade" onClick={e => { e.preventDefault(); navigate('/pro-upgrade'); }} style={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <i className="bi bi-lock-fill" style={{ fontSize: '0.85rem' }}></i>
+                    升级 Pro 解锁高级选项
+                  </a>
+                </div>
+              )}
               {/* Advanced Chat Config */}
               <div className="mb-4">
                 <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.75rem' }}>
@@ -987,14 +995,9 @@ export default function CharacterFormPage() {
                       />
                     </div>
                   </div>
-                  {!canUseAdvancedConfig && (
-                    <div className="mt-2" style={{ fontSize: '0.82rem', color: '#b45309' }}>
-                      {t('character_form.advanced.locked_notice')}
-                    </div>
-                  )}
                 </div>
               </div>
-            </>
+            </div>
           )}
 
           {/* Visibility & Options */}

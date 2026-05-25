@@ -130,7 +130,6 @@
     "advanced_frequency_penalty": "频率惩罚",
     "advanced_hint": "修改后会立即用于当前聊天请求。",
     "advanced_reset": "恢复角色默认配置",
-    "advanced_locked_notice": "升级到 Lv 3 或成为 Pro 用户以解锁高级设置。",
     "message_options": "消息选项",
     "pin_memory": "固定为记忆",
     "unpin_memory": "取消固定",
@@ -375,7 +374,7 @@
       "max_tokens": "最大输出 Token",
       "presence_penalty": "存在惩罚",
       "frequency_penalty": "频率惩罚",
-      "locked_notice": "升级到 Lv 3 或成为 Pro 用户以解锁高级设置。"
+      "locked_notice": "成为 Pro 用户以解锁高级设置。"
     },
     "advanced_help": {
       "model": "选择语言模型。`deepseek-chat` 更适合通用角色扮演；`deepseek-reasoner` 推理更充分，但通常更慢。",

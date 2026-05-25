@@ -130,7 +130,6 @@
     "advanced_frequency_penalty": "Frequency Penalty",
     "advanced_hint": "Changes apply to the current chat requests immediately.",
     "advanced_reset": "Reset to character defaults",
-    "advanced_locked_notice": "Upgrade to level 3 or become a Pro user to unlock advanced settings.",
     "message_options": "Message options",
     "pin_memory": "Pin as memory",
     "unpin_memory": "Unpin memory",
