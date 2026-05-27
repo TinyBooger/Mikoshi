@@ -20,6 +20,7 @@ from utils.chat_history_utils import (
     fetch_user_chat_history_paginated,
     fetch_user_chat_history_grouped_by_character,
     delete_user_chat_history_by_character,
+    delete_unavailable_chat_history,
 )
 import uuid
 import json
@@ -1006,9 +1007,24 @@ async def delete_chat_history_by_character(
     except ClientDisconnect:
         return Response(status_code=499)
 
-    character_id = data.get("character_id")
-    if not character_id:
-        return JSONResponse(content={"error": "Missing character_id"}, status_code=400)
+    character_id = data.get("character_id")  # may be None for deleted characters
+    character_name = data.get("character_name")
+    if not character_id and not character_name:
+        return JSONResponse(content={"error": "Missing character_id or character_name"}, status_code=400)
 
-    deleted_count = delete_user_chat_history_by_character(db, current_user.id, str(character_id))
+    deleted_count = delete_user_chat_history_by_character(
+        db,
+        current_user.id,
+        str(character_id) if character_id is not None else None,
+        character_name=character_name,
+    )
+    return {"status": "success", "deleted": deleted_count}
+
+
+@router.post("/api/chat/delete-unavailable")
+async def delete_unavailable_chat_histories(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    deleted_count = delete_unavailable_chat_history(db, current_user.id)
     return {"status": "success", "deleted": deleted_count}

@@ -10,7 +10,7 @@ import json
 from database import get_db
 from models import Character, User, Tag, UserLikedCharacter, ChatHistory
 from utils.session import get_current_user, get_optional_current_user
-from utils.local_storage_utils import save_image
+from utils.local_storage_utils import save_image, delete_images_by_prefix
 from utils.image_moderation import moderate_image_with_decision
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.collaborative_filtering import get_cf_characters
@@ -644,9 +644,11 @@ async def delete_character(
         raise HTTPException(status_code=403, detail="Not authorized")
 
 
+    char_id = char.id
     db.delete(char)
     db.commit()
-    return {"message": "Character deleted successfully"}
+    delete_images_by_prefix('character', f'character_{char_id}')
+    return {"message": "角色已删除"}
 
 @router.get("/api/characters/popular", response_model=CharacterListOut)
 def get_popular_characters(

@@ -84,3 +84,26 @@ def delete_image(category: str, id_value) -> bool:
             os.remove(file_path)
             return True
     return False
+
+
+def delete_images_by_prefix(category: str, prefix: str) -> int:
+    """
+    Delete all image files in the category folder whose filename starts with `prefix`.
+    Returns the number of files deleted. Non-fatal on individual file errors.
+    """
+    try:
+        folder = _get_category_folder(category)
+    except ValueError:
+        return 0
+    deleted = 0
+    try:
+        for fname in os.listdir(folder):
+            if fname.startswith(prefix):
+                try:
+                    os.remove(os.path.join(folder, fname))
+                    deleted += 1
+                except Exception:
+                    pass
+    except FileNotFoundError:
+        pass
+    return deleted

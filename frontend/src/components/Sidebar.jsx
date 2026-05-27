@@ -119,7 +119,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
     const items = [];
 
     for (const chat of sorted) {
-      const key = chat.character_id ? `character:${chat.character_id}` : null;
+      // For deleted characters, character_id is null but character_name is cached.
+      // Use "deleted:<name>" as the dedup key so they still appear in recent chats.
+      const key = chat.character_id
+        ? `character:${chat.character_id}`
+        : (chat.character_name ? `deleted:${chat.character_name}` : null);
       if (!key) continue;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -127,7 +131,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       items.push({
         type: 'character',
         chat_id: chat.chat_id,
-        id: chat.character_id,
+        id: chat.character_id,          // null for deleted characters
         character_id: chat.character_id,
         name: chat.character_name || 'Unknown Character',
         picture: chat.character_picture,
@@ -136,6 +140,8 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         scene_picture: chat.scene_picture || null,
         is_pinned: !!chat.is_pinned,
         last_updated: chat.last_updated,
+        character_deleted: chat.character_id ? !!chat.character_deleted : true,
+        character_moderation_status: chat.character_moderation_status || null,
       });
     }
 
@@ -832,15 +838,17 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                         minWidth: 0,
                         textAlign: 'left',
                         padding: '0.45rem 2.2rem 0.45rem 0.4rem',
+                        opacity: item.character_deleted ? 0.65 : 1,
                       }}
                       onClick={() => {
+                        if (item.character_deleted) return;
                         if (item.scene_id) {
                           handleNavigate(`/chat?scene=${item.scene_id}`);
                         } else {
                           handleNavigate(`/chat?character=${item.id}`);
                         }
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
+                      onMouseEnter={e => { if (!item.character_deleted) { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; } }}
                       onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#232323'; }}
                     >
                       {/* Character = big image, scene = small overlay */}
@@ -849,7 +857,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                           src={item.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${item.picture.replace(/^\//, '')}` : defaultPicture}
                           alt={item.name}
                           className="rounded-circle border"
-                          style={{ width: 38, height: 38, objectFit: 'cover', border: '1.6px solid #e9ecef' }}
+                          style={{ width: 38, height: 38, objectFit: 'cover', border: '1.6px solid #e9ecef', filter: item.character_deleted ? 'grayscale(1)' : 'none' }}
                         />
                         {item.scene_picture && (
                           <img
@@ -870,10 +878,14 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                         )}
                       </div>
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <span className="fw-bold text-truncate" style={{ color: '#232323', fontWeight: 700, lineHeight: 1.25 }}>{item.name}</span>
-                        {item.scene_name && (
+                        <span className="fw-bold text-truncate" style={{ color: item.character_deleted ? '#9ca3af' : '#232323', fontWeight: 700, lineHeight: 1.25 }}>{item.name}</span>
+                        {item.character_deleted ? (
+                          <span style={{ color: '#ef4444', fontSize: '0.68rem', fontWeight: 600 }}>{t('sidebar.character_deleted') || 'Deleted'}</span>
+                        ) : item.character_moderation_status ? (
+                          <span style={{ color: '#f59e0b', fontSize: '0.68rem', fontWeight: 600 }}>{t('sidebar.character_moderated') || 'Unavailable'}</span>
+                        ) : item.scene_name ? (
                           <span className="text-truncate" style={{ color: '#9ca3af', fontSize: '0.71rem', fontWeight: 500, lineHeight: 1.2 }}>{item.scene_name}</span>
-                        )}
+                        ) : null}
                       </div>
                       {item.is_pinned && (
                         <i className="bi bi-pin-angle-fill" style={{ fontSize: '0.7rem', color: '#334155', flexShrink: 0 }}></i>

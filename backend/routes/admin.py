@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from schemas import UserOut, UserMessageOut
 from utils.audit_logger import AuditLog
 from utils.chat_history_utils import count_chat_history_messages
+from utils.local_storage_utils import delete_images_by_prefix
 from utils.token_wallet import get_token_topup_packages, set_token_topup_packages
 from routes.user_messages import create_moderation_message, create_content_moderation_message
 
@@ -1201,7 +1202,8 @@ def delete_character(
     
     db.delete(character)
     db.commit()
-    return {"message": "Character deleted successfully"}
+    delete_images_by_prefix('character', f'character_{character_id}')
+    return {"message": "角色已删除"}
 
 
 @router.delete("/scenes/{scene_id}")
@@ -1216,6 +1218,7 @@ def delete_scene(
         raise HTTPException(status_code=404, detail="Scene not found")
     db.delete(scene)
     db.commit()
+    delete_images_by_prefix('scene', f'scene_{scene_id}')
     return {"message": "Scene deleted successfully"}
 
 
@@ -1231,6 +1234,8 @@ def delete_persona(
         raise HTTPException(status_code=404, detail="Persona not found")
     db.delete(persona)
     db.commit()
+    delete_images_by_prefix('persona', f'persona_{persona_id}')
+    delete_images_by_prefix('persona', f'persona_avatar_{persona_id}')
     return {"message": "Persona deleted successfully"}
 
 
@@ -1283,6 +1288,10 @@ def moderate_content_item(
                 admin_id=current_admin.id,
             )
         db.commit()
+        # Clean up stored images after the DB commit
+        delete_images_by_prefix(content_type, f'{content_type}_{item_id}')
+        if content_type in ('character', 'persona'):
+            delete_images_by_prefix(content_type, f'{content_type}_avatar_{item_id}')
         return {"message": f"{content_type.capitalize()} deleted successfully"}
 
     if action in {"restrict", "takedown"} and entity.creator_id:

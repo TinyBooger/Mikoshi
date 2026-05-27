@@ -80,6 +80,7 @@ export default function ProfilePage() {
   const [chatHistoryTotal, setChatHistoryTotal] = useState(0);
   const [chatHistoryLoading, setChatHistoryLoading] = useState(false);
   const [deletingChatId, setDeletingChatId] = useState(null);
+  const [clearingUnavailable, setClearingUnavailable] = useState(false);
   const pageSize = 20;
 
   // Total stats for all created characters
@@ -346,20 +347,40 @@ export default function ProfilePage() {
       (t('profile.confirm_delete_all_chats') || 'Permanently delete all chats with {character}? This cannot be undone.')
         .replace('{character}', label)
     )) return;
-    setDeletingChatId(characterId);
+    setDeletingChatId(characterId ?? characterName);
     try {
       const res = await fetch(`${window.API_BASE_URL}/api/chat/delete-by-character`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: sessionToken },
-        body: JSON.stringify({ character_id: characterId }),
+        body: JSON.stringify({ character_id: characterId, character_name: characterName }),
       });
       if (res.ok) {
-        setChatHistoryItems(prev => prev.filter(c => c.character_id !== characterId));
+        setChatHistoryItems(prev => prev.filter(c =>
+          characterId ? c.character_id !== characterId : c.character_name !== characterName
+        ));
         setChatHistoryTotal(prev => Math.max(0, prev - 1));
         toast.show(t('profile.all_chats_deleted') || 'All chats deleted.', { type: 'success' });
       }
     } finally {
       setDeletingChatId(null);
+    }
+  };
+
+  const handleClearUnavailable = async () => {
+    setClearingUnavailable(true);
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/chat/delete-unavailable`, {
+        method: 'POST',
+        headers: { Authorization: sessionToken },
+      });
+      if (res.ok) {
+        const removedCount = chatHistoryItems.filter(c => c.character_deleted || c.character_moderation_status).length;
+        setChatHistoryItems(prev => prev.filter(c => !c.character_deleted && !c.character_moderation_status));
+        setChatHistoryTotal(prev => Math.max(0, prev - removedCount));
+        toast.show(t('profile.unavailable_chats_cleared') || 'Unavailable chats cleared.', { type: 'success' });
+      }
+    } finally {
+      setClearingUnavailable(false);
     }
   };
 
@@ -537,8 +558,23 @@ export default function ProfilePage() {
       total = 0;
       onPageChange = () => {};
     } else if (activeTab === TAB_TYPES.CHAT_HISTORY) {
+      const hasUnavailable = chatHistoryItems.some(c => c.character_deleted || c.character_moderation_status);
       return (
         <div>
+          {!chatHistoryLoading && hasUnavailable && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+              <button
+                type="button"
+                disabled={clearingUnavailable}
+                onClick={handleClearUnavailable}
+                onMouseEnter={e => { if (!clearingUnavailable) e.currentTarget.style.background = '#e5e7eb'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#f3f4f6'; }}
+                style={{ fontSize: '0.78rem', padding: '4px 12px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', cursor: clearingUnavailable ? 'not-allowed' : 'pointer', fontWeight: 500, opacity: clearingUnavailable ? 0.6 : 1 }}
+              >
+                {clearingUnavailable ? (t('profile.loading') || 'Loading…') : (t('profile.clear_unavailable') || 'Clear Unavailable')}
+              </button>
+            </div>
+          )}
           {chatHistoryLoading ? (
             <div className="text-center my-5">
               <div className="spinner-border text-primary" role="status" />
@@ -589,6 +625,7 @@ export default function ProfilePage() {
                   background: '#fff',
                   border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12,
                   padding: '10px 14px',
+                  opacity: chat.character_deleted ? 0.75 : 1,
                 }}
               >
                 {/* Avatar: character big, scene small overlay */}
@@ -597,7 +634,7 @@ export default function ProfilePage() {
                     <img
                       src={`${window.API_BASE_URL.replace(/\/$/, '')}/${chat.character_picture.replace(/^\//, '')}`}
                       alt=""
-                      style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover' }}
+                      style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover', filter: chat.character_deleted ? 'grayscale(1)' : 'none' }}
                     />
                   ) : (
                     <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(167,139,250,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -613,34 +650,48 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#18191a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: chat.character_deleted ? '#9ca3af' : '#18191a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {chat.character_name || t('chat.unknown_character') || 'Unknown Character'}
                   </div>
                   <div style={{ fontSize: '0.77rem', color: '#6b7280', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                    {chat.scene_name && (
-                      <span style={{ color: '#9d7fcf', fontWeight: 500 }}>{chat.scene_name}</span>
-                    )}
-                    {chat.scene_name && <span style={{ opacity: 0.4 }}>·</span>}
+                    {chat.character_deleted ? (
+                      <span style={{ color: '#ef4444', fontWeight: 600 }}>{t('profile.character_deleted') || 'Deleted'}</span>
+                    ) : chat.character_moderation_status ? (
+                      <span style={{ color: '#f59e0b', fontWeight: 600 }}>{t('profile.character_moderated') || 'Unavailable'}</span>
+                    ) : chat.scene_name ? (
+                      <>
+                        <span style={{ color: '#9d7fcf', fontWeight: 500 }}>{chat.scene_name}</span>
+                        <span style={{ opacity: 0.4 }}>·</span>
+                      </>
+                    ) : null}
                     <span>{chat.chat_count} {chat.chat_count === 1 ? (t('profile.session') || 'session') : (t('profile.sessions') || 'sessions')}</span>
                     <span style={{ opacity: 0.4 }}>·</span>
                     <span>{formatChatDate(chat.last_updated)}</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                  {!chat.character_deleted && !chat.character_moderation_status && (
+                    <button
+                      type="button"
+                      title={t('profile.open_chat') || 'Open'}
+                      onClick={() => navigate(`/chat?character=${chat.character_id}`)}
+                      style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: '#7c5cbf', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.12)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <i className="bi bi-arrow-right" />
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => navigate(`/chat?character=${chat.character_id}`)}
-                    style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: 8, border: '1px solid rgba(167,139,250,0.4)', background: 'transparent', color: '#7c5cbf', cursor: 'pointer', fontWeight: 600 }}
-                  >
-                    {t('profile.open_chat') || 'Open'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={deletingChatId === chat.character_id}
+                    title={t('common.delete') || 'Delete'}
+                    disabled={deletingChatId === (chat.character_id ?? chat.character_name)}
                     onClick={() => handleDeleteChatByCharacter(chat.character_id, chat.character_name)}
-                    style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: 8, border: '1px solid rgba(220,38,38,0.25)', background: 'transparent', color: '#dc2626', cursor: 'pointer', fontWeight: 600, opacity: deletingChatId === chat.character_id ? 0.5 : 1 }}
+                    style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', opacity: deletingChatId === (chat.character_id ?? chat.character_name) ? 0.4 : 1 }}
+                    onMouseEnter={e => { if (deletingChatId !== (chat.character_id ?? chat.character_name)) e.currentTarget.style.background = 'rgba(220,38,38,0.08)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                   >
-                    {t('common.delete') || 'Delete'}
+                    <i className="bi bi-trash3" />
                   </button>
                 </div>
               </div>

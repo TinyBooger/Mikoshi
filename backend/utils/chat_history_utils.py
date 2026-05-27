@@ -7,7 +7,7 @@ from typing import Any, List, Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from models import ChatHistory
+from models import ChatHistory, Character
 
 
 CHAT_HISTORY_VERSION = 2
@@ -287,7 +287,45 @@ def fetch_user_chat_history(db: Session, user_id: str, limit: int = 30) -> List[
         .limit(limit)
         .all()
     )
-    return [serialize_chat_history_entry(entry) for entry in entries]
+
+    # Bulk-lookup character status to detect deletions and moderation
+    character_ids = [e.character_id for e in entries if e.character_id is not None]
+    char_status: dict[str, str | None] = {}  # character_id (as str) -> moderation_status
+    if character_ids:
+        int_ids = []
+        for cid in character_ids:
+            try:
+                int_ids.append(int(cid))
+            except (ValueError, TypeError):
+                pass
+        if int_ids:
+            rows = (
+                db.query(Character.id, Character.moderation_status)
+                .filter(Character.id.in_(int_ids))
+                .all()
+            )
+            for cid, mod_status in rows:
+                char_status[str(cid)] = mod_status  # None means normal
+
+    results = []
+    for entry in entries:
+        serialized = serialize_chat_history_entry(entry)
+        cid = str(entry.character_id) if entry.character_id is not None else None
+        if cid is None:
+            # character_id was set to NULL by ON DELETE SET NULL — character was deleted
+            # (only if there is a cached name; otherwise it was never a character chat)
+            serialized["character_deleted"] = bool(entry.character_name)
+            serialized["character_moderation_status"] = None
+        elif cid not in char_status:
+            # Shouldn't normally happen with SET NULL FK, but handle defensively
+            serialized["character_deleted"] = True
+            serialized["character_moderation_status"] = None
+        else:
+            serialized["character_deleted"] = False
+            serialized["character_moderation_status"] = char_status[cid]
+        results.append(serialized)
+
+    return results
 
 
 def fetch_user_chat_history_paginated(db: Session, user_id: str, page: int = 1, page_size: int = 20) -> dict:
@@ -309,8 +347,16 @@ def fetch_user_chat_history_paginated(db: Session, user_id: str, page: int = 1, 
 
 
 def fetch_user_chat_history_grouped_by_character(db: Session, user_id: str, page: int = 1, page_size: int = 20) -> dict:
-    """Return one entry per character (the most recent chat) for the profile history tab."""
-    # Subquery: most recent last_updated and chat count per character
+    """Return one entry per character (the most recent chat) for the profile history tab.
+
+    Includes entries for deleted characters whose character_id was set to NULL by the
+    ON DELETE SET NULL FK constraint — these are grouped by cached character_name.
+    """
+    from sqlalchemy.orm import aliased
+
+    CharAlias = aliased(Character)
+
+    # ── Part 1: active characters (character_id still set) ─────────────────────
     sub = (
         db.query(
             ChatHistory.character_id,
@@ -322,25 +368,20 @@ def fetch_user_chat_history_grouped_by_character(db: Session, user_id: str, page
         .subquery()
     )
 
-    total_rows = db.query(func.count()).select_from(sub).scalar() or 0
-
-    # Join to get the full most-recent entry per character
-    rows = (
-        db.query(ChatHistory, sub.c.chat_count)
+    active_rows = (
+        db.query(ChatHistory, sub.c.chat_count, CharAlias.id.label("char_exists"), CharAlias.moderation_status.label("char_mod_status"))
         .join(
             sub,
             (ChatHistory.character_id == sub.c.character_id)
             & (ChatHistory.last_updated == sub.c.max_updated)
             & (ChatHistory.user_id == user_id),
         )
-        .order_by(sub.c.max_updated.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .outerjoin(CharAlias, CharAlias.id == ChatHistory.character_id)
         .all()
     )
 
-    items = []
-    for entry, chat_count in rows:
+    items: list[dict] = []
+    for entry, chat_count, char_exists, char_mod_status in active_rows:
         items.append({
             "chat_id": entry.chat_id,
             "character_id": entry.character_id,
@@ -352,18 +393,128 @@ def fetch_user_chat_history_grouped_by_character(db: Session, user_id: str, page
             "hidden_from_recent": bool(getattr(entry, "hidden_from_recent", False)),
             "last_updated": entry.last_updated.isoformat() if entry.last_updated else None,
             "chat_count": chat_count,
+            "character_deleted": char_exists is None,
+            "character_moderation_status": char_mod_status if char_exists is not None else None,
         })
 
-    return {"items": items, "total": total_rows, "page": page, "page_size": page_size}
+    # ── Part 2: deleted characters (character_id NULLed by FK cascade) ─────────
+    # Group by character_name since the ID is gone.
+    del_sub = (
+        db.query(
+            ChatHistory.character_name,
+            ChatHistory.character_picture,
+            func.max(ChatHistory.last_updated).label("max_updated"),
+            func.count(ChatHistory.id).label("chat_count"),
+        )
+        .filter(
+            ChatHistory.user_id == user_id,
+            ChatHistory.character_id.is_(None),
+            ChatHistory.character_name.isnot(None),
+        )
+        .group_by(ChatHistory.character_name, ChatHistory.character_picture)
+        .subquery()
+    )
+
+    deleted_rows = (
+        db.query(ChatHistory, del_sub.c.chat_count)
+        .join(
+            del_sub,
+            (ChatHistory.character_name == del_sub.c.character_name)
+            & (ChatHistory.last_updated == del_sub.c.max_updated)
+            & (ChatHistory.user_id == user_id)
+            & ChatHistory.character_id.is_(None),
+        )
+        .all()
+    )
+
+    for entry, chat_count in deleted_rows:
+        items.append({
+            "chat_id": entry.chat_id,
+            "character_id": None,
+            "character_name": entry.character_name,
+            "character_picture": entry.character_picture,
+            "scene_id": entry.scene_id,
+            "scene_name": entry.scene_name,
+            "scene_picture": entry.scene_picture,
+            "hidden_from_recent": bool(getattr(entry, "hidden_from_recent", False)),
+            "last_updated": entry.last_updated.isoformat() if entry.last_updated else None,
+            "chat_count": chat_count,
+            "character_deleted": True,
+            "character_moderation_status": None,
+        })
+
+    # ── Sort combined list and paginate in Python ───────────────────────────────
+    items.sort(key=lambda x: x["last_updated"] or "", reverse=True)
+    total_rows = len(items)
+    start = (page - 1) * page_size
+    paged = items[start: start + page_size]
+
+    return {"items": paged, "total": total_rows, "page": page, "page_size": page_size}
 
 
-def delete_user_chat_history_by_character(db: Session, user_id: str, character_id: str) -> int:
-    """Delete all chat history entries for a user+character. Returns the number of rows deleted."""
+def delete_user_chat_history_by_character(
+    db: Session,
+    user_id: str,
+    character_id: str | None,
+    character_name: str | None = None,
+) -> int:
+    """Delete all chat history entries for a user+character.
+
+    When character_id is None (deleted character whose FK was set to NULL),
+    falls back to matching by character_name. Returns the number of rows deleted.
+    """
+    if character_id is not None:
+        q = db.query(ChatHistory).filter(
+            ChatHistory.user_id == user_id,
+            ChatHistory.character_id == character_id,
+        )
+    elif character_name:
+        q = db.query(ChatHistory).filter(
+            ChatHistory.user_id == user_id,
+            ChatHistory.character_id.is_(None),
+            ChatHistory.character_name == character_name,
+        )
+    else:
+        return 0
+    deleted = q.delete(synchronize_session=False)
+    db.commit()
+    return deleted
+
+
+def delete_unavailable_chat_history(db: Session, user_id: str) -> int:
+    """Delete all chat history entries for unavailable characters.
+
+    Covers two cases:
+    1. Deleted characters — character_id was set to NULL by ON DELETE SET NULL cascade.
+    2. Moderated characters — character still exists but has been restricted or taken down.
+    Returns total rows deleted.
+    """
+    # Case 1: deleted characters (character_id NULLed, name cached)
     deleted = (
         db.query(ChatHistory)
-        .filter(ChatHistory.user_id == user_id, ChatHistory.character_id == character_id)
+        .filter(
+            ChatHistory.user_id == user_id,
+            ChatHistory.character_id.is_(None),
+            ChatHistory.character_name.isnot(None),
+        )
         .delete(synchronize_session=False)
     )
+
+    # Case 2: moderated characters still in the Character table
+    moderated_ids = (
+        db.query(Character.id)
+        .filter(Character.moderation_status.in_(['restricted', 'takedown']))
+        .subquery()
+    )
+    deleted += (
+        db.query(ChatHistory)
+        .filter(
+            ChatHistory.user_id == user_id,
+            ChatHistory.character_id.in_(moderated_ids),
+        )
+        .delete(synchronize_session=False)
+    )
+
     db.commit()
     return deleted
 

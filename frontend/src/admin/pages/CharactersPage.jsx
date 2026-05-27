@@ -54,7 +54,7 @@ export default function CharactersPage() {
       });
 
       if (response.ok) {
-        alert('Character deleted successfully');
+        alert('角色已删除');
         fetchCharacters();
       } else {
         const error = await response.json();
