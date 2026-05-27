@@ -50,7 +50,7 @@ export default function ProUpgradePage() {
 
   return (
     <PageWrapper title={t('pro_upgrade.title')}>
-        <div className="row justify-content-center">
+        <div className="row justify-content-center mx-0 pt-4">
           <div className="col-12 col-lg-10 col-xl-8">
             {/* Header Section */}
             <div className="text-center mb-3">
@@ -130,6 +130,7 @@ export default function ProUpgradePage() {
             <div className="mb-3">
               <div className="row g-3">
                 {[
+                  { id: 'test', label: '1个月(测试)', price: 0.01, unit: '/月', discount: '测试' },
                   { id: '1month', label: '1个月', price: 15, unit: '/月', discount: null },
                   { id: '3months', label: '3个月', price: 40, unit: '/3月', discount: '9折' },
                   { id: '6months', label: '6个月', price: 72, unit: '/6月', discount: '8折' },
@@ -271,6 +272,7 @@ export default function ProUpgradePage() {
 
                   if (selectedPaymentMethod === 'wechat') {
                     const planDetails = {
+                      'test':    { amount: 0.01, subject: 'Pro会员1个月(测试)', body: 'Pro会员30天订阅(测试)' },
                       '1month':  { amount: 15,  subject: 'Pro会员1个月', body: 'Pro会员30天订阅' },
                       '3months': { amount: 40,  subject: 'Pro会员3个月', body: 'Pro会员90天订阅' },
                       '6months': { amount: 72,  subject: 'Pro会员6个月', body: 'Pro会员180天订阅' },
@@ -309,6 +311,7 @@ export default function ProUpgradePage() {
                   }
 
                   const planDetails = {
+                    'test':    { amount: 0.01, subject: 'Pro会员1个月(测试)', body: 'Pro会员30天订阅(测试)' },
                     '1month':  { amount: 15,  subject: 'Pro会员1个月', body: 'Pro会员30天订阅' },
                     '3months': { amount: 40,  subject: 'Pro会员3个月', body: 'Pro会员90天订阅' },
                     '6months': { amount: 72,  subject: 'Pro会员6个月', body: 'Pro会员180天订阅' },
@@ -405,7 +408,7 @@ export default function ProUpgradePage() {
             )}
 
             {/* Footer Note */}
-            <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+            <p className="text-muted mb-0" style={{ fontSize: '0.9rem' }}>
               {t('pro_upgrade.footer_note')}
               {' '}
               <a href="/terms-of-service" className="text-decoration-none" style={{ color: '#667eea' }}>

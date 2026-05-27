@@ -39,6 +39,7 @@ PRO_AMOUNT_TOLERANCE = 0.01
 TOKEN_TOPUP_AMOUNT_TOLERANCE = 0.01
 
 PRO_UPGRADE_PLANS = [
+    {"amount": 0.01,  "days": 30},   # test plan
     {"amount": 15.0,  "days": 30},
     {"amount": 40.0,  "days": 90},
     {"amount": 72.0,  "days": 180},

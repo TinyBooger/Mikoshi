@@ -37,6 +37,7 @@ PRO_AMOUNT_TOLERANCE = 0.01
 # Maps accepted payment amounts to Pro membership duration in days.
 # Prices: 1 month = ¥15, 3 months = ¥40 (9折), 6 months = ¥72 (8折), 1 year = ¥120 (6.7折)
 PRO_UPGRADE_PLANS = [
+    {"amount": 0.01,  "days": 30},   # test plan
     {"amount": 15.0,  "days": 30},
     {"amount": 40.0,  "days": 90},
     {"amount": 72.0,  "days": 180},
