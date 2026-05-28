@@ -605,13 +605,23 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     current_token_limit_info = get_token_cap_info(current_user, db)
 
                 # Send final metadata
+                # Use actual prompt_tokens from the LLM response when available; the
+                # pre-call estimate in context_window_info is based only on the input
+                # messages and is especially inaccurate for the improvised-greeting
+                # turn where there are no prior messages to derive real usage from.
+                actual_prompt_tokens = response_usage.get("prompt_tokens", 0)
+                effective_context_window_info = (
+                    {**context_window_info, "input_tokens": actual_prompt_tokens}
+                    if actual_prompt_tokens > 0
+                    else context_window_info
+                )
                 done_payload = {
                     'done': True,
                     'chat_id': chat_id,
                     'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
                     'limits': limit_info,
                     'token_limits': current_token_limit_info,
-                    'context_window': {**context_window_info, 'message_count': len(context_messages), 'selected_tier': context_window_tier},
+                    'context_window': {**effective_context_window_info, 'message_count': len(context_messages), 'selected_tier': context_window_tier},
                 }
                 if character_id:
                     done_payload['chat_entry'] = serialized_entry
