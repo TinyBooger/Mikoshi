@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from database import get_db
 from models import Persona, User, Tag, UserLikedPersona
-from utils.local_storage_utils import save_image, delete_images_by_prefix
+from utils.local_storage_utils import save_image, delete_stored_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 from utils.session import get_current_user, get_optional_current_user
@@ -384,11 +384,12 @@ def delete_persona(persona_id: int, db: Session = Depends(get_db), current_user:
         raise HTTPException(status_code=404, detail="Persona not found")
     if persona.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    persona_id_val = persona.id
+    picture_path = persona.picture
+    avatar_path = persona.avatar_picture
     db.delete(persona)
     db.commit()
-    delete_images_by_prefix('persona', f'persona_{persona_id_val}')
-    delete_images_by_prefix('persona', f'persona_avatar_{persona_id_val}')
+    delete_stored_image(picture_path)
+    delete_stored_image(avatar_path)
     return JSONResponse(content={"id": persona_id, "message": "Persona deleted"})
 
 # Set persona as default

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from database import get_db
 from models import Scene, User, UserLikedScene
-from utils.local_storage_utils import save_image, delete_images_by_prefix
+from utils.local_storage_utils import save_image, delete_stored_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 from utils.session import get_current_user, get_optional_current_user
@@ -396,10 +396,10 @@ def delete_scene(scene_id: int, db: Session = Depends(get_db), current_user: Use
         raise HTTPException(status_code=404, detail="Scene not found")
     if scene.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    scene_id_val = scene.id
+    picture_path = scene.picture
     db.delete(scene)
     db.commit()
-    delete_images_by_prefix('scene', f'scene_{scene_id_val}')
+    delete_stored_image(picture_path)
     return JSONResponse(content={"id": scene_id, "message": "Scene deleted"})
 
 # ----------------------- END SCENE CRUD ROUTES -------------------

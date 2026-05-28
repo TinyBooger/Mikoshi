@@ -86,24 +86,19 @@ def delete_image(category: str, id_value) -> bool:
     return False
 
 
-def delete_images_by_prefix(category: str, prefix: str) -> int:
+def delete_stored_image(path: Optional[str]) -> bool:
     """
-    Delete all image files in the category folder whose filename starts with `prefix`.
-    Returns the number of files deleted. Non-fatal on individual file errors.
+    Delete a file given its stored relative path (as returned by save_image).
+    Returns True if the file was found and deleted, False otherwise.
     """
+    if not path:
+        return False
+    backend_dir = os.path.dirname(os.path.dirname(__file__))
+    abs_path = os.path.join(backend_dir, path)
     try:
-        folder = _get_category_folder(category)
-    except ValueError:
-        return 0
-    deleted = 0
-    try:
-        for fname in os.listdir(folder):
-            if fname.startswith(prefix):
-                try:
-                    os.remove(os.path.join(folder, fname))
-                    deleted += 1
-                except Exception:
-                    pass
-    except FileNotFoundError:
+        if os.path.exists(abs_path):
+            os.remove(abs_path)
+            return True
+    except Exception:
         pass
-    return deleted
+    return False

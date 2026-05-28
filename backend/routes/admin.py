@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from schemas import UserOut, UserMessageOut
 from utils.audit_logger import AuditLog
 from utils.chat_history_utils import count_chat_history_messages
-from utils.local_storage_utils import delete_images_by_prefix
+from utils.local_storage_utils import delete_stored_image
 from utils.token_wallet import get_token_topup_packages, set_token_topup_packages
 from routes.user_messages import create_moderation_message, create_content_moderation_message
 
@@ -1200,9 +1200,12 @@ def delete_character(
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
     
+    picture_path = character.picture
+    avatar_path = character.avatar_picture
     db.delete(character)
     db.commit()
-    delete_images_by_prefix('character', f'character_{character_id}')
+    delete_stored_image(picture_path)
+    delete_stored_image(avatar_path)
     return {"message": "角色已删除"}
 
 
@@ -1216,9 +1219,10 @@ def delete_scene(
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
+    picture_path = scene.picture
     db.delete(scene)
     db.commit()
-    delete_images_by_prefix('scene', f'scene_{scene_id}')
+    delete_stored_image(picture_path)
     return {"message": "Scene deleted successfully"}
 
 
@@ -1232,10 +1236,12 @@ def delete_persona(
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(status_code=404, detail="Persona not found")
+    picture_path = persona.picture
+    avatar_path = persona.avatar_picture
     db.delete(persona)
     db.commit()
-    delete_images_by_prefix('persona', f'persona_{persona_id}')
-    delete_images_by_prefix('persona', f'persona_avatar_{persona_id}')
+    delete_stored_image(picture_path)
+    delete_stored_image(avatar_path)
     return {"message": "Persona deleted successfully"}
 
 
@@ -1272,6 +1278,8 @@ def moderate_content_item(
         entity.moderation_status = None
         entity.is_public = True
     elif action == "delete":
+        picture_path = getattr(entity, 'picture', None)
+        avatar_path = getattr(entity, 'avatar_picture', None)
         creator_id = entity.creator_id
         entity_name = entity.name
         db.delete(entity)
@@ -1289,9 +1297,8 @@ def moderate_content_item(
             )
         db.commit()
         # Clean up stored images after the DB commit
-        delete_images_by_prefix(content_type, f'{content_type}_{item_id}')
-        if content_type in ('character', 'persona'):
-            delete_images_by_prefix(content_type, f'{content_type}_avatar_{item_id}')
+        delete_stored_image(picture_path)
+        delete_stored_image(avatar_path)
         return {"message": f"{content_type.capitalize()} deleted successfully"}
 
     if action in {"restrict", "takedown"} and entity.creator_id:
