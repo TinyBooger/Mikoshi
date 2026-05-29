@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from database import get_db
 from models import Scene, User, UserLikedScene
-from utils.local_storage_utils import save_image, delete_stored_image
+from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 from utils.session import get_current_user, get_optional_current_user
@@ -76,14 +76,6 @@ async def create_scene(
     if len(description) > MAX_DESCRIPTION_LENGTH:
         raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
 
-    # Forking is Pro-only.
-    if forked_from_id and not bool(current_user.is_pro):
-        raise HTTPException(status_code=403, detail="Forking requires Pro user")
-
-    # Making scenes forkable is Pro-only.
-    if is_forkable and not bool(current_user.is_pro):
-        raise HTTPException(status_code=403, detail="Forkable scenes require Pro user")
-    
     scene = Scene(
         name=name,
         description=description,
@@ -111,7 +103,17 @@ async def create_scene(
         scene.picture = save_image(io.BytesIO(image_bytes), 'scene', scene.id, picture.filename)
         db.commit()
         db.refresh(scene)
-    
+
+    # For forks: if no picture was uploaded, copy from the source scene
+    if forked_from_id:
+        source_scene = db.query(Scene).filter(Scene.id == forked_from_id).first()
+        if source_scene and not picture and source_scene.picture:
+            copied = copy_stored_image(source_scene.picture, 'scene', scene.id)
+            if copied:
+                scene.picture = copied
+        db.commit()
+        db.refresh(scene)
+
     return JSONResponse(content={
         "id": scene.id,
         "message": "Scene created",
@@ -352,10 +354,7 @@ async def update_scene(
     # Private scenes are open to all users.
     final_is_public = is_public if is_public is not None else scene.is_public
 
-    # Making scenes forkable is Pro-only.
     final_is_forkable = is_forkable if is_forkable is not None else scene.is_forkable
-    if final_is_forkable and not bool(current_user.is_pro):
-        raise HTTPException(status_code=403, detail="Forkable scenes require Pro user")
 
     if name is not None:
         scene.name = name

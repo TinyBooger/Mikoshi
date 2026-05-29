@@ -86,6 +86,37 @@ def delete_image(category: str, id_value) -> bool:
     return False
 
 
+def copy_stored_image(source_path: str, category: str, new_id, filename_prefix: Optional[str] = None) -> Optional[str]:
+    """
+    Copy an existing stored image to a new path for a forked entity.
+    source_path: the relative path as stored in DB (as returned by save_image).
+    Returns the new relative path, or None if the source file does not exist.
+    """
+    if not source_path:
+        return None
+    backend_dir = os.path.dirname(os.path.dirname(__file__))
+    abs_source = os.path.join(backend_dir, source_path)
+    if not os.path.exists(abs_source):
+        return None
+
+    folder = _get_category_folder(category)
+    os.makedirs(folder, exist_ok=True)
+
+    _, ext = os.path.splitext(abs_source)
+    if not ext:
+        ext = ".img"
+
+    import time
+    ts = int(time.time())
+    prefix = filename_prefix or f"{category}_{new_id}"
+    dest_path = os.path.join(folder, f"{prefix}_{ts}{ext}")
+    try:
+        shutil.copy2(abs_source, dest_path)
+    except Exception:
+        return None
+    return os.path.relpath(dest_path, backend_dir)
+
+
 def delete_stored_image(path: Optional[str]) -> bool:
     """
     Delete a file given its stored relative path (as returned by save_image).

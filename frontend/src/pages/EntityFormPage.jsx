@@ -64,7 +64,6 @@ export default function EntityFormPage() {
 
   const { sessionToken, userData } = useContext(AuthContext);
   const canPrivate = true;
-  const canFork = !!userData?.is_pro;
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -78,6 +77,9 @@ export default function EntityFormPage() {
     is_forkable: false,
     forked_from_id: null,
     forked_from_name: null,
+    forked_from_creator_id: null,
+    forked_from_creator_name: null,
+    forked_from_creator_profile_pic: null,
   });
 
   const [picture, setPicture] = useState(null);
@@ -101,16 +103,13 @@ export default function EntityFormPage() {
       if (!canPrivate && !prev.is_public) {
         next = { ...next, is_public: true };
       }
-      if (!canFork && prev.is_forkable) {
-        next = { ...next, is_forkable: false };
-      }
       // In fork mode, must be forkable
       if (mode === 'fork') {
         next = { ...next, is_forkable: true };
       }
       return next;
     });
-  }, [canPrivate, canFork, mode]);
+  }, [canPrivate, mode]);
 
   // Fetch entity data in edit mode
   useEffect(() => {
@@ -142,7 +141,7 @@ export default function EntityFormPage() {
           if (mode === 'fork') {
             // In fork mode, set forked_from fields
             setEntityData({
-              name: `${data.name} (Fork)`,
+              name: data.name,
               description: data.description || '',
               intro: data.intro || '',
               greeting: isImprov ? '' : loadedGreeting,
@@ -151,6 +150,9 @@ export default function EntityFormPage() {
               is_forkable: true,
               forked_from_id: data.id,
               forked_from_name: data.name,
+              forked_from_creator_id: data.creator_id || null,
+              forked_from_creator_name: data.creator_name || null,
+              forked_from_creator_profile_pic: data.creator_profile_pic || null,
             });
           } else {
             // Edit mode
@@ -333,9 +335,46 @@ export default function EntityFormPage() {
           )}
           {/* Forked From - Display only */}
           {entityData.forked_from_id && entityData.forked_from_name && (
-            <div className="alert alert-info mb-4" role="alert">
-              <i className="bi bi-code-fork me-2"></i>
-              {t(`${entityConfig.transactionKeyPrefix}.forked_from`)} <strong>{entityData.forked_from_name}</strong>
+            <div
+              className="mb-4 d-flex align-items-center gap-3"
+              style={{
+                padding: '0.75rem 1rem',
+                background: 'linear-gradient(135deg, #f0f4ff 0%, #f5f0ff 100%)',
+                border: '1px solid #d0d7f5',
+                borderRadius: '10px',
+              }}
+            >
+              <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.1rem', color: '#7c6abf', flexShrink: 0 }}></i>
+              <div className="d-flex flex-column" style={{ gap: '2px', minWidth: 0 }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#7c6abf', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {t(`${entityConfig.transactionKeyPrefix}.forked_from`)}
+                </span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#2d2d2d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {entityData.forked_from_name}
+                </span>
+                {entityData.forked_from_creator_name && (
+                  <button
+                    type="button"
+                    onClick={() => entityData.forked_from_creator_id && navigate(`/profile/${encodeURIComponent(entityData.forked_from_creator_id)}`)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '5px',
+                      background: 'none', border: 'none', padding: 0, cursor: entityData.forked_from_creator_id ? 'pointer' : 'default',
+                      color: '#555', fontSize: '0.8rem', fontWeight: 500,
+                    }}
+                  >
+                    {entityData.forked_from_creator_profile_pic ? (
+                      <img
+                        src={`${window.API_BASE_URL.replace(/\/$/, '')}/${String(entityData.forked_from_creator_profile_pic).replace(/^\//, '')}`}
+                        alt={entityData.forked_from_creator_name}
+                        style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                      />
+                    ) : (
+                      <i className="bi bi-person-circle" style={{ fontSize: '0.85rem' }}></i>
+                    )}
+                    {entityData.forked_from_creator_name}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -658,7 +697,7 @@ export default function EntityFormPage() {
             </div>
 
             {/* Forkable Toggle */}
-            <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canFork ? 0.55 : 1 }}>
+            <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.2rem', color: '#22c55e' }}></i>
@@ -669,9 +708,9 @@ export default function EntityFormPage() {
                     <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                       {t(`${entityConfig.transactionKeyPrefix}.forkable_desc`) || 'Users can create their own versions'}
                     </div>
-                    {!canFork && (
-                      <div className="text-danger" style={{ fontSize: '0.75rem' }}>
-                        {t('character_form.advanced.locked_notice') || 'This feature requires Pro.'}
+                    {mode === 'fork' && (
+                      <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '2px' }}>
+                        {t(`${entityConfig.transactionKeyPrefix}.fork_must_stay_forkable`)}
                       </div>
                     )}
                   </div>
@@ -682,9 +721,9 @@ export default function EntityFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!!entityData.is_forkable}
-                    disabled={!canFork || mode === 'fork'}
+                    disabled={mode === 'fork'}
                     onChange={e => handleChange('is_forkable', e.target.checked)}
-                    style={{ width: '3rem', height: '1.5rem', cursor: (canFork && mode !== 'fork') ? 'pointer' : 'not-allowed' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: mode !== 'fork' ? 'pointer' : 'not-allowed' }}
                   />
                 </div>
               </div>

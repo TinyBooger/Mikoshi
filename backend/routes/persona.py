@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from database import get_db
 from models import Persona, User, Tag, UserLikedPersona
-from utils.local_storage_utils import save_image, delete_stored_image
+from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 from utils.session import get_current_user, get_optional_current_user
@@ -174,14 +174,6 @@ async def create_persona(
     if description and len(description) > MAX_DESCRIPTION_LENGTH:
         raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
 
-    # Forking is Pro-only.
-    if forked_from_id and not bool(current_user.is_pro):
-        raise HTTPException(status_code=403, detail="Forking requires Pro user")
-
-    # Making personas forkable is Pro-only.
-    if is_forkable and not bool(current_user.is_pro):
-        raise HTTPException(status_code=403, detail="Forkable personas require Pro user")
-    
     persona = Persona(
         name=name,
         description=description,
@@ -223,7 +215,22 @@ async def create_persona(
         )
         db.commit()
         db.refresh(persona)
-    
+
+    # For forks: if no picture/avatar was uploaded, copy from the source persona
+    if forked_from_id:
+        source_persona = db.query(Persona).filter(Persona.id == forked_from_id).first()
+        if source_persona:
+            if not picture and source_persona.picture:
+                copied = copy_stored_image(source_persona.picture, 'persona', persona.id)
+                if copied:
+                    persona.picture = copied
+            if not avatar_picture and source_persona.avatar_picture:
+                copied = copy_stored_image(source_persona.avatar_picture, 'persona', persona.id, filename_prefix=f"persona_avatar_{persona.id}")
+                if copied:
+                    persona.avatar_picture = copied
+        db.commit()
+        db.refresh(persona)
+
     return JSONResponse(content={
         "id": persona.id,
         "message": "Persona created",
@@ -329,10 +336,7 @@ async def update_persona(
     # Private personas are open to all users.
     final_is_public = is_public if is_public is not None else persona.is_public
 
-    # Making personas forkable is Pro-only.
     final_is_forkable = is_forkable if is_forkable is not None else persona.is_forkable
-    if final_is_forkable and not bool(current_user.is_pro):
-        raise HTTPException(status_code=403, detail="Forkable personas require Pro user")
 
     if name is not None:
         persona.name = name

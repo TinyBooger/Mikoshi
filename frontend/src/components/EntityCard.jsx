@@ -365,6 +365,25 @@ export default function EntityCard({
               title={name}
             >
               {name}
+              {entity.forked_from_id && (
+                <span style={{
+                  display: 'inline-block',
+                  marginLeft: '5px',
+                  fontSize: '0.6rem',
+                  fontWeight: 600,
+                  color: '#7c6abf',
+                  background: 'rgba(124,106,191,0.1)',
+                  border: '1px solid rgba(124,106,191,0.3)',
+                  borderRadius: '4px',
+                  padding: '1px 4px',
+                  verticalAlign: 'middle',
+                  lineHeight: 1.4,
+                  whiteSpace: 'nowrap',
+                }}>
+                  <i className="bi bi-diagram-3-fill" style={{ fontSize: '0.5rem', marginRight: '2px' }}></i>
+                  {t('entity_card.forked')}
+                </span>
+              )}
             </h5>
           </div>
 
@@ -557,6 +576,25 @@ export default function EntityCard({
             title={name}
           >
             {name}
+            {entity.forked_from_id && (
+              <span style={{
+                display: 'inline-block',
+                marginLeft: '4px',
+                fontSize: '0.58rem',
+                fontWeight: 600,
+                color: '#7c6abf',
+                background: 'rgba(124,106,191,0.1)',
+                border: '1px solid rgba(124,106,191,0.3)',
+                borderRadius: '4px',
+                padding: '1px 4px',
+                verticalAlign: 'middle',
+                lineHeight: 1.4,
+                whiteSpace: 'nowrap',
+              }}>
+                <i className="bi bi-diagram-3-fill" style={{ fontSize: '0.5rem', marginRight: '2px' }}></i>
+                {t('entity_card.forked')}
+              </span>
+            )}
           </h5>
 
           {size !== 'mini' && (

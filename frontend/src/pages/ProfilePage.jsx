@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router';
 import defaultAvatar from '../assets/images/default-avatar.png';
@@ -86,7 +86,42 @@ export default function ProfilePage() {
   // Total stats for all created characters
   const [totalChats, setTotalChats] = useState(0);
   const [totalLikes, setTotalLikes] = useState(0);
-  
+
+  // Animated display values for stats
+  const [displayChats, setDisplayChats] = useState(0);
+  const [displayLikes, setDisplayLikes] = useState(0);
+  const chatsAnimRef = useRef(null);
+  const likesAnimRef = useRef(null);
+
+  // Session delta: value + animation trigger key (incrementing key remounts element → replays animation)
+  const [sessionDeltaChats, setSessionDeltaChats] = useState(0);
+  const [sessionDeltaLikes, setSessionDeltaLikes] = useState(0);
+  const [deltaChatKey, setDeltaChatKey] = useState(0);
+  const [deltaLikeKey, setDeltaLikeKey] = useState(0);
+  const [sproutHearts, setSproutHearts] = useState([]);
+
+  // Generate a burst of 3–5 hearts spreading outward whenever likes increase
+  useEffect(() => {
+    if (deltaLikeKey === 0) {
+      setSproutHearts([]);
+      return;
+    }
+    const count = Math.floor(Math.random() * 3) + 3; // 3, 4, or 5
+    const baseStep = 360 / count;
+    const hearts = Array.from({ length: count }, (_, i) => {
+      const angleDeg = baseStep * i + (Math.random() - 0.5) * (baseStep * 0.5);
+      const angleRad = angleDeg * (Math.PI / 180);
+      const dist = 48 + Math.random() * 28; // 48–76 px
+      return {
+        id: i,
+        tx: Math.cos(angleRad) * dist,
+        ty: Math.sin(angleRad) * dist,
+        delay: i * 0.12, // 120ms gap between each heart
+      };
+    });
+    setSproutHearts(hearts);
+  }, [deltaLikeKey]);
+
   const [showProBenefits, setShowProBenefits] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -396,6 +431,67 @@ export default function ProfilePage() {
       setTotalLikes(0);
     }
   }, [createdCharacters]);
+
+  // Smooth count-up animation for a stat value
+  const animateCount = useCallback((from, to, setter, rafRef) => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (from === to) { setter(to); return; }
+    const duration = 1200;
+    const start = performance.now();
+    const step = (now) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setter(Math.round(from + (to - from) * eased));
+      if (progress < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+  }, []);
+
+  // Trigger count-up when totals change, and compute session delta
+  useEffect(() => {
+    if (!isOwnProfile || !displayUser) return;
+    const storageKey = `profile_stats_${displayUser.id}`;
+    const stored = (() => { try { return JSON.parse(localStorage.getItem(storageKey)) || {}; } catch { return {}; } })();
+    const prevChats = typeof stored.chats === 'number' ? stored.chats : null;
+    const prevLikes = typeof stored.likes === 'number' ? stored.likes : null;
+
+    const deltaChats = prevChats !== null ? Math.max(0, totalChats - prevChats) : 0;
+    const deltaLikes = prevLikes !== null ? Math.max(0, totalLikes - prevLikes) : 0;
+
+    animateCount(prevChats !== null ? prevChats : 0, totalChats, setDisplayChats, chatsAnimRef);
+    animateCount(prevLikes !== null ? prevLikes : 0, totalLikes, setDisplayLikes, likesAnimRef);
+
+    if ((deltaChats > 0 || deltaLikes > 0) && prevChats !== null) {
+      // Trigger float-up delta labels after the count-up animation (~1.2s)
+      const showDelay = setTimeout(() => {
+        if (deltaChats > 0) { setSessionDeltaChats(deltaChats); setDeltaChatKey(k => k + 1); }
+        if (deltaLikes > 0) { setSessionDeltaLikes(deltaLikes); setDeltaLikeKey(k => k + 1); }
+      }, 1250);
+
+      return () => clearTimeout(showDelay);
+    } else if (prevChats === null) {
+      // First visit — just set display values directly
+      setDisplayChats(totalChats);
+      setDisplayLikes(totalLikes);
+    }
+
+    // Save current stats for next visit
+    localStorage.setItem(storageKey, JSON.stringify({ chats: totalChats, likes: totalLikes }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalChats, totalLikes]);
+
+  // Persist stats after animations complete
+  useEffect(() => {
+    if (!isOwnProfile || !displayUser || totalChats === 0 && totalLikes === 0) return;
+    const storageKey = `profile_stats_${displayUser.id}`;
+    const timer = setTimeout(() => {
+      localStorage.setItem(storageKey, JSON.stringify({ chats: totalChats, likes: totalLikes }));
+    }, 1600);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalChats, totalLikes]);
 
   // Unified content renderer for all tabs and subtabs
   const renderTabContent = () => {
@@ -900,6 +996,19 @@ export default function ProfilePage() {
 
   return (
     <PageWrapper>
+      <style>{`
+        @keyframes statDeltaFloat {
+          0%   { transform: translateY(-50%) scale(0.65); opacity: 0; }
+          20%  { transform: translateY(-65%) scale(1.1); opacity: 0.55; }
+          60%  { opacity: 0.45; }
+          100% { transform: translateY(-160%) scale(1); opacity: 0; }
+        }
+        @keyframes heartSproutDir {
+          0%   { transform: translate(calc(-50% + 0px), calc(-50% + 0px)) scale(1);                                 opacity: 0.45; }
+          100% { transform: translate(calc(-50% + var(--htx)),        calc(-50% + var(--hty)))        scale(0.85);     opacity: 0; }
+        }
+
+      `}</style>
       <div
         className="flex-grow-1 d-flex flex-column align-items-center"
         style={{
@@ -1233,8 +1342,27 @@ export default function ProfilePage() {
                     <div style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 700 }}>
                       {t('profile.total_chats')}
                     </div>
-                    <div style={{ fontSize: isMobile ? '1.3rem' : '1.8rem', lineHeight: 1, fontWeight: 800, color: '#111', marginTop: 4 }}>
-                      {totalChats.toLocaleString()}
+                    <div style={{ position: 'relative', display: 'inline-block', fontSize: isMobile ? '1.3rem' : '1.8rem', lineHeight: 1, fontWeight: 800, color: '#111', marginTop: 4 }}>
+                      {(isOwnProfile ? displayChats : totalChats).toLocaleString()}
+                      {isOwnProfile && deltaChatKey > 0 && (
+                        <span
+                          key={deltaChatKey}
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: 'calc(100% + 5px)',
+                            pointerEvents: 'none',
+                            animation: 'statDeltaFloat 1.8s ease-out forwards',
+                            fontSize: isMobile ? '0.82rem' : '1rem',
+                            fontWeight: 800,
+                            color: '#6d28d9',
+                            whiteSpace: 'nowrap',
+                            opacity: 0.5,
+                          }}
+                        >
+                          +{sessionDeltaChats.toLocaleString()}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div
@@ -1251,7 +1379,7 @@ export default function ProfilePage() {
                       flexShrink: 0,
                     }}
                   >
-                    <i className="bi bi-chat-dots" style={{ fontSize: isMobile ? '0.9rem' : '1.15rem' }}></i>
+                    <i className="bi bi-chat-dots-fill" style={{ fontSize: isMobile ? '0.9rem' : '1.15rem' }}></i>
                   </div>
                 </div>
 
@@ -1260,13 +1388,32 @@ export default function ProfilePage() {
                   : { height: 1, background: 'linear-gradient(90deg, rgba(17,17,17,0.08), rgba(255,255,255,0.55), rgba(17,17,17,0.08))' }
                 }></div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flex: isMobile ? 1 : undefined }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flex: isMobile ? 1 : undefined, position: 'relative' }}>
                   <div>
                     <div style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 700 }}>
                       {t('profile.total_likes')}
                     </div>
-                    <div style={{ fontSize: isMobile ? '1.3rem' : '1.8rem', lineHeight: 1, fontWeight: 800, color: '#111', marginTop: 4 }}>
-                      {totalLikes.toLocaleString()}
+                    <div style={{ position: 'relative', display: 'inline-block', fontSize: isMobile ? '1.3rem' : '1.8rem', lineHeight: 1, fontWeight: 800, color: '#111', marginTop: 4 }}>
+                      {(isOwnProfile ? displayLikes : totalLikes).toLocaleString()}
+                      {isOwnProfile && deltaLikeKey > 0 && (
+                        <span
+                          key={deltaLikeKey}
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: 'calc(100% + 5px)',
+                            pointerEvents: 'none',
+                            animation: 'statDeltaFloat 1.8s ease-out forwards',
+                            fontSize: isMobile ? '0.82rem' : '1rem',
+                            fontWeight: 800,
+                            color: '#e11d48',
+                            whiteSpace: 'nowrap',
+                            opacity: 0.5,
+                          }}
+                        >
+                          +{sessionDeltaLikes.toLocaleString()}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div
@@ -1279,11 +1426,29 @@ export default function ProfilePage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: '#111',
+                      color: '#ef4444',
                       flexShrink: 0,
+                      position: 'relative',
                     }}
                   >
-                    <i className="bi bi-heart" style={{ fontSize: isMobile ? '0.9rem' : '1.15rem' }}></i>
+                    <i className="bi bi-heart-fill" style={{ fontSize: isMobile ? '0.9rem' : '1.15rem' }}></i>
+                    {isOwnProfile && deltaLikeKey > 0 && sproutHearts.map(h => (
+                      <i
+                        key={`${deltaLikeKey}-${h.id}`}
+                        className="bi bi-heart-fill"
+                        style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          fontSize: isMobile ? '0.9rem' : '1.15rem',
+                          color: '#ef4444',
+                          pointerEvents: 'none',
+                          '--htx': `${h.tx}px`,
+                          '--hty': `${h.ty}px`,
+                          animation: `heartSproutDir 1.8s ease-out ${h.delay}s forwards`,
+                        }}
+                      />
+                    ))}
                   </div>
                 </div>
 

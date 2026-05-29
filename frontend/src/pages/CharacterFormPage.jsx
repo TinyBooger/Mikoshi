@@ -131,6 +131,9 @@ export default function CharacterFormPage() {
     price: 0,
     forked_from_id: null,
     forked_from_name: null,
+    forked_from_creator_id: null,
+    forked_from_creator_name: null,
+    forked_from_creator_profile_pic: null,
     model: DEFAULT_CHAT_CONFIG.model,
     temperature: DEFAULT_CHAT_CONFIG.temperature,
     top_p: DEFAULT_CHAT_CONFIG.top_p,
@@ -180,9 +183,6 @@ export default function CharacterFormPage() {
       if (!canPrivate && !prev.is_public) {
         next = { ...next, is_public: true };
       }
-      if (!canFork && prev.is_forkable) {
-        next = { ...next, is_forkable: false };
-      }
       if (!canUseAdvancedCharacter && prev.context_label === 'advanced') {
         next = { ...next, context_label: 'standard' };
       }
@@ -192,7 +192,7 @@ export default function CharacterFormPage() {
       }
       return next;
     });
-  }, [canPrivate, canFork, canUseAdvancedCharacter, mode]);
+  }, [canPrivate, canUseAdvancedCharacter, mode]);
 
   useEffect(() => {
     if (mode === 'edit' || mode === 'fork') {
@@ -223,14 +223,16 @@ export default function CharacterFormPage() {
           setIsImprovisingGreeting(!!isImprov);
           
           if (mode === 'fork') {
-            const loadedModel = data.model || DEFAULT_CHAT_CONFIG.model;
+            const sourceIsAdvanced = data.context_label === 'advanced';
+            const stripAdvanced = sourceIsAdvanced && !canUseAdvancedCharacter;
+            const loadedModel = stripAdvanced ? DEFAULT_CHAT_CONFIG.model : (data.model || DEFAULT_CHAT_CONFIG.model);
             // In fork mode, set forked_from fields and clear the name for new creation
             setCharData({
-              name: `${data.name} (Fork)`,
+              name: data.name,
               persona: data.persona || '',
-              context_label: data.context_label === 'advanced' ? 'advanced' : 'standard',
+              context_label: stripAdvanced ? 'standard' : (sourceIsAdvanced ? 'advanced' : 'standard'),
               sample: data.example_messages || '',
-              long_description: data.long_description || '',
+              long_description: stripAdvanced ? '' : (data.long_description || ''),
               tagline: data.tagline || '',
               tags: data.tags || [],
               greeting: isImprov ? '' : loadedGreeting,
@@ -240,12 +242,15 @@ export default function CharacterFormPage() {
               price: 0,
               forked_from_id: data.id,
               forked_from_name: data.name,
+              forked_from_creator_id: data.creator_id || null,
+              forked_from_creator_name: data.creator_name || null,
+              forked_from_creator_profile_pic: data.creator_profile_pic || null,
               model: loadedModel,
-              temperature: clampValue(data.temperature, 0, 2, DEFAULT_CHAT_CONFIG.temperature),
-              top_p: clampValue(data.top_p, 0, 1, DEFAULT_CHAT_CONFIG.top_p),
-              max_tokens: normalizeTokenTierValue(loadedModel, data.max_tokens),
-              presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
-              frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
+              temperature: stripAdvanced ? DEFAULT_CHAT_CONFIG.temperature : clampValue(data.temperature, 0, 2, DEFAULT_CHAT_CONFIG.temperature),
+              top_p: stripAdvanced ? DEFAULT_CHAT_CONFIG.top_p : clampValue(data.top_p, 0, 1, DEFAULT_CHAT_CONFIG.top_p),
+              max_tokens: stripAdvanced ? DEFAULT_CHAT_CONFIG.max_tokens : normalizeTokenTierValue(loadedModel, data.max_tokens),
+              presence_penalty: stripAdvanced ? DEFAULT_CHAT_CONFIG.presence_penalty : clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
+              frequency_penalty: stripAdvanced ? DEFAULT_CHAT_CONFIG.frequency_penalty : clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
             });
           } else {
             const loadedModel = data.model || DEFAULT_CHAT_CONFIG.model;
@@ -484,9 +489,46 @@ export default function CharacterFormPage() {
           )}
           {/* Forked From - Display only */}
           {charData.forked_from_id && charData.forked_from_name && (
-            <div className="alert alert-info mb-4" role="alert">
-              <i className="bi bi-code-fork me-2"></i>
-              {t('character_form.forked_from')} <strong>{charData.forked_from_name}</strong>
+            <div
+              className="mb-4 d-flex align-items-center gap-3"
+              style={{
+                padding: '0.75rem 1rem',
+                background: 'linear-gradient(135deg, #f0f4ff 0%, #f5f0ff 100%)',
+                border: '1px solid #d0d7f5',
+                borderRadius: '10px',
+              }}
+            >
+              <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.1rem', color: '#7c6abf', flexShrink: 0 }}></i>
+              <div className="d-flex flex-column" style={{ gap: '2px', minWidth: 0 }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#7c6abf', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {t('character_form.forked_from', '参考自')}
+                </span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#2d2d2d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {charData.forked_from_name}
+                </span>
+                {charData.forked_from_creator_name && (
+                  <button
+                    type="button"
+                    onClick={() => charData.forked_from_creator_id && navigate(`/profile/${encodeURIComponent(charData.forked_from_creator_id)}`)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '5px',
+                      background: 'none', border: 'none', padding: 0, cursor: charData.forked_from_creator_id ? 'pointer' : 'default',
+                      color: '#555', fontSize: '0.8rem', fontWeight: 500,
+                    }}
+                  >
+                    {charData.forked_from_creator_profile_pic ? (
+                      <img
+                        src={`${window.API_BASE_URL.replace(/\/$/, '')}/${String(charData.forked_from_creator_profile_pic).replace(/^\//, '')}`}
+                        alt={charData.forked_from_creator_name}
+                        style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                      />
+                    ) : (
+                      <i className="bi bi-person-circle" style={{ fontSize: '0.85rem' }}></i>
+                    )}
+                    {charData.forked_from_creator_name}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -1042,7 +1084,7 @@ export default function CharacterFormPage() {
             </div>
 
             {/* Forkable Toggle */}
-            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canFork ? 0.5 : 1 }}>
+            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.2rem', color: '#22c55e' }}></i>
@@ -1053,9 +1095,9 @@ export default function CharacterFormPage() {
                     <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                       {t('character_form.forkable_desc') || 'Users can create their own versions'}
                     </div>
-                    {!canFork && (
-                      <div className="text-danger" style={{ fontSize: '0.75rem' }}>
-                        {t('character_form.advanced.locked_notice') || 'This feature requires Pro.'}
+                    {mode === 'fork' && (
+                      <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '2px' }}>
+                        {t('character_form.fork_must_stay_forkable')}
                       </div>
                     )}
                   </div>
@@ -1066,9 +1108,9 @@ export default function CharacterFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!!charData.is_forkable}
-                    disabled={!canFork || mode === 'fork'}
+                    disabled={mode === 'fork'}
                     onChange={e => handleChange('is_forkable', e.target.checked)}
-                    style={{ width: '3rem', height: '1.5rem', cursor: (canFork && mode !== 'fork') ? 'pointer' : 'not-allowed' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: mode !== 'fork' ? 'pointer' : 'not-allowed' }}
                   />
                 </div>
               </div>

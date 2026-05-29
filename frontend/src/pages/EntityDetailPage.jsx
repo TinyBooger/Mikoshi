@@ -7,6 +7,7 @@ import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import ProblemReportModal from '../components/ProblemReportModal';
+import ConfirmModal from '../components/ConfirmModal';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 
@@ -17,7 +18,6 @@ export default function EntityDetailPage() {
   const { sessionToken, userData } = useContext(AuthContext);
   const toast = useToast();
   const isProUser = !!userData?.is_pro;
-  const canFork = isProUser;
   
   const [entity, setEntity] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +32,7 @@ export default function EntityDetailPage() {
   const [contentAppeals, setContentAppeals] = useState([]);
   const [appealsLoading, setAppealsLoading] = useState(false);
   const [showAppealHistory, setShowAppealHistory] = useState(false);
+  const [showForkAdvancedConfirm, setShowForkAdvancedConfirm] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
@@ -212,17 +213,7 @@ export default function EntityDetailPage() {
     }
   };
 
-  const handleFork = () => {
-    if (!entity.is_forkable) {
-      toast.show(t('entity_detail.not_forkable', 'This entity is not forkable'), { type: 'error' });
-      return;
-    }
-
-    if (type === 'character' && entity?.context_label === 'advanced' && !isProUser) {
-      toast.show('只有付费用户可以参考进阶角色', { type: 'error' });
-      return;
-    }
-    
+  const doForkNavigate = () => {
     if (type === 'character') {
       navigate(`/character/fork/${id}`);
     } else if (type === 'persona') {
@@ -230,6 +221,17 @@ export default function EntityDetailPage() {
     } else if (type === 'scene') {
       navigate(`/scene/fork/${id}`);
     }
+  };
+
+  const handleFork = () => {
+    if (!entity.is_forkable) return;
+
+    if (type === 'character' && entity?.context_label === 'advanced' && !isProUser) {
+      setShowForkAdvancedConfirm(true);
+      return;
+    }
+
+    doForkNavigate();
   };
 
   if (loading) {
@@ -648,12 +650,15 @@ export default function EntityDetailPage() {
                   </PrimaryButton>
                 )}
 
-                {entity.is_forkable && canFork && (
-                  <SecondaryButton onClick={handleFork}>
-                    <i className="bi bi-diagram-3-fill me-2"></i>
-                    {t('entity_detail.fork', 'Fork')}
-                  </SecondaryButton>
-                )}
+                <SecondaryButton
+                  onClick={handleFork}
+                  disabled={!entity.is_forkable}
+                  title={!entity.is_forkable ? t('entity_detail.not_forkable') : undefined}
+                  style={!entity.is_forkable ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+                >
+                  <i className="bi bi-diagram-3-fill me-2"></i>
+                  {t('entity_detail.fork')}
+                </SecondaryButton>
 
                 {isOwner && (
                   <SecondaryButton onClick={handleEdit}>
@@ -877,6 +882,15 @@ export default function EntityDetailPage() {
         targetType={type}
         targetId={entity?.id}
         targetName={entity?.name}
+      />
+      <ConfirmModal
+        show={showForkAdvancedConfirm}
+        title={t('entity_detail.fork_advanced_confirm_title', '参考创作进阶角色')}
+        message={t('entity_detail.fork_advanced_confirm_body', '该角色包含详细人物设定和进阶配置，这些内容仅限 Pro 用户使用，不会被复制到您的版本。是否继续？')}
+        confirmText={t('common.confirm', '继续')}
+        cancelText={t('common.cancel', '取消')}
+        onConfirm={() => { setShowForkAdvancedConfirm(false); doForkNavigate(); }}
+        onCancel={() => setShowForkAdvancedConfirm(false)}
       />
     </PageWrapper>
   );

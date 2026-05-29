@@ -10,7 +10,7 @@ import json
 from database import get_db
 from models import Character, User, Tag, UserLikedCharacter, ChatHistory
 from utils.session import get_current_user, get_optional_current_user
-from utils.local_storage_utils import save_image, delete_stored_image
+from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.collaborative_filtering import get_cf_characters
@@ -243,7 +243,6 @@ async def create_character(
 
     is_pro_user = bool(current_user.is_pro)
     can_create_private = True
-    can_use_fork_features = is_pro_user
 
     if context_label == "advanced" and not is_pro_user:
         raise HTTPException(status_code=403, detail="Advanced characters require Pro user")
@@ -251,14 +250,6 @@ async def create_character(
     # Private character creation is open to all users.
     if not is_public and not can_create_private:
         raise HTTPException(status_code=403, detail="Private characters are unavailable")
-    
-    # Forking is Pro-only.
-    if forked_from_id and not can_use_fork_features:
-        raise HTTPException(status_code=403, detail="Forking requires Pro user")
-
-    # Making characters forkable is Pro-only.
-    if is_forkable and not can_use_fork_features:
-        raise HTTPException(status_code=403, detail="Forkable characters require Pro user")
 
     for tag_name in tags:  # update tags
         tag = db.query(Tag).filter(Tag.name == tag_name).first()
@@ -376,6 +367,19 @@ async def create_character(
             filename_prefix=f"character_avatar_{char.id}",
         )
 
+    # For forks: if no picture/avatar was uploaded, copy from the source character
+    if forked_from_id:
+        source_char = db.query(Character).filter(Character.id == forked_from_id).first()
+        if source_char:
+            if not picture and source_char.picture:
+                copied = copy_stored_image(source_char.picture, 'character', char.id)
+                if copied:
+                    char.picture = copied
+            if not avatar_picture and source_char.avatar_picture:
+                copied = copy_stored_image(source_char.avatar_picture, 'character', char.id, filename_prefix=f"character_avatar_{char.id}")
+                if copied:
+                    char.avatar_picture = copied
+
     db.commit()
     db.refresh(char)
 
@@ -458,7 +462,6 @@ async def update_character(
     
     is_pro_user = bool(current_user.is_pro)
     can_create_private = True
-    can_use_fork_features = is_pro_user
 
     if context_label == "advanced" and not is_pro_user:
         raise HTTPException(status_code=403, detail="Advanced characters require Pro user")
@@ -469,10 +472,6 @@ async def update_character(
         raise HTTPException(status_code=403, detail="Private characters are unavailable")
 
     final_is_forkable = is_forkable if is_forkable is not None else char.is_forkable
-
-    # Making characters forkable is Pro-only.
-    if final_is_forkable and not can_use_fork_features:
-        raise HTTPException(status_code=403, detail="Forkable characters require Pro user")
 
     normalized_long_description = long_description.strip()
     existing_long_description = (char.long_description or "").strip()
