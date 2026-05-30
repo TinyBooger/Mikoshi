@@ -106,17 +106,29 @@ export default function ProfilePage() {
       setSproutHearts([]);
       return;
     }
-    const count = Math.floor(Math.random() * 3) + 3; // 3, 4, or 5
-    const baseStep = 360 / count;
+    // Use the number of likes received in this session as the number of hearts
+    let count = Math.max(1, sessionDeltaLikes);
+    count = Math.min(count, 60);
+    // Delay per heart: more hearts = less delay, fewer hearts = more delay
+    // Range: 0.08s (many) to 0.18s (few)
+    const minDelay = 0.08, maxDelay = 0.18;
+    const delayPerHeart = count > 1 ? (maxDelay - minDelay) / Math.max(1, count - 1) + minDelay : minDelay;
+    // Generate random directions (angles) and shuffle for more randomness
+    const angles = Array.from({ length: count }, () => Math.random() * 360);
+    // Optionally, shuffle the angles array for even more randomness (Fisher-Yates)
+    for (let i = angles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [angles[i], angles[j]] = [angles[j], angles[i]];
+    }
+    const minDist = 44, maxDist = 80;
     const hearts = Array.from({ length: count }, (_, i) => {
-      const angleDeg = baseStep * i + (Math.random() - 0.5) * (baseStep * 0.5);
-      const angleRad = angleDeg * (Math.PI / 180);
-      const dist = 48 + Math.random() * 28; // 48–76 px
+      const angleRad = angles[i] * (Math.PI / 180);
+      const dist = minDist + Math.random() * (maxDist - minDist) * (count < 20 ? 1 : 0.7);
       return {
         id: i,
         tx: Math.cos(angleRad) * dist,
         ty: Math.sin(angleRad) * dist,
-        delay: i * 0.12, // 120ms gap between each heart
+        delay: i * delayPerHeart,
       };
     });
     setSproutHearts(hearts);
@@ -419,18 +431,25 @@ export default function ProfilePage() {
     }
   };
 
-  // Calculate total chats and likes from all created characters
+  // Fetch total chats and likes for all created characters (true total, not just current page)
   useEffect(() => {
-    if (createdCharacters.length > 0) {
-      const chatsSum = createdCharacters.reduce((sum, char) => sum + (char.views || 0), 0);
-      const likesSum = createdCharacters.reduce((sum, char) => sum + (char.likes || 0), 0);
-      setTotalChats(chatsSum);
-      setTotalLikes(likesSum);
-    } else {
+    const userId = profileUserId || userData?.id;
+    if (!userId) {
       setTotalChats(0);
       setTotalLikes(0);
+      return;
     }
-  }, [createdCharacters]);
+    fetch(`${window.API_BASE_URL}/api/user/${userId}/character-stats`)
+      .then(res => res.ok ? res.json() : { total_chats: 0, total_likes: 0 })
+      .then(data => {
+        setTotalChats(data.total_views || 0);
+        setTotalLikes(data.total_likes || 0);
+      })
+      .catch(() => {
+        setTotalChats(0);
+        setTotalLikes(0);
+      });
+  }, [profileUserId, userData?.id]);
 
   // Smooth count-up animation for a stat value
   const animateCount = useCallback((from, to, setter, rafRef) => {
@@ -448,6 +467,8 @@ export default function ProfilePage() {
     };
     rafRef.current = requestAnimationFrame(step);
   }, []);
+  
+  const displayUser = isOwnProfile ? userData : publicUserData;
 
   // Trigger count-up when totals change, and compute session delta
   useEffect(() => {
@@ -457,41 +478,47 @@ export default function ProfilePage() {
     const prevChats = typeof stored.chats === 'number' ? stored.chats : null;
     const prevLikes = typeof stored.likes === 'number' ? stored.likes : null;
 
-    const deltaChats = prevChats !== null ? Math.max(0, totalChats - prevChats) : 0;
-    const deltaLikes = prevLikes !== null ? Math.max(0, totalLikes - prevLikes) : 0;
+    // If first visit, just show current stats and store them
+    if (prevChats === null || prevLikes === null) {
+      setDisplayChats(totalChats);
+      setDisplayLikes(totalLikes);
+      setSessionDeltaChats(0);
+      setSessionDeltaLikes(0);
+      // Only persist if we have real data, to avoid overwriting with 0 on mount
+      if (totalChats > 0 || totalLikes > 0) {
+        localStorage.setItem(storageKey, JSON.stringify({ chats: totalChats, likes: totalLikes }));
+      }
+      return;
+    }
 
-    animateCount(prevChats !== null ? prevChats : 0, totalChats, setDisplayChats, chatsAnimRef);
-    animateCount(prevLikes !== null ? prevLikes : 0, totalLikes, setDisplayLikes, likesAnimRef);
+    const deltaChats = Math.max(0, totalChats - prevChats);
+    const deltaLikes = Math.max(0, totalLikes - prevLikes);
 
-    if ((deltaChats > 0 || deltaLikes > 0) && prevChats !== null) {
-      // Trigger float-up delta labels after the count-up animation (~1.2s)
+    // Only animate and show delta if there is an increase
+    if (deltaChats > 0 || deltaLikes > 0) {
+      animateCount(prevChats, totalChats, setDisplayChats, chatsAnimRef);
+      animateCount(prevLikes, totalLikes, setDisplayLikes, likesAnimRef);
       const showDelay = setTimeout(() => {
         if (deltaChats > 0) { setSessionDeltaChats(deltaChats); setDeltaChatKey(k => k + 1); }
         if (deltaLikes > 0) { setSessionDeltaLikes(deltaLikes); setDeltaLikeKey(k => k + 1); }
+        // Save new stats after animation completes
+        localStorage.setItem(storageKey, JSON.stringify({ chats: totalChats, likes: totalLikes }));
       }, 1250);
-
       return () => clearTimeout(showDelay);
-    } else if (prevChats === null) {
-      // First visit — just set display values directly
+    } else {
       setDisplayChats(totalChats);
       setDisplayLikes(totalLikes);
+      setSessionDeltaChats(0);
+      setSessionDeltaLikes(0);
+      // Only persist if we have real data, to avoid overwriting with 0 on mount
+      if (totalChats > 0 || totalLikes > 0) {
+        localStorage.setItem(storageKey, JSON.stringify({ chats: totalChats, likes: totalLikes }));
+      }
     }
-
-    // Save current stats for next visit
-    localStorage.setItem(storageKey, JSON.stringify({ chats: totalChats, likes: totalLikes }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalChats, totalLikes]);
 
-  // Persist stats after animations complete
-  useEffect(() => {
-    if (!isOwnProfile || !displayUser || totalChats === 0 && totalLikes === 0) return;
-    const storageKey = `profile_stats_${displayUser.id}`;
-    const timer = setTimeout(() => {
-      localStorage.setItem(storageKey, JSON.stringify({ chats: totalChats, likes: totalLikes }));
-    }, 1600);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalChats, totalLikes]);
+  // (Removed redundant persist-after-animation effect)
 
   // Unified content renderer for all tabs and subtabs
   const renderTabContent = () => {
@@ -915,7 +942,6 @@ export default function ProfilePage() {
     }
   }, [isOwnProfile, userData, publicUserData, profileUserId]);
 
-  const displayUser = isOwnProfile ? userData : publicUserData;
   const isActivePro = Boolean(displayUser?.pro_active);
   const activeLocale = i18n?.resolvedLanguage || i18n?.language;
   const formattedProExpireDate = displayUser?.pro_expire_date
@@ -1443,6 +1469,7 @@ export default function ProfilePage() {
                           fontSize: isMobile ? '0.9rem' : '1.15rem',
                           color: '#ef4444',
                           pointerEvents: 'none',
+                          opacity: 0,
                           '--htx': `${h.tx}px`,
                           '--hty': `${h.ty}px`,
                           animation: `heartSproutDir 1.8s ease-out ${h.delay}s forwards`,

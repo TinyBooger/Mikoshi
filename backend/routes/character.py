@@ -9,6 +9,7 @@ import json
 
 from database import get_db
 from models import Character, User, Tag, UserLikedCharacter, ChatHistory
+
 from utils.session import get_current_user, get_optional_current_user
 from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
 from utils.image_moderation import moderate_image_with_decision
@@ -931,3 +932,21 @@ def get_user_characters(user_id: str, current_user: User = Depends(get_current_u
     for char in characters:
         char.liked = char.id in liked_ids
     return characters
+
+
+# Returns: {"total_views": int, "total_likes": int}
+@router.get("/api/user/{user_id}/character-stats")
+def get_user_character_stats(user_id: str, db: Session = Depends(get_db)):
+    # Only count public characters for other users, all for self (frontend should handle privacy)
+    characters = db.query(Character.id).filter(Character.creator_id == user_id).all()
+    char_ids = [c.id for c in characters]
+    if not char_ids:
+        return {"total_views": 0, "total_likes": 0}
+
+    # Total likes: sum likes of all characters
+    total_likes = db.query(func.coalesce(func.sum(Character.likes), 0)).filter(Character.id.in_(char_ids)).scalar() or 0
+
+    # Total views: sum views of all characters
+    total_views = db.query(func.coalesce(func.sum(Character.views), 0)).filter(Character.id.in_(char_ids)).scalar() or 0
+
+    return {"total_views": total_views, "total_likes": total_likes}
