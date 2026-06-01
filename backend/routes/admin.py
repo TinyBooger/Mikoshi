@@ -2074,6 +2074,9 @@ def resolve_content_appeal(
     entity = _get_entity_for_appeal(appeal.entity_type, appeal.entity_id, db)
     entity_name = entity.name if entity else f"{appeal.entity_type} #{appeal.entity_id}"
 
+    if entity:
+        entity.appeal_under_review = False
+
     if action == "approve" and entity:
         entity.moderation_status = None
         entity.is_public = True  # snapshot is taken after ban so is_public=False there; always restore on approval

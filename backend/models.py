@@ -40,6 +40,7 @@ class Character(Base):
 
     # Content moderation status: null = normal | 'restricted' | 'takedown'
     moderation_status = Column(String(20), nullable=True)
+    appeal_under_review = Column(Boolean, default=False, nullable=False)
 
 class User(Base):
     __tablename__ = "users"
@@ -165,6 +166,7 @@ class Persona(Base):
 
     # Content moderation status: null = normal | 'restricted' | 'takedown'
     moderation_status = Column(String(20), nullable=True)
+    appeal_under_review = Column(Boolean, default=False, nullable=False)
 
 
 class SearchTerm(Base):
@@ -204,6 +206,7 @@ class Scene(Base):
 
     # Content moderation status: null = normal | 'restricted' | 'takedown'
     moderation_status = Column(String(20), nullable=True)
+    appeal_under_review = Column(Boolean, default=False, nullable=False)
 
 # Junction table for character likes
 class UserLikedCharacter(Base):

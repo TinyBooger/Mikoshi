@@ -22,6 +22,7 @@ class SceneOut(BaseModel):
     forked_from_name: Optional[str] = None
     liked: bool = False
     moderation_status: Optional[str] = None
+    appeal_under_review: bool = False
 
     class Config:
         from_attributes = True
@@ -46,6 +47,7 @@ class PersonaOut(BaseModel):
     forked_from_name: Optional[str] = None
     liked: bool = False
     moderation_status: Optional[str] = None
+    appeal_under_review: bool = False
 
     class Config:
         from_attributes = True
@@ -81,6 +83,7 @@ class CharacterOut(BaseModel):
     forked_from_name: Optional[str] = None
     liked: bool = False
     moderation_status: Optional[str] = None
+    appeal_under_review: bool = False
 
     class Config:
         from_attributes = True

@@ -788,7 +788,7 @@ export default function EntityFormPage() {
 
           {/* Action Buttons */}
           <div className="d-flex gap-3 mt-4 justify-content-end">
-            <PrimaryButton type="submit" disabled={isSubmitting}>
+            <PrimaryButton type="submit" disabled={isSubmitting || hasPendingAppeal}>
               {isSubmitting ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>

@@ -251,6 +251,8 @@ export default function EntityDetailPage() {
   }
 
   const isOwner = userData?.id === entity.creator_id;
+  const isAppealUnderReview = !!entity?.appeal_under_review;
+  const disableEditForAppealReview = isOwner && !!entity?.moderation_status && isAppealUnderReview;
   const picture = entity.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(entity.picture).replace(/^\//, '')}` : defaultPicture;
   const creatorAvatar = entity.creator_profile_pic
     ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(entity.creator_profile_pic).replace(/^\//, '')}`
@@ -319,7 +321,7 @@ export default function EntityDetailPage() {
       >
         {/* Moderation notice banners */}
         {entity.moderation_status === 'restricted' && (() => {
-          const hasPending = contentAppeals.some(a => a.status === 'pending');
+          const hasPending = isAppealUnderReview;
           return (
             <div
               className="d-flex align-items-start gap-3 mb-4 p-3"
@@ -346,7 +348,7 @@ export default function EntityDetailPage() {
           );
         })()}
         {entity.moderation_status === 'takedown' && (() => {
-          const hasPending = contentAppeals.some(a => a.status === 'pending');
+          const hasPending = isAppealUnderReview;
           return (
             <div
               className="d-flex align-items-start gap-3 mb-4 p-3"
@@ -661,7 +663,12 @@ export default function EntityDetailPage() {
                 </SecondaryButton>
 
                 {isOwner && (
-                  <SecondaryButton onClick={handleEdit}>
+                  <SecondaryButton
+                    onClick={handleEdit}
+                    disabled={disableEditForAppealReview}
+                    title={disableEditForAppealReview ? t('entity_detail.appeal_pending_disable_edit', '申诉审核中，暂时无法再次提交编辑申诉') : undefined}
+                    style={disableEditForAppealReview ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                  >
                     <i className="bi bi-pencil me-2"></i>
                     {t('entity_detail.edit', 'Edit')}
                   </SecondaryButton>

@@ -132,6 +132,7 @@ def submit_content_appeal(
         snapshot=snapshot,
     )
     db.add(appeal)
+    entity.appeal_under_review = True
     db.commit()
     db.refresh(appeal)
     return {
