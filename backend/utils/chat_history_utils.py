@@ -4,10 +4,10 @@ from datetime import datetime, UTC
 import uuid
 from typing import Any, List, Optional
 
-from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, func
+from sqlalchemy.orm import Session, object_session
 
-from models import ChatHistory, Character
+from models import ChatHistory, Character, ChatHistoryBranch, ChatHistoryMessage
 
 
 CHAT_HISTORY_VERSION = 2
@@ -252,9 +252,190 @@ def count_chat_history_messages(raw_messages: Any, branch_id: str | None = None)
     return len(get_chat_history_messages(raw_messages, branch_id))
 
 
+def _build_chat_history_payload_from_store(db: Session, entry: ChatHistory) -> dict[str, Any]:
+    branches = (
+        db.query(ChatHistoryBranch)
+        .filter(ChatHistoryBranch.chat_id == entry.chat_id)
+        .order_by(ChatHistoryBranch.created_at.asc(), ChatHistoryBranch.id.asc())
+        .all()
+    )
+    if not branches:
+        return normalize_chat_history_payload(entry.messages)
+
+    payload_branches: list[dict[str, Any]] = []
+    known_branch_ids: set[str] = set()
+
+    for branch in branches:
+        branch_messages = (
+            db.query(ChatHistoryMessage)
+            .filter(
+                ChatHistoryMessage.chat_id == entry.chat_id,
+                ChatHistoryMessage.branch_id == branch.branch_id,
+            )
+            .order_by(ChatHistoryMessage.created_seq.asc(), ChatHistoryMessage.id.asc())
+            .all()
+        )
+
+        serialized_messages: list[dict[str, Any]] = []
+        for item in branch_messages:
+            message = {
+                "role": item.role,
+                "content": item.content,
+            }
+            if isinstance(item.usage, dict):
+                message["usage"] = item.usage
+            if item.role in {"user", "assistant"}:
+                message["is_pinned"] = bool(item.is_pinned)
+                if item.message_id:
+                    message["message_id"] = item.message_id
+                else:
+                    message["message_id"] = generate_chat_message_id()
+            payload_message = _normalize_message(message)
+            if payload_message is not None:
+                serialized_messages.append(payload_message)
+
+        payload_branches.append(
+            {
+                "branch_id": branch.branch_id,
+                "parent_branch_id": branch.parent_branch_id,
+                "parent_message_id": branch.parent_message_id,
+                "label": branch.label or "Branch",
+                "created_at": branch.created_at.isoformat() if branch.created_at else None,
+                "last_updated": branch.last_updated.isoformat() if branch.last_updated else None,
+                "messages": serialized_messages,
+            }
+        )
+        known_branch_ids.add(branch.branch_id)
+
+    active_branch_id = entry.active_branch_id if isinstance(entry.active_branch_id, str) else None
+    if not active_branch_id or active_branch_id not in known_branch_ids:
+        active_branch_id = payload_branches[0]["branch_id"]
+
+    return {
+        "version": CHAT_HISTORY_VERSION,
+        "active_branch_id": active_branch_id,
+        "branches": payload_branches,
+    }
+
+
+def _sync_chat_history_store(db: Session, entry: ChatHistory, payload: dict[str, Any]) -> None:
+    normalized_payload = normalize_chat_history_payload(payload)
+    branch_ids = [b["branch_id"] for b in normalized_payload["branches"]]
+
+    existing_branches = (
+        db.query(ChatHistoryBranch)
+        .filter(ChatHistoryBranch.chat_id == entry.chat_id)
+        .all()
+    )
+    existing_by_id = {b.branch_id: b for b in existing_branches}
+
+    for branch in normalized_payload["branches"]:
+        branch_id = branch["branch_id"]
+        target = existing_by_id.get(branch_id)
+        now = datetime.now(UTC)
+        if target is None:
+            target = ChatHistoryBranch(
+                chat_id=entry.chat_id,
+                branch_id=branch_id,
+                parent_branch_id=branch.get("parent_branch_id"),
+                parent_message_id=branch.get("parent_message_id"),
+                label=branch.get("label") or "Branch",
+                created_at=now,
+                last_updated=now,
+            )
+            db.add(target)
+            db.flush()
+        else:
+            target.parent_branch_id = branch.get("parent_branch_id")
+            target.parent_message_id = branch.get("parent_message_id")
+            target.label = branch.get("label") or target.label or "Branch"
+            target.last_updated = now
+
+        incoming_messages = _normalize_messages(branch.get("messages"))
+        existing_messages = (
+            db.query(ChatHistoryMessage)
+            .filter(
+                ChatHistoryMessage.chat_id == entry.chat_id,
+                ChatHistoryMessage.branch_id == branch_id,
+            )
+            .order_by(ChatHistoryMessage.created_seq.asc(), ChatHistoryMessage.id.asc())
+            .all()
+        )
+
+        can_append = True
+        prefix_len = min(len(existing_messages), len(incoming_messages))
+        for index in range(prefix_len):
+            stored = existing_messages[index]
+            incoming = incoming_messages[index]
+
+            incoming_role = str(incoming.get("role") or "").strip().lower()
+            incoming_usage = incoming.get("usage") if isinstance(incoming.get("usage"), dict) else None
+            incoming_message_id = incoming.get("message_id") if isinstance(incoming.get("message_id"), str) else None
+            incoming_is_pinned = bool(incoming.get("is_pinned")) if incoming_role in {"user", "assistant"} else False
+
+            if (
+                stored.role != incoming_role
+                or stored.content != (incoming.get("content") or "")
+                or (stored.message_id or None) != incoming_message_id
+                or bool(stored.is_pinned) != incoming_is_pinned
+                or (stored.usage or None) != incoming_usage
+            ):
+                can_append = False
+                break
+
+        # Append-only contract: never rewrite old rows when the incoming payload diverges.
+        if not can_append:
+            continue
+
+        for index in range(len(existing_messages), len(incoming_messages)):
+            message = incoming_messages[index]
+            role = str(message.get("role") or "assistant").strip().lower()
+            db.add(
+                ChatHistoryMessage(
+                    chat_id=entry.chat_id,
+                    branch_id=branch_id,
+                    message_id=message.get("message_id") if isinstance(message.get("message_id"), str) else None,
+                    role=role,
+                    content=message.get("content") or "",
+                    usage=message.get("usage") if isinstance(message.get("usage"), dict) else None,
+                    is_pinned=bool(message.get("is_pinned")) if role in {"user", "assistant"} else False,
+                    created_seq=index,
+                    created_at=datetime.now(UTC),
+                )
+            )
+
+    active_branch_id = normalized_payload.get("active_branch_id")
+    if not isinstance(active_branch_id, str) or active_branch_id not in branch_ids:
+        active_branch_id = branch_ids[0] if branch_ids else DEFAULT_BRANCH_ID
+    entry.active_branch_id = active_branch_id
+
+
+def _ensure_chat_history_store(db: Session, entry: ChatHistory) -> None:
+    branch_exists = (
+        db.query(ChatHistoryBranch.id)
+        .filter(ChatHistoryBranch.chat_id == entry.chat_id)
+        .first()
+    )
+    if branch_exists:
+        if not isinstance(entry.active_branch_id, str) or not entry.active_branch_id.strip():
+            payload = _build_chat_history_payload_from_store(db, entry)
+            entry.active_branch_id = payload.get("active_branch_id")
+            db.flush()
+        return
+
+    payload = normalize_chat_history_payload(entry.messages)
+    _sync_chat_history_store(db, entry, payload)
+    db.flush()
+
+
 def serialize_chat_history_entry(entry: ChatHistory) -> dict:
     """Convert a ChatHistory ORM object into a JSON-friendly dict."""
-    payload = normalize_chat_history_payload(entry.messages)
+    db = object_session(entry)
+    if db is not None:
+        _ensure_chat_history_store(db, entry)
+        payload = _build_chat_history_payload_from_store(db, entry)
+    else:
+        payload = normalize_chat_history_payload(entry.messages)
     active_branch = get_chat_history_branch(payload)
     return {
         "chat_id": entry.chat_id,
@@ -309,6 +490,7 @@ def fetch_user_chat_history(db: Session, user_id: str, limit: int = 30) -> List[
 
     results = []
     for entry in entries:
+        _ensure_chat_history_store(db, entry)
         serialized = serialize_chat_history_entry(entry)
         cid = str(entry.character_id) if entry.character_id is not None else None
         if cid is None:
@@ -338,6 +520,8 @@ def fetch_user_chat_history_paginated(db: Session, user_id: str, page: int = 1, 
     )
     total = query.count()
     entries = query.offset(offset).limit(page_size).all()
+    for entry in entries:
+        _ensure_chat_history_store(db, entry)
     return {
         "items": [serialize_chat_history_entry(entry) for entry in entries],
         "total": total,
@@ -557,6 +741,7 @@ def upsert_chat_history_entry(
     """Insert or update a chat history entry, then enforce the per-user limit."""
     entry = fetch_chat_history_entry(db, user_id, chat_id)
     now = datetime.now(UTC)
+    normalized_payload = normalize_chat_history_payload(payload.get("messages", getattr(entry, "messages", [])))
 
     fields = {
         "character_id": payload.get("character_id"),
@@ -567,9 +752,9 @@ def upsert_chat_history_entry(
         "scene_name": payload.get("scene_name"),
         "scene_picture": payload.get("scene_picture"),
         "title": payload.get("title"),
-        "messages": normalize_chat_history_payload(payload.get("messages", getattr(entry, "messages", []))),
         "chat_config": payload.get("chat_config", getattr(entry, "chat_config", {}) or {}),
         "is_pinned": bool(payload.get("is_pinned")) if "is_pinned" in payload else bool(getattr(entry, "is_pinned", False)),
+        "active_branch_id": payload.get("active_branch_id", normalized_payload.get("active_branch_id")),
         "last_updated": payload.get("last_updated", now),
     }
 
@@ -585,12 +770,132 @@ def upsert_chat_history_entry(
             chat_id=chat_id,
             user_id=user_id,
             created_at=created_at,
+            messages=normalized_payload,
             **fields,
         )
         db.add(entry)
 
     db.flush()
+    _sync_chat_history_store(db, entry, normalized_payload)
     prune_chat_history(db, user_id, limit, auto_commit=False)
     db.commit()
     db.refresh(entry)
     return entry
+
+
+def fetch_chat_history_messages_from_store(db: Session, entry: ChatHistory, branch_id: str | None = None) -> list[dict[str, Any]]:
+    _ensure_chat_history_store(db, entry)
+    payload = _build_chat_history_payload_from_store(db, entry)
+    return get_chat_history_messages(payload, branch_id)
+
+
+def set_chat_history_active_branch_for_entry(db: Session, entry: ChatHistory, branch_id: str) -> bool:
+    if not isinstance(branch_id, str) or not branch_id.strip():
+        return False
+
+    normalized_branch_id = branch_id.strip()
+    _ensure_chat_history_store(db, entry)
+    exists = (
+        db.query(ChatHistoryBranch.id)
+        .filter(
+            ChatHistoryBranch.chat_id == entry.chat_id,
+            ChatHistoryBranch.branch_id == normalized_branch_id,
+        )
+        .first()
+    )
+    if not exists:
+        return False
+
+    entry.active_branch_id = normalized_branch_id
+    entry.last_updated = datetime.now(UTC)
+    db.flush()
+    return True
+
+
+def toggle_chat_history_message_pin(
+    db: Session,
+    *,
+    entry: ChatHistory,
+    branch_id: str,
+    message_id: str,
+    is_pinned: bool,
+    max_pinned_memories: int,
+    message_role: str | None = None,
+    message_content: str | None = None,
+) -> tuple[bool, int, str | None]:
+    _ensure_chat_history_store(db, entry)
+    normalized_branch_id = branch_id.strip()
+
+    branch_exists = (
+        db.query(ChatHistoryBranch.id)
+        .filter(
+            ChatHistoryBranch.chat_id == entry.chat_id,
+            ChatHistoryBranch.branch_id == normalized_branch_id,
+        )
+        .first()
+    )
+    if not branch_exists:
+        return False, 0, "BRANCH_NOT_FOUND"
+
+    target_message = (
+        db.query(ChatHistoryMessage)
+        .filter(
+            ChatHistoryMessage.chat_id == entry.chat_id,
+            ChatHistoryMessage.branch_id == normalized_branch_id,
+            ChatHistoryMessage.message_id == message_id,
+        )
+        .order_by(ChatHistoryMessage.created_seq.asc())
+        .first()
+    )
+
+    if target_message is None and message_role in {"user", "assistant"} and isinstance(message_content, str) and message_content.strip():
+        normalized_content = message_content.strip()
+        target_message = (
+            db.query(ChatHistoryMessage)
+            .filter(
+                ChatHistoryMessage.chat_id == entry.chat_id,
+                ChatHistoryMessage.branch_id == normalized_branch_id,
+                ChatHistoryMessage.role == message_role,
+                ChatHistoryMessage.content == normalized_content,
+            )
+            .order_by(ChatHistoryMessage.created_seq.asc())
+            .first()
+        )
+
+    if target_message is None:
+        return False, 0, "MESSAGE_NOT_FOUND"
+
+    if is_pinned and not bool(target_message.is_pinned):
+        pinned_count = (
+            db.query(func.count(ChatHistoryMessage.id))
+            .filter(
+                ChatHistoryMessage.chat_id == entry.chat_id,
+                ChatHistoryMessage.branch_id == normalized_branch_id,
+                ChatHistoryMessage.role.in_(["user", "assistant"]),
+                ChatHistoryMessage.is_pinned == True,  # noqa: E712
+            )
+            .scalar()
+            or 0
+        )
+        if pinned_count >= max_pinned_memories:
+            return False, pinned_count, "PIN_LIMIT_REACHED"
+
+    target_message.message_id = message_id
+    target_message.is_pinned = bool(is_pinned)
+    entry.active_branch_id = normalized_branch_id
+    entry.last_updated = datetime.now(UTC)
+
+    pinned_count_after = (
+        db.query(func.count(ChatHistoryMessage.id))
+        .filter(
+            ChatHistoryMessage.chat_id == entry.chat_id,
+            ChatHistoryMessage.branch_id == normalized_branch_id,
+            ChatHistoryMessage.role.in_(["user", "assistant"]),
+            ChatHistoryMessage.is_pinned == True,  # noqa: E712
+        )
+        .scalar()
+        or 0
+    )
+
+    db.flush()
+    return True, pinned_count_after, None

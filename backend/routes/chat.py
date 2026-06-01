@@ -21,6 +21,8 @@ from utils.chat_history_utils import (
     fetch_user_chat_history_grouped_by_character,
     delete_user_chat_history_by_character,
     delete_unavailable_chat_history,
+    set_chat_history_active_branch_for_entry,
+    toggle_chat_history_message_pin,
 )
 import uuid
 import json
@@ -302,6 +304,14 @@ def _persist_chat_history_turn(
     updated_messages = full_messages + [assistant_message]
 
     existing_payload = normalize_chat_history_payload(existing_entry.messages if existing_entry else [])
+    if existing_entry:
+        serialized_existing = serialize_chat_history_entry(existing_entry)
+        existing_payload = normalize_chat_history_payload(
+            {
+                "active_branch_id": serialized_existing.get("active_branch_id"),
+                "branches": serialized_existing.get("branches") or [],
+            }
+        )
 
     if fork_from_message_id:
         message_payload, _ = fork_chat_history_branch(
@@ -467,7 +477,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     if chat_id:
         existing_entry = fetch_chat_history_entry(db, current_user.id, chat_id)
         if existing_entry and (not isinstance(branch_id, str) or not branch_id.strip()):
-            branch_id = get_chat_history_active_branch_id(existing_entry.messages)
+            branch_id = serialize_chat_history_entry(existing_entry).get("active_branch_id")
     if isinstance(branch_id, str):
         branch_id = branch_id.strip() or None
     else:
@@ -815,8 +825,10 @@ async def select_chat_branch(request: Request, current_user: User = Depends(get_
     if not entry:
         return JSONResponse(content={"error": "Chat not found"}, status_code=404)
 
-    entry.messages = set_chat_history_active_branch(entry.messages, branch_id.strip())
-    entry.last_updated = datetime.now(UTC)
+    switched = set_chat_history_active_branch_for_entry(db, entry, branch_id.strip())
+    if not switched:
+        return JSONResponse(content={"error": "Branch not found"}, status_code=404)
+
     db.commit()
     db.refresh(entry)
 
@@ -851,49 +863,22 @@ async def pin_chat_message(request: Request, current_user: User = Depends(get_cu
         return JSONResponse(content={"error": "Chat not found"}, status_code=404)
 
     if not isinstance(branch_id, str) or not branch_id.strip():
-        branch_id = get_chat_history_active_branch_id(entry.messages)
+        branch_id = serialize_chat_history_entry(entry).get("active_branch_id")
     else:
         branch_id = branch_id.strip()
 
-    messages = get_chat_history_messages(entry.messages, branch_id)
-    target_message = None
-
-    for message in messages:
-        if not isinstance(message, dict):
-            continue
-        existing_message_id = message.get("message_id")
-        if isinstance(existing_message_id, str) and existing_message_id == message_id:
-            target_message = message
-            break
-
-    if target_message is None and message_role in {"user", "assistant"} and message_content:
-        for message in messages:
-            if not isinstance(message, dict):
-                continue
-            role = str(message.get("role") or "").strip().lower()
-            if role != message_role:
-                continue
-            content = _normalize_message_content(message.get("content"))
-            if content != message_content:
-                continue
-            target_message = message
-            break
-
-    if target_message is None:
-        return JSONResponse(content={"error": "Message not found in chat"}, status_code=404)
-
-    was_pinned = bool(target_message.get("is_pinned"))
-    if is_pinned and not was_pinned:
-        pinned_count_before = 0
-        for message in messages:
-            if not isinstance(message, dict):
-                continue
-            if str(message.get("role") or "").strip().lower() not in {"user", "assistant"}:
-                continue
-            if bool(message.get("is_pinned")):
-                pinned_count_before += 1
-
-        if pinned_count_before >= MAX_PINNED_MEMORIES:
+    pin_result = toggle_chat_history_message_pin(
+        db,
+        entry=entry,
+        branch_id=branch_id,
+        message_id=message_id,
+        is_pinned=is_pinned,
+        message_role=message_role,
+        message_content=message_content,
+        max_pinned_memories=MAX_PINNED_MEMORIES,
+    )
+    if not pin_result[0]:
+        if pin_result[2] == "PIN_LIMIT_REACHED":
             return JSONResponse(
                 content={
                     "error": "MEMORY_PIN_LIMIT_REACHED",
@@ -902,31 +887,9 @@ async def pin_chat_message(request: Request, current_user: User = Depends(get_cu
                 },
                 status_code=400,
             )
-
-    target_message["message_id"] = message_id
-    target_message["is_pinned"] = is_pinned
-    updated_payload, _ = replace_chat_history_branch_messages(
-        entry.messages,
-        branch_id=branch_id,
-        messages=messages,
-        parent_branch_id=get_chat_history_branch(entry.messages, branch_id).get("parent_branch_id"),
-        parent_message_id=get_chat_history_branch(entry.messages, branch_id).get("parent_message_id"),
-        label=get_chat_history_branch(entry.messages, branch_id).get("label"),
-        make_active=True,
-    )
-    entry.messages = updated_payload
-    entry.last_updated = datetime.now(UTC)
+        return JSONResponse(content={"error": "Message not found in chat"}, status_code=404)
 
     db.commit()
-
-    pinned_count = 0
-    for message in messages:
-        if not isinstance(message, dict):
-            continue
-        if str(message.get("role") or "").strip().lower() not in {"user", "assistant"}:
-            continue
-        if bool(message.get("is_pinned")):
-            pinned_count += 1
 
     return {
         "status": "success",
@@ -934,7 +897,7 @@ async def pin_chat_message(request: Request, current_user: User = Depends(get_cu
         "message_id": message_id,
         "is_pinned": is_pinned,
         "branch_id": branch_id,
-        "pinned_messages_count": pinned_count,
+        "pinned_messages_count": pin_result[1],
     }
 
 

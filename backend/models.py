@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Date, Text, ForeignKey, UniqueConstraint, Boolean, Float
+from sqlalchemy import Column, String, Integer, DateTime, Date, Text, ForeignKey, ForeignKeyConstraint, UniqueConstraint, Boolean, Float, BigInteger
 from sqlalchemy.orm import relationship
 from database import Base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -133,6 +133,7 @@ class ChatHistory(Base):
     scene_name = Column(String, nullable=True)
     scene_picture = Column(String, nullable=True)
     title = Column(String(255), nullable=False)
+    active_branch_id = Column(String, nullable=True)
     messages = Column(JSONB, default=[])
     chat_config = Column(JSONB, nullable=False, default={})
     is_pinned = Column(Boolean, default=False, nullable=False)
@@ -141,6 +142,56 @@ class ChatHistory(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     user = relationship("User", back_populates="chat_histories")
+    branches = relationship("ChatHistoryBranch", back_populates="chat", cascade="all, delete-orphan")
+    messages_rel = relationship("ChatHistoryMessage", back_populates="chat", cascade="all, delete-orphan")
+
+
+class ChatHistoryBranch(Base):
+    __tablename__ = "chat_history_branches"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(String, ForeignKey('chat_histories.chat_id', ondelete='CASCADE'), nullable=False, index=True)
+    branch_id = Column(String, nullable=False)
+    parent_branch_id = Column(String, nullable=True)
+    parent_message_id = Column(String, nullable=True)
+    label = Column(String(255), nullable=False, default="Main")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    last_updated = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    chat = relationship("ChatHistory", back_populates="branches")
+    messages = relationship("ChatHistoryMessage", back_populates="branch", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint('chat_id', 'branch_id', name='uix_chat_history_branches_chat_branch'),
+    )
+
+
+class ChatHistoryMessage(Base):
+    __tablename__ = "chat_history_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(String, ForeignKey('chat_histories.chat_id', ondelete='CASCADE'), nullable=False, index=True)
+    branch_id = Column(String, nullable=False, index=True)
+    message_id = Column(String, nullable=True, index=True)
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    usage = Column(JSONB, nullable=True)
+    is_pinned = Column(Boolean, default=False, nullable=False)
+    created_seq = Column(BigInteger, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    chat = relationship("ChatHistory", back_populates="messages_rel")
+    branch = relationship("ChatHistoryBranch", back_populates="messages")
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ['chat_id', 'branch_id'],
+            ['chat_history_branches.chat_id', 'chat_history_branches.branch_id'],
+            ondelete='CASCADE',
+            name='fk_chat_history_messages_branch',
+        ),
+        UniqueConstraint('chat_id', 'branch_id', 'created_seq', name='uix_chat_history_messages_chat_branch_seq'),
+    )
 
 
 class Persona(Base):

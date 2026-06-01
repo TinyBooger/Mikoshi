@@ -5,7 +5,7 @@ from sqlalchemy import func, desc, or_, and_
 from datetime import datetime, timedelta, UTC
 from passlib.context import CryptContext
 from database import get_db
-from models import User, Character, Tag, SearchTerm, ChatHistory, UserTokenUsageLedger, ContentReviewQueue, ProblemReport, SystemSettings, Scene, Persona, BanAppeal, ContentBanAppeal, UserModerationLog, ContentModerationLog
+from models import User, Character, Tag, SearchTerm, ChatHistory, ChatHistoryMessage, UserTokenUsageLedger, ContentReviewQueue, ProblemReport, SystemSettings, Scene, Persona, BanAppeal, ContentBanAppeal, UserModerationLog, ContentModerationLog
 from utils.session import get_current_admin_user
 from utils.security_middleware import get_rate_limit_status
 from utils.user_utils import enrich_user_with_character_count, build_user_response
@@ -13,7 +13,6 @@ from typing import List, Optional, Dict
 from pydantic import BaseModel
 from schemas import UserOut, UserMessageOut
 from utils.audit_logger import AuditLog
-from utils.chat_history_utils import count_chat_history_messages
 from utils.local_storage_utils import delete_stored_image
 from utils.token_wallet import get_token_topup_packages, set_token_topup_packages
 from routes.user_messages import create_moderation_message, create_content_moderation_message
@@ -255,10 +254,21 @@ def get_user_data_stats(
     mau = len(monthly_activity_user_ids)
 
     avg_chat_length = 0
-    all_chat_payloads = db.query(ChatHistory.messages).all()
-    if all_chat_payloads:
-        total_message_count = sum(count_chat_history_messages(messages) for (messages,) in all_chat_payloads)
-        avg_chat_length = total_message_count / len(all_chat_payloads)
+    active_branch_counts = (
+        db.query(ChatHistory.chat_id, func.count(ChatHistoryMessage.id).label("message_count"))
+        .outerjoin(
+            ChatHistoryMessage,
+            and_(
+                ChatHistoryMessage.chat_id == ChatHistory.chat_id,
+                ChatHistoryMessage.branch_id == ChatHistory.active_branch_id,
+            ),
+        )
+        .group_by(ChatHistory.chat_id)
+        .all()
+    )
+    if active_branch_counts:
+        total_message_count = sum(int(message_count or 0) for _, message_count in active_branch_counts)
+        avg_chat_length = total_message_count / len(active_branch_counts)
 
     total_chat_sessions = db.query(func.count(ChatHistory.id)).scalar() or 0
 
