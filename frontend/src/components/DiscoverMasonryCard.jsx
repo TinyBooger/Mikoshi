@@ -98,6 +98,11 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
 
   const clickSuppressed = disableClick;
   const isAdvancedCharacter = type === 'character' && entity?.context_label === 'advanced';
+  const isOwnPersona = type === 'persona' && !!(userData && String(userData.id) === String(creator_id));
+
+  useEffect(() => {
+    setIsPersonaAdded(isOwnPersona || !!entity?.liked);
+  }, [entity?.id, entity?.liked, isOwnPersona]);
 
   const handleClick = () => {
     if (clickSuppressed) return;
@@ -154,7 +159,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
   const handleAddPersona = async (e) => {
     e.stopPropagation();
     const token = localStorage.getItem('sessionToken');
-    if (!token || isAddPersonaLoading) return;
+    if (!token || isAddPersonaLoading || isOwnPersona) return;
     setIsAddPersonaLoading(true);
     try {
       const endpoint = isPersonaAdded ? 'unlike' : 'like';
@@ -471,13 +476,13 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
             </span>
           </div>
 
-          {type === 'persona' && !(userData && userData.id === creator_id) ? (
+          {type === 'persona' ? (
             <button
               onClick={handleAddPersona}
               onMouseEnter={() => setIsAddPersonaHovered(true)}
               onMouseLeave={() => setIsAddPersonaHovered(false)}
               title={isPersonaAdded ? t('entity_card.added_to_personas') : t('entity_card.add_to_personas')}
-              disabled={isAddPersonaLoading}
+              disabled={isAddPersonaLoading || isOwnPersona}
               style={{
                 width: isMobile ? '28px' : '30px',
                 height: isMobile ? '28px' : '30px',
@@ -494,13 +499,13 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: isAddPersonaLoading ? 'wait' : 'pointer',
+                cursor: isOwnPersona ? 'not-allowed' : (isAddPersonaLoading ? 'wait' : 'pointer'),
                 transition: 'background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.12s ease',
-                transform: isAddPersonaHovered && !isPersonaAdded ? 'scale(1.1)' : 'scale(1)',
+                transform: isAddPersonaHovered && !isPersonaAdded && !isOwnPersona ? 'scale(1.1)' : 'scale(1)',
                 padding: 0,
                 outline: 'none',
                 flexShrink: 0,
-                opacity: isAddPersonaLoading ? 0.55 : 1,
+                opacity: isOwnPersona ? 0.85 : (isAddPersonaLoading ? 0.55 : 1),
                 boxShadow: isPersonaAdded && isAddPersonaHovered ? '0 0 0 3px rgba(107, 95, 147, 0.18)' : 'none',
               }}
             >

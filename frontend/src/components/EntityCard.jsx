@@ -47,6 +47,7 @@ export default function EntityCard({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
   // Common fields
   const {
     id,
@@ -130,6 +131,11 @@ export default function EntityCard({
     : defaultAvatar;
 
   const clickSuppressed = disableClick;
+  const isOwnPersona = type === 'persona' && !!(userData && String(userData.id) === String(creator_id));
+
+  useEffect(() => {
+    setIsPersonaAdded(isOwnPersona || !!entity?.liked);
+  }, [entity?.id, entity?.liked, isOwnPersona]);
 
   const handleLike = async (e) => {
     e.stopPropagation();
@@ -160,7 +166,7 @@ export default function EntityCard({
   const handleAddPersona = async (e) => {
     e.stopPropagation();
     const token = localStorage.getItem('sessionToken');
-    if (!token || isAddPersonaLoading) return;
+    if (!token || isAddPersonaLoading || isOwnPersona) return;
     setIsAddPersonaLoading(true);
     try {
       const endpoint = isPersonaAdded ? 'unlike' : 'like';
@@ -465,13 +471,13 @@ export default function EntityCard({
               </div>
             )}
 
-            {type === 'persona' && !(userData && userData.id === creator_id) ? (
+            {type === 'persona' ? (
               <button
                 onClick={handleAddPersona}
                 onMouseEnter={() => setIsAddPersonaHovered(true)}
                 onMouseLeave={() => setIsAddPersonaHovered(false)}
                 title={isPersonaAdded ? t('entity_card.added_to_personas') : t('entity_card.add_to_personas')}
-                disabled={isAddPersonaLoading}
+                disabled={isAddPersonaLoading || isOwnPersona}
                 style={{
                   width: '30px',
                   height: '30px',
@@ -488,13 +494,13 @@ export default function EntityCard({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: isAddPersonaLoading ? 'wait' : 'pointer',
+                  cursor: isOwnPersona ? 'not-allowed' : (isAddPersonaLoading ? 'wait' : 'pointer'),
                   transition: 'background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.12s ease',
-                  transform: isAddPersonaHovered && !isPersonaAdded ? 'scale(1.1)' : 'scale(1)',
+                  transform: isAddPersonaHovered && !isPersonaAdded && !isOwnPersona ? 'scale(1.1)' : 'scale(1)',
                   padding: 0,
                   outline: 'none',
                   flexShrink: 0,
-                  opacity: isAddPersonaLoading ? 0.55 : 1,
+                  opacity: isOwnPersona ? 0.85 : (isAddPersonaLoading ? 0.55 : 1),
                   boxShadow: isPersonaAdded && isAddPersonaHovered ? '0 0 0 3px rgba(107, 95, 147, 0.18)' : 'none',
                 }}
               >
@@ -627,14 +633,14 @@ export default function EntityCard({
             </p>
           )}
 
-          {type === 'persona' && !(userData && userData.id === creator_id) ? (
+          {type === 'persona' ? (
             <div className="d-flex align-items-center" style={{ gap: '0.7rem', flexShrink: 0, fontSize: '0.68rem', color: '#6c757d' }}>
               <button
                 onClick={handleAddPersona}
                 onMouseEnter={() => setIsAddPersonaHovered(true)}
                 onMouseLeave={() => setIsAddPersonaHovered(false)}
                 title={isPersonaAdded ? t('entity_card.added_to_personas') : t('entity_card.add_to_personas')}
-                disabled={isAddPersonaLoading}
+                disabled={isAddPersonaLoading || isOwnPersona}
                 style={{
                   width: '28px',
                   height: '28px',
@@ -651,13 +657,13 @@ export default function EntityCard({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: isAddPersonaLoading ? 'wait' : 'pointer',
+                  cursor: isOwnPersona ? 'not-allowed' : (isAddPersonaLoading ? 'wait' : 'pointer'),
                   transition: 'background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.12s ease',
-                  transform: isAddPersonaHovered && !isPersonaAdded ? 'scale(1.1)' : 'scale(1)',
+                  transform: isAddPersonaHovered && !isPersonaAdded && !isOwnPersona ? 'scale(1.1)' : 'scale(1)',
                   padding: 0,
                   outline: 'none',
                   flexShrink: 0,
-                  opacity: isAddPersonaLoading ? 0.55 : 1,
+                  opacity: isOwnPersona ? 0.85 : (isAddPersonaLoading ? 0.55 : 1),
                   boxShadow: isPersonaAdded && isAddPersonaHovered ? '0 0 0 3px rgba(107, 95, 147, 0.18)' : 'none',
                 }}
               >

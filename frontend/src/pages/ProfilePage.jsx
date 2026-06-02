@@ -784,12 +784,16 @@ export default function ProfilePage() {
       }
     } else if (activeTab === TAB_TYPES.MY_PERSONAS) {
       // Merge created + liked personas, deduplicate by id
+      const likedPersonaIdSet = new Set((likedPersonas || []).map((p) => p.id));
       const seen = new Set();
       entities = [...personas, ...likedPersonas].filter(p => {
         if (seen.has(p.id)) return false;
         seen.add(p.id);
         return true;
-      });
+      }).map((p) => ({
+        ...p,
+        liked: !!p.liked || likedPersonaIdSet.has(p.id),
+      }));
       type = 'persona';
       showEdit = isOwnProfile;
       editUrlPrefix = 'persona';
