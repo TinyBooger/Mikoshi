@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import logging
 from database import get_db
 from models import Scene, User, UserLikedScene
 from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
@@ -18,6 +19,7 @@ from utils.user_utils import get_active_ban_type, is_upload_banned
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 MAX_DESCRIPTION_LENGTH = 400
 
@@ -422,8 +424,18 @@ def get_scenes_liked(
         target_user_id = userId
     else:
         if not current_user:
+            logger.debug("[scenes-liked] no current_user and no userId; returning empty list")
             return SceneListOut(items=[], total=0, page=1, page_size=0, short=False)
         target_user_id = current_user.id
+
+    logger.debug(
+        "[scenes-liked] fetch start target_user_id=%s requester_user_id=%s sort=%s page=%s page_size=%s",
+        target_user_id,
+        getattr(current_user, "id", None),
+        sort,
+        page,
+        page_size,
+    )
 
     query = (
         db.query(Scene, User.profile_pic.label("creator_profile_pic"))
@@ -437,6 +449,15 @@ def get_scenes_liked(
     else:
         query = query.order_by(Scene.created_time.desc())
 
+    total = query.count()
+    rows = query.offset((page - 1) * page_size).limit(page_size).all()
+    fetched_scene_ids = [scene.id for scene, _ in rows]
+    logger.debug(
+        "[scenes-liked] fetched total=%s returned=%s scene_ids=%s",
+        total,
+        len(rows),
+        fetched_scene_ids,
+    )
     items = []
     for scene, creator_profile_pic in rows:
         scene.creator_profile_pic = creator_profile_pic

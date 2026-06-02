@@ -73,6 +73,7 @@ export default function ProfilePage() {
   const [likedPersonasPage, setLikedPersonasPage] = useState(1);
   const [likedPersonasTotal, setLikedPersonasTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const pendingEntityRequestsRef = useRef(0);
 
   // Chat history tab state (own profile only)
   const [chatHistoryItems, setChatHistoryItems] = useState([]);
@@ -132,7 +133,7 @@ export default function ProfilePage() {
       };
     });
     setSproutHearts(hearts);
-  }, [deltaLikeKey]);
+  }, [deltaLikeKey, sessionDeltaLikes]);
 
   const [showProBenefits, setShowProBenefits] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -144,6 +145,7 @@ export default function ProfilePage() {
   const [followModal, setFollowModal] = useState(null); // 'following' | 'followers' | null
   const [followModalUsers, setFollowModalUsers] = useState([]);
   const [followModalLoading, setFollowModalLoading] = useState(false);
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
@@ -232,28 +234,44 @@ export default function ProfilePage() {
     };
   }, [isOwnProfile, refreshUserData]);
 
-  // Fetch created and liked entities for profile
+  // Redirect guest users away from own profile page.
   useEffect(() => {
     if (!sessionToken && !profileUserId) {
       navigate('/');
+    }
+  }, [navigate, profileUserId, sessionToken]);
+
+  // If public profile, fetch user data for that user.
+  useEffect(() => {
+    if (!profileUserId) return;
+    if (userData && String(userData.id) === String(profileUserId)) {
+      setPublicUserData(null);
       return;
     }
-    setLoading(true);
-    // If public profile, fetch user data for that user
-    if (profileUserId && (!userData || String(userData.id) !== String(profileUserId))) {
-      // Reset immediately so the guard catches it while the fetch is in-flight
-      setPublicUserData(null);
-      setUserLoading(true);
-      fetch(`${window.API_BASE_URL}/api/users/${profileUserId}`)
-        .then(res => res.ok ? res.json() : null)
-        .then(setPublicUserData);
-    }
 
+    setPublicUserData(null);
+    setUserLoading(true);
+    fetch(`${window.API_BASE_URL}/api/users/${profileUserId}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        setPublicUserData(data);
+        setUserLoading(false);
+        })
+      .catch(() => {
+        setPublicUserData(null);
+        setUserLoading(false);
+      });
+  }, [profileUserId, userData?.id]);
+
+  // Fetch created characters
+  useEffect(() => {
+    if (!sessionToken && !profileUserId) return;
     const userIdParam = profileUserId ? `?userId=${profileUserId}` : '';
+    pendingEntityRequestsRef.current += 1;
+    setLoading(true);
 
-    // Created Characters
     fetch(`${window.API_BASE_URL}/api/characters-created${userIdParam}${userIdParam ? '&' : '?'}sort=${characterSort}&page=${createdCharactersPage}&page_size=${pageSize}`, {
-      headers: { 'Authorization': sessionToken }
+      headers: sessionToken ? { Authorization: sessionToken } : {}
     })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
@@ -263,12 +281,30 @@ export default function ProfilePage() {
         } else if (Array.isArray(data)) {
           setCreatedCharacters(data);
           setCreatedCharactersTotal(data.length);
+        } else {
+          setCreatedCharacters([]);
+          setCreatedCharactersTotal(0);
         }
+      })
+      .catch(() => {
+        setCreatedCharacters([]);
+        setCreatedCharactersTotal(0);
+      })
+      .finally(() => {
+        pendingEntityRequestsRef.current = Math.max(0, pendingEntityRequestsRef.current - 1);
+        if (pendingEntityRequestsRef.current === 0) setLoading(false);
       });
+  }, [profileUserId, sessionToken, characterSort, createdCharactersPage]);
 
-    // Created Scenes
+  // Fetch created scenes
+  useEffect(() => {
+    if (!sessionToken && !profileUserId) return;
+    const userIdParam = profileUserId ? `?userId=${profileUserId}` : '';
+    pendingEntityRequestsRef.current += 1;
+    setLoading(true);
+
     fetch(`${window.API_BASE_URL}/api/scenes-created${userIdParam}${userIdParam ? '&' : '?'}sort=${sceneSort}&page=${scenesPage}&page_size=${pageSize}`, {
-      headers: { 'Authorization': sessionToken }
+      headers: sessionToken ? { Authorization: sessionToken } : {}
     })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
@@ -278,12 +314,30 @@ export default function ProfilePage() {
         } else if (Array.isArray(data)) {
           setScenes(data);
           setScenesTotal(data.length);
+        } else {
+          setScenes([]);
+          setScenesTotal(0);
         }
+      })
+      .catch(() => {
+        setScenes([]);
+        setScenesTotal(0);
+      })
+      .finally(() => {
+        pendingEntityRequestsRef.current = Math.max(0, pendingEntityRequestsRef.current - 1);
+        if (pendingEntityRequestsRef.current === 0) setLoading(false);
       });
+  }, [profileUserId, sessionToken, sceneSort, scenesPage]);
 
-    // Created Personas
+  // Fetch created personas
+  useEffect(() => {
+    if (!sessionToken && !profileUserId) return;
+    const userIdParam = profileUserId ? `?userId=${profileUserId}` : '';
+    pendingEntityRequestsRef.current += 1;
+    setLoading(true);
+
     fetch(`${window.API_BASE_URL}/api/personas-created${userIdParam}${userIdParam ? '&' : '?'}sort=${personaSort}&page=${personasPage}&page_size=${pageSize}`, {
-      headers: { 'Authorization': sessionToken }
+      headers: sessionToken ? { Authorization: sessionToken } : {}
     })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
@@ -293,68 +347,131 @@ export default function ProfilePage() {
         } else if (Array.isArray(data)) {
           setPersonas(data);
           setPersonasTotal(data.length);
+        } else {
+          setPersonas([]);
+          setPersonasTotal(0);
         }
       })
-      .catch(() => setPersonas([]));
-
-    // Liked Characters (only for own profile)
-    if (isOwnProfile) {
-      fetch(`${window.API_BASE_URL}/api/characters-liked?sort=${characterSort}&page=${likedCharactersPage}&page_size=${pageSize}`, {
-        headers: { 'Authorization': sessionToken }
+      .catch(() => {
+        setPersonas([]);
+        setPersonasTotal(0);
       })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data && data.items) {
-            setLikedCharacters(data.items);
-            setLikedCharactersTotal(data.total || 0);
-          } else if (Array.isArray(data)) {
-            setLikedCharacters(data);
-            setLikedCharactersTotal(data.length);
-          }
-        });
-    } else {
+      .finally(() => {
+        pendingEntityRequestsRef.current = Math.max(0, pendingEntityRequestsRef.current - 1);
+        if (pendingEntityRequestsRef.current === 0) setLoading(false);
+      });
+  }, [profileUserId, sessionToken, personaSort, personasPage]);
+
+  // Fetch liked characters (own profile only)
+  useEffect(() => {
+    if (!isOwnProfile || !sessionToken) {
       setLikedCharacters([]);
+      setLikedCharactersTotal(0);
+      return;
     }
 
-    // Liked Scenes (only for own profile)
-    if (isOwnProfile) {
-      fetch(`${window.API_BASE_URL}/api/scenes-liked?sort=${sceneSort}&page=${likedScenesPage}&page_size=${pageSize}`, {
-        headers: { 'Authorization': sessionToken }
+    pendingEntityRequestsRef.current += 1;
+    setLoading(true);
+
+    fetch(`${window.API_BASE_URL}/api/characters-liked?sort=${characterSort}&page=${likedCharactersPage}&page_size=${pageSize}`, {
+      headers: { Authorization: sessionToken }
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.items) {
+          setLikedCharacters(data.items);
+          setLikedCharactersTotal(data.total || 0);
+        } else if (Array.isArray(data)) {
+          setLikedCharacters(data);
+          setLikedCharactersTotal(data.length);
+        } else {
+          setLikedCharacters([]);
+          setLikedCharactersTotal(0);
+        }
       })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data && data.items) {
-            setLikedScenes(data.items);
-            setLikedScenesTotal(data.total || 0);
-          } else if (Array.isArray(data)) {
-            setLikedScenes(data);
-            setLikedScenesTotal(data.length);
-          }
-        });
-    } else {
+      .catch(() => {
+        setLikedCharacters([]);
+        setLikedCharactersTotal(0);
+      })
+      .finally(() => {
+        pendingEntityRequestsRef.current = Math.max(0, pendingEntityRequestsRef.current - 1);
+        if (pendingEntityRequestsRef.current === 0) setLoading(false);
+      });
+  }, [isOwnProfile, sessionToken, characterSort, likedCharactersPage]);
+
+  // Fetch liked scenes (own profile only)
+  useEffect(() => {
+    if (!isOwnProfile || !sessionToken) {
       setLikedScenes([]);
+      setLikedScenesTotal(0);
+      return;
     }
 
-    // Liked Personas (only for own profile)
-    if (isOwnProfile) {
-      fetch(`${window.API_BASE_URL}/api/personas-liked?sort=${personaSort}&page=${likedPersonasPage}&page_size=${pageSize}`, {
-        headers: { 'Authorization': sessionToken }
+    pendingEntityRequestsRef.current += 1;
+    setLoading(true);
+
+    fetch(`${window.API_BASE_URL}/api/scenes-liked?sort=${sceneSort}&page=${likedScenesPage}&page_size=${pageSize}`, {
+      headers: { Authorization: sessionToken }
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.items) {
+          setLikedScenes(data.items);
+          setLikedScenesTotal(data.total || 0);
+        } else if (Array.isArray(data)) {
+          setLikedScenes(data);
+          setLikedScenesTotal(data.length);
+        } else {
+          setLikedScenes([]);
+          setLikedScenesTotal(0);
+        }
       })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data && data.items) {
-            setLikedPersonas(data.items);
-            setLikedPersonasTotal(data.total || 0);
-          } else if (Array.isArray(data)) {
-            setLikedPersonas(data);
-            setLikedPersonasTotal(data.length);
-          }
-        });
-    } else {
+      .catch(() => {
+        setLikedScenes([]);
+        setLikedScenesTotal(0);
+      })
+      .finally(() => {
+        pendingEntityRequestsRef.current = Math.max(0, pendingEntityRequestsRef.current - 1);
+        if (pendingEntityRequestsRef.current === 0) setLoading(false);
+      });
+  }, [isOwnProfile, sessionToken, sceneSort, likedScenesPage]);
+
+  // Fetch liked personas (own profile only)
+  useEffect(() => {
+    if (!isOwnProfile || !sessionToken) {
       setLikedPersonas([]);
+      setLikedPersonasTotal(0);
+      return;
     }
-    setLoading(false);
-  }, [navigate, sessionToken, userData, profileUserId, isOwnProfile, createdCharactersPage, likedCharactersPage, scenesPage, likedScenesPage, personasPage, likedPersonasPage, characterSort, sceneSort, personaSort]);
+
+    pendingEntityRequestsRef.current += 1;
+    setLoading(true);
+
+    fetch(`${window.API_BASE_URL}/api/personas-liked?sort=${personaSort}&page=${likedPersonasPage}&page_size=${pageSize}`, {
+      headers: { Authorization: sessionToken }
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.items) {
+          setLikedPersonas(data.items);
+          setLikedPersonasTotal(data.total || 0);
+        } else if (Array.isArray(data)) {
+          setLikedPersonas(data);
+          setLikedPersonasTotal(data.length);
+        } else {
+          setLikedPersonas([]);
+          setLikedPersonasTotal(0);
+        }
+      })
+      .catch(() => {
+        setLikedPersonas([]);
+        setLikedPersonasTotal(0);
+      })
+      .finally(() => {
+        pendingEntityRequestsRef.current = Math.max(0, pendingEntityRequestsRef.current - 1);
+        if (pendingEntityRequestsRef.current === 0) setLoading(false);
+      });
+  }, [isOwnProfile, sessionToken, personaSort, likedPersonasPage]);
 
   useEffect(() => {
     setCreatedCharactersPage(1);

@@ -15,7 +15,7 @@ from utils.security_middleware import (
 )
 
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 print(f"Current working directory: {os.getcwd()}")
 
