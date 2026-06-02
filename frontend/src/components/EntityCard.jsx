@@ -334,6 +334,10 @@ export default function EntityCard({
         <img
           src={picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${picture.replace(/^\//, '')}` : defaultPicture}
           alt={name}
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = defaultPicture;
+          }}
           style={{
             width: '100%',
             height: '100%',
@@ -427,9 +431,19 @@ export default function EntityCard({
                 <img
                   src={creatorAvatar}
                   alt={creatorDisplay}
+                  onError={(event) => {
+                    event.currentTarget.onerror = null;
+                    event.currentTarget.src = defaultAvatar;
+                  }}
                   style={{
                     width: '18px',
                     height: '18px',
+                    minWidth: '18px',
+                    minHeight: '18px',
+                    maxWidth: '18px',
+                    maxHeight: '18px',
+                    aspectRatio: '1 / 1',
+                    display: 'block',
                     borderRadius: '50%',
                     objectFit: 'cover',
                     flexShrink: 0,

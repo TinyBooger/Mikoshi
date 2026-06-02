@@ -857,7 +857,12 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                           src={item.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${item.picture.replace(/^\//, '')}` : defaultPicture}
                           alt={item.name}
                           className="rounded-circle border"
-                          style={{ width: 38, height: 38, objectFit: 'cover', border: '1.6px solid #e9ecef', filter: item.character_deleted ? 'grayscale(1)' : 'none' }}
+                          onError={(event) => {
+                            // Prevent broken-image alt rendering from stretching avatar shape.
+                            event.currentTarget.onerror = null;
+                            event.currentTarget.src = defaultPicture;
+                          }}
+                          style={{ width: 38, height: 38, minWidth: 38, minHeight: 38, maxWidth: 38, maxHeight: 38, aspectRatio: '1 / 1', display: 'block', objectFit: 'cover', border: '1.6px solid #e9ecef', filter: item.character_deleted ? 'grayscale(1)' : 'none' }}
                         />
                         {item.scene_picture && (
                           <img

@@ -350,6 +350,10 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
         <img
           src={picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(picture).replace(/^\//, '')}` : defaultPicture}
           alt={name}
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = defaultPicture;
+          }}
           style={{
             width: '100%',
             height: 'auto',
@@ -434,9 +438,19 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
             <img
               src={creatorAvatar}
               alt={creatorDisplay}
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = defaultAvatar;
+              }}
               style={{
                 width: isMobile ? '16px' : '18px',
                 height: isMobile ? '16px' : '18px',
+                minWidth: isMobile ? '16px' : '18px',
+                minHeight: isMobile ? '16px' : '18px',
+                maxWidth: isMobile ? '16px' : '18px',
+                maxHeight: isMobile ? '16px' : '18px',
+                aspectRatio: '1 / 1',
+                display: 'block',
                 borderRadius: '50%',
                 objectFit: 'cover',
                 flexShrink: 0,
