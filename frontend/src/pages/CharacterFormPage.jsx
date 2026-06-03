@@ -201,12 +201,12 @@ export default function CharacterFormPage() {
         navigate("/");
         return;
       }
-  if (!sessionToken) {
+      if (!sessionToken) {
         navigate("/");
         return;
-      }
+      } 
       fetch(`${window.API_BASE_URL}/api/character/${id}`, {
-  headers: { 'Authorization': sessionToken }
+        headers: { 'Authorization': sessionToken }
       })
         .then(res => {
           if (!res.ok) {
@@ -217,6 +217,11 @@ export default function CharacterFormPage() {
         })
         .then(data => {
           if (!data) return;
+          if (mode === 'edit' && String(data.creator_id) !== String(userData?.id)) {
+            toast.show(t('character_form.not_authorized_edit'), { type: 'error' });
+            navigate('/profile');
+            return;
+          }
           // If greeting equals our special improvising marker, set the checkbox and clear greeting input
           const loadedGreeting = data.greeting || '';
           const isImprov = loadedGreeting && loadedGreeting.indexOf(SPECIAL_IMPROVISING_GREETING) !== -1;
@@ -306,7 +311,7 @@ export default function CharacterFormPage() {
           }
         });
     }
-  }, [mode, id, navigate, sessionToken]);
+  }, [mode, id, navigate, sessionToken, t, userData?.id]);
 
   const handleChange = (field, value) => {
     setCharData(prev => ({ ...prev, [field]: value }));
@@ -416,7 +421,7 @@ export default function CharacterFormPage() {
               body: JSON.stringify({ entity_type: 'character', entity_id: Number(id), appeal_reason: appealReason.trim() }),
             });
           } catch (_) { /* best effort */ }
-          toast.show(t('character_form.appeal_submitted', '内容已保存并提交申诉'));
+          toast.show(t('character_form.appeal_submitted'));
           navigate(`/character/${id}`);
         } else {
           toast.show(mode === 'edit' ? t('character_form.updated') : mode === 'fork' ? t('character_form.forked') : t('character_form.created'));

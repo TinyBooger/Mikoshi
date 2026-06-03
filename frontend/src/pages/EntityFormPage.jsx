@@ -135,6 +135,11 @@ export default function EntityFormPage() {
         })
         .then(data => {
           if (!data) return;
+          if (mode === 'edit' && String(data.creator_id) !== String(userData?.id)) {
+            toast.show(t(`${entityConfig.transactionKeyPrefix}.not_authorized_edit`), { type: 'error' });
+            navigate('/profile');
+            return;
+          }
           const loadedGreeting = entityType === 'scene' ? (data.greeting || '') : '';
           const isImprov = entityType === 'scene' && loadedGreeting.indexOf(SPECIAL_IMPROVISING_GREETING) !== -1;
           setIsImprovisingGreeting(!!isImprov);
@@ -196,7 +201,7 @@ export default function EntityFormPage() {
     } else {
       setLoading(false);
     }
-  }, [mode, id, navigate, sessionToken, entityType, toast]);
+  }, [mode, id, navigate, sessionToken, entityType, t, userData?.id]);
 
   const handleChange = (field, value) => {
     setEntityData(prev => ({ ...prev, [field]: value }));
@@ -267,7 +272,7 @@ export default function EntityFormPage() {
               body: JSON.stringify({ entity_type: entityType, entity_id: Number(id), appeal_reason: appealReason.trim() }),
             });
           } catch (_) { /* best effort */ }
-          toast.show(t(`${entityConfig.transactionKeyPrefix}.appeal_submitted`, '内容已保存并提交申诉'));
+          toast.show(t(`${entityConfig.transactionKeyPrefix}.appeal_submitted`));
           navigate(`/${entityType}/${id}`);
         } else {
           toast.show(mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.updated`) : mode === 'fork' ? t(`${entityConfig.transactionKeyPrefix}.forked`) : t(`${entityConfig.transactionKeyPrefix}.created`));

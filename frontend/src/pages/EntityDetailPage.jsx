@@ -191,11 +191,15 @@ export default function EntityDetailPage() {
       setLiked(prevLiked);
       setEntity((prev) => (prev ? { ...prev, likes: prevLikes } : prev));
       console.error(err);
-      toast.show(t('entity_detail.like_error', 'Failed to like'), { type: 'error' });
+      toast.show(t('entity_detail.like_error'), { type: 'error' });
     }
   };
 
   const handleEdit = () => {
+    if (!entity || String(userData?.id) !== String(entity.creator_id)) {
+      toast.show(t('entity_detail.not_authorized_edit'), { type: 'error' });
+      return;
+    }
     if (type === 'character') {
       navigate(`/character/edit/${id}`);
     } else if (type === 'persona') {

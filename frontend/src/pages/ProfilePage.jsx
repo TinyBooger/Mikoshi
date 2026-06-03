@@ -640,7 +640,7 @@ export default function ProfilePage() {
   // Unified content renderer for all tabs and subtabs
   const renderTabContent = () => {
     // Helper for CardSection grid
-    const renderEntityCardSection = (entities, type, showEdit, editUrlPrefix, emptyMsg, page, total, onPageChange) => (
+    const renderEntityCardSection = (entities, type, canEditEntity, editUrlPrefix, emptyMsg, page, total, onPageChange) => (
       <>
         <CardSection>
           {loading ? (
@@ -671,7 +671,7 @@ export default function ProfilePage() {
                     entity={entity}
                     hideDetailButton={true}
                   />
-                  {showEdit && (
+                  {canEditEntity(entity) && (
                     <button
                       type="button"
                       onClick={() => navigate(`/${editUrlPrefix}/edit/${entity.id}`)}
@@ -716,7 +716,7 @@ export default function ProfilePage() {
     // Subtab logic
     let entities = [];
     let type = '';
-    let showEdit = false;
+    let canEditEntity = () => false;
     let editUrlPrefix = '';
     let emptyMsg = '';
     let page = 1;
@@ -727,7 +727,7 @@ export default function ProfilePage() {
       if (activeSubtab === SUBTAB_TYPES.CHARACTERS) {
         entities = createdCharacters;
         type = 'character';
-        showEdit = isOwnProfile;
+        canEditEntity = () => isOwnProfile;
         editUrlPrefix = 'character';
         emptyMsg = t('profile.no_characters_created');
         page = createdCharactersPage;
@@ -736,7 +736,7 @@ export default function ProfilePage() {
       } else if (activeSubtab === SUBTAB_TYPES.SCENES) {
         entities = scenes;
         type = 'scene';
-        showEdit = isOwnProfile;
+        canEditEntity = () => isOwnProfile;
         editUrlPrefix = 'scene';
         emptyMsg = t('profile.no_scenes_created');
         page = scenesPage;
@@ -746,7 +746,7 @@ export default function ProfilePage() {
         // Personas are public (same behavior as characters and scenes)
         entities = personas;
         type = 'persona';
-        showEdit = isOwnProfile;
+        canEditEntity = () => isOwnProfile;
         editUrlPrefix = 'persona';
         emptyMsg = t('profile.no_personas_created');
         page = personasPage;
@@ -757,7 +757,7 @@ export default function ProfilePage() {
       if (activeSubtab === SUBTAB_TYPES.CHARACTERS) {
         entities = likedCharacters;
         type = 'character';
-        showEdit = false;
+        canEditEntity = () => false;
         editUrlPrefix = 'character';
         emptyMsg = t('profile.no_liked_characters');
         page = likedCharactersPage;
@@ -766,7 +766,7 @@ export default function ProfilePage() {
       } else if (activeSubtab === SUBTAB_TYPES.SCENES) {
         entities = likedScenes;
         type = 'scene';
-        showEdit = false;
+        canEditEntity = () => false;
         editUrlPrefix = 'scene';
         emptyMsg = t('profile.no_liked_scenes');
         page = likedScenesPage;
@@ -775,7 +775,7 @@ export default function ProfilePage() {
       } else if (activeSubtab === SUBTAB_TYPES.PERSONAS) {
         entities = likedPersonas;
         type = 'persona';
-        showEdit = false;
+        canEditEntity = () => false;
         editUrlPrefix = 'persona';
         emptyMsg = t('profile.no_liked_personas');
         page = likedPersonasPage;
@@ -795,7 +795,7 @@ export default function ProfilePage() {
         liked: !!p.liked || likedPersonaIdSet.has(p.id),
       }));
       type = 'persona';
-      showEdit = isOwnProfile;
+      canEditEntity = (entity) => isOwnProfile && String(entity.creator_id) === String(userData?.id);
       editUrlPrefix = 'persona';
       emptyMsg = t('profile.no_all_personas');
       page = 1;
@@ -978,7 +978,7 @@ export default function ProfilePage() {
         </div>
       );
     }
-    return renderEntityCardSection(entities, type, showEdit, editUrlPrefix, emptyMsg, page, total, onPageChange);
+    return renderEntityCardSection(entities, type, canEditEntity, editUrlPrefix, emptyMsg, page, total, onPageChange);
   };
   // Edit profile modal state
   const [showModal, setShowModal] = useState(false);
