@@ -3,6 +3,17 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { useToast } from '../components/ToastProvider';
 import '../styles/AlipayTest.css';
 
+function isMobileBrowser() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+
+  return (
+    window.matchMedia?.('(max-width: 768px)').matches ||
+    /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent)
+  );
+}
+
 /**
  * 支付宝支付测试页面
  * 用于测试支付宝沙盒环境的支付功能
@@ -17,7 +28,7 @@ function AlipayTestPage() {
     totalAmount: '0.01',
     subject: '测试商品',
     body: '这是一个测试订单',
-    paymentType: 'page',
+    paymentType: isMobileBrowser() ? 'wap' : 'page',
     timeoutExpress: '30m'
   });
   

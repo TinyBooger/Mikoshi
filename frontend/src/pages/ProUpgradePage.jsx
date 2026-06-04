@@ -6,6 +6,17 @@ import { useToast } from '../components/ToastProvider';
 import PageWrapper from '../components/PageWrapper';
 import WeChatPayModal from '../components/WeChatPayModal';
 
+function isMobileBrowser() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+
+  return (
+    window.matchMedia?.('(max-width: 768px)').matches ||
+    /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent)
+  );
+}
+
 export default function ProUpgradePage() {
   const { t } = useTranslation();
   const { userData, sessionToken } = useContext(AuthContext);
@@ -326,7 +337,7 @@ export default function ProUpgradePage() {
                       total_amount: plan.amount,
                       subject: plan.subject,
                       body: plan.body,
-                      payment_type: 'page',
+                      payment_type: isMobileBrowser() ? 'wap' : 'page',
                       order_type: 'pro_upgrade',
                       user_id: userData.id
                     };

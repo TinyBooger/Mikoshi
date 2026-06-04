@@ -8,6 +8,17 @@ import { formatCompactTokenCount } from '../utils/tokenDisplay';
 import { useTranslation } from 'react-i18next';
 import WeChatPayModal from '../components/WeChatPayModal';
 
+function isMobileBrowser() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+
+  return (
+    window.matchMedia?.('(max-width: 768px)').matches ||
+    /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent)
+  );
+}
+
 export default function TokenTopUpPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -164,7 +175,7 @@ export default function TokenTopUpPage() {
         total_amount: Number(pkg.price_cny),
         subject: `Token充值 ${formatCompactTokenCount(Number(pkg.tokens || 0))}`,
         body: `购买${formatCompactTokenCount(Number(pkg.tokens || 0))} tokens`,
-        payment_type: 'page',
+        payment_type: isMobileBrowser() ? 'wap' : 'page',
         order_type: 'token_topup',
         user_id: userData.id,
         package_id: pkg.id,
