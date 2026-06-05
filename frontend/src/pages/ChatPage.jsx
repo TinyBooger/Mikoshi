@@ -26,7 +26,7 @@ const WALLPAPER_OPTIONS = [
   { id: 'waves', labelKey: 'chat.wallpaper_waves', url: '/wallpapers/waves.svg' },
 ];
 
-const MOBILE_LONG_PRESS_MS = 500;
+const MOBILE_LONG_PRESS_MS = 1000;
 const MAX_PINNED_MEMORIES = 10;
 const DEFAULT_BRANCH_ID = 'branch_main';
 const TOKEN_LIMITS_BY_MODEL = {
@@ -2091,6 +2091,10 @@ export default function ChatPage() {
                       onMouseLeave={() => setHoveredMessageId(null)}
                       >
                         {/* Avatar */}
+                        {(() => {
+                          const messageAvatarSize = isMobile ? 'clamp(40px, 12vw, 48px)' : 77;
+
+                          return (
                         <img
                           src={
                             m.role === 'user'
@@ -2104,8 +2108,10 @@ export default function ChatPage() {
                                   : defaultPic)
                           }
                           alt={m.role === 'user' ? (selectedPersona?.name || t('chat.you')) : selectedCharacter?.name}
-                          style={{ width: 77, height: 77, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef', flexShrink: 0 }}
+                          style={{ width: messageAvatarSize, height: messageAvatarSize, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef', flexShrink: 0 }}
                         />
+                          );
+                        })()}
 
                         {/* Content column: name, bubble+button row, controls */}
                         <div style={{
@@ -2159,7 +2165,7 @@ export default function ChatPage() {
                                     borderRadius: 10,
                                     border: '1px solid #d1d5db',
                                     padding: '0.7rem 0.8rem',
-                                    fontSize: '0.82rem',
+                                    fontSize: '16px',
                                     resize: 'vertical',
                                     minHeight: 96,
                                   }}
@@ -2583,7 +2589,7 @@ export default function ChatPage() {
                   background: '#fff',
                   padding: '0.6rem 0.96rem',
                   paddingRight: '2.3rem',
-                  fontSize: '0.82rem',
+                  fontSize: '16px',
                   outline: 'none',
                   color: '#232323',
                   boxShadow: 'none',
