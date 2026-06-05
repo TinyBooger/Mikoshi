@@ -93,7 +93,7 @@ export default function CharacterFormPage() {
   const MAX_NAME_LENGTH = 50;
   const MAX_PERSONA_LENGTH = 400;
   const MAX_TAGLINE_LENGTH = 100;
-  const ADVANCED_MAX_LONG_DESCRIPTION_LENGTH = 10000;
+  const ADVANCED_MAX_LONG_DESCRIPTION_LENGTH = 15000;
   // Get id param from route
   const params = useParams();
   const id = params.id;
@@ -361,7 +361,8 @@ export default function CharacterFormPage() {
       toast.show(`Sample dialogue too long (max ${MAX_SAMPLE_LENGTH})`, { type: 'error' });
       return;
     }
-    if (effectiveContextLabel === 'advanced' && charData.long_description.length > ADVANCED_MAX_LONG_DESCRIPTION_LENGTH) {
+    const trimmedLongDescription = charData.long_description.trim();
+    if (effectiveContextLabel === 'advanced' && trimmedLongDescription.length > ADVANCED_MAX_LONG_DESCRIPTION_LENGTH) {
       toast.show(`Long description too long (max ${ADVANCED_MAX_LONG_DESCRIPTION_LENGTH})`, { type: 'error' });
       return;
     }
@@ -382,7 +383,7 @@ export default function CharacterFormPage() {
   formData.append("greeting", finalGreeting);
     formData.append("sample_dialogue", charData.sample.trim());
     if (effectiveContextLabel === 'advanced') {
-      formData.append("long_description", charData.long_description.trim());
+      formData.append("long_description", trimmedLongDescription);
     }
     const finalModel = charData.model || DEFAULT_CHAT_CONFIG.model;
   const finalTokenLimits = getTokenLimits(finalModel);
@@ -841,11 +842,11 @@ export default function CharacterFormPage() {
             <div>
               <span style={{ fontWeight: 700, color: '#232323', fontSize: '0.97rem' }}>启用详细人物设定</span>
               {!canUseAdvancedCharacter ? (
-                <small style={{ display: 'block', color: '#9333ea', marginTop: 2 }}>升级为Pro用户可填写最多10000字的详细人物设定 <a href="/pro-upgrade" onClick={e => { e.preventDefault(); navigate('/pro-upgrade'); }} style={{ color: '#7c3aed', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}>立即升级</a></small>
+                <small style={{ display: 'block', color: '#9333ea', marginTop: 2 }}>升级为Pro用户可填写最多15000字的详细人物设定 <a href="/pro-upgrade" onClick={e => { e.preventDefault(); navigate('/pro-upgrade'); }} style={{ color: '#7c3aed', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}>立即升级</a></small>
               ) : effectiveContextLabel === 'advanced' ? (
-                <small style={{ display: 'block', color: '#7c3aed', marginTop: 2 }}>可填写最多10000字的详细人物设定，用于构建更丰富的角色背景</small>
+                <small style={{ display: 'block', color: '#7c3aed', marginTop: 2 }}>可填写最多15000字的详细人物设定，用于构建更丰富的角色背景</small>
               ) : (
-                <small style={{ display: 'block', color: '#888', marginTop: 2 }}>开启后可额外填写最多10000字的详细人物设定</small>
+                <small style={{ display: 'block', color: '#888', marginTop: 2 }}>开启后可额外填写最多15000字的详细人物设定</small>
               )}
             </div>
             <div className="form-check form-switch mb-0" style={{ paddingLeft: 0 }}>
@@ -894,7 +895,7 @@ export default function CharacterFormPage() {
               />
               <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>创建角色时处理详细人物设定会消耗少量的token</small>
               <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-                {(charData.long_description || '').length}/{ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
+                {(charData.long_description || '').trim().length}/{ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
               </small>
             </div>
           )}
