@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import SecondaryButton from './SecondaryButton';
 
 import InfoCard from './InfoCard';
@@ -201,7 +202,8 @@ export default function CharacterSidebar({
         height: '100dvh',
         zIndex: 1000,
         background: 'rgba(255, 255, 255, 0.98)',
-        boxShadow: '2px 0 8px rgba(0,0,0,0.1)',
+        boxShadow: 'none',
+        borderLeft: '1.2px solid #e9ecef',
         transform: characterSidebarVisible ? 'translateX(0)' : 'translateX(100%)',
         transition: `transform ${sidebarMotion}, opacity ${sidebarMotion}`,
         overscrollBehavior: 'contain',
@@ -214,13 +216,16 @@ export default function CharacterSidebar({
         borderRadius: 0,
       }
     : {
-        position: 'relative',
+        position: 'fixed',
+        top: 0,
+        right: 0,
         width: '19rem', // Reduced width for desktop
-      height: '100dvh',
+        height: '100dvh',
+        zIndex: 1000,
         transform: characterSidebarVisible ? 'translateX(0)' : 'translateX(19rem)',
-        marginLeft: characterSidebarVisible ? '0' : '-19rem', // Pull back the reserved space
-        transition: `transform ${sidebarMotion}, margin-left ${sidebarMotion}, opacity ${sidebarMotion}`,
-        boxShadow: '2px 0 8px rgba(0,0,0,0.05)',
+        transition: `transform ${sidebarMotion}, opacity ${sidebarMotion}`,
+        boxShadow: 'none',
+        borderLeft: '1.2px solid #e9ecef',
         overscrollBehavior: 'contain',
         WebkitOverflowScrolling: 'touch',
         display: 'flex',
@@ -233,27 +238,41 @@ export default function CharacterSidebar({
         borderRadius: 0,
       };
 
+  const desktopSpacerStyle = isMobile
+    ? null
+    : {
+        width: '19rem',
+        height: '100dvh',
+        marginLeft: characterSidebarVisible ? '0' : '-19rem',
+        transition: `margin-left ${sidebarMotion}`,
+        flexShrink: 0,
+        pointerEvents: 'none',
+      };
+
   return (
     <>
-      {/* Overlay for mobile CharacterSidebar */}
-      {isMobile && characterSidebarVisible && (
-        <div
-          onClick={() => onToggleCharacterSidebar()}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100dvh',
-            background: 'rgba(0,0,0,0.3)',
-            zIndex: 999,
-            cursor: 'pointer',
-            touchAction: 'manipulation',
-          }}
-        />
-      )}
-      <div style={sidebarStyle}>
-        <aside style={{ width: '100%', minHeight: 0, maxHeight: '100%', background: 'transparent', borderRadius: 0, margin: 0, boxShadow: 'none', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', boxSizing: 'border-box', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
+      {desktopSpacerStyle && <div aria-hidden="true" style={desktopSpacerStyle} />}
+      {createPortal(
+        <>
+          {/* Overlay for mobile CharacterSidebar */}
+          {isMobile && characterSidebarVisible && (
+            <div
+              onClick={() => onToggleCharacterSidebar()}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100dvh',
+                background: 'rgba(0,0,0,0.3)',
+                zIndex: 999,
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+              }}
+            />
+          )}
+          <div style={sidebarStyle}>
+            <aside style={{ width: '100%', minHeight: 0, maxHeight: '100%', background: 'transparent', borderRadius: 0, margin: 0, boxShadow: 'none', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', boxSizing: 'border-box', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
           {/* CharacterSidebar Header: collapse toggle left, share + report right */}
           <div style={{
             display: 'flex',
@@ -1049,8 +1068,11 @@ export default function CharacterSidebar({
             )}
           </div>
         )}
-        </aside>
-      </div>
+            </aside>
+          </div>
+        </>,
+        document.body,
+      )}
       {/* Problem Report Modal via portal */}
       <ProblemReportModal
         show={showProblemReport}

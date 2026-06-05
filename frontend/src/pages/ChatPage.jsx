@@ -1830,7 +1830,11 @@ export default function ChatPage() {
   // + character sidebar (19rem) + message area side-padding (1.2rem × 2) = 36.4rem.
   const chatContentRailStyle = {
     width: '100%',
-    maxWidth: isMobile ? '100%' : 'min(calc(100vw - 36.4rem), 100%)',
+    maxWidth: isMobile
+      ? '100%'
+      : characterSidebarVisible
+        ? 'min(calc(100vw - 36.4rem), 100%)'
+        : '100%',
     marginLeft: 'auto',
     marginRight: 'auto',
     boxSizing: 'border-box',
@@ -1841,87 +1845,88 @@ export default function ChatPage() {
     <div style={{ 
       display: 'flex', 
       height: '100%', 
-      background: 'transparent', 
+      background: '#fff', 
       minHeight: 0,
       position: 'relative',
       width: '100%',
       overflow: 'hidden'
       }}>
-      {!characterSidebarVisible && (
+      {!characterSidebarVisible && createPortal(
         <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 1200 }}>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          {showChatSettingsHint && isMobile && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 'calc(100% + 0.5rem)',
-                right: '-0.35rem',
-                transform: 'translateY(0)',
-                background: '#232323',
-                color: '#fff',
-                borderRadius: 8,
-                padding: '0.4rem 0.6rem',
-                fontSize: '0.78rem',
-                lineHeight: 1.25,
-                width: 'clamp(170px, 48vw, 230px)',
-                maxWidth: 'calc(100vw - 1rem)',
-                whiteSpace: 'normal',
-                boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)',
-                zIndex: 1200,
-              }}
-            >
-              点击这里打开聊天设置
-              <span
+            {showChatSettingsHint && isMobile && (
+              <div
                 style={{
                   position: 'absolute',
-                  width: 0,
-                  height: 0,
-                  borderStyle: 'solid',
-                  top: '-7px',
-                  right: '12px',
-                  borderWidth: '0 7px 7px 7px',
-                  borderColor: 'transparent transparent #232323 transparent',
+                  top: 'calc(100% + 0.5rem)',
+                  right: '-0.35rem',
+                  transform: 'translateY(0)',
+                  background: '#232323',
+                  color: '#fff',
+                  borderRadius: 8,
+                  padding: '0.4rem 0.6rem',
+                  fontSize: '0.78rem',
+                  lineHeight: 1.25,
+                  width: 'clamp(170px, 48vw, 230px)',
+                  maxWidth: 'calc(100vw - 1rem)',
+                  whiteSpace: 'normal',
+                  boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)',
+                  zIndex: 1200,
                 }}
-              />
-            </div>
-          )}
+              >
+                点击这里打开聊天设置
+                <span
+                  style={{
+                    position: 'absolute',
+                    width: 0,
+                    height: 0,
+                    borderStyle: 'solid',
+                    top: '-7px',
+                    right: '12px',
+                    borderWidth: '0 7px 7px 7px',
+                    borderColor: 'transparent transparent #232323 transparent',
+                  }}
+                />
+              </div>
+            )}
 
-          <button
-            type="button"
-            onClick={() => {
-              setShowChatSettingsHint(false);
-              onToggleCharacterSidebar();
-            }}
-            aria-label={characterSidebarVisible ? t('topbar.hide_character_sidebar') : t('topbar.show_character_sidebar')}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              width: '2.35rem',
-              height: '2.35rem',
-              padding: 0,
-              margin: 0,
-              color: '#232323',
-              fontSize: '1.4rem',
-              cursor: 'pointer',
-              outline: 'none',
-              boxShadow: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'background 0.16s, color 0.15s',
-              lineHeight: 1,
-              borderRadius: '50%',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-          >
-            <i
-              className={`bi ${characterSidebarVisible ? 'bi-chat-square-text-fill' : 'bi-chat-square-text'}`}
-              style={{ fontSize: '1.4rem', pointerEvents: 'none' }}
-            ></i>
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowChatSettingsHint(false);
+                onToggleCharacterSidebar();
+              }}
+              aria-label={characterSidebarVisible ? t('topbar.hide_character_sidebar') : t('topbar.show_character_sidebar')}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                width: '2.35rem',
+                height: '2.35rem',
+                padding: 0,
+                margin: 0,
+                color: '#232323',
+                fontSize: '1.4rem',
+                cursor: 'pointer',
+                outline: 'none',
+                boxShadow: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background 0.16s, color 0.15s',
+                lineHeight: 1,
+                borderRadius: '50%',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <i
+                className={`bi ${characterSidebarVisible ? 'bi-chat-square-text-fill' : 'bi-chat-square-text'}`}
+                style={{ fontSize: '1.4rem', pointerEvents: 'none' }}
+              ></i>
+            </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
       {/* Main Chat Area */}
       <div style={{ 
@@ -2705,26 +2710,6 @@ export default function ChatPage() {
           </div>
         </form>
       </div>
-
-      <SceneCharacterSelectModal
-        show={initModal}
-        loading={initLoading}
-        selectedScene={selectedScene}
-        onSelectCharacter={() => setCharacterModal({ show: true })}
-        selectedCharacter={selectedCharacter}
-        setSelectedCharacter={setSelectedCharacter}
-        onStartChat={async () => {
-          await startChatFromSceneSelection();
-        }}
-        onCancel={() => {
-          if (!initialized.current) {
-            navigate(-1);
-          } else {
-            setInitModal(false);
-          }
-        }}
-        isMobile={isMobile}
-      />
       <CharacterSidebar
         characterSidebarVisible={characterSidebarVisible}
         onToggleCharacterSidebar={onToggleCharacterSidebar}
@@ -2788,6 +2773,27 @@ export default function ChatPage() {
           }
         }}
       />
+    </div>
+
+      <SceneCharacterSelectModal
+        show={initModal}
+        loading={initLoading}
+        selectedScene={selectedScene}
+        onSelectCharacter={() => setCharacterModal({ show: true })}
+        selectedCharacter={selectedCharacter}
+        setSelectedCharacter={setSelectedCharacter}
+        onStartChat={async () => {
+          await startChatFromSceneSelection();
+        }}
+        onCancel={() => {
+          if (!initialized.current) {
+            navigate(-1);
+          } else {
+            setInitModal(false);
+          }
+        }}
+        isMobile={isMobile}
+      />
       <CharacterModal
         show={characterModal.show}
         onClose={() => setCharacterModal({ show: false })}
@@ -2815,7 +2821,6 @@ export default function ChatPage() {
         onConfirm={handleDeleteConfirmed}
         onCancel={() => setConfirmModal({ show: false, chatId: null })}
       />
-    </div>
     </PageWrapper>
   );
 }
