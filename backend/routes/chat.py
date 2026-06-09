@@ -230,7 +230,18 @@ def parse_chat_config(chat_config):
         return defaults
 
     config = dict(defaults)
-    allowed_models = {"deepseek-chat", "deepseek-reasoner"}
+    allowed_models = {
+        "deepseek-chat",
+        "deepseek-reasoner",
+        "qwen3.7-max",
+        "qwen3.7-plus",
+        "qwen3.6-flash",
+        "deepseek-v4-flash",
+        "glm-5.1",
+        "kimi-k2.6",
+        "MiniMax-M2.5",
+        "mimo-v2.5-pro",
+    }
     model = chat_config.get("model")
     if isinstance(model, str) and model in allowed_models:
         config["model"] = model
@@ -520,11 +531,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 "total_tokens": 0,
             }
             try:
-                print(
-                    "[chat] prepared_messages:",
-                    json.dumps(prepared_messages, ensure_ascii=False, indent=2),
-                    flush=True,
-                )
                 for stream_event in stream_chat_completion_with_config(
                     prepared_messages,
                     model=chat_config["model"],
@@ -648,11 +654,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     else:
         # Non-streaming fallback (original logic)
         try:
-            print(
-                "[chat] prepared_messages:",
-                json.dumps(prepared_messages, ensure_ascii=False, indent=2),
-                flush=True,
-            )
             response = client.chat.completions.create(
                 model=chat_config["model"],
                 messages=prepared_messages,

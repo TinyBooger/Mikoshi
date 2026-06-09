@@ -138,7 +138,18 @@ def parse_character_chat_config(
     presence_penalty: float,
     frequency_penalty: float,
 ):
-    allowed_models = {"deepseek-chat", "deepseek-reasoner"}
+    allowed_models = {
+        "deepseek-chat",
+        "deepseek-reasoner",
+        "qwen3.7-max",
+        "qwen3.7-plus",
+        "qwen3.6-flash",
+        "deepseek-v4-flash",
+        "glm-5.1",
+        "kimi-k2.6",
+        "MiniMax-M2.5",
+        "mimo-v2.5-pro",
+    }
     safe_model = model if model in allowed_models else "deepseek-chat"
     safe_temperature = max(0.0, min(2.0, float(temperature)))
     safe_top_p = max(0.0, min(1.0, float(top_p)))

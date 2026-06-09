@@ -29,16 +29,23 @@ const WALLPAPER_OPTIONS = [
 const MOBILE_LONG_PRESS_MS = 1000;
 const MAX_PINNED_MEMORIES = 10;
 const DEFAULT_BRANCH_ID = 'branch_main';
-const TOKEN_LIMITS_BY_MODEL = {
-  'deepseek-chat': { min: 1, max: 8192, defaultValue: 4096 },
-  'deepseek-reasoner': { min: 1, max: 65536, defaultValue: 32768 },
-};
-const TOKEN_TIERS_BY_MODEL = {
-  'deepseek-chat': [1024, 2048, 4096, 6144, 8192],
-  'deepseek-reasoner': [8192, 16384, 32768, 49152, 65536],
-};
-const getTokenLimits = (modelName) => TOKEN_LIMITS_BY_MODEL[modelName] || TOKEN_LIMITS_BY_MODEL['deepseek-chat'];
-const getTokenTiers = (modelName) => TOKEN_TIERS_BY_MODEL[modelName] || TOKEN_TIERS_BY_MODEL['deepseek-chat'];
+const AVAILABLE_CHAT_MODELS = [
+  'deepseek-chat',
+  'deepseek-reasoner',
+  'qwen3.7-max',
+  'qwen3.7-plus',
+  'qwen3.6-flash',
+  'deepseek-v4-flash',
+  'glm-5.1',
+  'kimi-k2.6',
+  'MiniMax-M2.5',
+  'mimo-v2.5-pro',
+];
+const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
+const SHARED_TOKEN_TIERS = [1024, 2048, 4096, 6144, 8192];
+const ALLOWED_CHAT_MODELS = new Set(AVAILABLE_CHAT_MODELS);
+const getTokenLimits = () => SHARED_TOKEN_LIMITS;
+const getTokenTiers = () => SHARED_TOKEN_TIERS;
 const clamp = (value, min, max, fallback) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
@@ -303,17 +310,18 @@ export default function ChatPage() {
     model: 'deepseek-chat',
     temperature: 1.3,
     top_p: 0.9,
-    max_tokens: TOKEN_LIMITS_BY_MODEL['deepseek-chat'].defaultValue,
+    max_tokens: SHARED_TOKEN_LIMITS.defaultValue,
     presence_penalty: 0,
     frequency_penalty: 0,
     context_window_tier: DEFAULT_CONTEXT_WINDOW_TIER,
   };
+  const normalizeChatModel = (modelName) => (ALLOWED_CHAT_MODELS.has(modelName) ? modelName : DEFAULT_ADVANCED_CHAT_CONFIG.model);
   const normalizeAdvancedChatConfig = (character) => {
     if (!canUseAdvancedChatConfig) {
       return DEFAULT_ADVANCED_CHAT_CONFIG;
     }
     if (!character) return DEFAULT_ADVANCED_CHAT_CONFIG;
-    const model = character.model === 'deepseek-reasoner' ? 'deepseek-reasoner' : 'deepseek-chat';
+    const model = normalizeChatModel(character.model);
     const tokenLimits = getTokenLimits(model);
     const normalizedContextWindowTier = normalizeContextWindowTier(character.context_window_tier, {
       canUseAdvancedConfig: canUseAdvancedChatConfig,
@@ -338,7 +346,7 @@ export default function ChatPage() {
       return fallback;
     }
 
-    const model = rawConfig.model === 'deepseek-reasoner' ? 'deepseek-reasoner' : 'deepseek-chat';
+    const model = normalizeChatModel(rawConfig.model);
     const tokenLimits = getTokenLimits(model);
     const normalizedContextWindowTier = normalizeContextWindowTier(rawConfig.context_window_tier, {
       canUseAdvancedConfig: canUseAdvancedChatConfig,

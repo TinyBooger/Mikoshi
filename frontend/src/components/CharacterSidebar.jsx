@@ -71,28 +71,28 @@ export default function CharacterSidebar({
   const [reportIconFocused, setReportIconFocused] = React.useState(false);
   const { t } = useTranslation();
   const isProUser = !!userData?.is_pro;
-  const TOKEN_LIMITS_BY_MODEL = {
-    'deepseek-chat': { min: 1, max: 8192, defaultValue: 4096 },
-    'deepseek-reasoner': { min: 1, max: 65536, defaultValue: 32768 },
-  };
-  const TOKEN_TIERS_BY_MODEL = {
-    'deepseek-chat': [
-      { value: 1024, labelKey: 'short_sentence' },
-      { value: 2048, labelKey: 'paragraph' },
-      { value: 4096, labelKey: 'long' },
-      { value: 6144, labelKey: 'very_long' },
-      { value: 8192, labelKey: 'maximum' },
-    ],
-    'deepseek-reasoner': [
-      { value: 8192, labelKey: 'short_sentence' },
-      { value: 16384, labelKey: 'paragraph' },
-      { value: 32768, labelKey: 'long' },
-      { value: 49152, labelKey: 'very_long' },
-      { value: 65536, labelKey: 'maximum' },
-    ],
-  };
-  const getTokenLimits = (modelName) => TOKEN_LIMITS_BY_MODEL[modelName] || TOKEN_LIMITS_BY_MODEL['deepseek-chat'];
-  const getTokenTiers = (modelName) => TOKEN_TIERS_BY_MODEL[modelName] || TOKEN_TIERS_BY_MODEL['deepseek-chat'];
+  const AVAILABLE_CHAT_MODELS = [
+    'deepseek-chat',
+    'deepseek-reasoner',
+    'qwen3.7-max',
+    'qwen3.7-plus',
+    'qwen3.6-flash',
+    'deepseek-v4-flash',
+    'glm-5.1',
+    'kimi-k2.6',
+    'MiniMax-M2.5',
+    'mimo-v2.5-pro',
+  ];
+  const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
+  const SHARED_TOKEN_TIERS = [
+    { value: 1024, labelKey: 'short_sentence' },
+    { value: 2048, labelKey: 'paragraph' },
+    { value: 4096, labelKey: 'long' },
+    { value: 6144, labelKey: 'very_long' },
+    { value: 8192, labelKey: 'maximum' },
+  ];
+  const getTokenLimits = () => SHARED_TOKEN_LIMITS;
+  const getTokenTiers = () => SHARED_TOKEN_TIERS;
   const clampValue = (value, min, max, fallback) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
@@ -932,8 +932,9 @@ export default function CharacterSidebar({
                 disabled={!canUseAdvancedChatConfig}
                 style={{ marginBottom: 10, borderRadius: 8 }}
               >
-                <option value="deepseek-chat">deepseek-chat</option>
-                <option value="deepseek-reasoner">deepseek-reasoner</option>
+                {AVAILABLE_CHAT_MODELS.map(modelName => (
+                  <option key={modelName} value={modelName}>{modelName}</option>
+                ))}
               </select>
 
               <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
