@@ -218,7 +218,7 @@ def generate_chat_title(messages, existing_title=None):
 
 def parse_chat_config(chat_config):
     defaults = {
-        "model": "deepseek-chat",
+        "model": "deepseek-v4-flash",
         "max_tokens": 250,
         "temperature": 1.3,
         "top_p": 0.9,
@@ -231,16 +231,16 @@ def parse_chat_config(chat_config):
 
     config = dict(defaults)
     allowed_models = {
-        "deepseek-chat",
-        "deepseek-reasoner",
+        "deepseek-v4-pro",
+        "deepseek-v4-flash",
         "qwen3.7-max",
         "qwen3.7-plus",
         "qwen3.6-flash",
-        "deepseek-v4-flash",
+        "qwen-plus-character",
+        "qwen-flash-character",
         "glm-5.1",
         "kimi-k2.6",
         "MiniMax-M2.5",
-        "mimo-v2.5-pro",
     }
     model = chat_config.get("model")
     if isinstance(model, str) and model in allowed_models:
@@ -269,7 +269,7 @@ def parse_chat_config(chat_config):
 
 def default_chat_config():
     return {
-        "model": "deepseek-chat",
+        "model": "deepseek-v4-flash",
         "max_tokens": 250,
         "temperature": 1.3,
         "top_p": 0.9,

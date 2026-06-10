@@ -106,7 +106,7 @@ def split_long_description_chunks(long_description: str) -> tuple[list[dict[str,
         return [], True, empty_usage
     try:
         response = client.chat.completions.create(
-            model="deepseek-chat",
+            model="deepseek-v4-flash",
             messages=[
                 {"role": "system", "content": LONG_DESCRIPTION_CHUNK_PROMPT},
                 {"role": "user", "content": source},
@@ -139,18 +139,19 @@ def parse_character_chat_config(
     frequency_penalty: float,
 ):
     allowed_models = {
-        "deepseek-chat",
-        "deepseek-reasoner",
+        "deepseek-v4-pro",
+        "deepseek-v4-flash",
         "qwen3.7-max",
         "qwen3.7-plus",
         "qwen3.6-flash",
+        "qwen-plus-character",
+        "qwen-flash-character",
         "deepseek-v4-flash",
         "glm-5.1",
         "kimi-k2.6",
         "MiniMax-M2.5",
-        "mimo-v2.5-pro",
     }
-    safe_model = model if model in allowed_models else "deepseek-chat"
+    safe_model = model if model in allowed_models else "deepseek-v4-flash"
     safe_temperature = max(0.0, min(2.0, float(temperature)))
     safe_top_p = max(0.0, min(1.0, float(top_p)))
     safe_max_tokens = max(1, min(8192, int(max_tokens)))
@@ -168,7 +169,7 @@ def parse_character_chat_config(
 
 def default_character_chat_config():
     return {
-        "model": "deepseek-chat",
+        "model": "deepseek-v4-flash",
         "temperature": 1.3,
         "top_p": 0.9,
         "max_tokens": 250,
@@ -186,7 +187,7 @@ async def create_character(
     sample_dialogue: str = Form(""),
     long_description: str = Form(""),
     context_label: str = Form("standard"),
-    model: str = Form("deepseek-chat"),
+    model: str = Form("deepseek-v4-flash"),
     temperature: float = Form(1.3),
     top_p: float = Form(0.9),
     max_tokens: int = Form(250),
@@ -412,13 +413,7 @@ async def update_character(
     sample_dialogue: str = Form(""),
     long_description: str = Form(""),
     context_label: Optional[str] = Form(None),
-    model: str = Form("deepseek-chat"),
-    temperature: float = Form(1.3),
-    top_p: float = Form(0.9),
-    max_tokens: int = Form(250),
-    presence_penalty: float = Form(0),
-    frequency_penalty: float = Form(0),
-    is_public: Optional[bool] = Form(None),
+    model: str = Form("deepseek-v4-flash"),
     is_forkable: Optional[bool] = Form(None),
     picture: UploadFile = File(None),
     avatar_picture: UploadFile = File(None),

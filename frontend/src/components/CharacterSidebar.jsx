@@ -72,16 +72,17 @@ export default function CharacterSidebar({
   const { t } = useTranslation();
   const isProUser = !!userData?.is_pro;
   const AVAILABLE_CHAT_MODELS = [
-    'deepseek-chat',
-    'deepseek-reasoner',
+    'deepseek-v4-pro',
+    'deepseek-v4-flash',
     'qwen3.7-max',
     'qwen3.7-plus',
     'qwen3.6-flash',
+    'qwen-plus-character',
+    'qwen-flash-character',
     'deepseek-v4-flash',
     'glm-5.1',
     'kimi-k2.6',
     'MiniMax-M2.5',
-    'mimo-v2.5-pro',
   ];
   const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
   const SHARED_TOKEN_TIERS = [
@@ -105,8 +106,8 @@ export default function CharacterSidebar({
       Math.abs(tier.value - clamped) < Math.abs(nearest.value - clamped) ? tier : nearest
     ), tiers[0]).value;
   };
-  const selectedTokenLimits = getTokenLimits(advancedChatConfig?.model || 'deepseek-chat');
-  const selectedTokenTiers = getTokenTiers(advancedChatConfig?.model || 'deepseek-chat');
+  const selectedTokenLimits = getTokenLimits(advancedChatConfig?.model || 'deepseek-v4-flash');
+  const selectedTokenTiers = getTokenTiers(advancedChatConfig?.model || 'deepseek-v4-flash');
 
   const contextWindowTierOptions = getContextWindowTierOptions({
     canUseAdvancedConfig: canUseAdvancedChatConfig,
@@ -927,7 +928,7 @@ export default function CharacterSidebar({
               </label>
               <select
                 className="form-select form-select-sm"
-                value={advancedChatConfig?.model || 'deepseek-chat'}
+                value={advancedChatConfig?.model || 'deepseek-v4-flash'}
                 onChange={(e) => handleModelChange(e.target.value)}
                 disabled={!canUseAdvancedChatConfig}
                 style={{ marginBottom: 10, borderRadius: 8 }}
@@ -973,7 +974,7 @@ export default function CharacterSidebar({
               </label>
               <select
                 className="form-select form-select-sm"
-                value={normalizeTokenTierValue(advancedChatConfig?.model || 'deepseek-chat', advancedChatConfig?.max_tokens ?? selectedTokenLimits.defaultValue)}
+                value={normalizeTokenTierValue(advancedChatConfig?.model || 'deepseek-v4-flash', advancedChatConfig?.max_tokens ?? selectedTokenLimits.defaultValue)}
                 onChange={(e) => setAdvancedChatConfig((prev) => ({ ...prev, max_tokens: Number(e.target.value) }))}
                 disabled={!canUseAdvancedChatConfig}
                 style={{ marginBottom: 10, borderRadius: 8 }}

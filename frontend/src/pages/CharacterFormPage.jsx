@@ -17,16 +17,17 @@ import BanNotice from '../components/BanNotice';
 export default function CharacterFormPage() {
   const { t } = useTranslation();
   const AVAILABLE_CHAT_MODELS = [
-    'deepseek-chat',
-    'deepseek-reasoner',
+    'deepseek-v4-pro',
+    'deepseek-v4-flash',
     'qwen3.7-max',
     'qwen3.7-plus',
     'qwen3.6-flash',
+    'qwen-plus-character',
+    'qwen-flash-character',
     'deepseek-v4-flash',
     'glm-5.1',
     'kimi-k2.6',
     'MiniMax-M2.5',
-    'mimo-v2.5-pro',
   ];
   const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096, step: 128 };
   const SHARED_TOKEN_TIERS = [
@@ -88,7 +89,7 @@ export default function CharacterFormPage() {
     );
   };
   const DEFAULT_CHAT_CONFIG = {
-    model: 'deepseek-chat',
+    model: 'deepseek-v4-flash',
     temperature: 1.3,
     top_p: 0.9,
     max_tokens: 4096,

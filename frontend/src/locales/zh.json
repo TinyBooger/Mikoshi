@@ -382,10 +382,10 @@
       "locked_notice": "成为 Pro 用户以解锁高级设置。"
     },
     "advanced_help": {
-      "model": "选择语言模型。`deepseek-chat` 更适合通用角色扮演；`deepseek-reasoner` 推理更充分，但通常更慢。",
+      "model": "选择语言模型。`deepseek-v4-pro` 更适合通用角色扮演；`deepseek-v4-flash` 回复更快。",
       "temperature": "控制随机性。值越低越稳定可预测；值越高越有创意和变化。",
       "top_p": "核采样范围。值越低可选词更集中、回复更收敛；值越高表达更发散多样。一般不建议与 Temperature 同时调节。",
-      "max_tokens": "单次回复的最大长度。deepseek-chat 默认 4096（最大 8192）；deepseek-reasoner 默认 32768（最大 65536）。",
+      "max_tokens": "单次回复的最大长度。deepseek-v4-pro 默认 4096（最大 8192）；deepseek-v4-flash 默认 32768（最大 65536）。",
       "presence_penalty": "鼓励引入新内容。值越高，越不容易反复围绕同一主题。",
       "frequency_penalty": "抑制重复用词。值越高，越能减少词语和句式重复。"
     },

@@ -16,7 +16,7 @@ QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compa
 client = _build_client(DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL)
 qwen_client = _build_client(QWEN_API_KEY, QWEN_BASE_URL)
 
-DEEPSEEK_DIRECT_MODELS = {"deepseek-chat", "deepseek-reasoner"}
+DEEPSEEK_DIRECT_MODELS = {"deepseek-v4-pro", "deepseek-v4-flash"}
 
 
 def _get_client_for_model(model):
@@ -27,7 +27,7 @@ def _get_client_for_model(model):
 
 def stream_chat_completion_with_config(
     messages,
-    model="deepseek-chat",
+    model="deepseek-v4-flash",
     max_tokens=250,
     temperature=1.3,
     top_p=0.9,

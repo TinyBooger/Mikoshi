@@ -30,16 +30,17 @@ const MOBILE_LONG_PRESS_MS = 1000;
 const MAX_PINNED_MEMORIES = 10;
 const DEFAULT_BRANCH_ID = 'branch_main';
 const AVAILABLE_CHAT_MODELS = [
-  'deepseek-chat',
-  'deepseek-reasoner',
+  'deepseek-v4-pro',
+  'deepseek-v4-flash',
   'qwen3.7-max',
   'qwen3.7-plus',
   'qwen3.6-flash',
+  'qwen-plus-character',
+  'qwen-flash-character',
   'deepseek-v4-flash',
   'glm-5.1',
   'kimi-k2.6',
   'MiniMax-M2.5',
-  'mimo-v2.5-pro',
 ];
 const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
 const SHARED_TOKEN_TIERS = [1024, 2048, 4096, 6144, 8192];
@@ -307,10 +308,7 @@ export default function ChatPage() {
   const CHAT_INPUT_MAX_HEIGHT = 200;
   const CHAT_INPUT_BASE_HEIGHT = 44;
   const DEFAULT_ADVANCED_CHAT_CONFIG = {
-    model: 'deepseek-chat',
-    temperature: 1.3,
-    top_p: 0.9,
-    max_tokens: SHARED_TOKEN_LIMITS.defaultValue,
+    model: 'deepseek-v4-flash',
     presence_penalty: 0,
     frequency_penalty: 0,
     context_window_tier: DEFAULT_CONTEXT_WINDOW_TIER,

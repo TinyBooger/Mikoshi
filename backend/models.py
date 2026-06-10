@@ -23,7 +23,7 @@ class Character(Base):
     picture = Column(String, nullable=True)  # path or URL to the picture
     avatar_picture = Column(String, nullable=True)  # separate head/avatar image
     greeting = Column(String, nullable=True)
-    model = Column(String, nullable=False, default="deepseek-chat")
+    model = Column(String, nullable=False, default="deepseek-v4-flash")
     temperature = Column(Float, nullable=False, default=1.3)
     top_p = Column(Float, nullable=False, default=0.9)
     max_tokens = Column(Integer, nullable=False, default=250)

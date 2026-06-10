@@ -67,7 +67,7 @@ class CharacterOut(BaseModel):
     picture: Optional[str] = None
     avatar_picture: Optional[str] = None
     greeting: Optional[str] = None
-    model: str = "deepseek-chat"
+    model: str = "deepseek-v4-flash"
     temperature: float = 1.3
     top_p: float = 0.9
     max_tokens: int = 250

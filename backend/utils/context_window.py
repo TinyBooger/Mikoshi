@@ -10,7 +10,7 @@ ROLE_LABELS = {
     "user": "User",
     "assistant": "Assistant",
 }
-SUMMARY_MODEL = "deepseek-chat"
+SUMMARY_MODEL = "deepseek-v4-flash"
 SUMMARY_SYSTEM_PROMPT = (
     "You are a conversation memory compressor. "
     "Summarize the provided dialogue history into a compact memory for future turns. "
