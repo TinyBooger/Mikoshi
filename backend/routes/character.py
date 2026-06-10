@@ -9,6 +9,7 @@ import json
 
 from database import get_db
 from models import Character, User, Tag, UserLikedCharacter, ChatHistory
+from model_configs import ALLOWED_MODEL_IDS, get_model
 
 from utils.session import get_current_user, get_optional_current_user
 from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
@@ -138,23 +139,12 @@ def parse_character_chat_config(
     presence_penalty: float,
     frequency_penalty: float,
 ):
-    allowed_models = {
-        "deepseek-v4-pro",
-        "deepseek-v4-flash",
-        "qwen3.7-max",
-        "qwen3.7-plus",
-        "qwen3.6-flash",
-        "qwen-plus-character",
-        "qwen-flash-character",
-        "deepseek-v4-flash",
-        "glm-5.1",
-        "kimi-k2.6",
-        "MiniMax-M2.5",
-    }
-    safe_model = model if model in allowed_models else "deepseek-v4-flash"
+    safe_model = model if model in ALLOWED_MODEL_IDS else "deepseek-v4-flash"
     safe_temperature = max(0.0, min(2.0, float(temperature)))
     safe_top_p = max(0.0, min(1.0, float(top_p)))
-    safe_max_tokens = max(1, min(8192, int(max_tokens)))
+    model_cfg = get_model(safe_model)
+    max_output = model_cfg.max_output_tokens if model_cfg else 8192
+    safe_max_tokens = max(1, min(max_output, int(max_tokens)))
     safe_presence_penalty = max(-2.0, min(2.0, float(presence_penalty)))
     safe_frequency_penalty = max(-2.0, min(2.0, float(frequency_penalty)))
     return {

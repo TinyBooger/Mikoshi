@@ -17,6 +17,7 @@ import {
   getContextWindowTokenLimit,
   normalizeContextWindowTier,
 } from '../utils/contextWindow';
+import { getModelConfig, AVAILABLE_MODEL_IDS, ALLOWED_MODEL_SET } from '../utils/modelConfigs';
 import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/tokenDisplay';
 
 const WALLPAPER_OPTIONS = [
@@ -29,24 +30,14 @@ const WALLPAPER_OPTIONS = [
 const MOBILE_LONG_PRESS_MS = 1000;
 const MAX_PINNED_MEMORIES = 10;
 const DEFAULT_BRANCH_ID = 'branch_main';
-const AVAILABLE_CHAT_MODELS = [
-  'deepseek-v4-pro',
-  'deepseek-v4-flash',
-  'qwen3.7-max',
-  'qwen3.7-plus',
-  'qwen3.6-flash',
-  'qwen-plus-character',
-  'qwen-flash-character',
-  'deepseek-v4-flash',
-  'glm-5.1',
-  'kimi-k2.6',
-  'MiniMax-M2.5',
-];
 const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
 const SHARED_TOKEN_TIERS = [1024, 2048, 4096, 6144, 8192];
-const ALLOWED_CHAT_MODELS = new Set(AVAILABLE_CHAT_MODELS);
 const getTokenLimits = () => SHARED_TOKEN_LIMITS;
-const getTokenTiers = () => SHARED_TOKEN_TIERS;
+const getTokenTiers = (modelId) => {
+  const cfg = getModelConfig(modelId);
+  if (!cfg) return SHARED_TOKEN_TIERS;
+  return SHARED_TOKEN_TIERS.filter((t) => t <= cfg.maxOutputTokens);
+};
 const clamp = (value, min, max, fallback) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
@@ -313,7 +304,7 @@ export default function ChatPage() {
     frequency_penalty: 0,
     context_window_tier: DEFAULT_CONTEXT_WINDOW_TIER,
   };
-  const normalizeChatModel = (modelName) => (ALLOWED_CHAT_MODELS.has(modelName) ? modelName : DEFAULT_ADVANCED_CHAT_CONFIG.model);
+  const normalizeChatModel = (modelName) => (ALLOWED_MODEL_SET.has(modelName) ? modelName : DEFAULT_ADVANCED_CHAT_CONFIG.model);
   const normalizeAdvancedChatConfig = (character) => {
     if (!canUseAdvancedChatConfig) {
       return DEFAULT_ADVANCED_CHAT_CONFIG;
@@ -324,7 +315,7 @@ export default function ChatPage() {
     const normalizedContextWindowTier = normalizeContextWindowTier(character.context_window_tier, {
       canUseAdvancedConfig: canUseAdvancedChatConfig,
       isProUser,
-    });
+    }, model);
     return {
       model,
       temperature: clamp(character.temperature, 0, 2, DEFAULT_ADVANCED_CHAT_CONFIG.temperature),
@@ -349,7 +340,7 @@ export default function ChatPage() {
     const normalizedContextWindowTier = normalizeContextWindowTier(rawConfig.context_window_tier, {
       canUseAdvancedConfig: canUseAdvancedChatConfig,
       isProUser,
-    });
+    }, model);
 
     return {
       model,

@@ -6,9 +6,10 @@ import InfoCard from './InfoCard';
 import ProblemReportModal from './ProblemReportModal';
 import { useTranslation } from 'react-i18next';
 import {
-  getContextWindowTierOptions,
+  getFilteredContextWindowTierOptions,
   normalizeContextWindowTier,
 } from '../utils/contextWindow';
+import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import { useToast } from '../components/ToastProvider';
 
 
@@ -71,19 +72,6 @@ export default function CharacterSidebar({
   const [reportIconFocused, setReportIconFocused] = React.useState(false);
   const { t } = useTranslation();
   const isProUser = !!userData?.is_pro;
-  const AVAILABLE_CHAT_MODELS = [
-    'deepseek-v4-pro',
-    'deepseek-v4-flash',
-    'qwen3.7-max',
-    'qwen3.7-plus',
-    'qwen3.6-flash',
-    'qwen-plus-character',
-    'qwen-flash-character',
-    'deepseek-v4-flash',
-    'glm-5.1',
-    'kimi-k2.6',
-    'MiniMax-M2.5',
-  ];
   const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
   const SHARED_TOKEN_TIERS = [
     { value: 1024, labelKey: 'short_sentence' },
@@ -93,7 +81,15 @@ export default function CharacterSidebar({
     { value: 8192, labelKey: 'maximum' },
   ];
   const getTokenLimits = () => SHARED_TOKEN_LIMITS;
-  const getTokenTiers = () => SHARED_TOKEN_TIERS;
+  /**
+   * Return token tiers filtered by the selected model's max_output_tokens.
+   * Tiers whose value exceeds the model cap are excluded.
+   */
+  const getTokenTiers = (modelId) => {
+    const cfg = getModelConfig(modelId);
+    if (!cfg) return SHARED_TOKEN_TIERS;
+    return SHARED_TOKEN_TIERS.filter((t) => t.value <= cfg.maxOutputTokens);
+  };
   const clampValue = (value, min, max, fallback) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
@@ -109,14 +105,14 @@ export default function CharacterSidebar({
   const selectedTokenLimits = getTokenLimits(advancedChatConfig?.model || 'deepseek-v4-flash');
   const selectedTokenTiers = getTokenTiers(advancedChatConfig?.model || 'deepseek-v4-flash');
 
-  const contextWindowTierOptions = getContextWindowTierOptions({
+  const contextWindowTierOptions = getFilteredContextWindowTierOptions({
     canUseAdvancedConfig: canUseAdvancedChatConfig,
     isProUser,
-  });
+  }, advancedChatConfig?.model);
   const selectedContextWindowTier = normalizeContextWindowTier(advancedChatConfig?.context_window_tier, {
     canUseAdvancedConfig: canUseAdvancedChatConfig,
     isProUser,
-  });
+  }, advancedChatConfig?.model);
   const updateConfig = (key, value, min, max, fallback) => {
     const parsed = Number(value);
     const nextValue = Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
@@ -124,10 +120,16 @@ export default function CharacterSidebar({
   };
   const handleModelChange = (nextModel) => {
     const nextTokenLimits = getTokenLimits(nextModel);
+    const nextContextTier = normalizeContextWindowTier(
+      advancedChatConfig?.context_window_tier,
+      { canUseAdvancedConfig: canUseAdvancedChatConfig, isProUser },
+      nextModel,
+    );
     setAdvancedChatConfig((prev) => ({
       ...prev,
       model: nextModel,
       max_tokens: normalizeTokenTierValue(nextModel, nextTokenLimits.defaultValue),
+      context_window_tier: nextContextTier,
     }));
   };
   const InfoHint = ({ hintKey }) => {
@@ -933,7 +935,7 @@ export default function CharacterSidebar({
                 disabled={!canUseAdvancedChatConfig}
                 style={{ marginBottom: 10, borderRadius: 8 }}
               >
-                {AVAILABLE_CHAT_MODELS.map(modelName => (
+                {AVAILABLE_MODEL_IDS.map(modelName => (
                   <option key={modelName} value={modelName}>{modelName}</option>
                 ))}
               </select>
@@ -996,7 +998,7 @@ export default function CharacterSidebar({
                   const normalizedTier = normalizeContextWindowTier(e.target.value, {
                     canUseAdvancedConfig: canUseAdvancedChatConfig,
                     isProUser,
-                  });
+                  }, advancedChatConfig?.model);
                   setAdvancedChatConfig((prev) => ({ ...prev, context_window_tier: normalizedTier }));
                 }}
                 disabled={!canUseAdvancedChatConfig}

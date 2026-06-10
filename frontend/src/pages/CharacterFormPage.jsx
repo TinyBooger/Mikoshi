@@ -12,23 +12,11 @@ import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/tokenDisplay';
+import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import BanNotice from '../components/BanNotice';
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
-  const AVAILABLE_CHAT_MODELS = [
-    'deepseek-v4-pro',
-    'deepseek-v4-flash',
-    'qwen3.7-max',
-    'qwen3.7-plus',
-    'qwen3.6-flash',
-    'qwen-plus-character',
-    'qwen-flash-character',
-    'deepseek-v4-flash',
-    'glm-5.1',
-    'kimi-k2.6',
-    'MiniMax-M2.5',
-  ];
   const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096, step: 128 };
   const SHARED_TOKEN_TIERS = [
     { value: 1024, labelKey: 'short_sentence' },
@@ -38,12 +26,16 @@ export default function CharacterFormPage() {
     { value: 8192, labelKey: 'maximum' },
   ];
   const normalizeModelName = (modelName) => (
-    AVAILABLE_CHAT_MODELS.includes(modelName)
+    AVAILABLE_MODEL_IDS.includes(modelName)
       ? modelName
       : DEFAULT_CHAT_CONFIG.model
   );
   const getTokenLimits = () => SHARED_TOKEN_LIMITS;
-  const getTokenTiers = () => SHARED_TOKEN_TIERS;
+  const getTokenTiers = (modelId) => {
+    const cfg = getModelConfig(modelId);
+    if (!cfg) return SHARED_TOKEN_TIERS;
+    return SHARED_TOKEN_TIERS.filter((t) => t.value <= cfg.maxOutputTokens);
+  };
   const clampValue = (value, min, max, fallback) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
@@ -957,7 +949,7 @@ export default function CharacterFormPage() {
                       disabled={!canUseAdvancedConfig}
                       style={{ borderRadius: 12 }}
                     >
-                      {AVAILABLE_CHAT_MODELS.map(modelName => (
+                      {AVAILABLE_MODEL_IDS.map(modelName => (
                         <option key={modelName} value={modelName}>{modelName}</option>
                       ))}
                     </select>

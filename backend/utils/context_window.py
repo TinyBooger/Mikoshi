@@ -1,8 +1,9 @@
 import re
 from math import ceil
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from utils.llm_client import client as llm_client
 from utils.usage_utils import normalize_usage
+from model_configs import get_model
 
 
 SUMMARY_PREFIX = "Summary of previous conversation:"
@@ -34,12 +35,29 @@ CONTEXT_WINDOW_TIERS = (
 )
 
 
-def get_context_window_tiers(*, is_pro: bool) -> list[dict]:
+def get_context_window_tiers(
+    *,
+    is_pro: bool,
+    model_id: Optional[str] = None,
+) -> list[dict]:
+    """
+    Return the available context-window tiers for the given user permissions.
+
+    When *model_id* is provided, tiers whose ``tokens`` exceed the model's
+    ``context_length`` are excluded.
+    """
     allowed: list[dict] = []
     for tier in CONTEXT_WINDOW_TIERS:
         if tier["pro_only"] and not is_pro:
             continue
         allowed.append(dict(tier))
+
+    if model_id:
+        model_cfg = get_model(model_id)
+        if model_cfg:
+            max_context = model_cfg.context_length
+            allowed = [t for t in allowed if t["tokens"] <= max_context]
+
     return allowed
 
 
@@ -48,11 +66,15 @@ def resolve_context_window_settings(
     *,
     can_use_advanced_config: bool,
     is_pro: bool,
+    model_id: Optional[str] = None,
 ) -> tuple[str, int]:
     if not can_use_advanced_config:
         return DEFAULT_CONTEXT_WINDOW_TIER, DEFAULT_SOFT_TOKEN_LIMIT
 
-    allowed_tiers = get_context_window_tiers(is_pro=is_pro)
+    allowed_tiers = get_context_window_tiers(is_pro=is_pro, model_id=model_id)
+    if not allowed_tiers:
+        return DEFAULT_CONTEXT_WINDOW_TIER, DEFAULT_SOFT_TOKEN_LIMIT
+
     tier_by_key = {str(tier["key"]): int(tier["tokens"]) for tier in allowed_tiers}
 
     requested_tier = ""

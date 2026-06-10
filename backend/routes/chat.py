@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse, StreamingResponse, Response
 from sqlalchemy.orm import Session
 from starlette.requests import ClientDisconnect
 from database import get_db
+from model_configs import ALLOWED_MODEL_IDS, get_model
 from utils.session import get_current_user
 from utils.llm_client import client, stream_chat_completion_with_config
 from utils.chat_history_utils import (
@@ -230,27 +231,18 @@ def parse_chat_config(chat_config):
         return defaults
 
     config = dict(defaults)
-    allowed_models = {
-        "deepseek-v4-pro",
-        "deepseek-v4-flash",
-        "qwen3.7-max",
-        "qwen3.7-plus",
-        "qwen3.6-flash",
-        "qwen-plus-character",
-        "qwen-flash-character",
-        "glm-5.1",
-        "kimi-k2.6",
-        "MiniMax-M2.5",
-    }
     model = chat_config.get("model")
-    if isinstance(model, str) and model in allowed_models:
+    if isinstance(model, str) and model in ALLOWED_MODEL_IDS:
         config["model"] = model
+
+    model_cfg = get_model(config["model"])
+    max_output = model_cfg.max_output_tokens if model_cfg else 8192
 
     try:
         config["max_tokens"] = int(chat_config.get("max_tokens", defaults["max_tokens"]))
     except (TypeError, ValueError):
         config["max_tokens"] = defaults["max_tokens"]
-    config["max_tokens"] = max(1, min(8192, config["max_tokens"]))
+    config["max_tokens"] = max(1, min(max_output, config["max_tokens"]))
 
     def clamp_float(key, min_value, max_value):
         try:
@@ -394,6 +386,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         raw_chat_config,
         can_use_advanced_config=can_use_advanced_config,
         is_pro=bool(current_user.is_pro),
+        model_id=chat_config.get("model"),
     )
     persisted_chat_config = {
         **chat_config,
