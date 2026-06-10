@@ -138,11 +138,11 @@ export default function UserStatsPage() {
       icon: 'bi-chat-dots',
     },
     {
-      title: 'Avg Daily Token Usage',
-      value: Number(metrics.avg_daily_tokens_per_active_user || 0).toFixed(2),
-      subtitle: 'API usage.total_tokens per active user',
-      border: 'success',
-      icon: 'bi-cpu',
+      title: 'Today Credit Sum',
+      value: Number(metrics.today_credit_sum || 0).toFixed(2),
+      subtitle: 'Total credits consumed today',
+      border: 'info',
+      icon: 'bi-coin',
     },
   ];
 
@@ -234,19 +234,23 @@ export default function UserStatsPage() {
                         <div className="border rounded p-3 h-100">
                           <div className="text-muted small">Daily Tokens</div>
                           <div className="fs-5 fw-bold">{Number(lookupResult.daily_tokens || 0).toLocaleString()}</div>
+                          <div className="text-muted small">Credits: {Number(lookupResult.daily_credits || 0).toFixed(2)}</div>
                         </div>
                       </div>
                       <div className="col-sm-6 col-lg-3">
                         <div className="border rounded p-3 h-100">
                           <div className="text-muted small">Monthly Tokens</div>
                           <div className="fs-5 fw-bold">{Number(lookupResult.monthly_tokens || 0).toLocaleString()}</div>
+                          <div className="text-muted small">Credits: {Number(lookupResult.monthly_credits || 0).toFixed(2)}</div>
                         </div>
                       </div>
                       <div className="col-sm-6 col-lg-3">
                         <div className="border rounded p-3 h-100">
                           <div className="text-muted small">Rolling 30d Tokens</div>
                           <div className="fs-5 fw-bold">{Number(lookupResult.rolling_30d_tokens || 0).toLocaleString()}</div>
+                          <div className="text-muted small">Credits: {Number(lookupResult.rolling_30d_credits || 0).toFixed(2)}</div>
                           <div className="small text-muted">Daily chat sessions: {lookupResult.daily_chat_sessions || 0}</div>
+                          <div className="small text-muted">Wallet: {Number(lookupResult.purchased_credit_balance || 0).toFixed(2)} credits</div>
                         </div>
                       </div>
                     </div>
@@ -267,18 +271,20 @@ export default function UserStatsPage() {
                         <tr>
                           <th>User ID</th>
                           <th className="text-end">Token Count</th>
+                          <th className="text-end">Credits</th>
                         </tr>
                       </thead>
                       <tbody>
                         {(data?.single_user_daily_token_usage || []).length === 0 ? (
                           <tr>
-                            <td colSpan="2" className="text-center py-3 text-muted">No usage data today</td>
+                            <td colSpan="3" className="text-center py-3 text-muted">No usage data today</td>
                           </tr>
                         ) : (
                           data.single_user_daily_token_usage.map((row) => (
                             <tr key={row.user_id}>
                               <td style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.user_id}</td>
                               <td className="text-end">{Number(row.total_tokens || 0).toLocaleString()}</td>
+                              <td className="text-end">{Number(row.credit_amount || 0).toFixed(2)}</td>
                             </tr>
                           ))
                         )}

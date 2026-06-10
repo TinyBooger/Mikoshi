@@ -116,6 +116,19 @@ class UserOut(BaseModel):
     is_admin: bool = False
     default_persona_id: Optional[int] = None
     default_persona: Optional[PersonaOut] = None
+    daily_credit_usage: float = 0.0
+    monthly_credit_usage: float = 0.0
+    credit_cap_scope: Optional[str] = None
+    credit_cap: Optional[float] = None
+    remaining_credits: Optional[float] = None
+    credit_cap_reached: bool = False
+    credit_reset_at: Optional[Any] = None
+    free_daily_credit_cap: float = 10.0
+    pro_monthly_credit_cap: float = 15000.0
+    purchased_credit_balance: float = 0.0
+    purchased_credits_bought_total: float = 0.0
+    purchased_credits_consumed_total: float = 0.0
+    # Legacy token fields (for backward compat with existing frontend code)
     daily_token_usage: int = 0
     monthly_token_usage: int = 0
     token_cap_scope: Optional[str] = None

@@ -28,6 +28,17 @@ export const formatCompactTokenCount = (value) => {
   return `${sign}${abs}`;
 };
 
+/** Format credit (点数) values — credits are small floats, show 2 decimal places */
+export const formatCreditCount = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return '0';
+  if (numeric < 0.01) return '<0.01';
+  return trimTrailingZeros(numeric, 2);
+};
+
 export const getTokenQuotaLabel = (scope) => (
-  scope === 'monthly' ? '本月token额度' : '本日token额度'
+  scope === 'monthly' ? '本月点数额度' : '本日点数额度'
 );
+
+/** Legacy alias */
+export const getCreditQuotaLabel = getTokenQuotaLabel;

@@ -218,7 +218,7 @@ export default function TokenTopUpPage() {
               <div>
                 <h1 className="fw-bold mb-1" style={{ fontSize: '2rem', color: '#1f2937' }}>Token充值</h1>
                 <p className="text-muted mb-0">
-                  套餐会充值到钱包，套餐额度用完后自动抵扣钱包Token。
+                  套餐会充值到钱包，套餐额度用完后自动抵扣钱包点数。
                   <button className="btn btn-link p-0 ms-2" style={{ fontSize: '0.98em' }} onClick={() => setShowRefundModal(true)}>
                     退款政策
                   </button>
@@ -228,9 +228,9 @@ export default function TokenTopUpPage() {
                 className="px-3 py-2 rounded-3"
                 style={{ background: '#fff', border: '1px solid #e5e7eb', minWidth: 220 }}
               >
-                <div style={{ fontSize: '0.76rem', color: '#6b7280', fontWeight: 700 }}>当前钱包余额</div>
+                <div style={{ fontSize: '0.76rem', color: '#6b7280', fontWeight: 700 }}>当前钱包余额（点数）</div>
                 <div style={{ fontSize: '1.2rem', color: '#111827', fontWeight: 800 }}>
-                  {formatCompactTokenCount(Number(userData?.purchased_token_balance || 0))}
+                  {formatCompactTokenCount(Number(userData?.purchased_credit_balance || userData?.purchased_token_balance || 0))}
                 </div>
               </div>
             </div>
@@ -240,8 +240,8 @@ export default function TokenTopUpPage() {
             ) : (
               <div className="row g-3 g-lg-4">
                 {sortedPackages.map((pkg) => {
-                  const isPopular = Number(pkg.tokens) === 2000000;
-                  const isStandard = Number(pkg.tokens) === 1000000;
+                  const isPopular = Number(pkg.credits || pkg.tokens) === 2000 || Number(pkg.tokens) === 2000000;
+                  const isStandard = Number(pkg.credits || pkg.tokens) === 1000 || Number(pkg.tokens) === 1000000;
                   const isSelected = selectedPackageId === pkg.id;
                   return (
                     <div key={pkg.id} className="col-12 col-md-6 col-lg-4">

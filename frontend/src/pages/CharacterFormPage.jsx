@@ -156,22 +156,22 @@ export default function CharacterFormPage() {
   const effectiveContextLabel = charData.context_label === 'advanced' ? 'advanced' : 'standard';
 
   const formatTokenCapError = (payload) => {
-    const tokenPayload = payload?.error === 'TOKEN_CAP_REACHED'
+    const tokenPayload = payload?.error === 'TOKEN_CAP_REACHED' || payload?.error === 'CREDIT_CAP_REACHED'
       ? payload
-      : (payload?.detail?.error === 'TOKEN_CAP_REACHED' ? payload.detail : null);
+      : (payload?.detail?.error === 'TOKEN_CAP_REACHED' || payload?.detail?.error === 'CREDIT_CAP_REACHED' ? payload.detail : null);
 
     if (!tokenPayload) return null;
 
-    const limits = tokenPayload?.token_limits || {};
+    const limits = tokenPayload?.token_limits || tokenPayload?.credit_limits || {};
     const scopeLabel = getTokenQuotaLabel(limits?.cap_scope);
-    const cap = Number(limits?.token_cap || 0);
-    const remaining = Number(limits?.remaining_tokens || 0);
+    const cap = Number(limits?.token_cap || limits?.credit_cap || 0);
+    const remaining = Number(limits?.remaining_tokens || limits?.remaining_credits || 0);
 
     if (cap > 0) {
-      return `${tokenPayload.message || '已达到 token 上限。'} (${scopeLabel}: 剩余 ${formatCompactTokenCount(remaining)} / ${formatCompactTokenCount(cap)})`;
+      return `${tokenPayload.message || '已达到点数额度上限。'} (${scopeLabel}: 剩余 ${formatCompactTokenCount(remaining)} / ${formatCompactTokenCount(cap)})`;
     }
 
-    return tokenPayload.message || '已达到 token 上限。';
+    return tokenPayload.message || '已达到点数额度上限。';
   };
 
   // Enforce level locks on fork/paid options

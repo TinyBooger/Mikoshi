@@ -336,18 +336,20 @@ def get_user_data_stats(
     today_token_rows = db.query(
         UserTokenUsageLedger.user_id,
         UserTokenUsageLedger.total_tokens,
+        UserTokenUsageLedger.credit_amount,
     ).filter(
         UserTokenUsageLedger.usage_date == today_date
     ).all()
 
     top_daily_token_users = sorted(
-        [(user_id, int(total_tokens or 0)) for user_id, total_tokens in today_token_rows if user_id],
+        [(user_id, int(total_tokens or 0), round(float(credit_amount or 0), 4)) for user_id, total_tokens, credit_amount in today_token_rows if user_id],
         key=lambda item: item[1],
         reverse=True,
     )[:10]
 
-    today_token_sum = sum(int(total_tokens or 0) for _, total_tokens in today_token_rows)
-    today_active_token_users = sum(1 for _, total_tokens in today_token_rows if int(total_tokens or 0) > 0)
+    today_token_sum = sum(int(total_tokens or 0) for _, total_tokens, _ in today_token_rows)
+    today_credit_sum = round(sum(float(credit_amount or 0) for _, _, credit_amount in today_token_rows), 4)
+    today_active_token_users = sum(1 for _, total_tokens, _ in today_token_rows if int(total_tokens or 0) > 0)
     avg_daily_tokens_per_active_user = (
         today_token_sum / today_active_token_users
         if today_active_token_users > 0 else 0
@@ -371,13 +373,15 @@ def get_user_data_stats(
             "active_pro_user_rate": round((active_pro_users / total_users * 100), 2) if total_users else 0,
             "active_pro_user_count": active_pro_users,
             "avg_daily_tokens_per_active_user": round(avg_daily_tokens_per_active_user, 2),
+            "today_credit_sum": today_credit_sum,
         },
         "single_user_daily_token_usage": [
             {
                 "user_id": user_id,
                 "total_tokens": total_tokens,
+                "credit_amount": credit_amount,
             }
-            for user_id, total_tokens in top_daily_token_users
+            for user_id, total_tokens, credit_amount in top_daily_token_users
         ],
         "top_daily_message_users": top_daily_message_users[:10],
         "notes": {
@@ -413,6 +417,15 @@ def get_single_user_token_usage(
         .scalar()
     ) or 0
 
+    daily_credits = (
+        db.query(func.coalesce(func.sum(UserTokenUsageLedger.credit_amount), 0.0))
+        .filter(
+            UserTokenUsageLedger.user_id == user_id,
+            UserTokenUsageLedger.usage_date == today_date,
+        )
+        .scalar()
+    ) or 0.0
+
     monthly_tokens = (
         db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
         .filter(
@@ -422,6 +435,15 @@ def get_single_user_token_usage(
         .scalar()
     ) or 0
 
+    monthly_credits = (
+        db.query(func.coalesce(func.sum(UserTokenUsageLedger.credit_amount), 0.0))
+        .filter(
+            UserTokenUsageLedger.user_id == user_id,
+            UserTokenUsageLedger.usage_date >= month_start,
+        )
+        .scalar()
+    ) or 0.0
+
     rolling_30d_tokens = (
         db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
         .filter(
@@ -430,6 +452,15 @@ def get_single_user_token_usage(
         )
         .scalar()
     ) or 0
+
+    rolling_30d_credits = (
+        db.query(func.coalesce(func.sum(UserTokenUsageLedger.credit_amount), 0.0))
+        .filter(
+            UserTokenUsageLedger.user_id == user_id,
+            UserTokenUsageLedger.usage_date >= thirty_days_ago,
+        )
+        .scalar()
+    ) or 0.0
 
     daily_chat_sessions = db.query(func.count(ChatHistory.id)).filter(
         ChatHistory.user_id == user_id,
@@ -441,11 +472,16 @@ def get_single_user_token_usage(
         "user_name": user.name,
         "snapshot_at": now.isoformat(),
         "daily_tokens": int(daily_tokens),
+        "daily_credits": round(float(daily_credits), 4),
         "monthly_tokens": int(monthly_tokens),
+        "monthly_credits": round(float(monthly_credits), 4),
         "rolling_30d_tokens": int(rolling_30d_tokens),
+        "rolling_30d_credits": round(float(rolling_30d_credits), 4),
         "daily_chat_sessions": daily_chat_sessions,
+        "purchased_credit_balance": round(float(user.purchased_credit_balance or 0), 4),
         "notes": {
             "token_usage": "Summed from daily ledger rows written from API response usage.",
+            "credit_usage": "Credits = (input_tokens * input_price + output_tokens * output_price) / 1000, tracked per usage.",
         },
     }
 

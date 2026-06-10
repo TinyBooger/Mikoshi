@@ -428,16 +428,17 @@ export default function ChatPage() {
 
     applyTokenLimits({
       plan: userData?.is_pro ? 'pro' : 'free',
-      cap_scope: userData?.token_cap_scope,
-      token_cap: userData?.token_cap,
-      remaining_tokens: userData?.remaining_tokens,
-      cap_reached: !!userData?.token_cap_reached,
-      daily_token_usage: Number(userData?.daily_token_usage || 0),
-      monthly_token_usage: Number(userData?.monthly_token_usage || 0),
-      free_daily_token_cap: Number(userData?.free_daily_token_cap || 0),
-      pro_monthly_token_cap: Number(userData?.pro_monthly_token_cap || 0),
-      reset_at: userData?.token_reset_at,
-      is_limited: userData?.token_cap !== null,
+      cap_scope: userData?.credit_cap_scope || userData?.token_cap_scope,
+      token_cap: userData?.credit_cap ?? userData?.token_cap,
+      remaining_tokens: userData?.remaining_credits ?? userData?.remaining_tokens,
+      cap_reached: !!(userData?.credit_cap_reached || userData?.token_cap_reached),
+      daily_token_usage: Number(userData?.daily_credit_usage || userData?.daily_token_usage || 0),
+      monthly_token_usage: Number(userData?.monthly_credit_usage || userData?.monthly_token_usage || 0),
+      free_daily_token_cap: Number(userData?.free_daily_credit_cap || userData?.free_daily_token_cap || 0),
+      pro_monthly_token_cap: Number(userData?.pro_monthly_credit_cap || userData?.pro_monthly_token_cap || 0),
+      reset_at: userData?.credit_reset_at || userData?.token_reset_at,
+      is_limited: userData?.credit_cap !== null || userData?.token_cap !== null,
+      purchased_token_balance: userData?.purchased_credit_balance ?? userData?.purchased_token_balance ?? 0,
     });
   }, [userData]);
 
@@ -577,8 +578,8 @@ export default function ChatPage() {
         : '，该封禁为永久封禁';
       return `您的账号已被封禁${until}，无法发送消息。`;
     }
-    if (errorPayload?.error === 'TOKEN_CAP_REACHED') {
-      return errorPayload?.message || '已达到 token 上限，当前与 token 相关操作已受限。';
+    if (errorPayload?.error === 'TOKEN_CAP_REACHED' || errorPayload?.error === 'CREDIT_CAP_REACHED') {
+      return errorPayload?.message || '已达到点数额度上限，当前点数相关操作已受限。';
     }
     if (errorPayload?.error === 'DAILY_MESSAGE_CAP_REACHED') {
       const remaining = Number(errorPayload?.limits?.remaining_messages ?? 0);
@@ -1245,8 +1246,8 @@ export default function ChatPage() {
         if (errorPayload?.limits) {
           applyChatLimits(errorPayload.limits);
         }
-        if (errorPayload?.token_limits) {
-          applyTokenLimits(errorPayload.token_limits);
+        if (errorPayload?.token_limits || errorPayload?.credit_limits) {
+          applyTokenLimits(errorPayload.token_limits || errorPayload.credit_limits);
         }
         throw new Error(getChatErrorMessage(errorPayload));
       }
@@ -1293,7 +1294,7 @@ export default function ChatPage() {
 
         if (data.done) {
           applyChatLimits(data.limits);
-          applyTokenLimits(data.token_limits);
+          applyTokenLimits(data.token_limits || data.credit_limits);
           if (refreshUserData) {
             refreshUserData({ silent: true });
           }
@@ -2414,7 +2415,7 @@ export default function ChatPage() {
             >
               {(() => {
                 const isPro = !!tokenLimits?.is_pro;
-                const scopeLabel = isPro ? '本月剩余token' : '本日剩余token';
+                const scopeLabel = isPro ? '本月剩余点数' : '本日剩余点数';
                 const used = Number(tokenLimits?.cap_scope === 'monthly' ? tokenLimits?.monthly_token_usage : tokenLimits?.daily_token_usage) || 0;
                 const cap = Number(tokenLimits?.token_cap || 0);
                 const walletBalance = Number(tokenLimits?.purchased_token_balance || 0);
@@ -2424,8 +2425,8 @@ export default function ChatPage() {
                     <span>
                       {scopeLabel}已达上限：{formatCompactTokenCount(used)} / {formatCompactTokenCount(cap)}。
                       {hasWallet
-                        ? ` 当前钱包可用 ${formatCompactTokenCount(walletBalance)} token。`
-                        : ' 可升级Pro或购买Token包继续使用。'}
+                        ? ` 当前钱包可用 ${formatCompactTokenCount(walletBalance)} 点数。`
+                        : ' 可升级Pro或购买点数包继续使用。'}
                     </span>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       <button
@@ -2442,7 +2443,7 @@ export default function ChatPage() {
                           cursor: 'pointer',
                         }}
                       >
-                        充值Token
+                        充值点数
                       </button>
                       {!tokenLimits?.is_pro && (
                         <button

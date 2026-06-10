@@ -23,6 +23,8 @@ from utils.token_wallet import (
     get_token_topup_package_by_amount,
     credit_wallet_tokens,
     reverse_wallet_tokens_for_refund,
+    credit_wallet,
+    reverse_wallet_credits_for_refund,
 )
 from database import get_db
 from models import User, PaymentOrder
@@ -1004,7 +1006,9 @@ async def refund_order(
                 payment_order.refund_status = "failed"
                 db.commit()
                 raise HTTPException(status_code=400, detail="用户不存在，无法退款")
-            if int(user.purchased_token_balance or 0) < int(package["tokens"]):
+            user_credit_balance = float(user.purchased_credit_balance or 0)
+            package_credits = float(package.get("credits", 0))
+            if user_credit_balance < package_credits:
                 payment_order.refund_status = "failed"
                 db.commit()
                 raise HTTPException(status_code=400, detail="充值包已部分使用，无法退款")

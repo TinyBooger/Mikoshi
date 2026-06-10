@@ -22,9 +22,9 @@ from utils.text_moderation import moderate_form_payload_with_review
 from schemas import CharacterOut, CharacterListOut
 from utils.llm_client import client
 from utils.content_review_queue import enqueue_character_review
-from utils.usage_utils import normalize_usage
+from utils.usage_utils import normalize_usage, usage_to_credits
 from utils.token_usage_ledger import apply_token_usage_with_wallet
-from utils.token_cap import can_consume_tokens, get_token_cap_info, build_token_cap_reached_payload
+from utils.token_cap import can_consume_credits, get_credit_cap_info, build_credit_cap_reached_payload, get_token_cap_info, build_token_cap_reached_payload
 from utils.user_utils import get_active_ban_type, is_upload_banned
 
 router = APIRouter()
@@ -273,25 +273,27 @@ async def create_character(
     ) if can_use_advanced_config else default_character_chat_config()
     long_description_chunks = []
     if context_label == "advanced" and normalized_long_description:
-        token_check = can_consume_tokens(current_user, db)
+        token_check = can_consume_credits(current_user, db)
         if token_check["blocked"]:
             return JSONResponse(
-                content=build_token_cap_reached_payload(token_check.get("limit") or {}),
+                content=build_credit_cap_reached_payload(token_check.get("limit") or {}),
                 status_code=429,
             )
         long_description_chunks, split_ok, split_usage = split_long_description_chunks(normalized_long_description)
         if not split_ok:
             raise HTTPException(status_code=502, detail="Failed to split long description into chunks")
         if split_usage["total_tokens"] > 0:
+            split_credit_amount = usage_to_credits(split_usage, "deepseek-v4-flash")
             usage_result = apply_token_usage_with_wallet(
                 db,
                 user=current_user,
                 usage=split_usage,
                 source="character_long_description_split",
+                credit_amount=split_credit_amount,
             )
             if not usage_result.get("success"):
                 return JSONResponse(
-                    content=build_token_cap_reached_payload(usage_result.get("limit") or token_check.get("limit") or {}),
+                    content=build_credit_cap_reached_payload(usage_result.get("limit") or token_check.get("limit") or {}),
                     status_code=429,
                 )
             db.commit()
@@ -389,7 +391,8 @@ async def create_character(
     return {
         "message": f"Character '{name}' created.",
         "content_censored": content_censored,
-        "token_limits": get_token_cap_info(current_user, db),
+        "credit_limits": get_credit_cap_info(current_user, db),
+        "token_limits": get_token_cap_info(current_user, db),  # legacy alias
     }
 
 @router.post("/api/update-character")
@@ -478,25 +481,27 @@ async def update_character(
         if not normalized_long_description:
             long_description_chunks = []
         elif long_description_changed:
-            token_check = can_consume_tokens(current_user, db)
+            token_check = can_consume_credits(current_user, db)
             if token_check["blocked"]:
                 return JSONResponse(
-                    content=build_token_cap_reached_payload(token_check.get("limit") or {}),
+                    content=build_credit_cap_reached_payload(token_check.get("limit") or {}),
                     status_code=429,
                 )
             long_description_chunks, split_ok, split_usage = split_long_description_chunks(normalized_long_description)
             if not split_ok:
                 raise HTTPException(status_code=502, detail="Failed to split long description into chunks")
             if split_usage["total_tokens"] > 0:
+                split_credit_amount = usage_to_credits(split_usage, "deepseek-v4-flash")
                 usage_result = apply_token_usage_with_wallet(
                     db,
                     user=current_user,
                     usage=split_usage,
                     source="character_long_description_split",
+                    credit_amount=split_credit_amount,
                 )
                 if not usage_result.get("success"):
                     return JSONResponse(
-                        content=build_token_cap_reached_payload(usage_result.get("limit") or token_check.get("limit") or {}),
+                        content=build_credit_cap_reached_payload(usage_result.get("limit") or token_check.get("limit") or {}),
                         status_code=429,
                     )
                 db.commit()
@@ -583,7 +588,8 @@ async def update_character(
     return {
         "message": "Character updated successfully",
         "content_censored": content_censored,
-        "token_limits": get_token_cap_info(current_user, db),
+        "credit_limits": get_credit_cap_info(current_user, db),
+        "token_limits": get_token_cap_info(current_user, db),  # legacy alias
     }
 
 @router.get("/api/characters", response_model=List[CharacterOut])

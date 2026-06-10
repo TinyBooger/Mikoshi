@@ -14,6 +14,17 @@ CHINA_TIMEZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
 FREE_DAILY_RESET_HOUR_LOCAL = 12
 
 
+def _get_float_env(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = float(raw)
+        return value if value >= 0 else default
+    except (TypeError, ValueError):
+        return default
+
+
 def _get_int_env(name: str, default: int) -> int:
     raw = os.getenv(name)
     if raw is None:
@@ -46,7 +57,6 @@ def get_pro_cycle_start(user: "User", now: datetime) -> datetime:
     """Return the start of the current billing cycle based on the day-of-month of pro_start_date."""
     pro_start = getattr(user, "pro_start_date", None)
     if pro_start is None:
-        # Fallback: beginning of the current calendar month
         return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     if pro_start.tzinfo is None:
         pro_start = pro_start.replace(tzinfo=UTC)
@@ -54,7 +64,6 @@ def get_pro_cycle_start(user: "User", now: datetime) -> datetime:
     if now < pro_start:
         return pro_start_midnight
     anchor_day = pro_start.day
-    # Clamp anchor_day to the last day of the month when needed
     import calendar
     def _cycle_start_for(year: int, month: int) -> datetime:
         last_day = calendar.monthrange(year, month)[1]
@@ -65,7 +74,6 @@ def get_pro_cycle_start(user: "User", now: datetime) -> datetime:
 
     candidate = _cycle_start_for(now.year, now.month)
     if now < candidate:
-        # We haven't reached this month's anchor yet — use previous month
         prev_month = now.month - 1 or 12
         prev_year = now.year if now.month > 1 else now.year - 1
         return _cycle_start_for(prev_year, prev_month)
@@ -86,6 +94,137 @@ def get_next_free_daily_reset_at(when: datetime | None = None) -> datetime:
     return (reset_anchor_local + timedelta(days=1)).astimezone(UTC)
 
 
+# -- Credit-based usage queries ------------------------------------------------
+
+def get_user_credit_usage(
+    db: Session,
+    user_id: str,
+    *,
+    daily_usage_date,
+    month_start_date,
+) -> dict[str, float]:
+    """Sum credit_amount from the usage ledger instead of raw tokens."""
+
+    daily_credits = (
+        db.query(func.coalesce(func.sum(UserTokenUsageLedger.credit_amount), 0.0))
+        .filter(
+            UserTokenUsageLedger.user_id == user_id,
+            UserTokenUsageLedger.usage_date == daily_usage_date,
+        )
+        .scalar()
+    ) or 0.0
+
+    monthly_credits = (
+        db.query(func.coalesce(func.sum(UserTokenUsageLedger.credit_amount), 0.0))
+        .filter(
+            UserTokenUsageLedger.user_id == user_id,
+            UserTokenUsageLedger.usage_date >= month_start_date,
+        )
+        .scalar()
+    ) or 0.0
+
+    return {
+        "daily_credit_usage": float(daily_credits),
+        "monthly_credit_usage": float(monthly_credits),
+    }
+
+
+def get_credit_cap_info(user: User, db: Session) -> dict[str, Any]:
+    """Return credit (点数) cap information for the given user."""
+    pro_active = _resolve_pro_active(user)
+
+    free_daily_credit_cap = _get_float_env("FREE_DAILY_CREDIT_CAP", 10.0)
+    pro_monthly_credit_cap = _get_float_env("PRO_MONTHLY_CREDIT_CAP", 15000.0)
+
+    now = datetime.now(UTC)
+    month_start = get_pro_cycle_start(user, now) if pro_active else now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    daily_usage_date = now.date() if pro_active else get_free_daily_usage_date(now)
+    usage = get_user_credit_usage(
+        db,
+        user.id,
+        daily_usage_date=daily_usage_date,
+        month_start_date=month_start.date(),
+    )
+
+    if pro_active:
+        cap_scope = "monthly"
+        cap_value = pro_monthly_credit_cap
+        used_credits = usage["monthly_credit_usage"]
+        next_month = month_start.month % 12 + 1
+        next_year = month_start.year if month_start.month < 12 else month_start.year + 1
+        import calendar as _cal
+        _last = _cal.monthrange(next_year, next_month)[1]
+        _day = min(month_start.day, _last)
+        cycle_reset_at = month_start.replace(year=next_year, month=next_month, day=_day)
+        pro_expire_date = getattr(user, "pro_expire_date", None)
+        if pro_expire_date is not None and pro_expire_date.tzinfo is None:
+            pro_expire_date = pro_expire_date.replace(tzinfo=UTC)
+        if pro_expire_date is not None and pro_expire_date < cycle_reset_at:
+            reset_at = pro_expire_date.isoformat()
+        else:
+            reset_at = cycle_reset_at.isoformat()
+    else:
+        cap_scope = "daily"
+        cap_value = free_daily_credit_cap
+        used_credits = usage["daily_credit_usage"]
+        reset_at = get_next_free_daily_reset_at(now).isoformat()
+
+    is_limited = cap_value > 0
+    remaining_credits = max(0.0, cap_value - used_credits) if is_limited else None
+    cap_reached = bool(is_limited and used_credits >= cap_value)
+    purchased_credit_balance = float(getattr(user, "purchased_credit_balance", 0.0) or 0.0)
+    wallet_available = purchased_credit_balance > 0
+
+    return {
+        "is_pro": pro_active,
+        "plan": "pro" if pro_active else "free",
+        "daily_credit_usage": usage["daily_credit_usage"],
+        "monthly_credit_usage": usage["monthly_credit_usage"],
+        "cap_scope": cap_scope,
+        "credit_cap": cap_value if is_limited else None,
+        "remaining_credits": remaining_credits,
+        "is_limited": is_limited,
+        "cap_reached": cap_reached,
+        "purchased_credit_balance": purchased_credit_balance,
+        "wallet_available": wallet_available,
+        "wallet_fallback_active": bool(cap_reached and wallet_available),
+        "reset_at": reset_at,
+        "checked_at": now.isoformat(),
+        "free_daily_credit_cap": free_daily_credit_cap,
+        "pro_monthly_credit_cap": pro_monthly_credit_cap,
+    }
+
+
+def can_consume_credits(user: User, db: Session) -> dict[str, Any]:
+    """Check whether the user can consume credits under their plan cap."""
+    info = get_credit_cap_info(user, db)
+    cap_reached = bool(info.get("cap_reached"))
+    wallet_available = bool(info.get("wallet_available"))
+    return {
+        "blocked": bool(cap_reached and not wallet_available),
+        "consume_from_wallet": bool(cap_reached and wallet_available),
+        "limit": info,
+    }
+
+
+def build_credit_cap_reached_payload(limit_info: dict[str, Any]) -> dict[str, Any]:
+    plan = str(limit_info.get("plan") or "free")
+    cap_scope = str(limit_info.get("cap_scope") or "daily")
+
+    if plan == "pro" and cap_scope == "monthly":
+        message = "You have reached your monthly credit limit for Pro. Please wait until next month for reset or top up wallet credits."
+    else:
+        message = "You have reached your daily credit limit. Upgrade to Pro for a much higher monthly limit or top up wallet credits."
+
+    return {
+        "error": "CREDIT_CAP_REACHED",
+        "message": message,
+        "credit_limits": limit_info,
+    }
+
+
+# -- Legacy token-based functions (backward compat) ----------------------------
+
 def get_user_token_usage(
     db: Session,
     user_id: str,
@@ -93,7 +232,7 @@ def get_user_token_usage(
     daily_usage_date,
     month_start_date,
 ) -> dict[str, int]:
-
+    """Legacy — returns token counts (int) from total_tokens column."""
     daily_tokens = (
         db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
         .filter(
@@ -119,93 +258,24 @@ def get_user_token_usage(
 
 
 def get_token_cap_info(user: User, db: Session) -> dict[str, Any]:
-    pro_active = _resolve_pro_active(user)
-
-    free_daily_cap = _get_int_env("FREE_DAILY_TOKEN_CAP", 3000)
-    pro_monthly_cap = _get_int_env("PRO_MONTHLY_TOKEN_CAP", 5_000_000)
-
-    now = datetime.now(UTC)
-    month_start = get_pro_cycle_start(user, now) if pro_active else now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    daily_usage_date = now.date() if pro_active else get_free_daily_usage_date(now)
-    usage = get_user_token_usage(
-        db,
-        user.id,
-        daily_usage_date=daily_usage_date,
-        month_start_date=month_start.date(),
-    )
-
-    if pro_active:
-        cap_scope = "monthly"
-        cap_value = pro_monthly_cap
-        used_tokens = usage["monthly_token_usage"]
-        next_month = month_start.month % 12 + 1
-        next_year = month_start.year if month_start.month < 12 else month_start.year + 1
-        import calendar as _cal
-        _last = _cal.monthrange(next_year, next_month)[1]
-        _day = min(month_start.day, _last)
-        cycle_reset_at = month_start.replace(year=next_year, month=next_month, day=_day)
-        pro_expire_date = getattr(user, "pro_expire_date", None)
-        if pro_expire_date is not None and pro_expire_date.tzinfo is None:
-            pro_expire_date = pro_expire_date.replace(tzinfo=UTC)
-        # Keep pro token-cycle reset aligned with actual pro end time.
-        if pro_expire_date is not None and pro_expire_date < cycle_reset_at:
-            reset_at = pro_expire_date.isoformat()
-        else:
-            reset_at = cycle_reset_at.isoformat()
-    else:
-        cap_scope = "daily"
-        cap_value = free_daily_cap
-        used_tokens = usage["daily_token_usage"]
-        reset_at = get_next_free_daily_reset_at(now).isoformat()
-
-    is_limited = cap_value > 0
-    remaining_tokens = max(0, cap_value - used_tokens) if is_limited else None
-    cap_reached = bool(is_limited and used_tokens >= cap_value)
-    purchased_token_balance = int(getattr(user, "purchased_token_balance", 0) or 0)
-    wallet_available = purchased_token_balance > 0
-
-    return {
-        "is_pro": pro_active,
-        "plan": "pro" if pro_active else "free",
-        "daily_token_usage": usage["daily_token_usage"],
-        "monthly_token_usage": usage["monthly_token_usage"],
-        "cap_scope": cap_scope,
-        "token_cap": cap_value if is_limited else None,
-        "remaining_tokens": remaining_tokens,
-        "is_limited": is_limited,
-        "cap_reached": cap_reached,
-        "purchased_token_balance": purchased_token_balance,
-        "wallet_available": wallet_available,
-        "wallet_fallback_active": bool(cap_reached and wallet_available),
-        "reset_at": reset_at,
-        "checked_at": now.isoformat(),
-        "free_daily_token_cap": free_daily_cap,
-        "pro_monthly_token_cap": pro_monthly_cap,
-    }
+    """Legacy wrapper — delegates to get_credit_cap_info and adds legacy keys."""
+    info = get_credit_cap_info(user, db)
+    # Add legacy token-keyed aliases for backward compatibility
+    info["daily_token_usage"] = info.get("daily_credit_usage", 0)
+    info["monthly_token_usage"] = info.get("monthly_credit_usage", 0)
+    info["token_cap"] = info.get("credit_cap")
+    info["remaining_tokens"] = info.get("remaining_credits")
+    info["purchased_token_balance"] = info.get("purchased_credit_balance", 0)
+    info["free_daily_token_cap"] = info.get("free_daily_credit_cap", 3000)
+    info["pro_monthly_token_cap"] = info.get("pro_monthly_credit_cap", 5000000)
+    return info
 
 
 def can_consume_tokens(user: User, db: Session) -> dict[str, Any]:
-    info = get_token_cap_info(user, db)
-    cap_reached = bool(info.get("cap_reached"))
-    wallet_available = bool(info.get("wallet_available"))
-    return {
-        "blocked": bool(cap_reached and not wallet_available),
-        "consume_from_wallet": bool(cap_reached and wallet_available),
-        "limit": info,
-    }
+    """Legacy wrapper — delegates to can_consume_credits."""
+    return can_consume_credits(user, db)
 
 
 def build_token_cap_reached_payload(limit_info: dict[str, Any]) -> dict[str, Any]:
-    plan = str(limit_info.get("plan") or "free")
-    cap_scope = str(limit_info.get("cap_scope") or "daily")
-
-    if plan == "pro" and cap_scope == "monthly":
-        message = "You have reached your monthly token limit for Pro. Please wait until next month for reset or top up wallet tokens."
-    else:
-        message = "You have reached your daily token limit. Upgrade to Pro for a much higher monthly limit or top up wallet tokens."
-
-    return {
-        "error": "TOKEN_CAP_REACHED",
-        "message": message,
-        "token_limits": limit_info,
-    }
+    """Legacy wrapper — delegates to build_credit_cap_reached_payload."""
+    return build_credit_cap_reached_payload(limit_info)

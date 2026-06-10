@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 
 from models import User, UserTokenUsageLedger
-from utils.token_cap import can_consume_tokens, get_free_daily_usage_date, is_user_pro_active
-from utils.token_wallet import consume_wallet_tokens
+from utils.token_cap import can_consume_credits, get_free_daily_usage_date, is_user_pro_active
+from utils.token_wallet import consume_wallet_credits
 from utils.usage_utils import normalize_usage
 
 
@@ -19,10 +19,12 @@ def record_token_usage(
     usage: Any,
     usage_timestamp: datetime | None = None,
     use_free_daily_reset: bool = False,
+    credit_amount: float = 0.0,
 ) -> None:
     """Increment token usage ledger for a UTC day or free-user noon-reset window."""
     normalized = normalize_usage(usage)
-    if normalized["total_tokens"] <= 0:
+    total_tokens = int(normalized["total_tokens"])
+    if total_tokens <= 0:
         return
 
     when = usage_timestamp or datetime.now(UTC)
@@ -33,7 +35,8 @@ def record_token_usage(
         usage_date=usage_date,
         prompt_tokens=normalized["prompt_tokens"],
         completion_tokens=normalized["completion_tokens"],
-        total_tokens=normalized["total_tokens"],
+        total_tokens=total_tokens,
+        credit_amount=credit_amount,
     )
 
     stmt = stmt.on_conflict_do_update(
@@ -41,7 +44,8 @@ def record_token_usage(
         set_={
             "prompt_tokens": UserTokenUsageLedger.prompt_tokens + normalized["prompt_tokens"],
             "completion_tokens": UserTokenUsageLedger.completion_tokens + normalized["completion_tokens"],
-            "total_tokens": UserTokenUsageLedger.total_tokens + normalized["total_tokens"],
+            "total_tokens": UserTokenUsageLedger.total_tokens + total_tokens,
+            "credit_amount": UserTokenUsageLedger.credit_amount + credit_amount,
             "updated_at": datetime.now(UTC),
         },
     )
@@ -58,31 +62,33 @@ def apply_token_usage_with_wallet(
     source_order_no: str | None = None,
     idempotency_key: str | None = None,
     metadata: dict[str, Any] | None = None,
+    credit_amount: float = 0.0,
 ) -> dict[str, Any]:
-    """Apply usage to plan quota first, then wallet tokens after plan cap is reached."""
+    """Apply usage to plan credit quota first, then wallet credits after plan cap is reached."""
     normalized = normalize_usage(usage)
     total_tokens = int(normalized["total_tokens"])
     if total_tokens <= 0:
         return {
             "success": True,
             "total_tokens": 0,
+            "credit_amount": 0.0,
             "consumed_from_wallet": False,
         }
 
-    token_check = can_consume_tokens(user, db_session)
-    if token_check.get("blocked"):
+    credit_check = can_consume_credits(user, db_session)
+    if credit_check.get("blocked"):
         return {
             "success": False,
-            "error": "TOKEN_CAP_REACHED",
-            "limit": token_check.get("limit") or {},
+            "error": "CREDIT_CAP_REACHED",
+            "limit": credit_check.get("limit") or {},
             "consumed_from_wallet": False,
         }
 
-    if token_check.get("consume_from_wallet"):
-        consumed, balance_after = consume_wallet_tokens(
+    if credit_check.get("consume_from_wallet"):
+        consumed, balance_after = consume_wallet_credits(
             db_session,
             user_id=user.id,
-            tokens=total_tokens,
+            credits=credit_amount,
             source=source,
             source_order_no=source_order_no,
             idempotency_key=idempotency_key,
@@ -91,16 +97,17 @@ def apply_token_usage_with_wallet(
         if not consumed:
             return {
                 "success": False,
-                "error": "INSUFFICIENT_WALLET_TOKENS",
+                "error": "INSUFFICIENT_WALLET_CREDITS",
                 "wallet_balance": balance_after,
-                "required_tokens": total_tokens,
+                "required_credits": credit_amount,
                 "consumed_from_wallet": False,
-                "limit": token_check.get("limit") or {},
+                "limit": credit_check.get("limit") or {},
             }
 
         return {
             "success": True,
             "total_tokens": total_tokens,
+            "credit_amount": credit_amount,
             "consumed_from_wallet": True,
             "wallet_balance": balance_after,
         }
@@ -110,9 +117,11 @@ def apply_token_usage_with_wallet(
         user_id=user.id,
         usage=normalized,
         use_free_daily_reset=not is_user_pro_active(user),
+        credit_amount=credit_amount,
     )
     return {
         "success": True,
         "total_tokens": total_tokens,
+        "credit_amount": credit_amount,
         "consumed_from_wallet": False,
     }

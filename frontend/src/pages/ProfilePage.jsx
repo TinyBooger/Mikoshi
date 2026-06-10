@@ -1068,9 +1068,11 @@ export default function ProfilePage() {
   const formattedProExpireDate = displayUser?.pro_expire_date
     ? new Date(displayUser.pro_expire_date).toLocaleDateString(activeLocale)
     : null;
-  const tokenScope = displayUser?.token_cap_scope;
-  const tokenUsed = Number(tokenScope === 'monthly' ? displayUser?.monthly_token_usage : displayUser?.daily_token_usage) || 0;
-  const tokenCap = Number(displayUser?.token_cap || 0);
+  const tokenScope = displayUser?.credit_cap_scope || displayUser?.token_cap_scope;
+  const tokenUsed = Number(tokenScope === 'monthly'
+    ? (displayUser?.monthly_credit_usage || displayUser?.monthly_token_usage)
+    : (displayUser?.daily_credit_usage || displayUser?.daily_token_usage)) || 0;
+  const tokenCap = Number(displayUser?.credit_cap ?? displayUser?.token_cap || 0);
   const tokenUsageValue = tokenCap > 0
     ? `${formatCompactTokenCount(tokenUsed)} / ${formatCompactTokenCount(tokenCap)}`
     : formatCompactTokenCount(tokenUsed);
@@ -1078,7 +1080,9 @@ export default function ProfilePage() {
     ? Math.min(100, Math.max(0, (tokenUsed / tokenCap) * 100))
     : 0;
   const tokenProgressLabel = `${tokenProgressPercent.toFixed(1)}%`;
-  const nextTokenResetDate = displayUser?.token_reset_at ? new Date(displayUser.token_reset_at) : null;
+  const nextTokenResetDate = displayUser?.credit_reset_at
+    ? new Date(displayUser.credit_reset_at)
+    : (displayUser?.token_reset_at ? new Date(displayUser.token_reset_at) : null);
   const formattedNextTokenResetDate = nextTokenResetDate ? nextTokenResetDate.toLocaleDateString(activeLocale) : null;
   const proExpireDateObj = displayUser?.pro_expire_date ? new Date(displayUser.pro_expire_date) : null;
   const isProDueBeforeNextReset = Boolean(proExpireDateObj && nextTokenResetDate && proExpireDateObj <= nextTokenResetDate);

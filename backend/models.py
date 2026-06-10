@@ -62,10 +62,15 @@ class User(Base):
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
     
-    # Purchased token wallet
+    # Purchased token wallet (legacy — token amounts retained for reference)
     purchased_token_balance = Column(Integer, default=0, nullable=False)
     purchased_tokens_bought_total = Column(Integer, default=0, nullable=False)
     purchased_tokens_consumed_total = Column(Integer, default=0, nullable=False)
+
+    # Purchased credit wallet (点数)
+    purchased_credit_balance = Column(Float, default=0.0, nullable=False)
+    purchased_credits_bought_total = Column(Float, default=0.0, nullable=False)
+    purchased_credits_consumed_total = Column(Float, default=0.0, nullable=False)
 
     # liked_characters, liked_scenes, liked_personas removed; now handled by junction tables
     liked_tags = Column(ARRAY(Text), default=[])
@@ -95,6 +100,7 @@ class UserTokenUsageLedger(Base):
     prompt_tokens = Column(Integer, default=0, nullable=False)
     completion_tokens = Column(Integer, default=0, nullable=False)
     total_tokens = Column(Integer, default=0, nullable=False)
+    credit_amount = Column(Float, default=0.0, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
 
@@ -111,6 +117,8 @@ class UserTokenWalletLedger(Base):
     transaction_type = Column(String(20), nullable=False, index=True)
     token_amount = Column(Integer, nullable=False)
     balance_after = Column(Integer, nullable=False)
+    credit_amount = Column(Float, default=0.0, nullable=False)
+    credit_balance_after = Column(Float, default=0.0, nullable=False)
     source = Column(String(50), nullable=True)
     source_order_no = Column(String(128), nullable=True, index=True)
     idempotency_key = Column(String(160), nullable=True, unique=True, index=True)

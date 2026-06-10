@@ -1063,9 +1063,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         {userData && (
           <div className="rounded-4 mb-2" style={{ background: '#fff', border: '1px solid #eef0f3', padding: '0.45rem 0.65rem' }}>
             {(() => {
-              const tokenScope = userData?.token_cap_scope;
-              const tokenUsed = Number(tokenScope === 'monthly' ? userData?.monthly_token_usage : userData?.daily_token_usage) || 0;
-              const tokenCap = Number(userData?.token_cap || 0);
+              const tokenScope = userData?.credit_cap_scope || userData?.token_cap_scope;
+              const tokenUsed = Number(tokenScope === 'monthly'
+                ? (userData?.monthly_credit_usage || userData?.monthly_token_usage)
+                : (userData?.daily_credit_usage || userData?.daily_token_usage)) || 0;
+              const tokenCap = Number(userData?.credit_cap ?? userData?.token_cap || 0);
               const tokenUsageValue = tokenCap > 0
                 ? `${formatCompactTokenCount(tokenUsed)} / ${formatCompactTokenCount(tokenCap)}`
                 : formatCompactTokenCount(tokenUsed);
@@ -1074,7 +1076,9 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 : 0;
               const tokenProgressLabel = `${tokenProgressPercent.toFixed(1)}%`;
               const activeLocale = i18n?.resolvedLanguage || i18n?.language;
-              const nextTokenResetDate = userData?.token_reset_at ? new Date(userData.token_reset_at) : null;
+              const nextTokenResetDate = userData?.credit_reset_at
+                ? new Date(userData.credit_reset_at)
+                : (userData?.token_reset_at ? new Date(userData.token_reset_at) : null);
               const formattedNextTokenResetDate = nextTokenResetDate ? nextTokenResetDate.toLocaleDateString(activeLocale) : null;
               const proExpireDateObj = userData?.pro_expire_date ? new Date(userData.pro_expire_date) : null;
               const isProDueBeforeNextReset = Boolean(proExpireDateObj && nextTokenResetDate && proExpireDateObj < nextTokenResetDate);
@@ -1107,7 +1111,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 fontWeight: 700,
               }}
             >
-              <span>钱包Token</span>
+              <span>钱包点数</span>
               <span>{formatCompactTokenCount(Number(userData?.purchased_token_balance || 0))}</span>
             </div>
             <button
