@@ -1072,7 +1072,7 @@ export default function ProfilePage() {
   const tokenUsed = Number(tokenScope === 'monthly'
     ? (displayUser?.monthly_credit_usage || displayUser?.monthly_token_usage)
     : (displayUser?.daily_credit_usage || displayUser?.daily_token_usage)) || 0;
-  const tokenCap = Number(displayUser?.credit_cap ?? displayUser?.token_cap || 0);
+  const tokenCap = Number((displayUser?.credit_cap ?? displayUser?.token_cap) || 0);
   const tokenUsageValue = tokenCap > 0
     ? `${formatCompactTokenCount(tokenUsed)} / ${formatCompactTokenCount(tokenCap)}`
     : formatCompactTokenCount(tokenUsed);

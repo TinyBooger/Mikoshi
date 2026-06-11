@@ -1067,7 +1067,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               const tokenUsed = Number(tokenScope === 'monthly'
                 ? (userData?.monthly_credit_usage || userData?.monthly_token_usage)
                 : (userData?.daily_credit_usage || userData?.daily_token_usage)) || 0;
-              const tokenCap = Number(userData?.credit_cap ?? userData?.token_cap || 0);
+              const tokenCap = Number((userData?.credit_cap ?? userData?.token_cap) || 0);
               const tokenUsageValue = tokenCap > 0
                 ? `${formatCompactTokenCount(tokenUsed)} / ${formatCompactTokenCount(tokenCap)}`
                 : formatCompactTokenCount(tokenUsed);

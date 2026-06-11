@@ -261,13 +261,14 @@ def get_token_cap_info(user: User, db: Session) -> dict[str, Any]:
     """Legacy wrapper — delegates to get_credit_cap_info and adds legacy keys."""
     info = get_credit_cap_info(user, db)
     # Add legacy token-keyed aliases for backward compatibility
-    info["daily_token_usage"] = info.get("daily_credit_usage", 0)
-    info["monthly_token_usage"] = info.get("monthly_credit_usage", 0)
-    info["token_cap"] = info.get("credit_cap")
-    info["remaining_tokens"] = info.get("remaining_credits")
-    info["purchased_token_balance"] = info.get("purchased_credit_balance", 0)
-    info["free_daily_token_cap"] = info.get("free_daily_credit_cap", 3000)
-    info["pro_monthly_token_cap"] = info.get("pro_monthly_credit_cap", 5000000)
+    # Cast to int since legacy token columns are integer-typed
+    info["daily_token_usage"] = int(info.get("daily_credit_usage", 0))
+    info["monthly_token_usage"] = int(info.get("monthly_credit_usage", 0))
+    info["token_cap"] = int(info.get("credit_cap", 0)) if info.get("credit_cap") is not None else None
+    info["remaining_tokens"] = int(info.get("remaining_credits", 0)) if info.get("remaining_credits") is not None else None
+    info["purchased_token_balance"] = int(info.get("purchased_credit_balance", 0))
+    info["free_daily_token_cap"] = int(info.get("free_daily_credit_cap", 3000))
+    info["pro_monthly_token_cap"] = int(info.get("pro_monthly_credit_cap", 5000000))
     return info
 
 
