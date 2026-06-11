@@ -99,7 +99,7 @@ def _resolve_order_type_from_out_trade_no(out_trade_no: str) -> str:
     if out_trade_no.startswith("PRO_"):
         return "pro_upgrade"
     if out_trade_no.startswith("TOPUP_"):
-        return "token_topup"
+        return "credit_topup"
     return "unknown"
 
 
@@ -362,7 +362,7 @@ def _handle_credit_topup(
     payment_order = _claim_payment_order(
         db=db,
         out_trade_no=out_trade_no,
-        order_type="token_topup",
+        order_type="credit_topup",
         user_id=user_id,
         trade_no=trade_no,
         total_amount=total_amount,
@@ -393,7 +393,7 @@ def _handle_credit_topup(
         _record_order_result(
             db,
             out_trade_no=out_trade_no,
-            order_type="token_topup",
+            order_type="credit_topup",
             user_id=user_id,
             trade_no=trade_no,
             total_amount=total_amount,
@@ -416,7 +416,7 @@ def _handle_credit_topup(
         _record_order_result(
             db,
             out_trade_no=out_trade_no,
-            order_type="token_topup",
+            order_type="credit_topup",
             user_id=None,
             trade_no=trade_no,
             total_amount=total_amount,
@@ -440,7 +440,7 @@ def _handle_credit_topup(
         _record_order_result(
             db,
             out_trade_no=out_trade_no,
-            order_type="token_topup",
+            order_type="credit_topup",
             user_id=user_id,
             trade_no=trade_no,
             total_amount=total_amount,
@@ -477,7 +477,7 @@ def _handle_credit_topup(
         _record_order_result(
             db,
             out_trade_no=out_trade_no,
-            order_type="token_topup",
+            order_type="credit_topup",
             user_id=user_id,
             trade_no=trade_no,
             total_amount=total_amount,
@@ -501,7 +501,7 @@ def _handle_credit_topup(
         _record_order_result(
             db,
             out_trade_no=out_trade_no,
-            order_type="token_topup",
+            order_type="credit_topup",
             user_id=user_id,
             trade_no=trade_no,
             total_amount=total_amount,
@@ -522,7 +522,7 @@ class CreateOrderRequest(BaseModel):
     timeout_express: Optional[str] = None  # 超时时间: 30m�?h�?d�?(沙箱环境不超�?5小时)
     order_type: Optional[str] = None  # 订单类型: pro_upgrade�?
     user_id: Optional[str] = None  # 用户ID (Firebase UID是字符串)
-    package_id: Optional[str] = None  # 充值包ID（token_topup专用�?
+    package_id: Optional[str] = None  # 充值包ID（credit_topup专用�?
 
 
 class QueryOrderRequest(BaseModel):
@@ -574,7 +574,7 @@ async def create_order(
                 raise HTTPException(status_code=403, detail="不能为其他用户创建Pro升级订单")
 
             resolved_user_id = authed_user_id
-        elif request.order_type == "token_topup":
+        elif request.order_type == "credit_topup":
             authed_user_id = verify_session_token(session_token)
             if not authed_user_id:
                 raise HTTPException(status_code=401, detail="点数充值订单需要登录")
@@ -601,14 +601,14 @@ async def create_order(
         # 生成唯一订单号，包含订单类型前缀以便后续识别
         if request.order_type == "pro_upgrade":
             prefix = "PRO_"
-        elif request.order_type == "token_topup":
+        elif request.order_type == "credit_topup":
             prefix = "TOPUP_"
         else:
             prefix = "MK"
         out_trade_no = f"{prefix}{datetime.now().strftime('%Y%m%d%H%M%S')}{uuid.uuid4().hex[:8]}"
         
         # 如果是Pro升级订单，将user_id附加到订单号末尾
-        if request.order_type in {"pro_upgrade", "token_topup"} and resolved_user_id:
+        if request.order_type in {"pro_upgrade", "credit_topup"} and resolved_user_id:
             out_trade_no = f"{out_trade_no}_U{resolved_user_id}"
         
         # 构造回调URL（使用完整URL以确保支付宝可以正确跳转�?
@@ -662,7 +662,7 @@ async def create_order(
                     total_amount=total_amount,
                     source=f"{provider.provider_name}_create_order",
                 )
-            elif resolved_order_type == "token_topup":
+            elif resolved_order_type == "credit_topup":
                 _handle_credit_topup(
                     db=db,
                     out_trade_no=out_trade_no,
@@ -735,7 +735,7 @@ async def alipay_notify(request: Request, db: Session = Depends(get_db)):
                     total_amount=total_amount,
                     source="notify",
                 )
-            elif resolved_order_type == "token_topup":
+            elif resolved_order_type == "credit_topup":
                 _handle_credit_topup(
                     db=db,
                     out_trade_no=out_trade_no or "",
@@ -794,7 +794,7 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
                     total_amount=total_amount,
                     source="return_query",
                 )
-            elif resolved_order_type == "token_topup":
+            elif resolved_order_type == "credit_topup":
                 _handle_credit_topup(
                     db=db,
                     out_trade_no=out_trade_no or "",
@@ -819,7 +819,7 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
                     total_amount=total_amount,
                     source="return_query",
                 )
-            elif resolved_order_type == "token_topup":
+            elif resolved_order_type == "credit_topup":
                 _handle_credit_topup(
                     db=db,
                     out_trade_no=out_trade_no or "",
@@ -991,7 +991,7 @@ async def refund_order(
         db.commit()
 
         # Token top-up: only if tokens unused
-        if payment_order.order_type == "token_topup":
+        if payment_order.order_type == "credit_topup":
             try:
                 paid_amount = float(payment_order.total_amount or 0)
             except (TypeError, ValueError):

@@ -146,7 +146,7 @@ export default function CreditTopUpPage() {
             total_amount: Number(pkg.price_cny),
             subject: `点数充值 ${formatCompactTokenCount(Number(pkg.tokens || 0))}`,
             body: `购买${formatCompactTokenCount(Number(pkg.tokens || 0))} tokens`,
-            order_type: 'token_topup',
+            order_type: 'credit_topup',
             user_id: userData.id,
             package_id: pkg.id,
           }),
@@ -176,7 +176,7 @@ export default function CreditTopUpPage() {
         subject: `点数充值 ${formatCompactTokenCount(Number(pkg.tokens || 0))}`,
         body: `购买${formatCompactTokenCount(Number(pkg.tokens || 0))} tokens`,
         payment_type: isMobileBrowser() ? 'wap' : 'page',
-        order_type: 'token_topup',
+        order_type: 'credit_topup',
         user_id: userData.id,
         package_id: pkg.id,
       };
@@ -394,14 +394,14 @@ export default function CreditTopUpPage() {
 
             {/* Footer Note */}
             <p className="text-muted" style={{ fontSize: '0.9rem' }}>
-              {t('token_topup.footer_note')}
+              {t('credit_topup.footer_note')}
               {' '}
               <a href="/terms-of-service" className="text-decoration-none" style={{ color: '#667eea' }}>
-                {t('token_topup.terms')}
+                {t('credit_topup.terms')}
               </a>
               {' '}{t('common.and')}{' '}
               <a href="/privacy-policy" className="text-decoration-none" style={{ color: '#667eea' }}>
-                {t('token_topup.privacy')}
+                {t('credit_topup.privacy')}
               </a>
             </p>
 
@@ -414,7 +414,7 @@ export default function CreditTopUpPage() {
         <WeChatPayModal
           codeUrl={wechatQrData.codeUrl}
           outTradeNo={wechatQrData.outTradeNo}
-          orderType="token_topup"
+          orderType="credit_topup"
           amount={wechatQrData.amount}
           onSuccess={() => {
             setWechatQrData(null);

@@ -17,16 +17,6 @@ DEFAULT_CREDIT_TOPUP_PACKAGES = [
     {"id": "topup_10000", "credits": 10000, "price_cny": 60, "label": "海量"},
 ]
 
-# Legacy token constants (kept for backward compatibility with admin UI)
-TOKEN_TOPUP_PACKAGES_SETTING_KEY = "token_topup_packages"
-DEFAULT_TOKEN_TOPUP_PACKAGES = [
-    {"id": "topup_500k", "tokens": 500_000, "price_cny": 3, "label": "入门"},
-    {"id": "topup_1m", "tokens": 1_000_000, "price_cny": 6, "label": "标准"},
-    {"id": "topup_2m", "tokens": 2_000_000, "price_cny": 12, "label": "热门"},
-    {"id": "topup_5m", "tokens": 5_000_000, "price_cny": 30, "label": "巨量"},
-    {"id": "topup_10m", "tokens": 10_000_000, "price_cny": 60, "label": "海量"},
-]
-
 
 def _normalize_package(raw: dict[str, Any]) -> dict[str, Any] | None:
     """Normalize a package dict �?supports both 'tokens' (legacy) and 'credits' (new) keys."""

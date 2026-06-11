@@ -106,7 +106,7 @@ export default function OrderHistoryTab() {
                         onClick={() => {navigator.clipboard.writeText(order.out_trade_no); toast.show('订单号已复制', {type: 'info'});}}>
                       {order.out_trade_no}
                     </td>
-                    <td style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>{order.order_type === 'pro_upgrade' ? 'Pro会员' : order.order_type === 'token_topup' ? '点数充值' : order.order_type}</td>
+                    <td style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>{order.order_type === 'pro_upgrade' ? 'Pro会员' : order.order_type === 'credit_topup' ? '点数充值' : order.order_type}</td>
                     <td style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>{order.total_amount}</td>
                     <td style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>{order.status}</td>
                     <td style={{ textAlign: 'left', wordBreak: 'break-all', fontSize: 12 }}>{order.source}</td>

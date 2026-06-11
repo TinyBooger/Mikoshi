@@ -148,7 +148,7 @@ def _resolve_order_type_from_out_trade_no(out_trade_no: str) -> str:
     if out_trade_no.startswith("WXPRO_"):
         return "pro_upgrade"
     if out_trade_no.startswith("WXTOPUP_"):
-        return "token_topup"
+        return "credit_topup"
     return "unknown"
 
 
@@ -184,7 +184,7 @@ def _settle_wechat_order_in_background(
                 source=source,
                 user_id=attach_user_id,
             )
-        elif resolved_order_type == "token_topup":
+        elif resolved_order_type == "credit_topup":
             _handle_credit_topup(
                 db=db,
                 out_trade_no=out_trade_no,
@@ -381,7 +381,7 @@ def _handle_credit_topup(
     payment_order = _claim_payment_order(
         db=db,
         out_trade_no=out_trade_no,
-        order_type="token_topup",
+        order_type="credit_topup",
         user_id=user_id,
         trade_no=trade_no,
         total_amount=total_amount,
@@ -403,7 +403,7 @@ def _handle_credit_topup(
         _finalize_payment_order(db=db, payment_order=payment_order, status="failure",
                                 error_message="invalid_topup_amount", trade_no=trade_no,
                                 total_amount=total_amount, source=source)
-        _record_order_result(db, out_trade_no=out_trade_no, order_type="token_topup",
+        _record_order_result(db, out_trade_no=out_trade_no, order_type="credit_topup",
                              user_id=user_id, trade_no=trade_no, total_amount=total_amount,
                              source=source, status="failure", error_message="invalid_topup_amount")
         return
@@ -412,7 +412,7 @@ def _handle_credit_topup(
         _finalize_payment_order(db=db, payment_order=payment_order, status="failure",
                                 error_message="missing_user_id", trade_no=trade_no,
                                 total_amount=total_amount, source=source)
-        _record_order_result(db, out_trade_no=out_trade_no, order_type="token_topup",
+        _record_order_result(db, out_trade_no=out_trade_no, order_type="credit_topup",
                              user_id=None, trade_no=trade_no, total_amount=total_amount,
                              source=source, status="failure", error_message="missing_user_id")
         return
@@ -422,7 +422,7 @@ def _handle_credit_topup(
         _finalize_payment_order(db=db, payment_order=payment_order, status="failure",
                                 error_message="user_not_found", trade_no=trade_no,
                                 total_amount=total_amount, source=source)
-        _record_order_result(db, out_trade_no=out_trade_no, order_type="token_topup",
+        _record_order_result(db, out_trade_no=out_trade_no, order_type="credit_topup",
                              user_id=user_id, trade_no=trade_no, total_amount=total_amount,
                              source=source, status="failure", error_message="user_not_found")
         return
@@ -445,7 +445,7 @@ def _handle_credit_topup(
         if payment_order:
             _finalize_payment_order(db=db, payment_order=payment_order, status="success",
                                     trade_no=trade_no, total_amount=total_amount, source=source)
-        _record_order_result(db, out_trade_no=out_trade_no, order_type="token_topup",
+        _record_order_result(db, out_trade_no=out_trade_no, order_type="credit_topup",
                              user_id=user_id, trade_no=trade_no, total_amount=total_amount,
                              source=source, status="success")
         logger.info(f"微信支付: 用户 {user_id} 充值成功，点数 +{package['credits']}")
@@ -456,7 +456,7 @@ def _handle_credit_topup(
             _finalize_payment_order(db=db, payment_order=payment_order, status="error",
                                     error_message=str(e), trade_no=trade_no,
                                     total_amount=total_amount, source=source)
-        _record_order_result(db, out_trade_no=out_trade_no, order_type="token_topup",
+        _record_order_result(db, out_trade_no=out_trade_no, order_type="credit_topup",
                              user_id=user_id, trade_no=trade_no, total_amount=total_amount,
                              source=source, status="error", error_message=str(e))
         logger.error(f"微信支付充值点数失败: {e}")
@@ -468,9 +468,9 @@ class CreateOrderRequest(BaseModel):
     total_amount: float
     subject: str
     body: Optional[str] = None
-    order_type: Optional[str] = None          # pro_upgrade | token_topup
+    order_type: Optional[str] = None          # pro_upgrade | credit_topup
     user_id: Optional[str] = None
-    package_id: Optional[str] = None          # token_topup 专用
+    package_id: Optional[str] = None          # credit_topup 专用
 
 
 class QueryOrderRequest(BaseModel):
@@ -523,7 +523,7 @@ async def create_order(
                 raise HTTPException(status_code=403, detail="不能为其他用户创建Pro升级订单")
             resolved_user_id = authed_user_id
 
-        elif request.order_type == "token_topup":
+        elif request.order_type == "credit_topup":
             authed_user_id = verify_session_token(session_token)
             if not authed_user_id:
                 raise HTTPException(status_code=401, detail="点数充值订单需要登?")
@@ -547,7 +547,7 @@ async def create_order(
         # 生成订单号（WXPRO_ / WXTOPUP_?
         if request.order_type == "pro_upgrade":
             prefix = "WXPRO_"
-        elif request.order_type == "token_topup":
+        elif request.order_type == "credit_topup":
             prefix = "WXTOPUP_"
         else:
             prefix = "WXMK_"
@@ -595,7 +595,7 @@ async def create_order(
                                     total_amount=total_amount_str,
                                     source="mock_wechat_create_order",
                                     user_id=resolved_user_id)
-            elif resolved_order_type == "token_topup":
+            elif resolved_order_type == "credit_topup":
                 _handle_credit_topup(db=db, out_trade_no=out_trade_no,
                                     trade_no=mock_transaction_id,
                                     total_amount=total_amount_str,
@@ -735,7 +735,7 @@ async def query_order(
                                     trade_no=transaction_id, total_amount=total_yuan,
                                     source="wechat_query_poll",
                                     user_id=attach_user_id)
-            elif resolved_order_type == "token_topup":
+            elif resolved_order_type == "credit_topup":
                 _handle_credit_topup(db=db, out_trade_no=request.out_trade_no,
                                     trade_no=transaction_id, total_amount=total_yuan,
                                     source="wechat_query_poll",
@@ -830,7 +830,7 @@ async def refund_order(
         payment_order.refund_status = "pending"
         db.commit()
 
-        if payment_order.order_type == "token_topup":
+        if payment_order.order_type == "credit_topup":
             try:
                 paid_amount = float(payment_order.total_amount or 0)
             except (TypeError, ValueError):
