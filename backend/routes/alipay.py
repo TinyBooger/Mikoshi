@@ -577,7 +577,7 @@ async def create_order(
         elif request.order_type == "token_topup":
             authed_user_id = verify_session_token(session_token)
             if not authed_user_id:
-                raise HTTPException(status_code=401, detail="Token充值订单需要登录")
+                raise HTTPException(status_code=401, detail="点数充值订单需要登录")
 
             if request.user_id and request.user_id != authed_user_id:
                 raise HTTPException(status_code=403, detail="不能为其他用户创建充值订单")

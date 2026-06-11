@@ -144,7 +144,7 @@ export default function CreditTopUpPage() {
           headers: { 'Content-Type': 'application/json', Authorization: sessionToken },
           body: JSON.stringify({
             total_amount: Number(pkg.price_cny),
-            subject: `Token充值 ${formatCompactTokenCount(Number(pkg.tokens || 0))}`,
+            subject: `点数充值 ${formatCompactTokenCount(Number(pkg.tokens || 0))}`,
             body: `购买${formatCompactTokenCount(Number(pkg.tokens || 0))} tokens`,
             order_type: 'token_topup',
             user_id: userData.id,
@@ -173,7 +173,7 @@ export default function CreditTopUpPage() {
     try {
       const requestBody = {
         total_amount: Number(pkg.price_cny),
-        subject: `Token充值 ${formatCompactTokenCount(Number(pkg.tokens || 0))}`,
+        subject: `点数充值 ${formatCompactTokenCount(Number(pkg.tokens || 0))}`,
         body: `购买${formatCompactTokenCount(Number(pkg.tokens || 0))} tokens`,
         payment_type: isMobileBrowser() ? 'wap' : 'page',
         order_type: 'token_topup',
@@ -210,13 +210,13 @@ export default function CreditTopUpPage() {
   };
 
   return (
-    <PageWrapper title="Token充值">
+    <PageWrapper title="点数充值">
       <div className="container py-4 py-lg-5">
         <div className="row justify-content-center">
           <div className="col-12 col-xl-10">
             <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
               <div>
-                <h1 className="fw-bold mb-1" style={{ fontSize: '2rem', color: '#1f2937' }}>Token充值</h1>
+                <h1 className="fw-bold mb-1" style={{ fontSize: '2rem', color: '#1f2937' }}>点数充值</h1>
                 <p className="text-muted mb-0">
                   套餐会充值到钱包，套餐额度用完后自动抵扣钱包点数。
                   <button className="btn btn-link p-0 ms-2" style={{ fontSize: '0.98em' }} onClick={() => setShowRefundModal(true)}>
@@ -418,7 +418,7 @@ export default function CreditTopUpPage() {
           amount={wechatQrData.amount}
           onSuccess={() => {
             setWechatQrData(null);
-            toast.show('Token充值成功！', { type: 'success' });
+            toast.show('点数充值成功！', { type: 'success' });
             if (refreshUserData) refreshUserData({ silent: true });
           }}
           onCancel={() => setWechatQrData(null)}

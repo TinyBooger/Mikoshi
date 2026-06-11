@@ -20,10 +20,10 @@ export default function RefundPolicyModal({ show, onClose, policyType }) {
   } else if (policyType === 'token') {
     content = (
       <>
-        <h5 className="fw-bold mb-3">Token充值退款政策</h5>
+        <h5 className="fw-bold mb-3">点数充值退款政策</h5>
         <ul>
-          <li>仅在充值包Token未被使用时可申请退款。</li>
-          <li>一旦Token有部分使用，则不可退款。</li>
+          <li>仅在充值包点数未被使用时可申请退款。</li>
+          <li>一旦点数有部分使用，则不可退款。</li>
         </ul>
       </>
     );

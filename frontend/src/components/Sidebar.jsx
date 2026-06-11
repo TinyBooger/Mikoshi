@@ -1136,7 +1136,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               }}
             >
               <i className="bi bi-wallet2 me-1"></i>
-              充值 Token
+              充值点数
             </button>
           </div>
         )}

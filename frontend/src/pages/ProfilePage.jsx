@@ -58,6 +58,7 @@ export default function ProfilePage() {
   const [personaSort, setPersonaSort] = useState(ENTITY_SORTS.RECENT);
   const [scenes, setScenes] = useState([]);
   const [likedScenes, setLikedScenes] = useState([]);
+  const [creditBarHovered, setCreditBarHovered] = useState(false);
 
   // Pagination state for each entity type
   const [createdCharactersPage, setCreatedCharactersPage] = useState(1);
@@ -1398,14 +1399,20 @@ export default function ProfilePage() {
               {!isMobile && (
               <div style={{ marginTop: 12, width: '100%', maxWidth: 640 }}>
                 <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 6 }}>
-                  <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#5b2f9b' }}>
-                    {tokenProgressLabel}
+                  <span
+                    onMouseEnter={() => setCreditBarHovered(true)}
+                    onMouseLeave={() => setCreditBarHovered(false)}
+                    style={{ fontSize: '0.92rem', fontWeight: 700, color: '#5b2f9b', cursor: 'default' }}
+                  >
+                    {creditBarHovered ? tokenUsageValue : tokenProgressLabel}
                   </span>
                   <span style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 700 }}>
                     {tokenNoticeText}
                   </span>
                 </div>
                 <div
+                  onMouseEnter={() => setCreditBarHovered(true)}
+                  onMouseLeave={() => setCreditBarHovered(false)}
                   style={{
                     height: 10,
                     borderRadius: 999,
@@ -1431,14 +1438,20 @@ export default function ProfilePage() {
               <div style={{ flex: '1 1 100%', width: '100%', marginTop: 2 }}>
                 <div style={{ width: '100%', maxWidth: '100%' }}>
                   <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 6 }}>
-                    <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#5b2f9b' }}>
-                      {tokenProgressLabel}
+                    <span
+                      onMouseEnter={() => setCreditBarHovered(true)}
+                      onMouseLeave={() => setCreditBarHovered(false)}
+                      style={{ fontSize: '0.92rem', fontWeight: 700, color: '#5b2f9b', cursor: 'default' }}
+                    >
+                      {creditBarHovered ? tokenUsageValue : tokenProgressLabel}
                     </span>
                     <span style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 700 }}>
                       {tokenNoticeText}
                     </span>
                   </div>
                   <div
+                    onMouseEnter={() => setCreditBarHovered(true)}
+                    onMouseLeave={() => setCreditBarHovered(false)}
                     style={{
                       height: 10,
                       borderRadius: 999,

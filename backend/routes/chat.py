@@ -28,6 +28,7 @@ from utils.chat_history_utils import (
 import uuid
 import json
 import re
+import logging
 from pathlib import Path
 from datetime import datetime, UTC
 from models import User, Character, Scene, ChatHistory
@@ -37,6 +38,8 @@ from utils.usage_utils import normalize_usage, usage_to_credits
 from utils.credit_usage_ledger import apply_credit_usage_with_wallet
 from utils.credit_cap import can_consume_credits, get_credit_cap_info, build_credit_cap_reached_payload
 from utils.user_utils import is_chat_banned
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -428,6 +431,16 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
     credit_check = can_consume_credits(current_user, db)
     credit_limit_info = credit_check.get("limit") or {}
+    logger.info(
+        "💳 Credit check for user=%s | blocked=%s | consume_from_wallet=%s | cap_scope=%s | daily_used=%.2f | monthly_used=%.2f | cap=%.2f",
+        current_user.id,
+        credit_check["blocked"],
+        credit_check.get("consume_from_wallet", False),
+        credit_limit_info.get("cap_scope", "n/a"),
+        float(credit_limit_info.get("daily_credit_usage", 0)),
+        float(credit_limit_info.get("monthly_credit_usage", 0)),
+        float(credit_limit_info.get("credit_cap", 0)),
+    )
     if credit_check["blocked"]:
         return JSONResponse(
             content=build_credit_cap_reached_payload(credit_limit_info),
@@ -460,6 +473,15 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
     if summary_usage["total_tokens"] > 0:
         summary_credit_amount = usage_to_credits(summary_usage, "deepseek-v4-flash")
+        logger.info(
+            "📝 Summary credit | user=%s | chat=%s | prompt_tokens=%d | completion_tokens=%d | total_tokens=%d | credit=%.4f",
+            current_user.id,
+            chat_id or "none",
+            summary_usage["prompt_tokens"],
+            summary_usage["completion_tokens"],
+            summary_usage["total_tokens"],
+            summary_credit_amount,
+        )
         summary_usage_result = apply_credit_usage_with_wallet(
             db,
             user=current_user,
@@ -475,6 +497,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             )
         db.commit()
         credit_limit_info = get_credit_cap_info(current_user, db)
+        logger.info(
+            "✅ Summary credit applied | user=%s | consumed_from_wallet=%s",
+            current_user.id,
+            summary_usage_result.get("consumed_from_wallet", False),
+        )
     if not prepared_messages:
         return JSONResponse(content={"error": "Invalid messages after normalization"}, status_code=400)
 
@@ -550,6 +577,17 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 
                 # After streaming completes, save to database
                 stream_credit_amount = usage_to_credits(response_usage, chat_config["model"])
+                logger.info(
+                    "💬 Stream credit | user=%s | chat=%s | model=%s | prompt_tokens=%d | completion_tokens=%d | total_tokens=%d | credit=%.4f | has_character=%s",
+                    current_user.id,
+                    chat_id or "none",
+                    chat_config["model"],
+                    response_usage["prompt_tokens"],
+                    response_usage["completion_tokens"],
+                    response_usage["total_tokens"],
+                    stream_credit_amount,
+                    bool(character_id),
+                )
                 if character_id:
                     # Create new DB session for generator context
                     from database import SessionLocal
@@ -576,6 +614,13 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             db_session.rollback()
                             yield f"data: {json.dumps({'error': 'CREDIT_CAP_REACHED', 'credit_limits': usage_result.get('limit') or {}})}\n\n"
                             return
+                        logger.info(
+                            "✅ Stream credit applied (w/ character) | user=%s | chat=%s | consumed_from_wallet=%s | wallet_balance_after=%.2f",
+                            current_user.id,
+                            chat_id,
+                            usage_result.get("consumed_from_wallet", False),
+                            float(usage_result.get("wallet_balance_after", 0)),
+                        )
                         entry = _persist_chat_history_turn(
                             db_session,
                             current_user_id=current_user.id,
@@ -617,6 +662,13 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         return
                     db.commit()
                     current_credit_limit_info = get_credit_cap_info(current_user, db)
+                    logger.info(
+                        "✅ Stream credit applied (wo/ character) | user=%s | chat=%s | consumed_from_wallet=%s | wallet_balance_after=%.2f",
+                        current_user.id,
+                        chat_id,
+                        usage_result.get("consumed_from_wallet", False),
+                        float(usage_result.get("wallet_balance_after", 0)),
+                    )
 
                 # Send final metadata
                 # Use actual prompt_tokens from the LLM response when available; the
@@ -672,6 +724,16 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             limit_check["is_user_request"],
         ) or (limit_check.get("limit") or {})
         non_stream_credit_amount = usage_to_credits(response_usage, chat_config["model"])
+        logger.info(
+            "💬 Non-stream credit | user=%s | chat=%s | model=%s | prompt_tokens=%d | completion_tokens=%d | total_tokens=%d | credit=%.4f",
+            current_user.id,
+            chat_id or "none",
+            chat_config["model"],
+            response_usage["prompt_tokens"],
+            response_usage["completion_tokens"],
+            response_usage["total_tokens"],
+            non_stream_credit_amount,
+        )
         usage_result = apply_credit_usage_with_wallet(
             db,
             user=current_user,
@@ -689,6 +751,12 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             )
         db.commit()
         credit_limit_info = get_credit_cap_info(current_user, db)
+        logger.info(
+            "✅ Non-stream credit applied | user=%s | consumed_from_wallet=%s | wallet_balance_after=%.2f",
+            current_user.id,
+            usage_result.get("consumed_from_wallet", False),
+            float(usage_result.get("wallet_balance_after", 0)),
+        )
 
         serialized_entry = None
 
