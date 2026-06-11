@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Q
 from schemas import UserOut, UserListOut, CharacterOut, SceneOut, PersonaOut
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona, UserTokenWalletLedger, UserFollow
+from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona, UserCreditWalletLedger, UserFollow
 from utils.session import get_current_user, get_optional_current_user
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
@@ -10,7 +10,7 @@ from utils.text_moderation import moderate_form_payload_with_review
 from utils.user_utils import build_user_response, enrich_user_with_character_count
 from utils.validators import validate_account_fields
 from utils.sms_utils import send_verification_code, verify_code
-from utils.token_cap import get_token_cap_info
+from utils.credit_cap import get_credit_cap_info
 from sqlalchemy import func
 import re
 
@@ -130,14 +130,14 @@ def get_recommended_users(
     return UserListOut(items=items, total=total, page=page, page_size=page_size)
 
 
-@router.get("/api/token-limits")
-def get_current_user_token_limits(
+@router.get("/api/credit-limits")
+def get_current_user_credit_limits(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
-    return get_token_cap_info(current_user, db)
+    return get_credit_cap_info(current_user, db)
 
 
 
@@ -576,7 +576,7 @@ async def verify_current_phone(
     if not current_user.phone_number:
         raise HTTPException(status_code=400, detail='当前账号未绑定手机号')
     
-    # 验证验证码
+    # 验证验证�?
     if not verify_code(current_user.phone_number, code):
         raise HTTPException(status_code=400, detail='验证码错误或已过期')
     
@@ -590,7 +590,7 @@ async def send_code_to_new_phone(
     db: Session = Depends(get_db)
 ):
     """
-    步骤3：发送验证码到新手机号
+    步骤3：发送验证码到新手机�?
     """
     new_phone = payload.get('newPhone')
     if not new_phone:
@@ -632,11 +632,11 @@ async def confirm_phone_change(
     if not new_phone or not code:
         raise HTTPException(status_code=400, detail='缺少必要参数')
     
-    # 验证手机号格式
+    # 验证手机号格�?
     if not re.match(r'^1[3-9]\d{9}$', new_phone):
         raise HTTPException(status_code=400, detail='手机号格式不正确')
     
-    # 再次检查新手机号是否已被使用
+    # 再次检查新手机号是否已被使�?
     existing_user = db.query(User).filter(User.phone_number == new_phone).first()
     if existing_user:
         raise HTTPException(status_code=400, detail='该手机号已被其他账号使用')

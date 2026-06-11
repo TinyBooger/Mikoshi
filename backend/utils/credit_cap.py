@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from models import User, UserTokenUsageLedger
+from models import User, UserCreditUsageLedger
 
 
 CHINA_TIMEZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
@@ -106,19 +106,19 @@ def get_user_credit_usage(
     """Sum credit_amount from the usage ledger instead of raw tokens."""
 
     daily_credits = (
-        db.query(func.coalesce(func.sum(UserTokenUsageLedger.credit_amount), 0.0))
+        db.query(func.coalesce(func.sum(UserCreditUsageLedger.credit_amount), 0.0))
         .filter(
-            UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date == daily_usage_date,
+            UserCreditUsageLedger.user_id == user_id,
+            UserCreditUsageLedger.usage_date == daily_usage_date,
         )
         .scalar()
     ) or 0.0
 
     monthly_credits = (
-        db.query(func.coalesce(func.sum(UserTokenUsageLedger.credit_amount), 0.0))
+        db.query(func.coalesce(func.sum(UserCreditUsageLedger.credit_amount), 0.0))
         .filter(
-            UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date >= month_start_date,
+            UserCreditUsageLedger.user_id == user_id,
+            UserCreditUsageLedger.usage_date >= month_start_date,
         )
         .scalar()
     ) or 0.0
@@ -222,61 +222,3 @@ def build_credit_cap_reached_payload(limit_info: dict[str, Any]) -> dict[str, An
         "credit_limits": limit_info,
     }
 
-
-# -- Legacy token-based functions (backward compat) ----------------------------
-
-def get_user_token_usage(
-    db: Session,
-    user_id: str,
-    *,
-    daily_usage_date,
-    month_start_date,
-) -> dict[str, int]:
-    """Legacy — returns token counts (int) from total_tokens column."""
-    daily_tokens = (
-        db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
-        .filter(
-            UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date == daily_usage_date,
-        )
-        .scalar()
-    ) or 0
-
-    monthly_tokens = (
-        db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
-        .filter(
-            UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date >= month_start_date,
-        )
-        .scalar()
-    ) or 0
-
-    return {
-        "daily_token_usage": int(daily_tokens),
-        "monthly_token_usage": int(monthly_tokens),
-    }
-
-
-def get_token_cap_info(user: User, db: Session) -> dict[str, Any]:
-    """Legacy wrapper — delegates to get_credit_cap_info and adds legacy keys."""
-    info = get_credit_cap_info(user, db)
-    # Add legacy token-keyed aliases for backward compatibility
-    # Cast to int since legacy token columns are integer-typed
-    info["daily_token_usage"] = int(info.get("daily_credit_usage", 0))
-    info["monthly_token_usage"] = int(info.get("monthly_credit_usage", 0))
-    info["token_cap"] = int(info.get("credit_cap", 0)) if info.get("credit_cap") is not None else None
-    info["remaining_tokens"] = int(info.get("remaining_credits", 0)) if info.get("remaining_credits") is not None else None
-    info["purchased_token_balance"] = int(info.get("purchased_credit_balance", 0))
-    info["free_daily_token_cap"] = int(info.get("free_daily_credit_cap", 3000))
-    info["pro_monthly_token_cap"] = int(info.get("pro_monthly_credit_cap", 5000000))
-    return info
-
-
-def can_consume_tokens(user: User, db: Session) -> dict[str, Any]:
-    """Legacy wrapper — delegates to can_consume_credits."""
-    return can_consume_credits(user, db)
-
-
-def build_token_cap_reached_payload(limit_info: dict[str, Any]) -> dict[str, Any]:
-    """Legacy wrapper — delegates to build_credit_cap_reached_payload."""
-    return build_credit_cap_reached_payload(limit_info)

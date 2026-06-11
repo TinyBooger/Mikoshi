@@ -11,7 +11,7 @@ import UgcPolicyModal from '../components/UgcPolicyModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
-import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/tokenDisplay';
+import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/creditDisplay';
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import BanNotice from '../components/BanNotice';
 
@@ -156,16 +156,16 @@ export default function CharacterFormPage() {
   const effectiveContextLabel = charData.context_label === 'advanced' ? 'advanced' : 'standard';
 
   const formatTokenCapError = (payload) => {
-    const tokenPayload = payload?.error === 'TOKEN_CAP_REACHED' || payload?.error === 'CREDIT_CAP_REACHED'
+    const tokenPayload = payload?.error === 'CREDIT_CAP_REACHED'
       ? payload
-      : (payload?.detail?.error === 'TOKEN_CAP_REACHED' || payload?.detail?.error === 'CREDIT_CAP_REACHED' ? payload.detail : null);
+      : (payload?.detail?.error === 'CREDIT_CAP_REACHED' ? payload.detail : null);
 
     if (!tokenPayload) return null;
 
-    const limits = tokenPayload?.token_limits || tokenPayload?.credit_limits || {};
+    const limits = tokenPayload?.credit_limits || {};
     const scopeLabel = getTokenQuotaLabel(limits?.cap_scope);
-    const cap = Number(limits?.token_cap || limits?.credit_cap || 0);
-    const remaining = Number(limits?.remaining_tokens || limits?.remaining_credits || 0);
+    const cap = Number(limits?.credit_cap || 0);
+    const remaining = Number(limits?.remaining_credits || 0);
 
     if (cap > 0) {
       return `${tokenPayload.message || '已达到点数额度上限。'} (${scopeLabel}: 剩余 ${formatCompactTokenCount(remaining)} / ${formatCompactTokenCount(cap)})`;

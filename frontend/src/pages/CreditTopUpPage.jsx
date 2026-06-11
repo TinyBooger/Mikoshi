@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router';
 import PageWrapper from '../components/PageWrapper';
 import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
-import { formatCompactTokenCount } from '../utils/tokenDisplay';
+import { formatCompactTokenCount } from '../utils/creditDisplay';
 import { useTranslation } from 'react-i18next';
 import WeChatPayModal from '../components/WeChatPayModal';
 
@@ -19,7 +19,7 @@ function isMobileBrowser() {
   );
 }
 
-export default function TokenTopUpPage() {
+export default function CreditTopUpPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const toast = useToast();
@@ -68,7 +68,7 @@ export default function TokenTopUpPage() {
     const fetchPackages = async () => {
       setLoadingPackages(true);
       try {
-        const response = await fetch(`${window.API_BASE_URL}/api/alipay/token-packages`);
+        const response = await fetch(`${window.API_BASE_URL}/api/alipay/credit-packages`);
         if (!response.ok) {
           throw new Error('Failed to load token packages');
         }
@@ -230,7 +230,7 @@ export default function TokenTopUpPage() {
               >
                 <div style={{ fontSize: '0.76rem', color: '#6b7280', fontWeight: 700 }}>当前钱包余额（点数）</div>
                 <div style={{ fontSize: '1.2rem', color: '#111827', fontWeight: 800 }}>
-                  {formatCompactTokenCount(Number(userData?.purchased_credit_balance || userData?.purchased_token_balance || 0))}
+                  {formatCompactTokenCount(Number(userData?.purchased_credit_balance || 0))}
                 </div>
               </div>
             </div>

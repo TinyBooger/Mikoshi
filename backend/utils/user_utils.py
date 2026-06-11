@@ -9,7 +9,7 @@ from sqlalchemy import func
 from models import Persona, User, Character, Scene, UserLikedCharacter, UserLikedScene, UserLikedPersona
 from schemas import PersonaOut
 from utils.chat_history_utils import fetch_user_chat_history
-from utils.token_cap import get_token_cap_info
+from utils.credit_cap import get_credit_cap_info
 
 
 # ── Ban helpers ────────────────────────────────────────────────────────────────
@@ -189,9 +189,9 @@ def enrich_user_with_character_count(user: User, db: Session, current_user: Opti
         )[:8],
         "is_admin": user.is_admin or False,
         "default_persona_id": user.default_persona_id,
-        "purchased_token_balance": int(getattr(user, "purchased_token_balance", 0) or 0),
-        "purchased_tokens_bought_total": int(getattr(user, "purchased_tokens_bought_total", 0) or 0),
-        "purchased_tokens_consumed_total": int(getattr(user, "purchased_tokens_consumed_total", 0) or 0),
+        "purchased_credit_balance": float(getattr(user, "purchased_credit_balance", 0) or 0),
+        "purchased_credits_bought_total": float(getattr(user, "purchased_credits_bought_total", 0) or 0),
+        "purchased_credits_consumed_total": float(getattr(user, "purchased_credits_consumed_total", 0) or 0),
         "is_pro": pro_state["active"],
         "pro_start_date": getattr(user, "pro_start_date", None),
         "pro_expire_date": getattr(user, "pro_expire_date", None),
@@ -217,9 +217,9 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
     # Calculate characters_created by counting characters where creator_id matches user.id
     characters_created = db.query(Character).filter(Character.creator_id == user.id).count()
     pro_state = get_pro_state(user)
-    token_limits = get_token_cap_info(user, db)
+    credit_limits = get_credit_cap_info(user, db)
 
-    # Expose ban status — shadow_ban is intentionally hidden from the user
+    # Expose ban status �?shadow_ban is intentionally hidden from the user
     active_ban = get_active_ban_type(user)
     exposed_ban_type = active_ban if active_ban != "shadow_ban" else None
     exposed_ban_until = getattr(user, "ban_until", None) if exposed_ban_type else None
@@ -237,18 +237,18 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
         "likes": user.likes or 0,
         "characters_created": characters_created,
         "is_admin": user.is_admin or False,
-        "daily_token_usage": token_limits["daily_token_usage"],
-        "monthly_token_usage": token_limits["monthly_token_usage"],
-        "token_cap_scope": token_limits["cap_scope"],
-        "token_cap": token_limits["token_cap"],
-        "remaining_tokens": token_limits["remaining_tokens"],
-        "token_cap_reached": token_limits["cap_reached"],
-        "token_reset_at": token_limits["reset_at"],
-        "free_daily_token_cap": token_limits["free_daily_token_cap"],
-        "pro_monthly_token_cap": token_limits["pro_monthly_token_cap"],
-        "purchased_token_balance": int(getattr(user, "purchased_token_balance", 0) or 0),
-        "purchased_tokens_bought_total": int(getattr(user, "purchased_tokens_bought_total", 0) or 0),
-        "purchased_tokens_consumed_total": int(getattr(user, "purchased_tokens_consumed_total", 0) or 0),
+        "daily_credit_usage": credit_limits["daily_credit_usage"],
+        "monthly_credit_usage": credit_limits["monthly_credit_usage"],
+        "credit_cap_scope": credit_limits["cap_scope"],
+        "credit_cap": credit_limits["credit_cap"],
+        "remaining_credits": credit_limits["remaining_credits"],
+        "credit_cap_reached": credit_limits["cap_reached"],
+        "credit_reset_at": credit_limits["reset_at"],
+        "free_daily_credit_cap": credit_limits["free_daily_credit_cap"],
+        "pro_monthly_credit_cap": credit_limits["pro_monthly_credit_cap"],
+        "purchased_credit_balance": float(getattr(user, "purchased_credit_balance", 0) or 0),
+        "purchased_credits_bought_total": float(getattr(user, "purchased_credits_bought_total", 0) or 0),
+        "purchased_credits_consumed_total": float(getattr(user, "purchased_credits_consumed_total", 0) or 0),
         "default_persona_id": user.default_persona_id,
         "default_persona": default_persona,
         "is_pro": pro_state["active"],
@@ -279,14 +279,15 @@ def _add_months(dt: datetime, months: int) -> datetime:
 
 
 def upgrade_to_pro(user: User, db: Session, duration_months: int = 1, duration_days: int | None = None) -> User:
-    """Upgrade a user to Pro status.
+    """
+    Upgrade a user to Pro status.
 
     Args:
         user: User object to upgrade
         db: Database session
         duration_months: Number of calendar months for the subscription (default: 1).
         duration_days: Legacy parameter. If provided and duration_months is default,
-                       converts 30-day multiples to months (30→1, 180→6, etc.).
+                       converts 30-day multiples to months (30�?, 180�?, etc.).
 
     Returns:
         Updated User object

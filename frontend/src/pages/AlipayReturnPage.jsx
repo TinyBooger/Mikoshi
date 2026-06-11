@@ -16,7 +16,7 @@ function AlipayReturnPage() {
   const queryKey = useMemo(() => searchParams.toString(), [searchParams]);
   const outTradeNoForView = searchParams.get('out_trade_no');
   const isProUpgradeForView = outTradeNoForView?.startsWith('PRO_');
-  const isTokenTopupForView = outTradeNoForView?.startsWith('TOPUP_');
+  const isCreditTopupForView = outTradeNoForView?.startsWith('TOPUP_');
 
   useEffect(() => {
     if (handledRef.current) {
@@ -58,7 +58,7 @@ function AlipayReturnPage() {
     if (outTradeNo) {
       // 检查是否是Pro升级订单
       const isProUpgrade = outTradeNo.startsWith('PRO_');
-      const isTokenTopup = outTradeNo.startsWith('TOPUP_');
+      const isCreditTopup = outTradeNo.startsWith('TOPUP_');
       
       if (isProUpgrade) {
         if (!wasHandled) {
@@ -71,9 +71,9 @@ function AlipayReturnPage() {
             }
           }
         });
-      } else if (isTokenTopup) {
+      } else if (isCreditTopup) {
         if (!wasHandled) {
-          toast.show(`Token充值成功！订单号：${outTradeNo}`, { type: 'success' });
+          toast.show(`点数充值成功！订单号：${outTradeNo}`, { type: 'success' });
         }
         verifyReturn().then((result) => {
           if (isPaymentSuccessStatus(result?.trade_status) && refreshUserData) {
@@ -168,16 +168,16 @@ function AlipayReturnPage() {
               </button>
             </div>
           </>
-        ) : isTokenTopupForView ? (
+        ) : isCreditTopupForView ? (
           <>
             <div style={{ fontSize: '2.6rem', marginBottom: 12 }}>💰</div>
-            <h2 style={{ marginBottom: 10, color: '#2f2b3d' }}>Token充值成功</h2>
+            <h2 style={{ marginBottom: 10, color: '#2f2b3d' }}>点数充值成功</h2>
             <p style={{ color: '#666', marginBottom: 22 }}>
-              钱包Token已到账，可在套餐额度用尽后继续使用。
+              点数已到账，可在套餐额度用尽后继续使用。
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
-                onClick={() => navigate('/token-topup')}
+                onClick={() => navigate('/credit-topup')}
                 style={lavenderButtonStyle}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = '#e7e0f4';

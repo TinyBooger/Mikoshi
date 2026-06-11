@@ -275,12 +275,12 @@ export default function UserStatsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {(data?.single_user_daily_token_usage || []).length === 0 ? (
+                        {(data?.single_user_daily_credit_usage || []).length === 0 ? (
                           <tr>
                             <td colSpan="3" className="text-center py-3 text-muted">No usage data today</td>
                           </tr>
                         ) : (
-                          data.single_user_daily_token_usage.map((row) => (
+                          data.single_user_daily_credit_usage.map((row) => (
                             <tr key={row.user_id}>
                               <td style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.user_id}</td>
                               <td className="text-end">{Number(row.total_tokens || 0).toLocaleString()}</td>
@@ -338,7 +338,7 @@ export default function UserStatsPage() {
                 <li>MAU: {metrics.mau ?? 0}</li>
                 <li>Total chat sessions: {metrics.total_chat_sessions ?? 0}</li>
                 <li>{data?.notes?.retention || ''}</li>
-                <li>{data?.notes?.token_usage || ''}</li>
+                <li>{data?.notes?.credit_usage || ''}</li>
               </ul>
             </div>
           </div>

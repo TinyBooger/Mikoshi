@@ -15,7 +15,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import ProblemReportModal from '../components/ProblemReportModal';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
-import { formatCompactTokenCount } from '../utils/tokenDisplay';
+import { formatCompactTokenCount } from '../utils/creditDisplay';
 
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
@@ -1068,11 +1068,11 @@ export default function ProfilePage() {
   const formattedProExpireDate = displayUser?.pro_expire_date
     ? new Date(displayUser.pro_expire_date).toLocaleDateString(activeLocale)
     : null;
-  const tokenScope = displayUser?.credit_cap_scope || displayUser?.token_cap_scope;
+  const tokenScope = displayUser?.credit_cap_scope;
   const tokenUsed = Number(tokenScope === 'monthly'
-    ? (displayUser?.monthly_credit_usage || displayUser?.monthly_token_usage)
-    : (displayUser?.daily_credit_usage || displayUser?.daily_token_usage)) || 0;
-  const tokenCap = Number((displayUser?.credit_cap ?? displayUser?.token_cap) || 0);
+    ? (displayUser?.monthly_credit_usage)
+    : (displayUser?.daily_credit_usage)) || 0;
+  const tokenCap = Number((displayUser?.credit_cap) || 0);
   const tokenUsageValue = tokenCap > 0
     ? `${formatCompactTokenCount(tokenUsed)} / ${formatCompactTokenCount(tokenCap)}`
     : formatCompactTokenCount(tokenUsed);
@@ -1082,17 +1082,17 @@ export default function ProfilePage() {
   const tokenProgressLabel = `${tokenProgressPercent.toFixed(1)}%`;
   const nextTokenResetDate = displayUser?.credit_reset_at
     ? new Date(displayUser.credit_reset_at)
-    : (displayUser?.token_reset_at ? new Date(displayUser.token_reset_at) : null);
+    : null;
   const formattedNextTokenResetDate = nextTokenResetDate ? nextTokenResetDate.toLocaleDateString(activeLocale) : null;
   const proExpireDateObj = displayUser?.pro_expire_date ? new Date(displayUser.pro_expire_date) : null;
   const isProDueBeforeNextReset = Boolean(proExpireDateObj && nextTokenResetDate && proExpireDateObj <= nextTokenResetDate);
   const tokenNoticeText = !isActivePro
-    ? t('profile.token_resets_daily')
+    ? t('profile.credit_resets_daily')
     : isProDueBeforeNextReset
-    ? t('profile.pro_due_no_token_reset_notice', {
+    ? t('profile.pro_due_no_credit_reset_notice', {
       date: formattedProExpireDate,
     })
-    : t('profile.next_token_reset_notice', {
+    : t('profile.next_credit_reset_notice', {
       date: formattedNextTokenResetDate,
     });
 

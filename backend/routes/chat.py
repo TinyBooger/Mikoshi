@@ -34,8 +34,8 @@ from models import User, Character, Scene, ChatHistory
 from utils.message_limit import can_send_user_message, increment_user_message_count
 from utils.context_window import compact_conversation_messages, resolve_context_window_settings
 from utils.usage_utils import normalize_usage, usage_to_credits
-from utils.token_usage_ledger import apply_token_usage_with_wallet
-from utils.token_cap import can_consume_credits, get_credit_cap_info, build_credit_cap_reached_payload, get_token_cap_info, build_token_cap_reached_payload
+from utils.credit_usage_ledger import apply_credit_usage_with_wallet
+from utils.credit_cap import can_consume_credits, get_credit_cap_info, build_credit_cap_reached_payload
 from utils.user_utils import is_chat_banned
 
 router = APIRouter()
@@ -426,9 +426,9 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             status_code=429,
         )
 
-    token_check = can_consume_credits(current_user, db)
-    credit_limit_info = token_check.get("limit") or {}
-    if token_check["blocked"]:
+    credit_check = can_consume_credits(current_user, db)
+    credit_limit_info = credit_check.get("limit") or {}
+    if credit_check["blocked"]:
         return JSONResponse(
             content=build_credit_cap_reached_payload(credit_limit_info),
             status_code=429,
@@ -460,7 +460,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
     if summary_usage["total_tokens"] > 0:
         summary_credit_amount = usage_to_credits(summary_usage, "deepseek-v4-flash")
-        summary_usage_result = apply_token_usage_with_wallet(
+        summary_usage_result = apply_credit_usage_with_wallet(
             db,
             user=current_user,
             usage=summary_usage,
@@ -474,7 +474,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 status_code=429,
             )
         db.commit()
-        credit_limit_info = get_token_cap_info(current_user, db)
+        credit_limit_info = get_credit_cap_info(current_user, db)
     if not prepared_messages:
         return JSONResponse(content={"error": "Invalid messages after normalization"}, status_code=400)
 
@@ -563,7 +563,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             db_session,
                             limit_check["is_user_request"],
                         ) or (limit_check.get("limit") or {})
-                        usage_result = apply_token_usage_with_wallet(
+                        usage_result = apply_credit_usage_with_wallet(
                             db_session,
                             user=stream_user,
                             usage=response_usage,
@@ -593,7 +593,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             fork_from_message_id=fork_from_message_id,
                         )
                         serialized_entry = serialize_chat_history_entry(entry)
-                        current_credit_limit_info = get_token_cap_info(stream_user, db_session)
+                        current_credit_limit_info = get_credit_cap_info(stream_user, db_session)
                     finally:
                         db_session.close()
                 else:
@@ -602,7 +602,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         db,
                         limit_check["is_user_request"],
                     ) or (limit_check.get("limit") or {})
-                    usage_result = apply_token_usage_with_wallet(
+                    usage_result = apply_credit_usage_with_wallet(
                         db,
                         user=current_user,
                         usage=response_usage,
@@ -616,7 +616,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         yield f"data: {json.dumps({'error': 'CREDIT_CAP_REACHED', 'credit_limits': usage_result.get('limit') or {}})}\n\n"
                         return
                     db.commit()
-                    current_credit_limit_info = get_token_cap_info(current_user, db)
+                    current_credit_limit_info = get_credit_cap_info(current_user, db)
 
                 # Send final metadata
                 # Use actual prompt_tokens from the LLM response when available; the
@@ -635,7 +635,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
                     'limits': limit_info,
                     'credit_limits': current_credit_limit_info,
-                    'token_limits': current_credit_limit_info,  # legacy alias
                     'context_window': {**effective_context_window_info, 'message_count': len(context_messages), 'selected_tier': context_window_tier},
                 }
                 if character_id:
@@ -673,7 +672,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             limit_check["is_user_request"],
         ) or (limit_check.get("limit") or {})
         non_stream_credit_amount = usage_to_credits(response_usage, chat_config["model"])
-        usage_result = apply_token_usage_with_wallet(
+        usage_result = apply_credit_usage_with_wallet(
             db,
             user=current_user,
             usage=response_usage,
@@ -689,7 +688,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 status_code=429,
             )
         db.commit()
-        credit_limit_info = get_token_cap_info(current_user, db)
+        credit_limit_info = get_credit_cap_info(current_user, db)
 
         serialized_entry = None
 
@@ -721,7 +720,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 "chat_entry": serialized_entry,
                 "limits": limit_info,
                 "credit_limits": credit_limit_info,
-                "token_limits": credit_limit_info,  # legacy alias
                 "context_window": {
                     **context_window_info,
                     "message_count": len(context_messages),
@@ -733,7 +731,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             "response": reply,
             "limits": limit_info,
             "credit_limits": credit_limit_info,
-            "token_limits": credit_limit_info,  # legacy alias
             "context_window": {
                 **context_window_info,
                 "message_count": len(context_messages),

@@ -5,7 +5,7 @@ from sqlalchemy import func, desc, or_, and_
 from datetime import datetime, timedelta, UTC
 from passlib.context import CryptContext
 from database import get_db
-from models import User, Character, Tag, SearchTerm, ChatHistory, ChatHistoryMessage, UserTokenUsageLedger, ContentReviewQueue, ProblemReport, SystemSettings, Scene, Persona, BanAppeal, ContentBanAppeal, UserModerationLog, ContentModerationLog
+from models import User, Character, Tag, SearchTerm, ChatHistory, ChatHistoryMessage, UserCreditUsageLedger, ContentReviewQueue, ProblemReport, SystemSettings, Scene, Persona, BanAppeal, ContentBanAppeal, UserModerationLog, ContentModerationLog
 from utils.session import get_current_admin_user
 from utils.security_middleware import get_rate_limit_status
 from utils.user_utils import enrich_user_with_character_count, build_user_response
@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from schemas import UserOut, UserMessageOut
 from utils.audit_logger import AuditLog
 from utils.local_storage_utils import delete_stored_image
-from utils.token_wallet import get_token_topup_packages, set_token_topup_packages
+from utils.credit_wallet import get_credit_topup_packages, set_credit_topup_packages
 from routes.user_messages import create_moderation_message, create_content_moderation_message
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -144,15 +144,15 @@ class ContentReviewResolveRequest(BaseModel):
     notes: Optional[str] = None
 
 
-class TokenTopupPackageItem(BaseModel):
+class CreditTopupPackageItem(BaseModel):
     id: str
-    tokens: int
+    credits: int
     price_cny: float
     label: Optional[str] = None
 
 
-class TokenTopupPackagesUpdateRequest(BaseModel):
-    packages: List[TokenTopupPackageItem]
+class CreditTopupPackagesUpdateRequest(BaseModel):
+    packages: List[CreditTopupPackageItem]
 
 
 class UserModerationActionRequest(BaseModel):
@@ -334,11 +334,11 @@ def get_user_data_stats(
     d7_retention = (d7_retained / d7_eligible * 100) if d7_eligible else 0
 
     today_token_rows = db.query(
-        UserTokenUsageLedger.user_id,
-        UserTokenUsageLedger.total_tokens,
-        UserTokenUsageLedger.credit_amount,
+        UserCreditUsageLedger.user_id,
+        UserCreditUsageLedger.total_tokens,
+        UserCreditUsageLedger.credit_amount,
     ).filter(
-        UserTokenUsageLedger.usage_date == today_date
+        UserCreditUsageLedger.usage_date == today_date
     ).all()
 
     top_daily_token_users = sorted(
@@ -375,7 +375,7 @@ def get_user_data_stats(
             "avg_daily_tokens_per_active_user": round(avg_daily_tokens_per_active_user, 2),
             "today_credit_sum": today_credit_sum,
         },
-        "single_user_daily_token_usage": [
+        "single_user_daily_credit_usage": [
             {
                 "user_id": user_id,
                 "total_tokens": total_tokens,
@@ -385,14 +385,14 @@ def get_user_data_stats(
         ],
         "top_daily_message_users": top_daily_message_users[:10],
         "notes": {
-            "token_usage": "Summed from daily ledger rows written from API response usage.",
+            "credit_usage": "Summed from daily ledger rows written from API response usage.",
             "retention": "D1/D7 are cohort-based using register audit logs and login/chat activity dates.",
         }
     }
 
 
 @router.get("/user-stats/user/{user_id}")
-def get_single_user_token_usage(
+def get_single_user_credit_usage(
     user_id: str,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
@@ -409,55 +409,55 @@ def get_single_user_token_usage(
     today_date = today_start.date()
 
     daily_tokens = (
-        db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
+        db.query(func.coalesce(func.sum(UserCreditUsageLedger.total_tokens), 0))
         .filter(
-            UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date == today_date,
+            UserCreditUsageLedger.user_id == user_id,
+            UserCreditUsageLedger.usage_date == today_date,
         )
         .scalar()
     ) or 0
 
     daily_credits = (
-        db.query(func.coalesce(func.sum(UserTokenUsageLedger.credit_amount), 0.0))
+        db.query(func.coalesce(func.sum(UserCreditUsageLedger.credit_amount), 0.0))
         .filter(
-            UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date == today_date,
+            UserCreditUsageLedger.user_id == user_id,
+            UserCreditUsageLedger.usage_date == today_date,
         )
         .scalar()
     ) or 0.0
 
     monthly_tokens = (
-        db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
+        db.query(func.coalesce(func.sum(UserCreditUsageLedger.total_tokens), 0))
         .filter(
-            UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date >= month_start,
+            UserCreditUsageLedger.user_id == user_id,
+            UserCreditUsageLedger.usage_date >= month_start,
         )
         .scalar()
     ) or 0
 
     monthly_credits = (
-        db.query(func.coalesce(func.sum(UserTokenUsageLedger.credit_amount), 0.0))
+        db.query(func.coalesce(func.sum(UserCreditUsageLedger.credit_amount), 0.0))
         .filter(
-            UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date >= month_start,
+            UserCreditUsageLedger.user_id == user_id,
+            UserCreditUsageLedger.usage_date >= month_start,
         )
         .scalar()
     ) or 0.0
 
     rolling_30d_tokens = (
-        db.query(func.coalesce(func.sum(UserTokenUsageLedger.total_tokens), 0))
+        db.query(func.coalesce(func.sum(UserCreditUsageLedger.total_tokens), 0))
         .filter(
-            UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date >= thirty_days_ago,
+            UserCreditUsageLedger.user_id == user_id,
+            UserCreditUsageLedger.usage_date >= thirty_days_ago,
         )
         .scalar()
     ) or 0
 
     rolling_30d_credits = (
-        db.query(func.coalesce(func.sum(UserTokenUsageLedger.credit_amount), 0.0))
+        db.query(func.coalesce(func.sum(UserCreditUsageLedger.credit_amount), 0.0))
         .filter(
-            UserTokenUsageLedger.user_id == user_id,
-            UserTokenUsageLedger.usage_date >= thirty_days_ago,
+            UserCreditUsageLedger.user_id == user_id,
+            UserCreditUsageLedger.usage_date >= thirty_days_ago,
         )
         .scalar()
     ) or 0.0
@@ -480,8 +480,7 @@ def get_single_user_token_usage(
         "daily_chat_sessions": daily_chat_sessions,
         "purchased_credit_balance": round(float(user.purchased_credit_balance or 0), 4),
         "notes": {
-            "token_usage": "Summed from daily ledger rows written from API response usage.",
-            "credit_usage": "Credits = (input_tokens * input_price + output_tokens * output_price) / 1000, tracked per usage.",
+            "credit_usage": "Summed from daily ledger rows written from API response usage. Credits = (input_tokens * input_price + output_tokens * output_price) / 1000.",
         },
     }
 
@@ -876,7 +875,7 @@ def take_moderation_action(
                 target_user.ban_until = None
                 target_user.ban_reason = None
                 target_user.ban_note = None
-        # warn/ignore: no user model changes — report is resolved with notes only
+        # warn/ignore: no user model changes �?report is resolved with notes only
 
         # Log this user moderation action
         if report.target_string_id and action != "ignore":
@@ -1167,7 +1166,7 @@ def admin_create_user(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
 ):
-    """Create a user account directly — Admin only. Bypasses phone verification, captcha, and invitation codes."""
+    """Create a user account directly �?Admin only. Bypasses phone verification, captcha, and invitation codes."""
     email = payload.email.strip().lower()
 
     if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
@@ -1418,7 +1417,7 @@ def moderate_user_directly(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
 ):
-    """Apply a moderation action directly to a user (no report required) — Admin only."""
+    """Apply a moderation action directly to a user (no report required) �?Admin only."""
     valid_actions = {"warn", "upload_ban", "full_ban", "shadow_ban", "unban"}
     action = (payload.action or "").strip().lower()
     if action not in valid_actions:
@@ -1480,7 +1479,7 @@ def get_user_violation_history(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
 ):
-    """Return the full violation/punishment history for a user — Admin only."""
+    """Return the full violation/punishment history for a user �?Admin only."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -1839,20 +1838,20 @@ def get_current_rate_limit_status(
     return status
 
 
-@router.get("/token-topup-packages")
-def get_token_topup_packages_admin(
+@router.get("/credit-topup-packages")
+def get_credit_topup_packages_admin(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
 ):
-    packages = get_token_topup_packages(db)
+    packages = get_credit_topup_packages(db)
     return {
         "packages": packages,
     }
 
 
-@router.put("/token-topup-packages")
-def update_token_topup_packages_admin(
-    payload: TokenTopupPackagesUpdateRequest,
+@router.put("/credit-topup-packages")
+def update_credit_topup_packages_admin(
+    payload: CreditTopupPackagesUpdateRequest,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
 ):
@@ -1862,7 +1861,7 @@ def update_token_topup_packages_admin(
     raw_packages = [
         {
             "id": item.id,
-            "tokens": item.tokens,
+            "credits": item.credits,
             "price_cny": item.price_cny,
             "label": item.label,
         }
@@ -1870,7 +1869,7 @@ def update_token_topup_packages_admin(
     ]
 
     try:
-        packages = set_token_topup_packages(
+        packages = set_credit_topup_packages(
             db,
             packages=raw_packages,
             updated_by=current_admin.id,
@@ -1879,7 +1878,7 @@ def update_token_topup_packages_admin(
         raise HTTPException(status_code=400, detail=str(e))
 
     return {
-        "message": "Token top-up packages updated successfully",
+        "message": "Credit top-up packages updated successfully",
         "packages": packages,
     }
 
@@ -1954,7 +1953,7 @@ def get_appeals(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
 ):
-    """List ban appeals. status=pending|approved|rejected|all — Admin only."""
+    """List ban appeals. status=pending|approved|rejected|all �?Admin only."""
     query = db.query(BanAppeal)
     if status and status != "all":
         query = query.filter(BanAppeal.status == status)
@@ -1993,7 +1992,7 @@ def resolve_appeal(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
 ):
-    """Approve or reject a ban appeal with a required reply message — Admin only."""
+    """Approve or reject a ban appeal with a required reply message �?Admin only."""
     appeal = db.query(BanAppeal).filter(BanAppeal.id == appeal_id).first()
     if not appeal:
         raise HTTPException(status_code=404, detail="Appeal not found")
@@ -2056,7 +2055,7 @@ def get_content_appeals(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
 ):
-    """List content ban appeals. status=pending|approved|rejected|all — Admin only."""
+    """List content ban appeals. status=pending|approved|rejected|all �?Admin only."""
     query = db.query(ContentBanAppeal)
     if status and status != "all":
         query = query.filter(ContentBanAppeal.status == status)
@@ -2096,7 +2095,7 @@ def resolve_content_appeal(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
 ):
-    """Approve or reject a content ban appeal with a required reply message — Admin only."""
+    """Approve or reject a content ban appeal with a required reply message �?Admin only."""
     appeal = db.query(ContentBanAppeal).filter(ContentBanAppeal.id == appeal_id).first()
     if not appeal:
         raise HTTPException(status_code=404, detail="Content appeal not found")

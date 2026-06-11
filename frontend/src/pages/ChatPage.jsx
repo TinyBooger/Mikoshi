@@ -18,7 +18,7 @@ import {
   normalizeContextWindowTier,
 } from '../utils/contextWindow';
 import { getModelConfig, AVAILABLE_MODEL_IDS, ALLOWED_MODEL_SET } from '../utils/modelConfigs';
-import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/tokenDisplay';
+import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/creditDisplay';
 
 const WALLPAPER_OPTIONS = [
   { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
@@ -428,17 +428,17 @@ export default function ChatPage() {
 
     applyTokenLimits({
       plan: userData?.is_pro ? 'pro' : 'free',
-      cap_scope: userData?.credit_cap_scope || userData?.token_cap_scope,
-      token_cap: userData?.credit_cap ?? userData?.token_cap,
-      remaining_tokens: userData?.remaining_credits ?? userData?.remaining_tokens,
-      cap_reached: !!(userData?.credit_cap_reached || userData?.token_cap_reached),
-      daily_token_usage: Number(userData?.daily_credit_usage || userData?.daily_token_usage || 0),
-      monthly_token_usage: Number(userData?.monthly_credit_usage || userData?.monthly_token_usage || 0),
-      free_daily_token_cap: Number(userData?.free_daily_credit_cap || userData?.free_daily_token_cap || 0),
-      pro_monthly_token_cap: Number(userData?.pro_monthly_credit_cap || userData?.pro_monthly_token_cap || 0),
-      reset_at: userData?.credit_reset_at || userData?.token_reset_at,
-      is_limited: userData?.credit_cap !== null || userData?.token_cap !== null,
-      purchased_token_balance: userData?.purchased_credit_balance ?? userData?.purchased_token_balance ?? 0,
+      cap_scope: userData?.credit_cap_scope,
+      credit_cap: userData?.credit_cap,
+      remaining_credits: userData?.remaining_credits,
+      cap_reached: !!(userData?.credit_cap_reached),
+      daily_credit_usage: Number(userData?.daily_credit_usage || 0),
+      monthly_credit_usage: Number(userData?.monthly_credit_usage || 0),
+      free_daily_credit_cap: Number(userData?.free_daily_credit_cap || 0),
+      pro_monthly_credit_cap: Number(userData?.pro_monthly_credit_cap || 0),
+      reset_at: userData?.credit_reset_at,
+      is_limited: userData?.credit_cap !== null,
+      purchased_credit_balance: userData?.purchased_credit_balance ?? 0,
     });
   }, [userData]);
 
@@ -528,8 +528,8 @@ export default function ChatPage() {
   const maybeShowTokenLimitReminder = (limits) => {
     if (!limits || !limits.is_limited) return;
 
-    const cap = Number(limits.token_cap ?? 0);
-    const remaining = Number(limits.remaining_tokens ?? 0);
+    const cap = Number(limits.credit_cap ?? 0);
+    const remaining = Number(limits.remaining_credits ?? 0);
     if (cap <= 0) return;
 
     if (remaining <= 0) {
@@ -558,7 +558,7 @@ export default function ChatPage() {
     if (!sessionToken) return;
 
     try {
-      const response = await fetch(`${window.API_BASE_URL}/api/token-limits`, {
+      const response = await fetch(`${window.API_BASE_URL}/api/credit-limits`, {
         headers: { 'Authorization': sessionToken },
       });
 
@@ -578,7 +578,7 @@ export default function ChatPage() {
         : '，该封禁为永久封禁';
       return `您的账号已被封禁${until}，无法发送消息。`;
     }
-    if (errorPayload?.error === 'TOKEN_CAP_REACHED' || errorPayload?.error === 'CREDIT_CAP_REACHED') {
+    if (errorPayload?.error === 'CREDIT_CAP_REACHED') {
       return errorPayload?.message || '已达到点数额度上限，当前点数相关操作已受限。';
     }
     if (errorPayload?.error === 'DAILY_MESSAGE_CAP_REACHED') {
@@ -1246,8 +1246,8 @@ export default function ChatPage() {
         if (errorPayload?.limits) {
           applyChatLimits(errorPayload.limits);
         }
-        if (errorPayload?.token_limits || errorPayload?.credit_limits) {
-          applyTokenLimits(errorPayload.token_limits || errorPayload.credit_limits);
+        if (errorPayload?.credit_limits) {
+          applyTokenLimits(errorPayload.credit_limits);
         }
         throw new Error(getChatErrorMessage(errorPayload));
       }
@@ -1294,7 +1294,7 @@ export default function ChatPage() {
 
         if (data.done) {
           applyChatLimits(data.limits);
-          applyTokenLimits(data.token_limits || data.credit_limits);
+          applyTokenLimits(data.credit_limits);
           if (refreshUserData) {
             refreshUserData({ silent: true });
           }
@@ -2416,9 +2416,9 @@ export default function ChatPage() {
               {(() => {
                 const isPro = !!tokenLimits?.is_pro;
                 const scopeLabel = isPro ? '本月剩余点数' : '本日剩余点数';
-                const used = Number(tokenLimits?.cap_scope === 'monthly' ? tokenLimits?.monthly_token_usage : tokenLimits?.daily_token_usage) || 0;
-                const cap = Number(tokenLimits?.token_cap || 0);
-                const walletBalance = Number(tokenLimits?.purchased_token_balance || 0);
+                const used = Number(tokenLimits?.cap_scope === 'monthly' ? tokenLimits?.monthly_credit_usage : tokenLimits?.daily_credit_usage) || 0;
+                const cap = Number(tokenLimits?.credit_cap || 0);
+                const walletBalance = Number(tokenLimits?.purchased_credit_balance || 0);
                 const hasWallet = walletBalance > 0;
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
@@ -2431,7 +2431,7 @@ export default function ChatPage() {
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       <button
                         type="button"
-                        onClick={() => navigate('/token-topup')}
+                        onClick={() => navigate('/credit-topup')}
                         style={{
                           padding: '0.15rem 0.55rem',
                           borderRadius: 6,

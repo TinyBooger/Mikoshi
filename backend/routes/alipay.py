@@ -1,5 +1,5 @@
 """
-支付宝支付路由
+支付宝支付路�?
 提供支付宝支付相关的API接口
 """
 from fastapi import APIRouter, HTTPException, Request, Depends, Header
@@ -17,12 +17,12 @@ from sqlalchemy.exc import IntegrityError
 from utils.payment_provider import get_active_payment_provider
 from utils.session import verify_session_token, get_current_admin_user
 from utils.user_utils import upgrade_to_pro
-from utils.token_wallet import (
-    get_token_topup_packages,
-    get_token_topup_package_by_id,
-    get_token_topup_package_by_amount,
-    credit_wallet_tokens,
-    reverse_wallet_tokens_for_refund,
+from utils.credit_wallet import (
+    get_credit_topup_packages,
+    get_credit_topup_package_by_id,
+    get_credit_topup_package_by_amount,
+    credit_wallet,
+    reverse_wallet_credits_for_refund,
     credit_wallet,
     reverse_wallet_credits_for_refund,
 )
@@ -37,7 +37,7 @@ router = APIRouter(prefix="/api/alipay", tags=["alipay"])
 PRO_AMOUNT_TOLERANCE = 0.01
 
 # Maps accepted payment amounts to Pro membership duration in days.
-# Prices: 1 month = ¥15, 3 months = ¥40 (9折), 6 months = ¥72 (8折), 1 year = ¥120 (6.7折)
+# Prices: 1 month = ¥15, 3 months = ¥40 (9�?, 6 months = ¥72 (8�?, 1 year = ¥120 (6.7�?
 PRO_UPGRADE_PLANS = [
     {"amount": 0.01,  "days": 30},   # test plan
     {"amount": 15.0,  "days": 30},
@@ -45,7 +45,7 @@ PRO_UPGRADE_PLANS = [
     {"amount": 72.0,  "days": 180},
     {"amount": 120.0, "days": 365},
 ]
-TOKEN_TOPUP_AMOUNT_TOLERANCE = 0.01
+CREDIT_TOPUP_AMOUNT_TOLERANCE = 0.01
 
 
 def _get_payment_provider():
@@ -219,7 +219,7 @@ def _handle_pro_upgrade(
     if payment_order is None:
         existing = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
         existing_status = existing.status if existing else "unknown"
-        logger.info(f"订单已被处理或处理中，跳过升级: {out_trade_no}, status={existing_status}")
+        logger.info(f"订单已被处理或处理中，跳过升�? {out_trade_no}, status={existing_status}")
         return
 
     if not _is_valid_pro_upgrade_amount(total_amount):
@@ -292,7 +292,7 @@ def _handle_pro_upgrade(
             status="failure",
             error_message="user_not_found",
         )
-        logger.error(f"未找到用户 {user_id}")
+        logger.error(f"未找到用�?{user_id}")
         return
 
     try:
@@ -347,7 +347,7 @@ def _handle_pro_upgrade(
         logger.error(f"升级Pro会员失败: {e}")
 
 
-def _handle_token_topup(
+def _handle_credit_topup(
     db,
     out_trade_no: str,
     trade_no: Optional[str],
@@ -371,7 +371,7 @@ def _handle_token_topup(
     if payment_order is None:
         existing = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
         existing_status = existing.status if existing else "unknown"
-        logger.info(f"充值订单已处理或处理中，跳过: {out_trade_no}, status={existing_status}")
+        logger.info(f"充值订单已处理或处理中，跳�? {out_trade_no}, status={existing_status}")
         return
 
     try:
@@ -379,7 +379,7 @@ def _handle_token_topup(
     except (TypeError, ValueError):
         paid_amount = -1
 
-    package = get_token_topup_package_by_amount(db, paid_amount, TOKEN_TOPUP_AMOUNT_TOLERANCE)
+    package = get_credit_topup_package_by_amount(db, paid_amount, CREDIT_TOPUP_AMOUNT_TOLERANCE)
     if not package:
         _finalize_payment_order(
             db=db,
@@ -451,10 +451,10 @@ def _handle_token_topup(
         return
 
     try:
-        credit_wallet_tokens(
+        credit_wallet(
             db,
             user_id=user_id,
-            tokens=int(package["tokens"]),
+            credits=float(package["credits"]),
             source="alipay_topup",
             source_order_no=out_trade_no,
             idempotency_key=f"credit:{out_trade_no}",
@@ -484,7 +484,7 @@ def _handle_token_topup(
             source=source,
             status="success",
         )
-        logger.info(f"用户 {user_id} 充值成功，token +{package['tokens']}")
+        logger.info(f"用户 {user_id} 充值成功，���� +{package['credits']}")
     except Exception as e:
         db.rollback()
         payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
@@ -519,15 +519,15 @@ class CreateOrderRequest(BaseModel):
     subject: str  # 订单标题
     body: Optional[str] = None  # 订单描述
     payment_type: Optional[str] = "page"  # 支付类型: page(电脑网站), wap(手机网站)
-    timeout_express: Optional[str] = None  # 超时时间: 30m、2h、1d等 (沙箱环境不超过15小时)
-    order_type: Optional[str] = None  # 订单类型: pro_upgrade等
+    timeout_express: Optional[str] = None  # 超时时间: 30m�?h�?d�?(沙箱环境不超�?5小时)
+    order_type: Optional[str] = None  # 订单类型: pro_upgrade�?
     user_id: Optional[str] = None  # 用户ID (Firebase UID是字符串)
-    package_id: Optional[str] = None  # 充值包ID（token_topup专用）
+    package_id: Optional[str] = None  # 充值包ID（token_topup专用�?
 
 
 class QueryOrderRequest(BaseModel):
     """查询订单请求"""
-    out_trade_no: Optional[str] = None  # 商户订单号
+    out_trade_no: Optional[str] = None  # 商户订单�?
     trade_no: Optional[str] = None  # 支付宝交易号
 
 
@@ -585,13 +585,13 @@ async def create_order(
             if not request.package_id:
                 raise HTTPException(status_code=400, detail="缺少充值包ID")
 
-            topup_package = get_token_topup_package_by_id(db, request.package_id)
+            topup_package = get_credit_topup_package_by_id(db, request.package_id)
             logger.info(f"查询充值包: package_id={request.package_id}, result={topup_package}")
             if not topup_package:
                 raise HTTPException(status_code=400, detail="无效的充值包")
 
             expected_amount = float(topup_package["price_cny"])
-            if abs(float(request.total_amount) - expected_amount) > TOKEN_TOPUP_AMOUNT_TOLERANCE:
+            if abs(float(request.total_amount) - expected_amount) > CREDIT_TOPUP_AMOUNT_TOLERANCE:
                 raise HTTPException(status_code=400, detail="充值金额与充值包不匹配")
 
             resolved_user_id = authed_user_id
@@ -611,7 +611,7 @@ async def create_order(
         if request.order_type in {"pro_upgrade", "token_topup"} and resolved_user_id:
             out_trade_no = f"{out_trade_no}_U{resolved_user_id}"
         
-        # 构造回调URL（使用完整URL以确保支付宝可以正确跳转）
+        # 构造回调URL（使用完整URL以确保支付宝可以正确跳转�?
         frontend_base_url = os.getenv("FRONTEND_BASE_URL", "").rstrip("/")
         return_url = f"{frontend_base_url}/alipay/return" if frontend_base_url else None
 
@@ -663,7 +663,7 @@ async def create_order(
                     source=f"{provider.provider_name}_create_order",
                 )
             elif resolved_order_type == "token_topup":
-                _handle_token_topup(
+                _handle_credit_topup(
                     db=db,
                     out_trade_no=out_trade_no,
                     trade_no=mock_trade_no,
@@ -695,7 +695,7 @@ async def create_order(
 async def alipay_notify(request: Request, db: Session = Depends(get_db)):
     """
     支付宝异步通知接口
-    支付宝会POST支付结果到这个接口
+    支付宝会POST支付结果到这个接�?
     
     注意：这个接口需要公网可访问，用于接收支付宝的异步通知
     """
@@ -717,7 +717,7 @@ async def alipay_notify(request: Request, db: Session = Depends(get_db)):
             logger.warning("支付宝异步通知验签失败")
             return "failure"
         
-        # 获取交易状态
+        # 获取交易状�?
         trade_status = data_dict.get("trade_status")
         out_trade_no = data_dict.get("out_trade_no")
         trade_no = data_dict.get("trade_no")
@@ -736,7 +736,7 @@ async def alipay_notify(request: Request, db: Session = Depends(get_db)):
                     source="notify",
                 )
             elif resolved_order_type == "token_topup":
-                _handle_token_topup(
+                _handle_credit_topup(
                     db=db,
                     out_trade_no=out_trade_no or "",
                     trade_no=trade_no,
@@ -745,8 +745,8 @@ async def alipay_notify(request: Request, db: Session = Depends(get_db)):
                 )
             return "success"
         
-        # 其他状态
-        logger.info(f"订单状态: {trade_status}, 订单号: {out_trade_no}")
+        # 其他状�?
+        logger.info(f"订单状�? {trade_status}, 订单�? {out_trade_no}")
         return "success"
         
     except Exception as e:
@@ -757,8 +757,8 @@ async def alipay_notify(request: Request, db: Session = Depends(get_db)):
 @router.get("/return")
 async def alipay_return(request: Request, db: Session = Depends(get_db)):
     """
-    支付宝同步返回接口
-    支付完成后用户会被重定向到这个页面
+    支付宝同步返回接�?
+    支付完成后用户会被重定向到这个页�?
     """
     try:
         provider = _get_payment_provider()
@@ -766,7 +766,7 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
         # 获取GET参数
         data = dict(request.query_params)
         
-        logger.info(f"收到支付宝同步返回: {data}")
+        logger.info(f"收到支付宝同步返�? {data}")
 
         if provider.provider_name == "alipay":
             # 验证签名（不要修改原始数据）
@@ -779,7 +779,7 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
         trade_no = data.get("trade_no")
         total_amount = data.get("total_amount")
 
-        # 按照沙箱指引：同步返回只做展示，关键结果以主动查询/异步通知为准
+        # 按照沙箱指引：同步返回只做展示，关键结果以主动查�?异步通知为准
         trade_status = None
         query_code = None
         if provider.provider_name == "mock":
@@ -795,7 +795,7 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
                     source="return_query",
                 )
             elif resolved_order_type == "token_topup":
-                _handle_token_topup(
+                _handle_credit_topup(
                     db=db,
                     out_trade_no=out_trade_no or "",
                     trade_no=trade_no,
@@ -807,7 +807,7 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
                 query_result = provider.query_order(out_trade_no=out_trade_no, trade_no=trade_no)
                 trade_status, query_code = _get_trade_status(query_result)
             except Exception as e:
-                logger.warning(f"查询订单状态失败: {e}")
+                logger.warning(f"查询订单状态失�? {e}")
 
         if query_code == "10000" and trade_status in ("TRADE_SUCCESS", "TRADE_FINISHED"):
             resolved_order_type = _resolve_order_type_from_out_trade_no(out_trade_no or "")
@@ -820,7 +820,7 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
                     source="return_query",
                 )
             elif resolved_order_type == "token_topup":
-                _handle_token_topup(
+                _handle_credit_topup(
                     db=db,
                     out_trade_no=out_trade_no or "",
                     trade_no=trade_no,
@@ -850,7 +850,7 @@ async def query_order(
     _current_admin_user: User = Depends(get_current_admin_user),
 ):
     """
-    查询订单支付状态
+    查询订单支付状�?
     """
     try:
         provider = _get_payment_provider()
@@ -996,7 +996,7 @@ async def refund_order(
                 paid_amount = float(payment_order.total_amount or 0)
             except (TypeError, ValueError):
                 paid_amount = -1
-            package = get_token_topup_package_by_amount(db, paid_amount, TOKEN_TOPUP_AMOUNT_TOLERANCE)
+            package = get_credit_topup_package_by_amount(db, paid_amount, CREDIT_TOPUP_AMOUNT_TOLERANCE)
             if not package:
                 payment_order.refund_status = "failed"
                 db.commit()
@@ -1012,10 +1012,10 @@ async def refund_order(
                 payment_order.refund_status = "failed"
                 db.commit()
                 raise HTTPException(status_code=400, detail="充值包已部分使用，无法退款")
-            refund_reversal = reverse_wallet_tokens_for_refund(
+            refund_reversal = reverse_wallet_credits_for_refund(
                 db,
                 user_id=payment_order.user_id,
-                tokens=int(package["tokens"]),
+                credits=float(package["credits"]),
                 source_order_no=payment_order.out_trade_no,
                 idempotency_key=f"refund_reverse:{payment_order.out_trade_no}",
             )
@@ -1072,7 +1072,7 @@ async def refund_order(
 @router.get("/config")
 async def get_config(_current_admin_user: User = Depends(get_current_admin_user)):
     """
-    获取支付宝配置信息（用于前端调试）
+    获取支付宝配置信息（用于前端调试�?
     注意：生产环境不应该暴露敏感信息
     """
     provider = _get_payment_provider()
@@ -1086,9 +1086,9 @@ async def get_config(_current_admin_user: User = Depends(get_current_admin_user)
     }
 
 
-@router.get("/token-packages")
-async def get_token_packages(db: Session = Depends(get_db)):
-    packages = get_token_topup_packages(db)
+@router.get("/credit-packages")
+async def get_credit_packages(db: Session = Depends(get_db)):
+    packages = get_credit_topup_packages(db)
     return {
         "success": True,
         "packages": packages,

@@ -62,11 +62,6 @@ class User(Base):
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
     
-    # Purchased token wallet (legacy — token amounts retained for reference)
-    purchased_token_balance = Column(Integer, default=0, nullable=False)
-    purchased_tokens_bought_total = Column(Integer, default=0, nullable=False)
-    purchased_tokens_consumed_total = Column(Integer, default=0, nullable=False)
-
     # Purchased credit wallet (点数)
     purchased_credit_balance = Column(Float, default=0.0, nullable=False)
     purchased_credits_bought_total = Column(Float, default=0.0, nullable=False)
@@ -91,8 +86,8 @@ class User(Base):
     chat_histories = relationship("ChatHistory", back_populates="user", cascade="all, delete-orphan")
 
 
-class UserTokenUsageLedger(Base):
-    __tablename__ = "user_token_usage_ledger"
+class UserCreditUsageLedger(Base):
+    __tablename__ = "user_credit_usage_ledger"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
@@ -105,12 +100,12 @@ class UserTokenUsageLedger(Base):
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
 
     __table_args__ = (
-        UniqueConstraint('user_id', 'usage_date', name='uix_user_token_usage_ledger_user_date'),
+        UniqueConstraint('user_id', 'usage_date', name='uix_user_credit_usage_ledger_user_date'),
     )
 
 
-class UserTokenWalletLedger(Base):
-    __tablename__ = "user_token_wallet_ledger"
+class UserCreditWalletLedger(Base):
+    __tablename__ = "user_credit_wallet_ledger"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)

@@ -35,7 +35,7 @@ import EntityDetailPage from './pages/EntityDetailPage.jsx';
 import AlipayTestPage from './pages/AlipayTestPage.jsx';
 import AlipayReturnPage from './pages/AlipayReturnPage.jsx';
 import ProUpgradePage from './pages/ProUpgradePage.jsx';
-import TokenTopUpPage from './pages/TokenTopUpPage.jsx';
+import CreditTopUpPage from './pages/CreditTopUpPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import SystemSettingsPage from './admin/pages/SystemSettingsPage.jsx';
 
@@ -101,7 +101,7 @@ const router = createBrowserRouter([
       { path: 'alipay/test', element: <ProtectedPage><AlipayTestPage /></ProtectedPage> },
       { path: 'alipay/return', element: <ProtectedPage><AlipayReturnPage /></ProtectedPage> },
       { path: 'pro-upgrade', element: <ProtectedPage><ProUpgradePage /></ProtectedPage> },
-      { path: 'token-topup', element: <ProtectedPage><TokenTopUpPage /></ProtectedPage> },
+      { path: 'credit-topup', element: <ProtectedPage><CreditTopUpPage /></ProtectedPage> },
       { path: 'sign-up', element: <PublicOnlyPage><SignUpPage /></PublicOnlyPage> },
       { path: 'reset-password', element: <PublicOnlyPage><ResetPasswordPage /></PublicOnlyPage> },
       { path: 'terms-of-service', element: <TermsOfServicePage /> },

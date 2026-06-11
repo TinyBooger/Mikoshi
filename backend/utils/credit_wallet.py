@@ -6,7 +6,7 @@ from datetime import datetime, UTC
 
 from sqlalchemy.orm import Session
 
-from models import SystemSettings, User, UserTokenWalletLedger
+from models import SystemSettings, User, UserCreditWalletLedger
 
 CREDIT_TOPUP_PACKAGES_SETTING_KEY = "credit_topup_packages"
 DEFAULT_CREDIT_TOPUP_PACKAGES = [
@@ -29,7 +29,7 @@ DEFAULT_TOKEN_TOPUP_PACKAGES = [
 
 
 def _normalize_package(raw: dict[str, Any]) -> dict[str, Any] | None:
-    """Normalize a package dict — supports both 'tokens' (legacy) and 'credits' (new) keys."""
+    """Normalize a package dict �?supports both 'tokens' (legacy) and 'credits' (new) keys."""
     package_id = str(raw.get("id") or "").strip()
     if not package_id:
         return None
@@ -170,54 +170,11 @@ def set_credit_topup_packages(
     return normalized_packages
 
 
-# -- Legacy token top-up packages (kept for admin backward compat) ------------------
-
-# These are thin wrappers that delegate to the credit equivalents but return
-# "tokens"-keyed dicts so existing admin callers aren't broken.
-
-def get_token_topup_packages(db: Session, *, ensure_default: bool = True) -> list[dict[str, Any]]:
-    """Legacy wrapper — returns credit packages with 'tokens' alias key."""
-    credit_packages = get_credit_topup_packages(db, ensure_default=ensure_default)
-    result = []
-    for pkg in credit_packages:
-        p = dict(pkg)
-        p["tokens"] = p.pop("credits", 0)
-        result.append(p)
-    return result
-
-
-def get_token_topup_package_by_id(db: Session, package_id: str) -> dict[str, Any] | None:
-    pkg = get_credit_topup_package_by_id(db, package_id)
-    if not pkg:
-        return None
-    p = dict(pkg)
-    p["tokens"] = p.pop("credits", 0)
-    return p
-
-
-def get_token_topup_package_by_amount(db: Session, amount: float, tolerance: float = 0.01) -> dict[str, Any] | None:
-    pkg = get_credit_topup_package_by_amount(db, amount, tolerance)
-    if not pkg:
-        return None
-    p = dict(pkg)
-    p["tokens"] = p.pop("credits", 0)
-    return p
-
-
-def set_token_topup_packages(
-    db: Session,
-    *,
-    packages: list[dict[str, Any]],
-    updated_by: str | None = None,
-) -> list[dict[str, Any]]:
-    """Legacy wrapper — accepts token-keyed packages, stores as credits."""
-    return set_credit_topup_packages(db, packages=packages, updated_by=updated_by)
-
-
 # -- Credit wallet operations ------------------------------------------------------
 
 def _load_user_for_update(db: Session, user_id: str) -> User | None:
     return db.query(User).filter(User.id == user_id).with_for_update().first()
+
 
 
 def credit_wallet(
@@ -235,7 +192,7 @@ def credit_wallet(
         raise ValueError("credits must be positive")
 
     if idempotency_key:
-        existing = db.query(UserTokenWalletLedger).filter(UserTokenWalletLedger.idempotency_key == idempotency_key).first()
+        existing = db.query(UserCreditWalletLedger).filter(UserCreditWalletLedger.idempotency_key == idempotency_key).first()
         if existing:
             return False, float(existing.credit_balance_after or 0)
 
@@ -248,7 +205,7 @@ def credit_wallet(
     user.purchased_credit_balance = new_balance
     user.purchased_credits_bought_total = float(user.purchased_credits_bought_total or 0) + float(credits)
 
-    db.add(UserTokenWalletLedger(
+    db.add(UserCreditWalletLedger(
         user_id=user_id,
         transaction_type="credit",
         token_amount=int(credits),  # legacy int field
@@ -280,7 +237,7 @@ def consume_wallet_credits(
         return True, 0.0
 
     if idempotency_key:
-        existing = db.query(UserTokenWalletLedger).filter(UserTokenWalletLedger.idempotency_key == idempotency_key).first()
+        existing = db.query(UserCreditWalletLedger).filter(UserCreditWalletLedger.idempotency_key == idempotency_key).first()
         if existing:
             return True, float(existing.credit_balance_after or 0)
 
@@ -296,7 +253,7 @@ def consume_wallet_credits(
     user.purchased_credit_balance = new_balance
     user.purchased_credits_consumed_total = float(user.purchased_credits_consumed_total or 0) + float(credits)
 
-    db.add(UserTokenWalletLedger(
+    db.add(UserCreditWalletLedger(
         user_id=user_id,
         transaction_type="consume",
         token_amount=-int(credits),  # legacy int field
@@ -325,7 +282,7 @@ def reverse_wallet_credits_for_refund(
     if credits <= 0:
         return {"reversed_credits": 0.0, "shortfall_credits": 0.0, "balance_after": 0.0}
 
-    existing = db.query(UserTokenWalletLedger).filter(UserTokenWalletLedger.idempotency_key == idempotency_key).first()
+    existing = db.query(UserCreditWalletLedger).filter(UserCreditWalletLedger.idempotency_key == idempotency_key).first()
     if existing:
         return {
             "reversed_credits": abs(float(existing.credit_amount or 0)),
@@ -343,7 +300,7 @@ def reverse_wallet_credits_for_refund(
 
     if reversed_credits > 0:
         user.purchased_credit_balance = current_balance - reversed_credits
-        db.add(UserTokenWalletLedger(
+        db.add(UserCreditWalletLedger(
             user_id=user_id,
             transaction_type="refund_reverse",
             token_amount=-int(reversed_credits),
@@ -361,75 +318,4 @@ def reverse_wallet_credits_for_refund(
         "reversed_credits": reversed_credits,
         "shortfall_credits": shortfall,
         "balance_after": float(user.purchased_credit_balance or 0),
-    }
-
-
-# -- Legacy token wallet functions (backward compat wrappers) -----------------------
-
-def credit_wallet_tokens(
-    db: Session,
-    *,
-    user_id: str,
-    tokens: int,
-    source: str,
-    source_order_no: str | None = None,
-    idempotency_key: str | None = None,
-    metadata: dict[str, Any] | None = None,
-) -> tuple[bool, int]:
-    """Legacy — delegates to credit_wallet."""
-    success, balance = credit_wallet(
-        db,
-        user_id=user_id,
-        credits=float(tokens),
-        source=source,
-        source_order_no=source_order_no,
-        idempotency_key=idempotency_key,
-        metadata=metadata,
-    )
-    return success, int(balance)
-
-
-def consume_wallet_tokens(
-    db: Session,
-    *,
-    user_id: str,
-    tokens: int,
-    source: str,
-    source_order_no: str | None = None,
-    idempotency_key: str | None = None,
-    metadata: dict[str, Any] | None = None,
-) -> tuple[bool, int]:
-    """Legacy — delegates to consume_wallet_credits."""
-    success, balance = consume_wallet_credits(
-        db,
-        user_id=user_id,
-        credits=float(tokens),
-        source=source,
-        source_order_no=source_order_no,
-        idempotency_key=idempotency_key,
-        metadata=metadata,
-    )
-    return success, int(balance)
-
-
-def reverse_wallet_tokens_for_refund(
-    db: Session,
-    *,
-    user_id: str,
-    tokens: int,
-    source_order_no: str,
-    idempotency_key: str,
-) -> dict[str, int]:
-    """Legacy — delegates to reverse_wallet_credits_for_refund."""
-    result = reverse_wallet_credits_for_refund(
-        db,
-        user_id=user_id,
-        credits=float(tokens),
-        source_order_no=source_order_no,
-        idempotency_key=idempotency_key,
-    )
-    return {
-        "reversed_tokens": int(result["reversed_credits"]),
-        "shortfall_tokens": int(result["shortfall_credits"]),
-        "balance_after": int(result["balance_after"]),
     }

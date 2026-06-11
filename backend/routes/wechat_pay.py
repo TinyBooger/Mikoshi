@@ -1,5 +1,5 @@
 """
-微信支付路由（直连商户 v3 Native扫码支付）
+微信支付路由（直连商�?v3 Native扫码支付�?
 """
 from fastapi import APIRouter, HTTPException, Request, Depends, Header, Response, BackgroundTasks
 from fastapi.responses import JSONResponse
@@ -20,12 +20,12 @@ from utils.payment_provider import get_wechat_payment_provider
 from utils.wechat_pay_utils import wechat_pay_client
 from utils.session import verify_session_token, get_current_admin_user
 from utils.user_utils import upgrade_to_pro
-from utils.token_wallet import (
-    get_token_topup_packages,
-    get_token_topup_package_by_id,
-    get_token_topup_package_by_amount,
-    credit_wallet_tokens,
-    reverse_wallet_tokens_for_refund,
+from utils.credit_wallet import (
+    get_credit_topup_packages,
+    get_credit_topup_package_by_id,
+    get_credit_topup_package_by_amount,
+    credit_wallet,
+    reverse_wallet_credits_for_refund,
 )
 from database import get_db, SessionLocal
 from models import User, PaymentOrder
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/wechat", tags=["wechat_pay"])
 
 PRO_AMOUNT_TOLERANCE = 0.01
-TOKEN_TOPUP_AMOUNT_TOLERANCE = 0.01
+CREDIT_TOPUP_AMOUNT_TOLERANCE = 0.01
 
 PRO_UPGRADE_PLANS = [
     {"amount": 0.01,  "days": 30},   # test plan
@@ -185,7 +185,7 @@ def _settle_wechat_order_in_background(
                 user_id=attach_user_id,
             )
         elif resolved_order_type == "token_topup":
-            _handle_token_topup(
+            _handle_credit_topup(
                 db=db,
                 out_trade_no=out_trade_no,
                 trade_no=trade_no,
@@ -306,7 +306,7 @@ def _handle_pro_upgrade(
     if payment_order is None:
         existing = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
         existing_status = existing.status if existing else "unknown"
-        logger.info(f"微信支付订单已被处理，跳过: {out_trade_no}, status={existing_status}")
+        logger.info(f"微信支付订单已被处理，跳�? {out_trade_no}, status={existing_status}")
         return
 
     if not _is_valid_pro_upgrade_amount(total_amount):
@@ -316,7 +316,7 @@ def _handle_pro_upgrade(
         _record_order_result(db, out_trade_no=out_trade_no, order_type="pro_upgrade",
                              user_id=user_id, trade_no=trade_no, total_amount=total_amount,
                              source=source, status="failure", error_message="invalid_amount")
-        logger.error(f"微信Pro订单金额不合法: {out_trade_no}, amount={total_amount}")
+        logger.error(f"微信Pro订单金额不合�? {out_trade_no}, amount={total_amount}")
         return
 
     if not user_id:
@@ -337,7 +337,7 @@ def _handle_pro_upgrade(
         _record_order_result(db, out_trade_no=out_trade_no, order_type="pro_upgrade",
                              user_id=user_id, trade_no=trade_no, total_amount=total_amount,
                              source=source, status="failure", error_message="user_not_found")
-        logger.error(f"微信升级找不到用户 {user_id}")
+        logger.error(f"微信升级找不到用�?{user_id}")
         return
 
     try:
@@ -365,7 +365,7 @@ def _handle_pro_upgrade(
         logger.error(f"微信支付升级Pro失败: {e}")
 
 
-def _handle_token_topup(
+def _handle_credit_topup(
     db,
     out_trade_no: str,
     trade_no: Optional[str],
@@ -390,7 +390,7 @@ def _handle_token_topup(
     if payment_order is None:
         existing = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
         existing_status = existing.status if existing else "unknown"
-        logger.info(f"微信充值订单已处理，跳过: {out_trade_no}, status={existing_status}")
+        logger.info(f"微信充值订单已处理，跳�? {out_trade_no}, status={existing_status}")
         return
 
     try:
@@ -398,7 +398,7 @@ def _handle_token_topup(
     except (TypeError, ValueError):
         paid_amount = -1
 
-    package = get_token_topup_package_by_amount(db, paid_amount, TOKEN_TOPUP_AMOUNT_TOLERANCE)
+    package = get_credit_topup_package_by_amount(db, paid_amount, CREDIT_TOPUP_AMOUNT_TOLERANCE)
     if not package:
         _finalize_payment_order(db=db, payment_order=payment_order, status="failure",
                                 error_message="invalid_topup_amount", trade_no=trade_no,
@@ -428,10 +428,10 @@ def _handle_token_topup(
         return
 
     try:
-        credit_wallet_tokens(
+        credit_wallet(
             db,
             user_id=user_id,
-            tokens=int(package["tokens"]),
+            credits=float(package["credits"]),
             source="wechat_topup",
             source_order_no=out_trade_no,
             idempotency_key=f"credit:{out_trade_no}",
@@ -448,7 +448,7 @@ def _handle_token_topup(
         _record_order_result(db, out_trade_no=out_trade_no, order_type="token_topup",
                              user_id=user_id, trade_no=trade_no, total_amount=total_amount,
                              source=source, status="success")
-        logger.info(f"微信支付: 用户 {user_id} 充值成功，token +{package['tokens']}")
+        logger.info(f"微信支付: 用户 {user_id} 充值成功，点数 +{package['credits']}")
     except Exception as e:
         db.rollback()
         payment_order = db.query(PaymentOrder).filter(PaymentOrder.out_trade_no == out_trade_no).first()
@@ -459,7 +459,7 @@ def _handle_token_topup(
         _record_order_result(db, out_trade_no=out_trade_no, order_type="token_topup",
                              user_id=user_id, trade_no=trade_no, total_amount=total_amount,
                              source=source, status="error", error_message=str(e))
-        logger.error(f"微信支付充值token失败: {e}")
+        logger.error(f"微信支付充值点数失败: {e}")
 
 
 # ─── Request / Response Models ────────────────────────────────────────────────
@@ -492,8 +492,8 @@ async def create_order(
     session_token: Optional[str] = Header(None, alias="Authorization"),
 ):
     """
-    创建微信 Native 支付订单。
-    返回 code_url（前端渲染二维码），以及 out_trade_no。
+    创建微信 Native 支付订单�?
+    返回 code_url（前端渲染二维码），以及 out_trade_no�?
     """
     try:
         logger.info(
@@ -516,7 +516,7 @@ async def create_order(
 
             authed_user_id = verify_session_token(session_token)
             if not authed_user_id:
-                raise HTTPException(status_code=401, detail="Pro升级订单需要登录")
+                raise HTTPException(status_code=401, detail="Pro升级订单需要登?")
             if not db.query(User).filter(User.id == authed_user_id).first():
                 raise HTTPException(status_code=401, detail="无效用户会话")
             if request.user_id and request.user_id != authed_user_id:
@@ -526,25 +526,25 @@ async def create_order(
         elif request.order_type == "token_topup":
             authed_user_id = verify_session_token(session_token)
             if not authed_user_id:
-                raise HTTPException(status_code=401, detail="Token充值订单需要登录")
+                raise HTTPException(status_code=401, detail="点数充值订单需要登?")
             if request.user_id and request.user_id != authed_user_id:
                 raise HTTPException(status_code=403, detail="不能为其他用户创建充值订单")
             if not request.package_id:
                 raise HTTPException(status_code=400, detail="缺少充值包ID")
 
-            topup_package = get_token_topup_package_by_id(db, request.package_id)
+            topup_package = get_credit_topup_package_by_id(db, request.package_id)
             if not topup_package:
                 raise HTTPException(status_code=400, detail="无效的充值包")
 
             expected_amount = float(topup_package["price_cny"])
-            if abs(float(request.total_amount) - expected_amount) > TOKEN_TOPUP_AMOUNT_TOLERANCE:
+            if abs(float(request.total_amount) - expected_amount) > CREDIT_TOPUP_AMOUNT_TOLERANCE:
                 raise HTTPException(status_code=400, detail="充值金额与充值包不匹配")
             resolved_user_id = authed_user_id
 
         elif request.order_type:
             raise HTTPException(status_code=400, detail="不支持的订单类型")
 
-        # 生成订单号（WXPRO_ / WXTOPUP_）
+        # 生成订单号（WXPRO_ / WXTOPUP_?
         if request.order_type == "pro_upgrade":
             prefix = "WXPRO_"
         elif request.order_type == "token_topup":
@@ -564,10 +564,10 @@ async def create_order(
             missing = wechat_pay_client.missing_config_fields
             detail = "微信支付尚未正确配置，请检查服务端环境变量"
             if missing:
-                detail = f"微信支付尚未正确配置，缺失: {', '.join(missing)}"
+                detail = f"微信支付尚未正确配置，缺�? {', '.join(missing)}"
             elif wechat_pay_client.last_init_error:
-                detail = f"微信支付初始化失败: {wechat_pay_client.last_init_error}"
-            logger.error("微信支付创建订单被拒绝: %s", detail)
+                detail = f"微信支付初始化失�? {wechat_pay_client.last_init_error}"
+            logger.error("微信支付创建订单被拒�? %s", detail)
             raise HTTPException(status_code=503, detail=detail)
 
         notify_url = _build_notify_url() if provider.provider_name == "wechat" else None
@@ -596,7 +596,7 @@ async def create_order(
                                     source="mock_wechat_create_order",
                                     user_id=resolved_user_id)
             elif resolved_order_type == "token_topup":
-                _handle_token_topup(db=db, out_trade_no=out_trade_no,
+                _handle_credit_topup(db=db, out_trade_no=out_trade_no,
                                     trade_no=mock_transaction_id,
                                     total_amount=total_amount_str,
                                     source="mock_wechat_create_order",
@@ -633,7 +633,7 @@ async def wechat_notify(
     try:
         provider = _get_payment_provider()
         if provider.provider_name != "wechat":
-            logger.info("当前微信支付提供方不是 WeChatPay，忽略 notify 回调")
+            logger.info("当前微信支付提供方不�?WeChatPay，忽�?notify 回调")
             return Response(status_code=204)
 
         headers = dict(request.headers)
@@ -682,8 +682,8 @@ async def query_order(
     session_token: Optional[str] = Header(None, alias="Authorization"),
 ):
     """
-    查询微信支付订单状态（前端轮询用）。
-    用户只能查询自己的订单。
+    查询微信支付订单状态（前端轮询用）�?
+    用户只能查询自己的订单�?
     """
     authed_user_id = verify_session_token(session_token)
     if not authed_user_id:
@@ -736,7 +736,7 @@ async def query_order(
                                     source="wechat_query_poll",
                                     user_id=attach_user_id)
             elif resolved_order_type == "token_topup":
-                _handle_token_topup(db=db, out_trade_no=request.out_trade_no,
+                _handle_credit_topup(db=db, out_trade_no=request.out_trade_no,
                                     trade_no=transaction_id, total_amount=total_yuan,
                                     source="wechat_query_poll",
                                     user_id=attach_user_id)
@@ -822,7 +822,7 @@ async def refund_order(
         if not payment_order:
             raise HTTPException(status_code=404, detail="订单不存在")
         if payment_order.user_id != authed_user_id:
-            raise HTTPException(status_code=403, detail="只能为自己的订单退款")
+            raise HTTPException(status_code=403, detail="只能为自己的订单申请退款")
 
         provider = _get_payment_provider()
         refund_reversal = None
@@ -835,7 +835,7 @@ async def refund_order(
                 paid_amount = float(payment_order.total_amount or 0)
             except (TypeError, ValueError):
                 paid_amount = -1
-            package = get_token_topup_package_by_amount(db, paid_amount, TOKEN_TOPUP_AMOUNT_TOLERANCE)
+            package = get_credit_topup_package_by_amount(db, paid_amount, CREDIT_TOPUP_AMOUNT_TOLERANCE)
             if not package:
                 payment_order.refund_status = "failed"
                 db.commit()
@@ -845,14 +845,14 @@ async def refund_order(
                 payment_order.refund_status = "failed"
                 db.commit()
                 raise HTTPException(status_code=400, detail="用户不存在")
-            if int(user.purchased_token_balance or 0) < int(package["tokens"]):
+            if int(float(user.purchased_credit_balance or 0)) < int(float(package["credits"])):
                 payment_order.refund_status = "failed"
                 db.commit()
                 raise HTTPException(status_code=400, detail="充值包已部分使用，无法退款")
-            refund_reversal = reverse_wallet_tokens_for_refund(
+            refund_reversal = reverse_wallet_credits_for_refund(
                 db,
                 user_id=payment_order.user_id,
-                tokens=int(package["tokens"]),
+                credits=float(package["credits"]),
                 source_order_no=payment_order.out_trade_no,
                 idempotency_key=f"refund_reverse:{payment_order.out_trade_no}",
             )
@@ -893,7 +893,7 @@ async def refund_order(
             if refund_http_code != 200:
                 payment_order.refund_status = "failed"
                 db.commit()
-                raise HTTPException(status_code=502, detail=f"微信退款失败: {result}")
+                raise HTTPException(status_code=502, detail=f"微信退款失�? {result}")
 
             if refund_status == "SUCCESS":
                 payment_order.refund_status = "success"
@@ -907,8 +907,8 @@ async def refund_order(
             if not isinstance(e, HTTPException):
                 payment_order.refund_status = "failed"
                 db.commit()
-                logger.error(f"微信退款失败: {e}")
-                raise HTTPException(status_code=500, detail=f"退款失败: {str(e)}")
+                logger.error(f"微信退款失�? {e}")
+                raise HTTPException(status_code=500, detail=f"退款失�? {str(e)}")
             raise
 
         return {"success": True, "data": result, "wallet_refund_reversal": refund_reversal}
@@ -916,11 +916,11 @@ async def refund_order(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"微信退款失败: {e}")
-        raise HTTPException(status_code=500, detail=f"退款失败: {str(e)}")
+        logger.error(f"微信退款失�? {e}")
+        raise HTTPException(status_code=500, detail=f"退款失�? {str(e)}")
 
 
-@router.get("/token-packages")
-async def get_token_packages(db: Session = Depends(get_db)):
-    packages = get_token_topup_packages(db)
+@router.get("/credit-packages")
+async def get_credit_packages(db: Session = Depends(get_db)):
+    packages = get_credit_topup_packages(db)
     return {"success": True, "packages": packages}

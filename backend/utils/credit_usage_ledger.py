@@ -6,13 +6,13 @@ from typing import Any
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 
-from models import User, UserTokenUsageLedger
-from utils.token_cap import can_consume_credits, get_free_daily_usage_date, is_user_pro_active
-from utils.token_wallet import consume_wallet_credits
+from models import User, UserCreditUsageLedger
+from utils.credit_cap import can_consume_credits, get_free_daily_usage_date, is_user_pro_active
+from utils.credit_wallet import consume_wallet_credits
 from utils.usage_utils import normalize_usage
 
 
-def record_token_usage(
+def record_credit_usage(
     db_session: Session,
     *,
     user_id: str,
@@ -30,7 +30,7 @@ def record_token_usage(
     when = usage_timestamp or datetime.now(UTC)
     usage_date = get_free_daily_usage_date(when) if use_free_daily_reset else when.date()
 
-    stmt = insert(UserTokenUsageLedger).values(
+    stmt = insert(UserCreditUsageLedger).values(
         user_id=user_id,
         usage_date=usage_date,
         prompt_tokens=normalized["prompt_tokens"],
@@ -40,12 +40,12 @@ def record_token_usage(
     )
 
     stmt = stmt.on_conflict_do_update(
-        index_elements=[UserTokenUsageLedger.user_id, UserTokenUsageLedger.usage_date],
+        index_elements=[UserCreditUsageLedger.user_id, UserCreditUsageLedger.usage_date],
         set_={
-            "prompt_tokens": UserTokenUsageLedger.prompt_tokens + normalized["prompt_tokens"],
-            "completion_tokens": UserTokenUsageLedger.completion_tokens + normalized["completion_tokens"],
-            "total_tokens": UserTokenUsageLedger.total_tokens + total_tokens,
-            "credit_amount": UserTokenUsageLedger.credit_amount + credit_amount,
+            "prompt_tokens": UserCreditUsageLedger.prompt_tokens + normalized["prompt_tokens"],
+            "completion_tokens": UserCreditUsageLedger.completion_tokens + normalized["completion_tokens"],
+            "total_tokens": UserCreditUsageLedger.total_tokens + total_tokens,
+            "credit_amount": UserCreditUsageLedger.credit_amount + credit_amount,
             "updated_at": datetime.now(UTC),
         },
     )
@@ -53,7 +53,7 @@ def record_token_usage(
     db_session.execute(stmt)
 
 
-def apply_token_usage_with_wallet(
+def apply_credit_usage_with_wallet(
     db_session: Session,
     *,
     user: User,
@@ -112,7 +112,7 @@ def apply_token_usage_with_wallet(
             "wallet_balance": balance_after,
         }
 
-    record_token_usage(
+    record_credit_usage(
         db_session,
         user_id=user.id,
         usage=normalized,

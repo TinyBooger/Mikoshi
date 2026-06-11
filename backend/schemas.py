@@ -128,19 +128,6 @@ class UserOut(BaseModel):
     purchased_credit_balance: float = 0.0
     purchased_credits_bought_total: float = 0.0
     purchased_credits_consumed_total: float = 0.0
-    # Legacy token fields (for backward compat with existing frontend code)
-    daily_token_usage: int = 0
-    monthly_token_usage: int = 0
-    token_cap_scope: Optional[str] = None
-    token_cap: Optional[int] = None
-    remaining_tokens: Optional[int] = None
-    token_cap_reached: bool = False
-    token_reset_at: Optional[Any] = None
-    free_daily_token_cap: int = 3000
-    pro_monthly_token_cap: int = 5000000
-    purchased_token_balance: int = 0
-    purchased_tokens_bought_total: int = 0
-    purchased_tokens_consumed_total: int = 0
     is_pro: bool = False
     pro_start_date: Optional[Any] = None
     pro_expire_date: Optional[Any] = None
