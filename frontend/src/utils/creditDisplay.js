@@ -17,12 +17,7 @@ export const formatCompactTokenCount = (value) => {
 
   if (abs >= 10_000) {
     const digits = abs >= 100_000 ? 0 : 1;
-    return `${sign}${trimTrailingZeros(abs / 10_000, digits)}w`;
-  }
-
-  if (abs >= 1_000) {
-    const digits = abs >= 10_000 ? 0 : 1;
-    return `${sign}${trimTrailingZeros(abs / 1_000, digits)}k`;
+    return `${sign}${trimTrailingZeros(abs / 10_000, digits)}万`;
   }
 
   return `${sign}${abs}`;

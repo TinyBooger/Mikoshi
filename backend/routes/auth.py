@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from database import get_db
-from models import User, SystemSettings
+from models import User
 from schemas import UserOut, AuthUserOut, VerifyPhoneOut
 from utils.session import create_session_token, verify_session_token
 from utils.user_utils import build_user_response, check_and_expire_pro
@@ -26,9 +26,8 @@ from fastapi import Header
 
 
 def _is_invitation_code_required(db: Session) -> bool:
-    """Check whether invitation code requirement is currently enabled."""
-    setting = db.query(SystemSettings).filter(SystemSettings.key == "invitation_code_required").first()
-    return setting.value == "true" if setting else True
+    """Invitation code requirement is always enabled (hardcoded)."""
+    return True
 
 
 @router.get("/api/registration-settings")

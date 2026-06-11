@@ -134,7 +134,7 @@ def get_credit_cap_info(user: User, db: Session) -> dict[str, Any]:
     pro_active = _resolve_pro_active(user)
 
     free_daily_credit_cap = _get_float_env("FREE_DAILY_CREDIT_CAP", 10.0)
-    pro_monthly_credit_cap = _get_float_env("PRO_MONTHLY_CREDIT_CAP", 15000.0)
+    pro_monthly_credit_cap = _get_float_env("PRO_MONTHLY_CREDIT_CAP", 10000.0)
 
     now = datetime.now(UTC)
     month_start = get_pro_cycle_start(user, now) if pro_active else now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)

@@ -95,13 +95,13 @@ export default function CreditTopUpPage() {
 
   useEffect(() => {
     if (packages.length > 0 && selectedPackageId === null) {
-      const sorted = [...packages].sort((a, b) => Number(a.tokens || 0) - Number(b.tokens || 0));
+      const sorted = [...packages].sort((a, b) => Number(a.credits || 0) - Number(b.credits || 0));
       setSelectedPackageId(sorted[0]?.id ?? null);
     }
   }, [packages, selectedPackageId]);
 
   const sortedPackages = useMemo(
-    () => [...packages].sort((a, b) => Number(a.tokens || 0) - Number(b.tokens || 0)),
+    () => [...packages].sort((a, b) => Number(a.credits || 0) - Number(b.credits || 0)),
     [packages]
   );
 
@@ -144,8 +144,8 @@ export default function CreditTopUpPage() {
           headers: { 'Content-Type': 'application/json', Authorization: sessionToken },
           body: JSON.stringify({
             total_amount: Number(pkg.price_cny),
-            subject: `点数充值 ${formatCompactTokenCount(Number(pkg.tokens || 0))}`,
-            body: `购买${formatCompactTokenCount(Number(pkg.tokens || 0))} tokens`,
+            subject: `点数充值 ${formatCompactTokenCount(Number(pkg.credits || 0))}`,
+            body: `购买${formatCompactTokenCount(Number(pkg.credits || 0))} 点数`,
             order_type: 'credit_topup',
             user_id: userData.id,
             package_id: pkg.id,
@@ -173,8 +173,8 @@ export default function CreditTopUpPage() {
     try {
       const requestBody = {
         total_amount: Number(pkg.price_cny),
-        subject: `点数充值 ${formatCompactTokenCount(Number(pkg.tokens || 0))}`,
-        body: `购买${formatCompactTokenCount(Number(pkg.tokens || 0))} tokens`,
+        subject: `点数充值 ${formatCompactTokenCount(Number(pkg.credits || 0))}`,
+        body: `购买${formatCompactTokenCount(Number(pkg.credits || 0))} 点数`,
         payment_type: isMobileBrowser() ? 'wap' : 'page',
         order_type: 'credit_topup',
         user_id: userData.id,
@@ -240,8 +240,8 @@ export default function CreditTopUpPage() {
             ) : (
               <div className="row g-3 g-lg-4">
                 {sortedPackages.map((pkg) => {
-                  const isPopular = Number(pkg.credits || pkg.tokens) === 2000 || Number(pkg.tokens) === 2000000;
-                  const isStandard = Number(pkg.credits || pkg.tokens) === 1000 || Number(pkg.tokens) === 1000000;
+                  const isPopular = Number(pkg.credits || 0) === 2000;
+                  const isStandard = Number(pkg.credits || 0) === 1000;
                   const isSelected = selectedPackageId === pkg.id;
                   return (
                     <div key={pkg.id} className="col-12 col-md-6 col-lg-4">
@@ -302,7 +302,7 @@ export default function CreditTopUpPage() {
                           {getLocalizedPackageLabel(pkg.label)}
                         </div>
                         <div className="mb-1" style={{ fontWeight: 900, color: '#0f172a', fontSize: '1.7rem' }}>
-                          {formatCompactTokenCount(Number(pkg.tokens || 0))}
+                          {formatCompactTokenCount(Number(pkg.credits || 0))}
                         </div>
                         <div className="mb-4" style={{ fontWeight: 800, color: '#16a34a', fontSize: '1.35rem' }}>
                           ¥{Number(pkg.price_cny || 0).toFixed(2)}

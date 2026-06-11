@@ -124,7 +124,7 @@ class UserOut(BaseModel):
     credit_cap_reached: bool = False
     credit_reset_at: Optional[Any] = None
     free_daily_credit_cap: float = 10.0
-    pro_monthly_credit_cap: float = 15000.0
+    pro_monthly_credit_cap: float = 10000.0
     purchased_credit_balance: float = 0.0
     purchased_credits_bought_total: float = 0.0
     purchased_credits_consumed_total: float = 0.0

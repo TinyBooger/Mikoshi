@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import json
 from typing import Any
-from datetime import datetime, UTC
 
 from sqlalchemy.orm import Session
 
-from models import SystemSettings, User, UserCreditWalletLedger
+from models import User, UserCreditWalletLedger
 
-CREDIT_TOPUP_PACKAGES_SETTING_KEY = "credit_topup_packages"
 DEFAULT_CREDIT_TOPUP_PACKAGES = [
+    {"id": "topup_test", "credits": 1, "price_cny": 0.01, "label": "测试"},
     {"id": "topup_500", "credits": 500, "price_cny": 3, "label": "入门"},
     {"id": "topup_1000", "credits": 1000, "price_cny": 6, "label": "标准"},
     {"id": "topup_2000", "credits": 2000, "price_cny": 12, "label": "热门"},
@@ -61,37 +59,7 @@ def _serialize_packages(packages: list[dict[str, Any]]) -> str:
 
 def get_credit_topup_packages(db: Session, *, ensure_default: bool = True) -> list[dict[str, Any]]:
     """Return the list of credit (点数) top-up packages."""
-    setting = db.query(SystemSettings).filter(SystemSettings.key == CREDIT_TOPUP_PACKAGES_SETTING_KEY).first()
-
-    if not setting:
-        if not ensure_default:
-            return []
-        setting = SystemSettings(
-            key=CREDIT_TOPUP_PACKAGES_SETTING_KEY,
-            value=_serialize_packages(DEFAULT_CREDIT_TOPUP_PACKAGES),
-        )
-        db.add(setting)
-        db.commit()
-        db.refresh(setting)
-
-    parsed: Any
-    try:
-        parsed = json.loads(setting.value or "[]")
-    except Exception:
-        parsed = DEFAULT_CREDIT_TOPUP_PACKAGES
-
-    packages: list[dict[str, Any]] = []
-    if isinstance(parsed, list):
-        for item in parsed:
-            if not isinstance(item, dict):
-                continue
-            normalized = _normalize_package(item)
-            if normalized:
-                packages.append(normalized)
-
-    if not packages:
-        packages = [dict(item) for item in DEFAULT_CREDIT_TOPUP_PACKAGES]
-
+    packages = [dict(item) for item in DEFAULT_CREDIT_TOPUP_PACKAGES]
     packages.sort(key=lambda item: item["credits"])
     return packages
 
@@ -119,45 +87,6 @@ def get_credit_topup_package_by_amount(db: Session, amount: float, tolerance: fl
     return None
 
 
-def set_credit_topup_packages(
-    db: Session,
-    *,
-    packages: list[dict[str, Any]],
-    updated_by: str | None = None,
-) -> list[dict[str, Any]]:
-    normalized_packages: list[dict[str, Any]] = []
-    seen_ids: set[str] = set()
-    for raw in packages:
-        if not isinstance(raw, dict):
-            continue
-        normalized = _normalize_package(raw)
-        if not normalized:
-            continue
-        if normalized["id"] in seen_ids:
-            continue
-        seen_ids.add(normalized["id"])
-        normalized_packages.append(normalized)
-
-    if not normalized_packages:
-        raise ValueError("At least one valid credit package is required")
-
-    normalized_packages.sort(key=lambda item: item["credits"])
-
-    setting = db.query(SystemSettings).filter(SystemSettings.key == CREDIT_TOPUP_PACKAGES_SETTING_KEY).first()
-    if setting:
-        setting.value = _serialize_packages(normalized_packages)
-        setting.updated_at = datetime.now(UTC)
-        setting.updated_by = updated_by
-    else:
-        setting = SystemSettings(
-            key=CREDIT_TOPUP_PACKAGES_SETTING_KEY,
-            value=_serialize_packages(normalized_packages),
-            updated_by=updated_by,
-        )
-        db.add(setting)
-
-    db.commit()
-    return normalized_packages
 
 
 # -- Credit wallet operations ------------------------------------------------------

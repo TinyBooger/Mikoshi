@@ -410,15 +410,6 @@ class PaymentOrder(Base):
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
 
 
-class SystemSettings(Base):
-    __tablename__ = "system_settings"
-
-    key = Column(String(100), primary_key=True)
-    value = Column(Text, nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
-    updated_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
-
-
 class UserMessage(Base):
     """User inbox messages: warn/ban notices, edit advice, or generic system messages."""
     __tablename__ = "user_messages"

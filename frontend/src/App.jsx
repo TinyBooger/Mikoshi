@@ -37,7 +37,6 @@ import AlipayReturnPage from './pages/AlipayReturnPage.jsx';
 import ProUpgradePage from './pages/ProUpgradePage.jsx';
 import CreditTopUpPage from './pages/CreditTopUpPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
-import SystemSettingsPage from './admin/pages/SystemSettingsPage.jsx';
 
 function AppRootLayout() {
   const { userData, loading } = useContext(AuthContext);
@@ -125,7 +124,6 @@ const router = createBrowserRouter([
       { path: 'error-logs', element: <ErrorLogsPage /> },
       { path: 'audit-logs', element: <AuditLogsPage /> },
       { path: 'user-stats', element: <UserStatsPage /> },
-      { path: 'system-settings', element: <SystemSettingsPage /> },
     ],
   },
   {
