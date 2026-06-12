@@ -1272,10 +1272,24 @@ export default function ChatPage() {
           return;
         }
 
-        const data = JSON.parse(payload);
+        let data;
+        try {
+          data = JSON.parse(payload);
+        } catch {
+          // Malformed SSE payload — ignore silently rather than crashing the stream
+          return;
+        }
 
         if (data.error) {
-          throw new Error(data.error);
+          const friendlyMessage = getChatErrorMessage(data);
+          toast.show(friendlyMessage, { type: 'error' });
+          if (data.credit_limits) {
+            applyTokenLimits(data.credit_limits);
+          }
+          if (data.limits) {
+            applyChatLimits(data.limits);
+          }
+          return;
         }
 
         if (data.chunk) {

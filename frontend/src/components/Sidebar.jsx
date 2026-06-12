@@ -1025,7 +1025,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               style={{
                 fontSize: '0.86rem',
                 letterSpacing: '0.4px',
-                background: '#fff',
                 borderRadius: 19,
                 padding: '9px 0',
                 border: 'none',

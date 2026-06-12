@@ -639,6 +639,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         )
                         serialized_entry = serialize_chat_history_entry(entry)
                         current_credit_limit_info = get_credit_cap_info(stream_user, db_session)
+                        db_session.commit()
                     finally:
                         db_session.close()
                 else:
