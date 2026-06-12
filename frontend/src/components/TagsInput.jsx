@@ -126,7 +126,6 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
               zIndex: 20,
               maxHeight: 220,
               overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
             }}
           >
             {suggestions.map((s, i) => (

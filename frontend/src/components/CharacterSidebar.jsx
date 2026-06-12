@@ -200,9 +200,9 @@ export default function CharacterSidebar({
         position: 'fixed',
         top: 0,
         right: 0,
+        bottom: 0,
         width: '90vw',
         maxWidth: '19rem', // Reduced max width for mobile
-        height: '100dvh',
         zIndex: 1000,
         background: 'rgba(255, 255, 255, 0.98)',
         boxShadow: 'none',
@@ -210,7 +210,6 @@ export default function CharacterSidebar({
         transform: characterSidebarVisible ? 'translateX(0)' : 'translateX(100%)',
         transition: `transform ${sidebarMotion}, opacity ${sidebarMotion}`,
         overscrollBehavior: 'contain',
-        WebkitOverflowScrolling: 'touch',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -222,15 +221,14 @@ export default function CharacterSidebar({
         position: 'fixed',
         top: 0,
         right: 0,
+        bottom: 0,
         width: '19rem', // Reduced width for desktop
-        height: '100dvh',
         zIndex: 1000,
         transform: characterSidebarVisible ? 'translateX(0)' : 'translateX(19rem)',
         transition: `transform ${sidebarMotion}, opacity ${sidebarMotion}`,
         boxShadow: 'none',
         borderLeft: '1.2px solid #e9ecef',
         overscrollBehavior: 'contain',
-        WebkitOverflowScrolling: 'touch',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -245,7 +243,7 @@ export default function CharacterSidebar({
     ? null
     : {
         width: '19rem',
-        height: '100dvh',
+        height: '100vh',
         marginLeft: characterSidebarVisible ? '0' : '-19rem',
         transition: `margin-left ${sidebarMotion}`,
         flexShrink: 0,
@@ -266,7 +264,7 @@ export default function CharacterSidebar({
                 top: 0,
                 left: 0,
                 width: '100vw',
-                height: '100dvh',
+                bottom: 0,
                 background: 'rgba(0,0,0,0.3)',
                 zIndex: 999,
                 cursor: 'pointer',
@@ -275,7 +273,7 @@ export default function CharacterSidebar({
             />
           )}
           <div style={sidebarStyle}>
-            <aside style={{ width: '100%', minHeight: 0, maxHeight: '100%', background: 'transparent', borderRadius: 0, margin: 0, boxShadow: 'none', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', boxSizing: 'border-box', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
+            <aside style={{ width: '100%', minHeight: 0, flex: 1, background: 'transparent', borderRadius: 0, margin: 0, boxShadow: 'none', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', boxSizing: 'border-box', overflowY: 'auto', overflowX: 'hidden' }}>
           {/* CharacterSidebar Header: collapse toggle left, share + report right */}
           <div style={{
             display: 'flex',

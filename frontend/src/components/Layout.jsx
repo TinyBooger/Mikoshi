@@ -97,9 +97,9 @@ export default function Layout() {
         position: 'fixed',
         top: 0,
         left: 0,
+        bottom: 0,
         width: '70vw',
         maxWidth: '20rem',
-        height: '100dvh',
         zIndex: 1000,
         background: 'transparent',
         transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
@@ -109,8 +109,8 @@ export default function Layout() {
         position: 'fixed', // CHANGED from 'relative' to 'fixed'
         top: 0,
         left: 0,
+        bottom: 0,
         width: '15rem',
-        height: '100dvh',
         zIndex: 1000,
         background: 'transparent',
         transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
@@ -121,7 +121,6 @@ export default function Layout() {
     <div
       className="d-flex flex-column"
       style={{
-        height: '100dvh',
         width: '100%',
         position: 'fixed',
         inset: 0,
@@ -131,7 +130,6 @@ export default function Layout() {
       <div
         style={{
           display: 'flex',
-          height: '100dvh',
           width: '100%',
           position: 'fixed',
           inset: 0,
@@ -150,8 +148,8 @@ export default function Layout() {
               position: 'fixed',
               top: 0,
               left: 0,
+              bottom: 0,
               width: '100vw',
-              height: '100dvh',
               background: 'rgba(0,0,0,0.3)',
               zIndex: 999,
               cursor: 'pointer',
@@ -170,9 +168,8 @@ export default function Layout() {
             transition: `margin-left ${sidebarMotion}, width ${sidebarMotion}`,
             background: 'transparent',
             overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain',
-            height: '100dvh',
+            height: '100vh',
             position: 'relative',
             paddingTop: '0',
             paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : '0',
