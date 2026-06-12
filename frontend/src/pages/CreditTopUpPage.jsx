@@ -115,6 +115,7 @@ export default function CreditTopUpPage() {
     if (normalized === 'whale') return '海量';
     if (normalized === '高频') return '巨量';
     if (normalized === '鲸鱼') return '海量';
+    if (normalized === '超值') return '超值';
     return label;
   };
 
@@ -218,7 +219,7 @@ export default function CreditTopUpPage() {
               <div>
                 <h1 className="fw-bold mb-1" style={{ fontSize: '2rem', color: '#1f2937' }}>点数充值</h1>
                 <p className="text-muted mb-0">
-                  套餐会充值到钱包，套餐额度用完后自动抵扣钱包点数。
+                  点数充值到钱包后永久有效，不因月度订阅过期而清零。套餐额度用完后自动抵扣钱包点数。
                   <button className="btn btn-link p-0 ms-2" style={{ fontSize: '0.98em' }} onClick={() => setShowRefundModal(true)}>
                     退款政策
                   </button>
@@ -240,8 +241,9 @@ export default function CreditTopUpPage() {
             ) : (
               <div className="row g-3 g-lg-4">
                 {sortedPackages.map((pkg) => {
-                  const isPopular = Number(pkg.credits || 0) === 2000;
-                  const isStandard = Number(pkg.credits || 0) === 1000;
+                  const isTest = Number(pkg.credits || 0) === 10 && Number(pkg.price_cny || 0) === 0.01;
+                  const isPopular = Number(pkg.credits || 0) === 8000;
+                  const isBestValue = Number(pkg.credits || 0) === 15000;
                   const isSelected = selectedPackageId === pkg.id;
                   return (
                     <div key={pkg.id} className="col-12 col-md-6 col-lg-4">
@@ -264,6 +266,23 @@ export default function CreditTopUpPage() {
                           transition: 'border 0.15s, box-shadow 0.15s',
                         }}
                       >
+                        {isTest && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: -10,
+                              right: 16,
+                              background: '#9ca3af',
+                              color: '#fff',
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: 999,
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                            }}
+                          >
+                            测试专用
+                          </div>
+                        )}
                         {isPopular && (
                           <div
                             style={{
@@ -281,13 +300,13 @@ export default function CreditTopUpPage() {
                             最受欢迎
                           </div>
                         )}
-                        {isStandard && !isPopular && (
+                        {isBestValue && !isPopular && (
                           <div
                             style={{
                               position: 'absolute',
                               top: -10,
                               right: 16,
-                              background: '#2563eb',
+                              background: '#10b981',
                               color: '#fff',
                               padding: '0.2rem 0.6rem',
                               borderRadius: 999,
@@ -295,7 +314,7 @@ export default function CreditTopUpPage() {
                               fontWeight: 700,
                             }}
                           >
-                            标准档
+                            最佳性价比
                           </div>
                         )}
                         <div className="mb-2" style={{ color: '#64748b', fontWeight: 700, fontSize: '0.82rem' }}>
