@@ -22,8 +22,29 @@ services:
     environment:
       - DATABASE_URL=postgresql://tinybooger:473k979k@host.docker.internal:5432/mikoshidb
       - FRONTEND_BASE_URL=http://localhost
+      - REDIS_URL=redis://redis:6379/0
     volumes:
       - backend_static:/app/static/images
+    depends_on:
+      redis:
+        condition: service_started
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     logging:
       driver: "json-file"
       options:
@@ -52,3 +73,4 @@ services:
 volumes:
   postgres_data:
   backend_static:
+  redis_data:

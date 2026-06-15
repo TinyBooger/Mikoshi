@@ -13,6 +13,7 @@ from utils.security_middleware import (
     RequestSizeLimitMiddleware,
     ErrorLoggingMiddleware
 )
+from utils.redis_client import get_redis, close_redis
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -127,6 +128,29 @@ app.include_router(alipay.router)
 app.include_router(wechat_pay.router)
 app.include_router(user_messages.router)
 app.include_router(content_ban_appeals.router)
+
+
+# ---------------------------------------------------------------------------
+# Startup / shutdown events
+# ---------------------------------------------------------------------------
+
+@app.on_event("startup")
+async def startup_redis():
+    """Warm up the Redis connection on app start."""
+    try:
+        redis = await get_redis()
+        await redis.ping()
+        logging.getLogger(__name__).info("Redis is ready")
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "Redis is not available — rate limiting will return 503 for chat requests"
+        )
+
+
+@app.on_event("shutdown")
+async def shutdown_redis():
+    """Gracefully close the Redis connection."""
+    await close_redis()
 
 
 # (Optional) You can still keep the async wake-up for later pings if needed
