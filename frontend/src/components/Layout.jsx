@@ -117,12 +117,40 @@ export default function Layout() {
         transition: `transform ${sidebarMotion}`,
       };
 
+  // iOS keyboard handling: use visualViewport API to adjust layout when keyboard opens.
+  // On iOS WebKit (including Chrome), position:fixed elements do NOT reposition
+  // when the software keyboard appears, causing the bottom of the page to be hidden.
+  // visualViewport.height reflects the actual visible area.
+  useEffect(() => {
+    const visualViewport = window.visualViewport;
+    if (!visualViewport) return;
+
+    const adjustForKeyboard = () => {
+      const main = mainContentRef.current;
+      if (!main) return;
+      // Use visualViewport height which accounts for the on-screen keyboard
+      const visibleHeight = visualViewport.height;
+      main.style.height = `${visibleHeight}px`;
+    };
+
+    visualViewport.addEventListener('resize', adjustForKeyboard);
+    visualViewport.addEventListener('scroll', adjustForKeyboard);
+    // Initial adjustment
+    adjustForKeyboard();
+
+    return () => {
+      visualViewport.removeEventListener('resize', adjustForKeyboard);
+      visualViewport.removeEventListener('scroll', adjustForKeyboard);
+    };
+  }, []);
+
   return (
     <div
       className="d-flex flex-column"
       style={{
         width: '100%',
-        position: 'fixed',
+        height: '100%',
+        position: 'absolute',
         inset: 0,
       }}
     >
@@ -131,8 +159,8 @@ export default function Layout() {
         style={{
           display: 'flex',
           width: '100%',
-          position: 'fixed',
-          inset: 0,
+          height: '100%',
+          position: 'relative',
         }}
       >
         {/* Sidebar - fixed position on both mobile and desktop */}
@@ -169,7 +197,7 @@ export default function Layout() {
             background: 'transparent',
             overflowY: 'auto',
             overscrollBehavior: 'contain',
-            height: '100vh',
+            height: isMobile ? `${window.visualViewport?.height || window.innerHeight}px` : '100vh',
             position: 'relative',
             paddingTop: '0',
             paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : '0',

@@ -465,32 +465,46 @@ export default function ChatPage() {
   }, [messages]);
 
   // Handle mobile keyboard viewport to prevent layout shift
+  // Uses visualViewport API on iOS for accurate keyboard-aware height,
+  // falling back to window.innerHeight on other platforms.
   useEffect(() => {
     if (window.innerWidth >= 768) return; // Only on mobile
 
-    const handleResize = () => {
-      // When keyboard is open, window.innerHeight becomes smaller
-      // Lock the main scrollable area to prevent background from showing
+    const visualViewport = window.visualViewport;
+
+    const adjustMainHeight = () => {
       const mainContent = document.querySelector('main');
-      if (mainContent) {
-        mainContent.style.maxHeight = `${window.innerHeight}px`;
-      }
+      if (!mainContent) return;
+      // visualViewport.height accounts for the on-screen keyboard on iOS
+      const visibleHeight = visualViewport ? visualViewport.height : window.innerHeight;
+      mainContent.style.height = `${visibleHeight}px`;
+    };
+
+    const handleResize = () => {
+      adjustMainHeight();
     };
 
     const handleOrientationChange = () => {
-      // Reset on orientation change
+      // Reset on orientation change, let the next resize event set the correct height
       setTimeout(() => {
-        const mainContent = document.querySelector('main');
-        if (mainContent) {
-          mainContent.style.maxHeight = 'unset';
-        }
-      }, 100);
+        adjustMainHeight();
+      }, 150);
     };
 
+    if (visualViewport) {
+      visualViewport.addEventListener('resize', adjustMainHeight);
+      visualViewport.addEventListener('scroll', adjustMainHeight);
+    }
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleOrientationChange);
+    // Initial adjustment
+    adjustMainHeight();
 
     return () => {
+      if (visualViewport) {
+        visualViewport.removeEventListener('resize', adjustMainHeight);
+        visualViewport.removeEventListener('scroll', adjustMainHeight);
+      }
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleOrientationChange);
     };
