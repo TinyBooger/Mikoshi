@@ -37,7 +37,8 @@ from utils.context_window import compact_conversation_messages, resolve_context_
 from utils.usage_utils import normalize_usage, usage_to_credits
 from utils.credit_usage_ledger import apply_credit_usage_with_wallet
 from utils.credit_cap import can_consume_credits, get_credit_cap_info, build_credit_cap_reached_payload
-from utils.model_rate_limiter import rate_limiter, concurrency_pool
+from utils.model_rate_limiter import rate_limiter
+from utils.upstream_bucket import acquire_upstream
 from utils.user_utils import is_chat_banned
 
 logger = logging.getLogger(__name__)
@@ -449,7 +450,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         )
 
     # --- Model API rate limit (per‑user, Redis‑backed sliding window) ---
-    rate_limit_result = await rate_limiter.check_rate_limit(
+    rate_limit_result = await rate_limiter.check(
         current_user.id,
         is_pro=bool(current_user.is_pro),
     )
@@ -464,9 +465,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 "rate_limits": {
                     "tier": rate_limit_result["tier"],
                     "limit_rpm": rate_limit_result["limit"],
-                    "limit_rph": rate_limit_result["limit_hour"],
                     "remaining": rate_limit_result["remaining"],
-                    "remaining_hour": rate_limit_result["remaining_hour"],
                     "reset_seconds": rate_limit_result["reset_seconds"],
                 },
             },
@@ -580,11 +579,9 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 "total_tokens": 0,
             }
 
-            # --- Acquire concurrency slot (pro users get priority) ---
-            _is_pro = bool(current_user.is_pro)
-            slot_acquired = await concurrency_pool.acquire(_is_pro)
-            if not slot_acquired:
-                yield f"data: {json.dumps({'error': 'SERVER_OVERLOADED', 'message': 'The server is experiencing high demand. Please try again shortly, or upgrade to Pro for priority access.'})}\n\n"
+            # --- upstream bucket (per-model RPM pacing) ---
+            if not await acquire_upstream(chat_config["model"], is_pro=bool(current_user.is_pro)):
+                yield f"data: {json.dumps({'error': 'UPSTREAM_BUSY', 'message': 'The model provider is currently at capacity. Please try again shortly.'})}\n\n"
                 return
 
             try:
@@ -734,9 +731,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 return
             except Exception as e:
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
-            finally:
-                # Release concurrency slot
-                await concurrency_pool.release(_is_pro)
 
         return StreamingResponse(
             generate(),
@@ -744,23 +738,22 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             headers={
                 "X-RateLimit-Limit-Minute": str(rate_limit_result["limit"]),
                 "X-RateLimit-Remaining-Minute": str(rate_limit_result["remaining"]),
-                "X-RateLimit-Limit-Hour": str(rate_limit_result["limit_hour"]),
-                "X-RateLimit-Remaining-Hour": str(rate_limit_result["remaining_hour"]),
             },
         )
     
     else:
         # Non-streaming fallback (original logic)
-        _is_pro_ns = bool(current_user.is_pro)
-        slot_acquired_ns = await concurrency_pool.acquire(_is_pro_ns)
-        if not slot_acquired_ns:
+
+        # --- upstream bucket (per-model RPM pacing) ---
+        if not await acquire_upstream(chat_config["model"], is_pro=bool(current_user.is_pro)):
             return JSONResponse(
                 content={
-                    "error": "SERVER_OVERLOADED",
-                    "message": "The server is experiencing high demand. Please try again shortly, or upgrade to Pro for priority access.",
+                    "error": "UPSTREAM_BUSY",
+                    "message": "The model provider is currently at capacity. Please try again shortly.",
                 },
                 status_code=503,
             )
+
         try:
             response = client.chat.completions.create(
                 model=chat_config["model"],
@@ -775,8 +768,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             response_usage = normalize_usage(getattr(response, "usage", None))
         except Exception:
             return JSONResponse(content={"error": "Server busy, please try again later."}, status_code=503)
-        finally:
-            await concurrency_pool.release(_is_pro_ns)
 
         limit_info = increment_user_message_count(
             current_user,
@@ -1138,7 +1129,7 @@ async def get_rate_limit_status(
 ):
     """Return the current rate‑limit status for the authenticated user
     without consuming a request."""
-    return await rate_limiter.get_rate_limit_status(
+    return await rate_limiter.status(
         current_user.id,
         is_pro=bool(current_user.is_pro),
     )

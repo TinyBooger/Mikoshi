@@ -14,6 +14,7 @@ from utils.security_middleware import (
     ErrorLoggingMiddleware
 )
 from utils.redis_client import get_redis, close_redis
+from utils.upstream_bucket import start_dispensers, stop_dispensers
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -141,6 +142,8 @@ async def startup_redis():
         redis = await get_redis()
         await redis.ping()
         logging.getLogger(__name__).info("Redis is ready")
+        # Start upstream bucket dispensers (one per rate-limited model)
+        await start_dispensers()
     except Exception:
         logging.getLogger(__name__).warning(
             "Redis is not available — rate limiting will return 503 for chat requests"
@@ -150,6 +153,7 @@ async def startup_redis():
 @app.on_event("shutdown")
 async def shutdown_redis():
     """Gracefully close the Redis connection."""
+    await stop_dispensers()
     await close_redis()
 
 
