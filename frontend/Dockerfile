@@ -2,6 +2,9 @@ FROM node:slim
 
 WORKDIR /app
 
+# Use Tencent Cloud intranet npm mirror for faster installs on Tencent servers
+RUN npm config set registry http://mirrors.tencentyun.com/npm/
+
 # 复制package文件
 COPY package*.json ./
 
