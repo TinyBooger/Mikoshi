@@ -21,14 +21,10 @@ POSTGRES_DB="mydb"
 POSTGRES_USER="user"
 POSTGRES_PASSWORD="password"
 
-# Load secrets from .env if present
-ENV_FILE="$(dirname "$0")/../../secrets/Mikoshi-production.env"
-if [ -f "$ENV_FILE" ]; then
-    export $(grep -v '^#' "$ENV_FILE" | xargs)
-    POSTGRES_DB="${POSTGRES_DB:-$POSTGRES_DB}"
-    POSTGRES_USER="${POSTGRES_USER:-$POSTGRES_USER}"
-    POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$POSTGRES_PASSWORD}"
-fi
+# NOTE: We do NOT source Mikoshi-production.env here because it contains
+# multi-line values (private keys) that break with naive export + xargs.
+# The hardcoded defaults below match docker-compose.prod.yml.  Change
+# them directly if the Compose credentials ever change.
 
 # Ensure backup root exists
 mkdir -p "$BACKUP_ROOT"

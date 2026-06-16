@@ -12,5 +12,28 @@
 - Restore with gunzip and psql.
 
 ## Automation
-- Example crontab entries for backup and retention.
-- Troubleshooting tips for automation and permissions.
+
+### Crontab (production — as root)
+```
+# Daily backup at 2 AM
+0 2 * * * cd /opt/repos/var/www/Mikoshi && bash scripts/backup/backup_prod_postgres.sh daily
+
+# Weekly backup every Sunday at 3 AM
+0 3 * * 0 cd /opt/repos/var/www/Mikoshi && bash scripts/backup/backup_prod_postgres.sh weekly
+
+# Prune old backups at 4 AM daily (dailies > 7 days, weeklies > 4 weeks)
+0 4 * * * cd /opt/repos/var/www/Mikoshi && bash scripts/backup/prune_backups.sh
+```
+
+### Retention Policy
+| Class   | Kept For     |
+|---------|--------------|
+| Daily   | 7 days       |
+| Weekly  | 4 weeks      |
+
+### Troubleshooting
+- Check cron output: `cat /var/mail/root`
+- Verify crontab is active: `crontab -l`
+- Check cron daemon is running: `systemctl status cron`
+- If backups aren't appearing, check the script's exit code by running it manually: `bash -x scripts/backup/backup_prod_postgres.sh daily`
+- Make sure `backups/` directory exists and is writable
