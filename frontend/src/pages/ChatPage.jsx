@@ -464,51 +464,27 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Handle mobile keyboard viewport to prevent layout shift
-  // Uses visualViewport API on iOS for accurate keyboard-aware height,
-  // falling back to window.innerHeight on other platforms.
+  // Scroll to bottom when keyboard appears/disappears on mobile.
+  // After Layout.jsx adjusts the main height in response to visualViewport
+  // resize, ensure the latest messages (and input area) stay in view.
   useEffect(() => {
-    if (window.innerWidth >= 768) return; // Only on mobile
-
     const visualViewport = window.visualViewport;
+    if (!visualViewport) return;
 
-    const adjustMainHeight = () => {
-      const mainContent = document.querySelector('main');
-      if (!mainContent) return;
-      // visualViewport.height accounts for the on-screen keyboard on iOS
-      const visibleHeight = visualViewport ? visualViewport.height : window.innerHeight;
-      mainContent.style.height = `${visibleHeight}px`;
+    const scrollToBottom = () => {
+      // Use requestAnimationFrame to run after Layout's height adjustment
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' });
+      });
     };
 
-    const handleResize = () => {
-      adjustMainHeight();
-    };
-
-    const handleOrientationChange = () => {
-      // Reset on orientation change, let the next resize event set the correct height
-      setTimeout(() => {
-        adjustMainHeight();
-      }, 150);
-    };
-
-    if (visualViewport) {
-      visualViewport.addEventListener('resize', adjustMainHeight);
-      visualViewport.addEventListener('scroll', adjustMainHeight);
-    }
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleOrientationChange);
-    // Initial adjustment
-    adjustMainHeight();
-
-    return () => {
-      if (visualViewport) {
-        visualViewport.removeEventListener('resize', adjustMainHeight);
-        visualViewport.removeEventListener('scroll', adjustMainHeight);
-      }
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleOrientationChange);
-    };
+    visualViewport.addEventListener('resize', scrollToBottom);
+    return () => visualViewport.removeEventListener('resize', scrollToBottom);
   }, []);
+
+  // Mobile keyboard handling is centralized in Layout.jsx (visualViewport API).
+  // This ChatPage no longer duplicates the main height adjustment to avoid
+  // race conditions and layout jank when the virtual keyboard appears.
 
   const navigate = useNavigate();
   const initialized = useRef(false);
@@ -2638,12 +2614,6 @@ export default function ChatPage() {
                 disabled={!!tokenLimits?.cap_reached}
                 onFocus={e => {
                   e.target.style.border = '1.2px solid #18191a';
-                  // Prevent viewport shift on mobile
-                  if (window.innerWidth < 768) {
-                    setTimeout(() => {
-                      e.target.scrollIntoView({ behavior: 'instant', block: 'nearest' });
-                    }, 300);
-                  }
                 }}
                 onBlur={e => e.target.style.border = '1.2px solid #e9ecef'}
                 rows={1}

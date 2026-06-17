@@ -472,7 +472,8 @@ function SearchPage() {
             href="/"
             aria-label="Home"
             title="Home"
-            style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
+            className="d-none d-md-inline-flex"
+            style={{ alignItems: 'center', flexShrink: 0 }}
             onClick={(e) => {
               e.preventDefault();
               navigate('/');
@@ -482,7 +483,7 @@ function SearchPage() {
           </a>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-            <div style={{ width: 'clamp(200px, 30vw, 480px)', position: 'relative', marginLeft: 'auto' }}>
+            <div style={{ width: viewportWidth < 768 ? '100%' : 'clamp(200px, 30vw, 480px)', position: 'relative', marginLeft: viewportWidth < 768 ? 0 : 'auto' }}>
             <div
               className="input-group rounded-pill"
               style={{
@@ -496,7 +497,7 @@ function SearchPage() {
               <input
                 type="text"
                 className="form-control border-0 rounded-pill"
-                style={{ background: 'transparent', fontSize: '0.92rem', paddingLeft: 14, paddingRight: 8, color: '#232323', outline: 'none', boxShadow: 'none', borderRadius: '22px 0 0 22px' }}
+                style={{ background: 'transparent', fontSize: viewportWidth < 768 ? '16px' : '0.92rem', paddingLeft: 14, paddingRight: 8, color: '#232323', outline: 'none', boxShadow: 'none', borderRadius: '22px 0 0 22px' }}
                 placeholder={t('topbar.search_placeholder')}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}

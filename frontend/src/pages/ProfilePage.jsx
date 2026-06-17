@@ -979,7 +979,72 @@ export default function ProfilePage() {
         </div>
       );
     }
-    return renderEntityCardSection(entities, type, canEditEntity, editUrlPrefix, emptyMsg, page, total, onPageChange);
+    const showSortToggle = activeTab !== TAB_TYPES.MY_PERSONAS && activeTab !== TAB_TYPES.CHAT_HISTORY;
+    return (
+      <>
+        {showSortToggle && (
+          <div className="d-flex align-items-center justify-content-end" style={{ marginBottom: 12, gap: isMobile ? 5 : 8 }}>
+            <span
+              title={t('browse.sort_by')}
+              aria-label={t('browse.sort_by')}
+              style={{ color: '#555', fontSize: isMobile ? '0.78rem' : '0.84rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
+            >
+              <i className="bi bi-sort-down" aria-hidden="true" style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', lineHeight: 1 }} />
+              <span className="visually-hidden">{t('browse.sort_by')}</span>
+            </span>
+            <div
+              style={{
+                position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                alignItems: 'center', minWidth: isMobile ? 104 : 148,
+                borderRadius: isMobile ? 6 : 8, padding: isMobile ? 1 : 2, background: 'rgba(0,0,0,0.06)', flexShrink: 0,
+              }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute', left: isMobile ? 1 : 2, top: isMobile ? 1 : 2, bottom: isMobile ? 1 : 2,
+                  width: `calc((100% - ${isMobile ? 2 : 4}px) / 2)`, borderRadius: isMobile ? 5 : 6, background: '#fff',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                  transform: `translateX(${sortToggleTranslatePercent}%)`,
+                  transition: 'transform 200ms ease', pointerEvents: 'none', zIndex: 0,
+                }}
+              />
+              <button
+                type="button"
+                className="border-0"
+                style={{
+                  position: 'relative', zIndex: 1, background: 'transparent',
+                  color: activeSort === ENTITY_SORTS.RECENT ? '#2f2447' : '#9088a4',
+                  borderRadius: isMobile ? 5 : 6, fontSize: isMobile ? '0.72rem' : '0.86rem',
+                  fontWeight: activeSort === ENTITY_SORTS.RECENT ? 700 : 500,
+                  padding: isMobile ? '0.2rem 0.36rem' : '0.32rem 0.65rem',
+                  whiteSpace: 'nowrap', transition: 'color 0.18s ease',
+                }}
+                onClick={() => setActiveSort(ENTITY_SORTS.RECENT)}
+              >
+                {t('browse.recent')}
+              </button>
+              <button
+                type="button"
+                className="border-0"
+                style={{
+                  position: 'relative', zIndex: 1, background: 'transparent',
+                  color: activeSort === ENTITY_SORTS.POPULAR ? '#2f2447' : '#9088a4',
+                  borderRadius: isMobile ? 5 : 6, fontSize: isMobile ? '0.72rem' : '0.86rem',
+                  fontWeight: activeSort === ENTITY_SORTS.POPULAR ? 700 : 500,
+                  padding: isMobile ? '0.2rem 0.36rem' : '0.32rem 0.65rem',
+                  whiteSpace: 'nowrap', transition: 'color 0.18s ease',
+                }}
+                onClick={() => setActiveSort(ENTITY_SORTS.POPULAR)}
+              >
+                {t('browse.popular')}
+              </button>
+            </div>
+          </div>
+        )}
+        {renderEntityCardSection(entities, type, canEditEntity, editUrlPrefix, emptyMsg, page, total, onPageChange)}
+      </>
+    );
   };
   // Edit profile modal state
   const [showModal, setShowModal] = useState(false);
@@ -1159,7 +1224,13 @@ export default function ProfilePage() {
           0%   { transform: translate(calc(-50% + 0px), calc(-50% + 0px)) scale(1);                                 opacity: 0.45; }
           100% { transform: translate(calc(-50% + var(--htx)),        calc(-50% + var(--hty)))        scale(0.85);     opacity: 0; }
         }
-
+        @media (max-width: 767px) {
+          .card-section-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.5rem !important;
+          }
+        }
       `}</style>
       <div
         className="flex-grow-1 d-flex flex-column align-items-center"
@@ -1623,7 +1694,7 @@ export default function ProfilePage() {
         </div>
 
         {/* ── Workstation layout: sidebar + content ── */}
-        <div className="d-flex w-100" style={{ gap: isMobile ? 0 : 20, alignItems: 'flex-start', marginTop: 8 }}>
+        <div className="d-flex w-100" style={{ gap: isMobile ? 0 : 20, alignItems: 'flex-start', marginTop: 8, flexDirection: isMobile ? 'column' : undefined }}>
 
           {/* Desktop sidebar */}
           {!isMobile && (
@@ -1801,71 +1872,114 @@ export default function ProfilePage() {
             </aside>
           )}
 
-          {/* Mobile top nav */}
+          {/* Mobile horizontal-scroll sidebar menu */}
           {isMobile && (
             <div style={{ width: '100%', marginBottom: 10 }}>
-              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 6 }}>
+              {/* Primary tabs — horizontal scroll */}
+              <div
+                style={{
+                  display: 'flex', gap: 2, overflowX: 'auto', paddingBottom: 4,
+                  borderBottom: '1px solid rgba(0,0,0,0.07)',
+                  scrollbarWidth: 'none', msOverflowStyle: 'none',
+                }}
+              >
+                {/* 我的创作 (expandable group) */}
                 <button
                   type="button"
-                  onClick={() => { setActiveTab(TAB_TYPES.CREATED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); setCreatedExpanded(true); setLikedExpanded(false); }}
+                  onClick={() => {
+                    if (!createdExpanded) {
+                      setCreatedExpanded(true);
+                      setLikedExpanded(false);
+                      setActiveTab(TAB_TYPES.CREATED);
+                      setActiveSubtab(SUBTAB_TYPES.CHARACTERS);
+                    } else {
+                      setCreatedExpanded(false);
+                    }
+                  }}
                   style={{
-                    flexShrink: 0, padding: '0.35rem 0.8rem', borderRadius: 999, border: 'none',
-                    background: activeTab === TAB_TYPES.CREATED ? 'rgba(167,139,250,0.18)' : 'rgba(0,0,0,0.05)',
-                    color: activeTab === TAB_TYPES.CREATED ? '#5b2f9b' : '#555',
-                    fontSize: '0.82rem', fontWeight: activeTab === TAB_TYPES.CREATED ? 700 : 500,
-                    cursor: 'pointer', whiteSpace: 'nowrap',
+                    flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '0.4rem 0.55rem', borderRadius: 7, border: 'none',
+                    background: activeTab === TAB_TYPES.CREATED ? 'rgba(167,139,250,0.12)' : 'transparent',
+                    color: activeTab === TAB_TYPES.CREATED ? '#5b2f9b' : '#3a3a3a',
+                    fontSize: '0.8rem', fontWeight: activeTab === TAB_TYPES.CREATED ? 700 : 600,
+                    cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s',
                   }}
                 >
-                  {t('profile.my_creations')}
+                  <span>{t('profile.my_creations')}</span>
+                  <i className={`bi bi-chevron-${createdExpanded ? 'down' : 'right'}`} style={{ fontSize: '0.6rem', opacity: 0.45, flexShrink: 0 }} />
                 </button>
+
+                {/* 喜欢 (expandable group, own profile only) */}
                 {isOwnProfile && (
                   <button
                     type="button"
-                    onClick={() => { setActiveTab(TAB_TYPES.LIKED); setActiveSubtab(SUBTAB_TYPES.CHARACTERS); setLikedExpanded(true); setCreatedExpanded(false); }}
+                    onClick={() => {
+                      if (!likedExpanded) {
+                        setLikedExpanded(true);
+                        setCreatedExpanded(false);
+                        setActiveTab(TAB_TYPES.LIKED);
+                        setActiveSubtab(SUBTAB_TYPES.CHARACTERS);
+                      } else {
+                        setLikedExpanded(false);
+                      }
+                    }}
                     style={{
-                      flexShrink: 0, padding: '0.35rem 0.8rem', borderRadius: 999, border: 'none',
-                      background: activeTab === TAB_TYPES.LIKED ? 'rgba(167,139,250,0.18)' : 'rgba(0,0,0,0.05)',
-                      color: activeTab === TAB_TYPES.LIKED ? '#5b2f9b' : '#555',
-                      fontSize: '0.82rem', fontWeight: activeTab === TAB_TYPES.LIKED ? 700 : 500,
-                      cursor: 'pointer', whiteSpace: 'nowrap',
+                      flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4,
+                      padding: '0.4rem 0.55rem', borderRadius: 7, border: 'none',
+                      background: activeTab === TAB_TYPES.LIKED ? 'rgba(167,139,250,0.12)' : 'transparent',
+                      color: activeTab === TAB_TYPES.LIKED ? '#5b2f9b' : '#3a3a3a',
+                      fontSize: '0.8rem', fontWeight: activeTab === TAB_TYPES.LIKED ? 700 : 600,
+                      cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s',
                     }}
                   >
-                    {t('profile.liked')}
+                    <span>{t('profile.liked')}</span>
+                    <i className={`bi bi-chevron-${likedExpanded ? 'down' : 'right'}`} style={{ fontSize: '0.6rem', opacity: 0.45, flexShrink: 0 }} />
                   </button>
                 )}
+
+                {/* Divider dot */}
+                {isOwnProfile && (
+                  <span style={{ width: 1, alignSelf: 'stretch', margin: '4px 3px', background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />
+                )}
+
+                {/* 我的人设 (standalone) */}
                 {isOwnProfile && (
                   <button
                     type="button"
                     onClick={() => { setActiveTab(TAB_TYPES.MY_PERSONAS); setCreatedExpanded(false); setLikedExpanded(false); }}
                     style={{
-                      flexShrink: 0, padding: '0.35rem 0.8rem', borderRadius: 999, border: 'none',
-                      background: activeTab === TAB_TYPES.MY_PERSONAS ? 'rgba(167,139,250,0.18)' : 'rgba(0,0,0,0.05)',
-                      color: activeTab === TAB_TYPES.MY_PERSONAS ? '#5b2f9b' : '#555',
-                      fontSize: '0.82rem', fontWeight: activeTab === TAB_TYPES.MY_PERSONAS ? 700 : 500,
-                      cursor: 'pointer', whiteSpace: 'nowrap',
+                      flexShrink: 0, padding: '0.4rem 0.55rem', borderRadius: 7, border: 'none',
+                      background: activeTab === TAB_TYPES.MY_PERSONAS ? 'rgba(167,139,250,0.12)' : 'transparent',
+                      color: activeTab === TAB_TYPES.MY_PERSONAS ? '#5b2f9b' : '#3a3a3a',
+                      fontSize: '0.8rem', fontWeight: activeTab === TAB_TYPES.MY_PERSONAS ? 700 : 600,
+                      cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s',
                     }}
                   >
                     {t('profile.my_personas')}
                   </button>
                 )}
+
+                {/* Chat History (standalone) */}
                 {isOwnProfile && (
                   <button
                     type="button"
                     onClick={() => { setActiveTab(TAB_TYPES.CHAT_HISTORY); setChatHistoryPage(1); setCreatedExpanded(false); setLikedExpanded(false); }}
                     style={{
-                      flexShrink: 0, padding: '0.35rem 0.8rem', borderRadius: 999, border: 'none',
-                      background: activeTab === TAB_TYPES.CHAT_HISTORY ? 'rgba(167,139,250,0.18)' : 'rgba(0,0,0,0.05)',
-                      color: activeTab === TAB_TYPES.CHAT_HISTORY ? '#5b2f9b' : '#555',
-                      fontSize: '0.82rem', fontWeight: activeTab === TAB_TYPES.CHAT_HISTORY ? 700 : 500,
-                      cursor: 'pointer', whiteSpace: 'nowrap',
+                      flexShrink: 0, padding: '0.4rem 0.55rem', borderRadius: 7, border: 'none',
+                      background: activeTab === TAB_TYPES.CHAT_HISTORY ? 'rgba(167,139,250,0.12)' : 'transparent',
+                      color: activeTab === TAB_TYPES.CHAT_HISTORY ? '#5b2f9b' : '#3a3a3a',
+                      fontSize: '0.8rem', fontWeight: activeTab === TAB_TYPES.CHAT_HISTORY ? 700 : 600,
+                      cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s',
                     }}
                   >
                     {t('profile.chat_history') || 'Chat History'}
                   </button>
                 )}
               </div>
+
+              {/* Secondary subtabs — shown when Created or Liked is active */}
               {(activeTab === TAB_TYPES.CREATED || activeTab === TAB_TYPES.LIKED) && (
-                <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 4, marginTop: 2 }}>
+                <div style={{ display: 'flex', gap: 1, overflowX: 'auto', padding: '4px 0 2px 6px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {(activeTab === TAB_TYPES.CREATED
                     ? [
                         { key: SUBTAB_TYPES.CHARACTERS, label: t('profile.characters') },
@@ -1884,11 +1998,11 @@ export default function ProfilePage() {
                         type="button"
                         onClick={() => setActiveSubtab(sub.key)}
                         style={{
-                          flexShrink: 0, padding: '0.26rem 0.65rem', borderRadius: 999, border: 'none',
-                          background: isActive ? 'rgba(167,139,250,0.15)' : 'transparent',
+                          flexShrink: 0, padding: '0.28rem 0.5rem', borderRadius: 6, border: 'none',
+                          background: isActive ? 'rgba(167,139,250,0.14)' : 'transparent',
                           color: isActive ? '#5b2f9b' : '#777',
-                          fontSize: '0.78rem', fontWeight: isActive ? 700 : 500,
-                          cursor: 'pointer', whiteSpace: 'nowrap',
+                          fontSize: '0.75rem', fontWeight: isActive ? 700 : 500,
+                          cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s',
                         }}
                       >
                         {sub.label}
@@ -1901,68 +2015,7 @@ export default function ProfilePage() {
           )}
 
           {/* Content area */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Sort toggle (hidden for MY_PERSONAS and CHAT_HISTORY) */}
-            {activeTab !== TAB_TYPES.MY_PERSONAS && activeTab !== TAB_TYPES.CHAT_HISTORY && (
-              <div className="d-flex align-items-center justify-content-end" style={{ marginBottom: 12, gap: 8 }}>
-                <span
-                  title={t('browse.sort_by')}
-                  aria-label={t('browse.sort_by')}
-                  style={{ color: '#555', fontSize: '0.84rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
-                >
-                  <i className="bi bi-sort-down" aria-hidden="true" style={{ fontSize: '0.95rem', lineHeight: 1 }} />
-                  <span className="visually-hidden">{t('browse.sort_by')}</span>
-                </span>
-                <div
-                  style={{
-                    position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                    alignItems: 'center', minWidth: isMobile ? 124 : 148,
-                    borderRadius: 8, padding: 2, background: 'rgba(0,0,0,0.06)', flexShrink: 0,
-                  }}
-                >
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      position: 'absolute', left: 2, top: 2, bottom: 2,
-                      width: 'calc((100% - 4px) / 2)', borderRadius: 6, background: '#fff',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-                      transform: `translateX(${sortToggleTranslatePercent}%)`,
-                      transition: 'transform 200ms ease', pointerEvents: 'none', zIndex: 0,
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="border-0"
-                    style={{
-                      position: 'relative', zIndex: 1, background: 'transparent',
-                      color: activeSort === ENTITY_SORTS.RECENT ? '#2f2447' : '#9088a4',
-                      borderRadius: 6, fontSize: isMobile ? '0.79rem' : '0.86rem',
-                      fontWeight: activeSort === ENTITY_SORTS.RECENT ? 700 : 500,
-                      padding: isMobile ? '0.28rem 0.5rem' : '0.32rem 0.65rem',
-                      whiteSpace: 'nowrap', transition: 'color 0.18s ease',
-                    }}
-                    onClick={() => setActiveSort(ENTITY_SORTS.RECENT)}
-                  >
-                    {t('browse.recent')}
-                  </button>
-                  <button
-                    type="button"
-                    className="border-0"
-                    style={{
-                      position: 'relative', zIndex: 1, background: 'transparent',
-                      color: activeSort === ENTITY_SORTS.POPULAR ? '#2f2447' : '#9088a4',
-                      borderRadius: 6, fontSize: isMobile ? '0.79rem' : '0.86rem',
-                      fontWeight: activeSort === ENTITY_SORTS.POPULAR ? 700 : 500,
-                      padding: isMobile ? '0.28rem 0.5rem' : '0.32rem 0.65rem',
-                      whiteSpace: 'nowrap', transition: 'color 0.18s ease',
-                    }}
-                    onClick={() => setActiveSort(ENTITY_SORTS.POPULAR)}
-                  >
-                    {t('browse.popular')}
-                  </button>
-                </div>
-              </div>
-            )}
+          <div style={{ flex: 1, minWidth: 0, width: isMobile ? '100%' : undefined }}>
             {renderTabContent()}
           </div>
         </div>

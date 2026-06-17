@@ -117,30 +117,48 @@ export default function Layout() {
         transition: `transform ${sidebarMotion}`,
       };
 
-  // iOS keyboard handling: use visualViewport API to adjust layout when keyboard opens.
-  // On iOS WebKit (including Chrome), position:fixed elements do NOT reposition
-  // when the software keyboard appears, causing the bottom of the page to be hidden.
-  // visualViewport.height reflects the actual visible area.
+  // iOS/Android keyboard handling: dynamically adjust the main content height
+  // when the virtual keyboard appears/disappears.
+  // Uses visualViewport API on iOS (and modern Android Chrome) for accurate
+  // keyboard-aware height, falling back to window.innerHeight on other platforms.
   useEffect(() => {
     const visualViewport = window.visualViewport;
-    if (!visualViewport) return;
+    let rafId = null;
 
-    const adjustForKeyboard = () => {
-      const main = mainContentRef.current;
-      if (!main) return;
-      // Use visualViewport height which accounts for the on-screen keyboard
-      const visibleHeight = visualViewport.height;
-      main.style.height = `${visibleHeight}px`;
+    const adjustHeight = () => {
+      if (rafId) return; // debounce via requestAnimationFrame
+      rafId = requestAnimationFrame(() => {
+        const main = mainContentRef.current;
+        if (!main) { rafId = null; return; }
+        const visibleHeight = visualViewport ? visualViewport.height : window.innerHeight;
+        main.style.height = `${visibleHeight}px`;
+        rafId = null;
+      });
     };
 
-    visualViewport.addEventListener('resize', adjustForKeyboard);
-    visualViewport.addEventListener('scroll', adjustForKeyboard);
+    const handleResize = () => adjustHeight();
+    const handleOrientationChange = () => {
+      // Wait for orientation animation to settle, then adjust
+      setTimeout(adjustHeight, 200);
+    };
+
+    if (visualViewport) {
+      visualViewport.addEventListener('resize', adjustHeight);
+      visualViewport.addEventListener('scroll', adjustHeight);
+    }
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleOrientationChange);
     // Initial adjustment
-    adjustForKeyboard();
+    adjustHeight();
 
     return () => {
-      visualViewport.removeEventListener('resize', adjustForKeyboard);
-      visualViewport.removeEventListener('scroll', adjustForKeyboard);
+      if (rafId) cancelAnimationFrame(rafId);
+      if (visualViewport) {
+        visualViewport.removeEventListener('resize', adjustHeight);
+        visualViewport.removeEventListener('scroll', adjustHeight);
+      }
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleOrientationChange);
     };
   }, []);
 
@@ -196,11 +214,10 @@ export default function Layout() {
             transition: `margin-left ${sidebarMotion}, width ${sidebarMotion}`,
             background: 'transparent',
             overflowY: 'auto',
-            overscrollBehavior: 'contain',
-            height: isMobile ? `${window.visualViewport?.height || window.innerHeight}px` : '100vh',
+            height: isMobile ? '100dvh' : '100vh',
             position: 'relative',
             paddingTop: '0',
-            paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : '0',
+            paddingBottom: '0',
           }}
         >
           <Outlet

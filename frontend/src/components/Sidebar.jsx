@@ -482,7 +482,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             className="form-control border-0 rounded-pill"
             style={{
               background: 'transparent',
-              fontSize: '0.85rem',
+              fontSize: isMobile ? '16px' : '0.85rem',
               paddingLeft: 12,
               paddingRight: 8,
               color: '#232323',
