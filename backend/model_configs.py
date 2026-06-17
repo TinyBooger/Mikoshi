@@ -59,6 +59,8 @@ class ModelConfig:
         rpm: Optional[int] = None,
         tpm: Optional[int] = None,
         max_concurrent: Optional[int] = None,
+        # Cost multiplier (relative to deepseek-v4-flash = 1x)
+        multiplier: float = 1.0,
     ):
         self.id = id
         self.display_name = display_name or id
@@ -71,6 +73,7 @@ class ModelConfig:
         self.rpm = rpm
         self.tpm = tpm
         self.max_concurrent = max_concurrent
+        self.multiplier = multiplier
 
     # -- convenience accessors -------------------------------------------------
 
@@ -175,6 +178,7 @@ MODELS: List[ModelConfig] = [
         max_output_tokens=1_000_000,
         thinking=True,
         max_concurrent=500,
+        multiplier=1.0,
     ),
     ModelConfig(
         id="deepseek-v4-pro",
@@ -187,6 +191,7 @@ MODELS: List[ModelConfig] = [
         max_output_tokens=1_000_000,
         thinking=True,
         max_concurrent=1500,
+        multiplier=3.0,
     ),
 
     # ------------------------------------------------------------------
@@ -208,6 +213,7 @@ MODELS: List[ModelConfig] = [
         thinking=True,
         rpm=30_000,
         tpm=10_000_000,
+        multiplier=12.0,
     ),
     ModelConfig(
         id="qwen3.7-plus",
@@ -221,6 +227,7 @@ MODELS: List[ModelConfig] = [
         thinking=True,
         rpm=30_000,
         tpm=10_000_000,
+        multiplier=2.0,
     ),
     ModelConfig(
         id="qwen3.6-flash",
@@ -234,6 +241,7 @@ MODELS: List[ModelConfig] = [
         thinking=True,
         rpm=30_000,
         tpm=10_000_000,
+        multiplier=1.2,
     ),
     ModelConfig(
         id="qwen-plus-character",
@@ -251,6 +259,7 @@ MODELS: List[ModelConfig] = [
         thinking=False,
         rpm=120,
         tpm=500_000,
+        multiplier=0.8,
     ),
     ModelConfig(
         id="qwen-flash-character",
@@ -268,6 +277,7 @@ MODELS: List[ModelConfig] = [
         thinking=False,
         rpm=120,
         tpm=500_000,
+        multiplier=0.3,
     ),
 
     # ------------------------------------------------------------------
@@ -289,6 +299,7 @@ MODELS: List[ModelConfig] = [
         thinking=True,
         rpm=500,
         tpm=1_000_000,
+        multiplier=6.4,
     ),
 
     # ------------------------------------------------------------------
@@ -306,6 +317,7 @@ MODELS: List[ModelConfig] = [
         thinking=False,
         rpm=500,
         tpm=20_000_000,
+        multiplier=6.0,
     ),
 
     # ------------------------------------------------------------------
@@ -327,6 +339,7 @@ MODELS: List[ModelConfig] = [
         thinking=True,
         rpm=500,
         tpm=20_000_000,
+        multiplier=2.1,
     ),
 ]
 

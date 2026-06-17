@@ -10,6 +10,7 @@ import {
   normalizeContextWindowTier,
 } from '../utils/contextWindow';
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
+import ModelSelect from './ModelSelect';
 import { useToast } from '../components/ToastProvider';
 
 
@@ -926,17 +927,13 @@ export default function CharacterSidebar({
                 {t('chat.advanced_model')}
                 <InfoHint hintKey="character_form.advanced_help.model" />
               </label>
-              <select
+              <ModelSelect
                 className="form-select form-select-sm"
                 value={advancedChatConfig?.model || 'deepseek-v4-flash'}
-                onChange={(e) => handleModelChange(e.target.value)}
+                onChange={handleModelChange}
                 disabled={!canUseAdvancedChatConfig}
                 style={{ marginBottom: 10, borderRadius: 8 }}
-              >
-                {AVAILABLE_MODEL_IDS.map(modelName => (
-                  <option key={modelName} value={modelName}>{modelName}</option>
-                ))}
-              </select>
+              />
 
               <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                 {t('chat.advanced_temperature')}: {advancedChatConfig?.temperature ?? 1.3}

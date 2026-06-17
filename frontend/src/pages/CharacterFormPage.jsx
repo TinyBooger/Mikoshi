@@ -13,6 +13,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/creditDisplay';
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
+import ModelSelect from '../components/ModelSelect';
 import BanNotice from '../components/BanNotice';
 
 export default function CharacterFormPage() {
@@ -942,17 +943,13 @@ export default function CharacterFormPage() {
                       {t('character_form.advanced.model')}
                       <InfoHint text={t('character_form.advanced_help.model')} />
                     </label>
-                    <select
+                    <ModelSelect
                       className="form-select"
                       value={charData.model || DEFAULT_CHAT_CONFIG.model}
-                      onChange={e => handleModelChange(e.target.value)}
+                      onChange={handleModelChange}
                       disabled={!canUseAdvancedConfig}
                       style={{ borderRadius: 12 }}
-                    >
-                      {AVAILABLE_MODEL_IDS.map(modelName => (
-                        <option key={modelName} value={modelName}>{modelName}</option>
-                      ))}
-                    </select>
+                    />
                   </div>
 
                   <div className="mb-3">
