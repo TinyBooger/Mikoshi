@@ -27,7 +27,6 @@ const WALLPAPER_OPTIONS = [
   { id: 'waves', labelKey: 'chat.wallpaper_waves', url: '/wallpapers/waves.svg' },
 ];
 
-const MOBILE_LONG_PRESS_MS = 1000;
 const MAX_PINNED_MEMORIES = 10;
 const DEFAULT_BRANCH_ID = 'branch_main';
 const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
@@ -290,7 +289,6 @@ export default function ChatPage() {
   const textareaRef = useRef(null);
   // Ref for messages container to enable auto-scrolling
   const messagesEndRef = useRef(null);
-  const messageLongPressTimerRef = useRef(null);
   const messageMenuRef = useRef(null);
 
   const [selectedPersona, setSelectedPersona] = useState(null);
@@ -407,13 +405,6 @@ export default function ChatPage() {
       document.removeEventListener('touchstart', handlePointerDown);
     };
   }, [messageMenu.open]);
-
-  useEffect(() => () => {
-    if (messageLongPressTimerRef.current) {
-      clearTimeout(messageLongPressTimerRef.current);
-      messageLongPressTimerRef.current = null;
-    }
-  }, []);
 
   const [characterId, setCharacterId] = useState(searchParams.get('character'));
   const [sceneId, setSceneId] = useState(searchParams.get('scene'));
@@ -823,35 +814,6 @@ export default function ChatPage() {
       x: rect.left,
       y: rect.bottom,
     });
-  };
-
-  const startMessageLongPress = (touchEvent, messageId) => {
-    if (!isMobile) return;
-    if (messageLongPressTimerRef.current) {
-      clearTimeout(messageLongPressTimerRef.current);
-      messageLongPressTimerRef.current = null;
-    }
-
-    const touch = touchEvent.touches?.[0];
-    const clientX = Number(touch?.clientX || 0);
-    const clientY = Number(touch?.clientY || 0);
-
-    messageLongPressTimerRef.current = window.setTimeout(() => {
-      setMessageMenu({
-        open: true,
-        messageId,
-        x: clientX,
-        y: clientY,
-      });
-      messageLongPressTimerRef.current = null;
-    }, MOBILE_LONG_PRESS_MS);
-  };
-
-  const stopMessageLongPress = () => {
-    if (messageLongPressTimerRef.current) {
-      clearTimeout(messageLongPressTimerRef.current);
-      messageLongPressTimerRef.current = null;
-    }
   };
 
   const jumpToMessage = (messageId) => {
@@ -2072,12 +2034,6 @@ export default function ChatPage() {
                         marginBottom: '1.2rem',
                         justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
                       }}
-                      onTouchStart={(event) => {
-                        if (!m?.message_id) return;
-                        startMessageLongPress(event, m.message_id);
-                      }}
-                      onTouchEnd={stopMessageLongPress}
-                      onTouchCancel={stopMessageLongPress}
                     >
                       {/* Main row: avatar + content column */}
                       <div style={{
