@@ -131,6 +131,11 @@ export default function CreditTopUpPage() {
       return;
     }
 
+    if (isMobileBrowser() && selectedPaymentMethod === 'wechat') {
+      toast.show('手机端暂不支持微信支付，请使用支付宝支付', { type: 'info' });
+      return;
+    }
+
     if (selectedPaymentMethod !== 'alipay') {
     }
 
@@ -368,18 +373,31 @@ export default function CreditTopUpPage() {
                 <button
                   type="button"
                   className="btn d-flex align-items-center gap-2"
-                  onClick={() => setSelectedPaymentMethod('wechat')}
-                  style={paymentOptionStyle('wechat')}
+                  onClick={() => { if (!isMobileBrowser()) setSelectedPaymentMethod('wechat'); }}
+                  style={isMobileBrowser() ? {
+                    ...baseButtonStyle,
+                    background: '#e9ecef',
+                    border: '1px solid #ced4da',
+                    color: '#adb5bd',
+                    cursor: 'not-allowed',
+                    borderRadius: '12px',
+                    padding: '0.6rem 1rem',
+                  } : paymentOptionStyle('wechat')}
+                  title={isMobileBrowser() ? '手机端暂不支持微信支付' : ''}
                 >
-                  <i className="bi bi-wechat" style={{ color: '#07c160', fontSize: '1.3rem' }} />
-                  <span style={{ color: '#232323', fontWeight: 700, fontSize: '0.9rem' }}>微信支付</span>
-                  <input
-                    type="radio"
-                    readOnly
-                    checked={selectedPaymentMethod === 'wechat'}
-                    aria-label="选择微信支付"
-                    style={{ accentColor: '#07c160' }}
-                  />
+                  <i className="bi bi-wechat" style={{ color: isMobileBrowser() ? '#adb5bd' : '#07c160', fontSize: '1.3rem' }} />
+                  <span style={{ color: isMobileBrowser() ? '#adb5bd' : '#232323', fontWeight: 700, fontSize: '0.9rem' }}>微信支付</span>
+                  {isMobileBrowser() ? (
+                    <span style={{ color: '#dc3545', fontSize: '0.72rem', fontWeight: 400 }}>手机端暂不支持</span>
+                  ) : (
+                    <input
+                      type="radio"
+                      readOnly
+                      checked={selectedPaymentMethod === 'wechat'}
+                      aria-label="选择微信支付"
+                      style={{ accentColor: '#07c160' }}
+                    />
+                  )}
                 </button>
               </div>
             </div>
