@@ -257,6 +257,7 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
         "pro_active": pro_state["active"],
         "pro_days_remaining": pro_state["days_remaining"],
         "pro_status": pro_state["status"],
+        "invitation_code": getattr(user, "invitation_code", None),
         "ban_type": exposed_ban_type,
         "ban_until": exposed_ban_until,
     }

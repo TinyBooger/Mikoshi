@@ -26,6 +26,7 @@ export default function ProfilePage() {
     LIKED: 'Liked',
     MY_PERSONAS: 'MyPersonas',
     CHAT_HISTORY: 'ChatHistory',
+    INVITE_CODE: 'InviteCode',
   };
   const SUBTAB_TYPES = {
     CHARACTERS: 'characters',
@@ -59,6 +60,8 @@ export default function ProfilePage() {
   const [scenes, setScenes] = useState([]);
   const [likedScenes, setLikedScenes] = useState([]);
   const [creditBarHovered, setCreditBarHovered] = useState(false);
+  const [inviteData, setInviteData] = useState(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   // Pagination state for each entity type
   const [createdCharactersPage, setCreatedCharactersPage] = useState(1);
@@ -489,6 +492,17 @@ export default function ProfilePage() {
     setLikedPersonasPage(1);
   }, [personaSort]);
 
+  // Fetch invitation code stats
+  useEffect(() => {
+    if (!isOwnProfile || !sessionToken) return;
+    fetch(`${window.API_BASE_URL}/api/users/me/invitation-code`, {
+      headers: { Authorization: sessionToken },
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setInviteData(data); })
+      .catch(() => {});
+  }, [isOwnProfile, sessionToken]);
+
   // Fetch chat history when own-profile tab is active
   useEffect(() => {
     if (!isOwnProfile || activeTab !== TAB_TYPES.CHAT_HISTORY || !sessionToken) return;
@@ -637,6 +651,122 @@ export default function ProfilePage() {
   }, [totalChats, totalLikes]);
 
   // (Removed redundant persist-after-animation effect)
+
+  // Invite Code tab content
+  const renderInviteCodeContent = () => {
+    if (!inviteData?.invitation_code) {
+      return (
+        <div className="text-center" style={{ color: '#9ca3af', padding: '3rem 0', fontSize: '0.95rem' }}>
+          {t('profile.no_invite_code') || 'No invitation code available.'}
+        </div>
+      );
+    }
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        padding: isMobile ? '1.5rem 0.75rem' : '2rem 1rem',
+      }}>
+        <div style={{
+          width: '100%', maxWidth: 480,
+          borderRadius: 16,
+          background: 'rgba(255,255,255,0.55)',
+          border: '1px solid rgba(167,139,250,0.25)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          padding: isMobile ? '1.25rem 1rem' : '1.75rem 1.5rem',
+          textAlign: 'center',
+        }}>
+          {/* Icon */}
+          <div style={{
+            width: isMobile ? 44 : 52,
+            height: isMobile ? 44 : 52,
+            borderRadius: 14,
+            background: 'linear-gradient(135deg, rgba(167,139,250,0.2), rgba(111,66,193,0.15))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 0.75rem',
+          }}>
+            <i className="bi bi-gift-fill" style={{ fontSize: isMobile ? '1.3rem' : '1.5rem', color: '#7c3aed' }} />
+          </div>
+
+          <h3 style={{
+            fontSize: isMobile ? '1rem' : '1.15rem',
+            fontWeight: 700, color: '#2d1b4f', margin: '0 0 0.35rem',
+          }}>
+            {t('profile.invite_code_tab') || '邀请码'}
+          </h3>
+
+          <p style={{
+            fontSize: isMobile ? '0.78rem' : '0.85rem',
+            color: '#6b7280', margin: '0 0 1rem',
+            lineHeight: 1.5,
+          }}>
+            🎁 {t('profile.invite_code_grant') || '使用你的邀请码注册，每位新用户将为你带来'} <strong style={{ color: '#7c3aed' }}>100 {t('profile.credits') || '点数'}</strong> {t('profile.invite_code_grant_suffix') || '奖励(每日限3次)'}
+          </p>
+
+          {/* Code display + copy */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: isMobile ? '0.5rem 0.75rem' : '0.6rem 1rem',
+            borderRadius: 12,
+            background: 'rgba(167,139,250,0.08)',
+            border: '1px solid rgba(167,139,250,0.18)',
+            marginBottom: '0.5rem',
+          }}>
+            <code style={{
+              flex: 1,
+              fontSize: isMobile ? '0.95rem' : '1.1rem',
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              color: '#5b2f9b',
+              background: 'transparent',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textAlign: 'left',
+            }}>
+              {inviteData.invitation_code}
+            </code>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(inviteData.invitation_code).then(() => {
+                  setInviteCopied(true);
+                  setTimeout(() => setInviteCopied(false), 2000);
+                }).catch(() => {});
+              }}
+              style={{
+                flexShrink: 0,
+                padding: isMobile ? '0.35rem 0.85rem' : '0.4rem 1rem',
+                borderRadius: 999,
+                border: '1px solid rgba(167,139,250,0.4)',
+                background: inviteCopied ? 'rgba(111,66,193,0.2)' : 'rgba(167,139,250,0.12)',
+                color: '#6f42c1',
+                fontSize: isMobile ? '0.78rem' : '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'background 0.15s',
+              }}
+            >
+              {inviteCopied
+                ? (t('profile.copied') || 'Copied!')
+                : (t('profile.copy') || 'Copy')}
+            </button>
+          </div>
+
+          {/* Stats row */}
+          {inviteData.invited_count > 0 && (
+            <div style={{
+              fontSize: isMobile ? '0.7rem' : '0.75rem',
+              color: '#9ca3af',
+              marginTop: 2,
+            }}>
+              {inviteData.invited_count} {t('profile.invited_joined') || 'joined'} · +{inviteData.bonus_credits || 100} {t('profile.credits_each') || 'credits each'} ({inviteData.today_count || 0}/{inviteData.max_per_day || 10} {t('profile.today') || 'today'})
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // Unified content renderer for all tabs and subtabs
   const renderTabContent = () => {
@@ -978,8 +1108,10 @@ export default function ProfilePage() {
           )}
         </div>
       );
+    } else if (activeTab === TAB_TYPES.INVITE_CODE) {
+      return renderInviteCodeContent();
     }
-    const showSortToggle = activeTab !== TAB_TYPES.MY_PERSONAS && activeTab !== TAB_TYPES.CHAT_HISTORY;
+    const showSortToggle = activeTab !== TAB_TYPES.MY_PERSONAS && activeTab !== TAB_TYPES.CHAT_HISTORY && activeTab !== TAB_TYPES.INVITE_CODE;
     return (
       <>
         {showSortToggle && (
@@ -1869,6 +2001,26 @@ export default function ProfilePage() {
                   {t('profile.chat_history') || 'Chat History'}
                 </button>
               )}
+
+              {/* 邀请码 */}
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab(TAB_TYPES.INVITE_CODE); setCreatedExpanded(false); setLikedExpanded(false); }}
+                  style={{
+                    display: 'block', width: '100%', padding: '0.44rem 0.6rem',
+                    borderRadius: 8, border: 'none',
+                    background: activeTab === TAB_TYPES.INVITE_CODE ? 'rgba(167,139,250,0.15)' : 'transparent',
+                    color: activeTab === TAB_TYPES.INVITE_CODE ? '#5b2f9b' : '#3a3a3a',
+                    fontSize: '0.875rem', fontWeight: activeTab === TAB_TYPES.INVITE_CODE ? 700 : 600,
+                    cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => { if (activeTab !== TAB_TYPES.INVITE_CODE) e.currentTarget.style.background = 'rgba(167,139,250,0.06)'; }}
+                  onMouseLeave={e => { if (activeTab !== TAB_TYPES.INVITE_CODE) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {t('profile.invite_code_tab') || '邀请码'}
+                </button>
+              )}
             </aside>
           )}
 
@@ -1973,6 +2125,23 @@ export default function ProfilePage() {
                     }}
                   >
                     {t('profile.chat_history') || 'Chat History'}
+                  </button>
+                )}
+
+                {/* 邀请码 (standalone) */}
+                {isOwnProfile && (
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab(TAB_TYPES.INVITE_CODE); setCreatedExpanded(false); setLikedExpanded(false); }}
+                    style={{
+                      flexShrink: 0, padding: '0.4rem 0.55rem', borderRadius: 7, border: 'none',
+                      background: activeTab === TAB_TYPES.INVITE_CODE ? 'rgba(167,139,250,0.12)' : 'transparent',
+                      color: activeTab === TAB_TYPES.INVITE_CODE ? '#5b2f9b' : '#3a3a3a',
+                      fontSize: '0.8rem', fontWeight: activeTab === TAB_TYPES.INVITE_CODE ? 700 : 600,
+                      cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s',
+                    }}
+                  >
+                    {t('profile.invite_code_tab') || '邀请码'}
                   </button>
                 )}
               </div>

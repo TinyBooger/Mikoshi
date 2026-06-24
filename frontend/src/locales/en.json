@@ -231,7 +231,17 @@
     "update_failed": "Failed to update profile.",
     "today": "Today",
     "yesterday": "Yesterday",
-    "earlier": "Earlier"
+    "earlier": "Earlier",
+    "invite_code_tab": "Invite Code",
+    "invite_code": "Invite Code",
+    "invite_code_grant": "Share your invite code — each new user who signs up with it earns you",
+    "invite_code_grant_suffix": "bonus",
+    "credits": "credits",
+    "credits_each": "credits each",
+    "no_invite_code": "No invitation code available.",
+    "copied": "Copied!",
+    "copy": "Copy",
+    "invited_joined": "joined"
   },
   "settings": {
     "title": "Settings",

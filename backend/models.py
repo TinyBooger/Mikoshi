@@ -72,6 +72,10 @@ class User(Base):
     
     default_persona_id = Column(Integer, ForeignKey('personas.id', ondelete='SET NULL'), nullable=True)
 
+    # Invitation / referral system
+    invitation_code = Column(String(12), unique=True, nullable=True, index=True)
+    invited_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+
     # IP / device tracking (last 5 unique values, most-recent first)
     last_known_ips = Column(ARRAY(Text), nullable=False, default=list)
     device_fingerprints = Column(ARRAY(Text), nullable=False, default=list)
@@ -146,7 +150,7 @@ class ChatHistory(Base):
 
     user = relationship("User", back_populates="chat_histories")
     branches = relationship("ChatHistoryBranch", back_populates="chat", cascade="all, delete-orphan")
-    messages_rel = relationship("ChatHistoryMessage", back_populates="chat", cascade="all, delete-orphan")
+    messages_rel = relationship("ChatHistoryMessage", back_populates="chat", cascade="all, delete-orphan", viewonly=True)
 
 
 class ChatHistoryBranch(Base):
@@ -162,7 +166,7 @@ class ChatHistoryBranch(Base):
     last_updated = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     chat = relationship("ChatHistory", back_populates="branches")
-    messages = relationship("ChatHistoryMessage", back_populates="branch", cascade="all, delete-orphan")
+    messages = relationship("ChatHistoryMessage", back_populates="branch", cascade="all, delete-orphan", overlaps="messages_rel")
 
     __table_args__ = (
         UniqueConstraint('chat_id', 'branch_id', name='uix_chat_history_branches_chat_branch'),
@@ -183,8 +187,8 @@ class ChatHistoryMessage(Base):
     created_seq = Column(BigInteger, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
-    chat = relationship("ChatHistory", back_populates="messages_rel")
-    branch = relationship("ChatHistoryBranch", back_populates="messages")
+    chat = relationship("ChatHistory", back_populates="messages_rel", viewonly=True)
+    branch = relationship("ChatHistoryBranch", back_populates="messages", overlaps="chat,messages_rel")
 
     __table_args__ = (
         ForeignKeyConstraint(
@@ -301,22 +305,6 @@ class UserFollow(Base):
     __table_args__ = (
         UniqueConstraint('follower_id', 'creator_id', name='uix_user_follows'),
     )
-
-# Invitation codes for alpha testing
-class InvitationCode(Base):
-    __tablename__ = "invitation_codes"
-    
-    code = Column(String(20), primary_key=True, unique=True, nullable=False)
-    created_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    expires_at = Column(DateTime(timezone=True), nullable=True)
-    
-    used_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
-    used_at = Column(DateTime(timezone=True), nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False)
-    max_uses = Column(Integer, default=1)  # How many times this code can be used
-    use_count = Column(Integer, default=0)  # How many times it has been used
-    notes = Column(Text, nullable=True)  # Admin notes about this code
 
 # Problem Reports
 class ProblemReport(Base):

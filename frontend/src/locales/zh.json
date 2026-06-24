@@ -230,7 +230,17 @@
     "update_failed": "更新资料失败。",
     "today": "今天",
     "yesterday": "昨天",
-    "earlier": "更早"
+    "earlier": "更早",
+    "invite_code_tab": "邀请码",
+    "invite_code": "邀请码",
+    "invite_code_grant": "分享你的邀请码，每位通过邀请码注册的新用户将为你带来",
+    "invite_code_grant_suffix": "奖励",
+    "credits": "点数",
+    "credits_each": "点数/人",
+    "no_invite_code": "暂无邀请码。",
+    "copied": "已复制！",
+    "copy": "复制",
+    "invited_joined": "人已加入"
   },
   "settings": {
     "title": "设置",

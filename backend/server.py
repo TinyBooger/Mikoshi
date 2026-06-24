@@ -29,7 +29,7 @@ if os.path.exists("../secrets/Mikoshi.env"):
 from database import engine, Base, SessionLocal
 # Import models so that all SQLAlchemy mappers are registered before create_all
 import models  # noqa: F401
-from routes import auth, character, chat, user, search, tags, scene, persona, admin, invitation, problem_report, notification, error_log, audit_log, alipay, wechat_pay, user_messages, content_ban_appeals
+from routes import auth, character, chat, user, search, tags, scene, persona, admin, problem_report, notification, error_log, audit_log, alipay, wechat_pay, user_messages, content_ban_appeals, password, phone
 
 # Initialize error logger with database factory
 from utils.error_logger import set_db_factory
@@ -112,6 +112,8 @@ app.mount(
 
 # Always include API routes
 app.include_router(auth.router)
+app.include_router(password.router)
+app.include_router(phone.router)
 app.include_router(user.router)
 app.include_router(character.router)
 app.include_router(chat.router)
@@ -120,7 +122,6 @@ app.include_router(tags.router)
 app.include_router(scene.router)
 app.include_router(persona.router)
 app.include_router(admin.router)
-app.include_router(invitation.router)
 app.include_router(problem_report.router)
 app.include_router(notification.router)
 app.include_router(error_log.router)

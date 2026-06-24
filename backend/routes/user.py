@@ -11,8 +11,10 @@ from utils.user_utils import build_user_response, enrich_user_with_character_cou
 from utils.validators import validate_account_fields
 from utils.sms_utils import send_verification_code, verify_code
 from utils.credit_cap import get_credit_cap_info
+from utils.invitation_utils import count_today_invites, INVITATION_BONUS_CREDITS, INVITATION_MAX_PER_DAY
 from sqlalchemy import func
 import re
+import os
 
 router = APIRouter()
 
@@ -138,6 +140,23 @@ def get_current_user_credit_limits(
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
     return get_credit_cap_info(current_user, db)
+
+
+@router.get("/api/users/me/invitation-code")
+def get_my_invitation_code(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Return the current user's invitation code and stats."""
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "invitation_code": getattr(current_user, "invitation_code", None),
+        "invited_count": db.query(User).filter(User.invited_by == current_user.id).count(),
+        "today_count": count_today_invites(db, current_user.id),
+        "bonus_credits": INVITATION_BONUS_CREDITS,
+        "max_per_day": INVITATION_MAX_PER_DAY,
+    }
 
 
 

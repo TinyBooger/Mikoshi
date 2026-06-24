@@ -136,6 +136,7 @@ class UserOut(BaseModel):
     pro_status: str = "free"
     ban_type: Optional[str] = None
     ban_until: Optional[Any] = None
+    invitation_code: Optional[str] = None
     
     class Config:
         from_attributes = True

@@ -28,15 +28,7 @@ export default function SignUpPage() {
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [error, setError] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [invitationCodeRequired, setInvitationCodeRequired] = useState(true);
   const { registerWithPhone, loading } = useContext(AuthContext);
-
-  useEffect(() => {
-    fetch(`${window.API_BASE_URL}/api/registration-settings`)
-      .then(res => res.json())
-      .then(data => setInvitationCodeRequired(data.invitation_code_required))
-      .catch(() => setInvitationCodeRequired(true)); // default to required on error
-  }, []);
 
   const handleGoBack = () => {
     navigate(-1);
@@ -49,12 +41,6 @@ export default function SignUpPage() {
     // Validate password confirmation
     if (password !== confirmPassword) {
       setError(t('signup.passwords_no_match'));
-      return;
-    }
-    
-    // Validate invitation code only when required
-    if (invitationCodeRequired && !invitationCode.trim()) {
-      setError(t('signup.invitation_code_required'));
       return;
     }
     
@@ -88,7 +74,7 @@ export default function SignUpPage() {
       >
         <span style={{ fontSize: '1.5rem', marginRight: 6 }}>&larr;</span> {t('signup.back')}
       </TextButton>
-      <PageWrapper>
+      <PageWrapper style={{ background: 'transparent', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
         <div className="container" style={{ paddingBottom: '3rem' }}>
           <div className="mx-auto" style={{ maxWidth: 400 }}>
             <h2 className="mb-4 text-center fw-bold py-4" style={{ fontWeight: 700, paddingTop: '2rem', paddingBottom: '2rem' }}>
@@ -98,7 +84,7 @@ export default function SignUpPage() {
             {loading && <div className="text-center"><div className="spinner-border text-primary" role="status"></div></div>}
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
-                <label className="form-label">手机号</label>
+                <label className="form-label">手机号 <span style={{ color: '#e53e3e' }}>*</span></label>
                 <input
                   type="text"
                   className="form-control"
@@ -108,25 +94,8 @@ export default function SignUpPage() {
                 />
                 <small className="form-text text-muted">已验证</small>
               </div>
-              {invitationCodeRequired && (
               <div className="mb-3">
-                <label className="form-label">{t('signup.invitation_code')}</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  required
-                  value={invitationCode}
-                  onChange={(e) => setInvitationCode(e.target.value.toUpperCase())}
-                  placeholder={t('signup.invitation_code_placeholder')}
-                  style={{ textTransform: 'uppercase' }}
-                />
-                <small className="form-text text-muted">
-                  {t('signup.invitation_code_hint')}
-                </small>
-              </div>
-              )}
-              <div className="mb-3">
-                <label className="form-label">{t('signup.name')}</label>
+                <label className="form-label">{t('signup.name')} <span style={{ color: '#e53e3e' }}>*</span></label>
                 <input
                   type="text"
                   className="form-control"
@@ -137,19 +106,17 @@ export default function SignUpPage() {
               </div>
               <div className="mb-3">
                 <label className="form-label">
-                  {t('signup.email')} 
-                  <span className="text-muted" style={{ fontWeight: 400, fontSize: '0.9em' }}> {t('signup.optional')}</span>
+                  {t('signup.email')}
                 </label>
                 <input
                   type="email"
                   className="form-control"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="可选，用于找回账号"
                 />
               </div>
               <div className="mb-3">
-                <label className="form-label">{t('signup.password')}</label>
+                <label className="form-label">{t('signup.password')} <span style={{ color: '#e53e3e' }}>*</span></label>
                 <input
                   type="password"
                   className="form-control"
@@ -160,7 +127,7 @@ export default function SignUpPage() {
                 />
               </div>
               <div className="mb-3">
-                <label className="form-label">{t('signup.confirm_password')}</label>
+                <label className="form-label">{t('signup.confirm_password')} <span style={{ color: '#e53e3e' }}>*</span></label>
                 <input
                   type="password"
                   className="form-control"
@@ -172,18 +139,17 @@ export default function SignUpPage() {
                 />
               </div>
               <div className="mb-3">
-                <label className="form-label">{t('signup.short_bio')} <span className="text-muted" style={{ fontWeight: 400, fontSize: '0.9em' }}>{t('signup.optional')}</span></label>
+                <label className="form-label">{t('signup.short_bio')}</label>
                 <textarea
                   className="form-control"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   rows={2}
                   maxLength={200}
-                  placeholder={t('signup.bio_placeholder')}
                 />
               </div>
               <div className="mb-3">
-                <label className="form-label">{t('signup.profile_picture')} <span className="text-muted" style={{ fontWeight: 400, fontSize: '0.9em' }}>{t('signup.optional')}</span></label>
+                <label className="form-label">{t('signup.profile_picture')}</label>
                 <div className="d-flex align-items-center gap-3">
                   <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', border: '2px solid #e9ecef', background: '#fff' }}>
                     {profilePreview && (
@@ -213,6 +179,19 @@ export default function SignUpPage() {
                     />
                   </div>
                 </div>
+              </div>
+              <div className="mb-3">
+                <label className="form-label">{t('signup.invitation_code')}</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={invitationCode}
+                  onChange={(e) => setInvitationCode(e.target.value.toUpperCase())}
+                  style={{ textTransform: 'uppercase' }}
+                />
+                <small className="form-text text-muted">
+                  🎁 使用邀请码注册可获赠 <strong>100 点数</strong>
+                </small>
               </div>
               <div className="mb-3">
                 <div className="form-check">

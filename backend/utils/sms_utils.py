@@ -3,7 +3,6 @@ import os
 import json
 import secrets
 from alibabacloud_dypnsapi20170525.client import Client as DypnsapiClient
-from alibabacloud_credentials.client import Client as CredentialClient
 from alibabacloud_tea_openapi import models as open_api_models
 from alibabacloud_dypnsapi20170525 import models as dypnsapi_models
 from alibabacloud_tea_util import models as util_models
@@ -18,9 +17,24 @@ verified_phone_tokens: Dict[str, dict] = {}
 
 
 def create_sms_client() -> DypnsapiClient:
-    """创建阿里云短信服务客户端"""
-    credential = CredentialClient()
-    config = open_api_models.Config(credential=credential)
+    """
+    创建阿里云短信服务客户端
+    直接使用 AccessKey 凭证（避免 CredentialClient 凭证链的副作用：
+    1. EcsRamRoleCredentialsProvider 每实例创建一个 APScheduler 循环任务，每分钟刷新一次日志刷屏
+    """
+    access_key_id = os.getenv('ALIBABA_CLOUD_ACCESS_KEY_ID')
+    access_key_secret = os.getenv('ALIBABA_CLOUD_ACCESS_KEY_SECRET')
+
+    if not access_key_id or not access_key_secret:
+        raise RuntimeError(
+            "ALIBABA_CLOUD_ACCESS_KEY_ID and ALIBABA_CLOUD_ACCESS_KEY_SECRET "
+            "must be set in environment variables"
+        )
+
+    config = open_api_models.Config(
+        access_key_id=access_key_id,
+        access_key_secret=access_key_secret
+    )
     config.endpoint = 'dypnsapi.aliyuncs.com'
     return DypnsapiClient(config)
 

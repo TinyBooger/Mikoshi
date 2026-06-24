@@ -20,7 +20,6 @@ import UsersPage from "./admin/pages/UsersPage";
 import ContentManagementPage from './admin/pages/ContentManagementPage.jsx';
 import TagsPage from './admin/pages/TagsPage.jsx';
 import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
-import InvitationCodesPage from './admin/pages/InvitationCodesPage.jsx';
 import ProblemReportsPage from './admin/pages/ProblemReportsPage.jsx';
 import ModerationPage from './admin/pages/ModerationPage.jsx';
 import NotificationsPage from './admin/pages/NotificationsPage.jsx';
@@ -117,7 +116,6 @@ const router = createBrowserRouter([
       { path: 'characters', element: <ContentManagementPage /> },
       { path: 'tags', element: <TagsPage /> },
       { path: 'search-terms', element: <SearchTermsPage /> },
-      { path: 'invitations', element: <InvitationCodesPage /> },
       { path: 'problem-reports', element: <ProblemReportsPage /> },
       { path: 'moderation', element: <ModerationPage /> },
       { path: 'notifications', element: <NotificationsPage /> },

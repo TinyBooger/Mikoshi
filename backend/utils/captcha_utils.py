@@ -8,7 +8,6 @@ import json
 from typing import Dict, Optional
 
 from alibabacloud_captcha20230305.client import Client as CaptchaClient
-from alibabacloud_credentials.client import Client as CredentialClient
 from alibabacloud_tea_openapi import models as open_api_models
 from alibabacloud_captcha20230305 import models as captcha_models
 from alibabacloud_tea_util import models as util_models
@@ -48,10 +47,12 @@ class CaptchaVerifier:
                 print("   ALIBABA_CLOUD_ACCESS_KEY_SECRET=your_key_secret")
                 return None
             
-            # 使用默认凭证链
-            credential = CredentialClient()
+            # 直接使用 AccessKey 凭证（避免 CredentialClient 凭证链的副作用：
+            # 1. signal.signal() 只能在主线程调用
+            # 2. EcsRamRoleCredentialsProvider 每实例创建一个 APScheduler 循环任务）
             config = open_api_models.Config(
-                credential=credential
+                access_key_id=access_key_id,
+                access_key_secret=access_key_secret
             )
             # 设置端点
             config.endpoint = 'captcha.cn-shanghai.aliyuncs.com'
@@ -114,7 +115,7 @@ class CaptchaVerifier:
             
             # 解析响应
             result = self._parse_response(response)
-            print(f"✓ 验证码验证结果: passed={result.get('passed')}, certify_result={result.get('certify_result')}")
+            print(f"✓ 验证码验证结果: passed={result.get('passed')}, verify_result={result.get('verify_result')}, api_success={result.get('api_success')}")
             return result
             
         except Exception as e:
@@ -131,12 +132,15 @@ class CaptchaVerifier:
         """
         解析阿里云验证码API响应
         
-        响应字段说明：
+        响应字段说明 (SDK v20230305 VerifyIntelligentCaptchaResponseBody):
+        - Code: HTTP 状态码字符串 (e.g. "200")
+        - Message: 返回消息
         - RequestId: 请求ID
-        - Body:
-            - RequestId: 请求ID
-            - HasError: 是否发生错误（true/false）
-            - CertifyResult: 验证结果（pass/refuse/unknown）
+        - Success: 请求是否成功 (bool)
+        - Result:
+            - CertifyId: 认证ID
+            - VerifyCode: 验证码字符串
+            - VerifyResult: 验证是否通过 (bool)
         """
         try:
             if not response or not response.body:
@@ -148,18 +152,28 @@ class CaptchaVerifier:
             
             body = response.body
             request_id = body.request_id if hasattr(body, 'request_id') else 'unknown'
-            has_error = body.has_error if hasattr(body, 'has_error') else False
-            certify_result = body.certify_result if hasattr(body, 'certify_result') else 'unknown'
+            api_success = body.success if hasattr(body, 'success') else False
             
-            passed = (not has_error) and (certify_result == 'pass')
+            # 验证结果在 body.result.verify_result 中（bool 类型）
+            verify_result = None
+            certify_id = None
+            if hasattr(body, 'result') and body.result:
+                verify_result = body.result.verify_result if hasattr(body.result, 'verify_result') else None
+                certify_id = body.result.certify_id if hasattr(body.result, 'certify_id') else None
+            
+            # 判断验证是否通过：
+            # 1. API 调用本身成功 (body.success == True)
+            # 2. 验证结果明确为 True (body.result.verify_result == True)
+            passed = api_success and (verify_result is True)
             
             return {
                 "success": True,
                 "passed": passed,
-                "message": f"Verification {certify_result}",
-                "certify_result": certify_result,
+                "message": f"Verification {'passed' if passed else 'failed'}",
+                "verify_result": verify_result,
+                "certify_id": certify_id,
                 "request_id": request_id,
-                "has_error": has_error
+                "api_success": api_success
             }
         except Exception as e:
             return {
@@ -171,17 +185,51 @@ class CaptchaVerifier:
 
 
 # 全局验证器实例
+# 在模块加载时立即初始化（主线程），避免后续在 worker 线程中初始化
+# 导致 CredentialClient 内部 signal.signal() 调用失败
 _captcha_verifier: Optional[CaptchaVerifier] = None
+
+
+def _init_captcha_verifier():
+    """在模块加载时（主线程）初始化验证码验证器"""
+    global _captcha_verifier
+    try:
+        _captcha_verifier = CaptchaVerifier()
+    except Exception as e:
+        print(f"⚠️  验证码验证器模块加载时初始化失败: {str(e)}")
+        _captcha_verifier = None
 
 
 def get_captcha_verifier() -> CaptchaVerifier:
     """
     获取验证码验证器实例（单例模式）
+    注意：验证器在模块加载时已初始化，此函数仅返回已有实例。
+    如果初始化失败（凭证未配置），会返回一个 client 为 None 的实例。
     """
     global _captcha_verifier
     if _captcha_verifier is None:
-        _captcha_verifier = CaptchaVerifier()
+        # 兜底：如果模块加载时初始化失败，在此处重试
+        # 此时应确保在主线程中调用（例如从 startup 事件）
+        _init_captcha_verifier()
     return _captcha_verifier
+
+
+def reinitialize_captcha_verifier():
+    """
+    强制重新初始化验证码验证器（仅在主线程中调用）
+    用于在环境变量加载后重新创建客户端
+    """
+    global _captcha_verifier
+    _captcha_verifier = None
+    _init_captcha_verifier()
+    if _captcha_verifier and _captcha_verifier.is_available:
+        print("✓ 验证码验证器重新初始化成功")
+    else:
+        print("⚠️  验证码验证器重新初始化失败（凭证可能未配置）")
+
+
+# 模块加载时立即初始化（在主线程中）
+_init_captcha_verifier()
 
 
 def verify_captcha_param(captcha_verify_param: str, scene_id: Optional[str] = None) -> bool:

@@ -15,7 +15,6 @@ export default function ResetPasswordPage() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneVerifyCode, setPhoneVerifyCode] = useState('');
   const [phoneCountdown, setPhoneCountdown] = useState(0);
-  const [phoneDevCode, setPhoneDevCode] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [phoneResetToken, setPhoneResetToken] = useState('');
   
@@ -64,7 +63,6 @@ export default function ResetPasswordPage() {
       
       if (response.ok && result.success) {
         setPhoneCountdown(60);
-        if (result.code) setPhoneDevCode(result.code);
         setError('');
       } else {
         setError(result.message || result.detail || '发送失败');
@@ -292,9 +290,6 @@ export default function ResetPasswordPage() {
                       {phoneCountdown > 0 ? `${phoneCountdown}秒后重试` : '获取验证码'}
                     </button>
                   </div>
-                  {phoneDevCode && (
-                    <small className="text-muted">开发环境验证码：{phoneDevCode}</small>
-                  )}
                 </div>
                 <PrimaryButton
                   onClick={handleVerifyPhone}

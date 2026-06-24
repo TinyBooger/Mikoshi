@@ -22,7 +22,6 @@ export default function LoginPage() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [countdown, setCountdown] = useState(0);
-  const [devCode, setDevCode] = useState('');
   
   // 验证码相关状态
   const captchaRef = useRef(null);
@@ -87,7 +86,6 @@ export default function LoginPage() {
     const result = await sendVerificationCode(phoneNumber);
     if (result.success) {
       setCountdown(60);
-      if (result.code) setDevCode(result.code);
       if (toast && toast.show) toast.show(result.message || '验证码已发送', { type: 'success' });
     } else {
       if (toast && toast.show) toast.show(result.message || '发送失败', { type: 'error' });
@@ -145,7 +143,6 @@ export default function LoginPage() {
         const result = await sendVerificationCode(phoneNumberRef.current);
         if (result.success) {
           setCountdown(60);
-          if (result.code) setDevCode(result.code);
           if (toast && toast.show) toast.show(result.message || '验证码已发送', { type: 'success' });
         } else {
           if (toast && toast.show) toast.show(result.message || '发送失败', { type: 'error' });
@@ -245,11 +242,33 @@ export default function LoginPage() {
     setPasswordCaptchaVerified(false);
     setPasswordCaptchaParam(null);
     
+    // Aliyun Captcha SDK 实例可能没有 reset() 方法，
+    // 安全地尝试 reload() 或重置初始化状态让 useEffect 重新创建
     if (captchaRef.current) {
-      captchaRef.current.reset();
+      try {
+        if (typeof captchaRef.current.reset === 'function') {
+          captchaRef.current.reset();
+        } else if (typeof captchaRef.current.reload === 'function') {
+          captchaRef.current.reload();
+        }
+      } catch (e) {
+        console.warn('Failed to reset phone captcha:', e);
+      }
+      captchaRef.current = null;
+      phoneCaptchaInitialized.current = false;
     }
     if (passwordCaptchaRef.current) {
-      passwordCaptchaRef.current.reset();
+      try {
+        if (typeof passwordCaptchaRef.current.reset === 'function') {
+          passwordCaptchaRef.current.reset();
+        } else if (typeof passwordCaptchaRef.current.reload === 'function') {
+          passwordCaptchaRef.current.reload();
+        }
+      } catch (e) {
+        console.warn('Failed to reset password captcha:', e);
+      }
+      passwordCaptchaRef.current = null;
+      passwordCaptchaInitialized.current = false;
     }
   };
 
@@ -484,9 +503,6 @@ export default function LoginPage() {
                   {countdown > 0 ? `${countdown}秒后重试` : '获取验证码'}
                 </button>
               </div>
-              {devCode && (
-                <small className="text-muted mt-1 d-block">开发环境验证码：{devCode}</small>
-              )}
             </div>
 
             {/* 阿里云人机验证码容器 */}
