@@ -821,7 +821,7 @@
     "sample_dialogue": "示例对话",
     "fork": "参考创作",
     "fork_advanced_confirm_title": "参考创作进阶角色",
-    "fork_advanced_confirm_body": "该角色包含详细人物设定和进阶配置，这些内容仅限 Pro 用户使用，不会被复制到您的版本。是否继续？",
+    "fork_advanced_confirm_body": "该角色包含详细人物设定和进阶配置，这些内容不会被复制到您的版本。是否继续？",
     "long_description": "详细人物设定",
     "long_description_chunks": "详细设定分段",
     "chunk_priority": "分段"

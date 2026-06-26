@@ -828,7 +828,7 @@
     "sample_dialogue": "Sample Dialogue",
     "fork": "Fork",
     "fork_advanced_confirm_title": "Fork Advanced Character",
-    "fork_advanced_confirm_body": "This character includes detailed settings and advanced configurations that are only available to Pro users. These won't be copied to your version. Continue?",
+    "fork_advanced_confirm_body": "This character includes detailed settings and advanced configurations. These won't be copied to your version. Continue?",
     "long_description": "Detailed Character Setting",
     "long_description_chunks": "Detailed Setting Segments",
     "chunk_priority": "Segment"

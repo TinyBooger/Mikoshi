@@ -247,8 +247,8 @@ async def create_character(
     is_pro_user = bool(current_user.is_pro)
     can_create_private = True
 
-    if context_label == "advanced" and not is_pro_user:
-        raise HTTPException(status_code=403, detail="Advanced characters require Pro user")
+    # Advanced character context_label is now open to all users (free & pro).
+    # Credit check happens later when processing long_description.
 
     # Private character creation is open to all users.
     if not is_public and not can_create_private:
@@ -462,8 +462,8 @@ async def update_character(
     is_pro_user = bool(current_user.is_pro)
     can_create_private = True
 
-    if context_label == "advanced" and not is_pro_user:
-        raise HTTPException(status_code=403, detail="Advanced characters require Pro user")
+    # Advanced character context_label is now open to all users (free & pro).
+    # Credit check happens later when processing long_description.
 
     # Private character creation is open to all users.
     final_is_public = is_public if is_public is not None else char.is_public

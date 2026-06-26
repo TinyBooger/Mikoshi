@@ -109,8 +109,9 @@ export default function CharacterFormPage() {
 
   const { sessionToken, userData, refreshUserData } = useContext(AuthContext);
   const isProUser = !!userData?.is_pro;
+  const creditBalance = parseFloat(userData?.purchased_credit_balance || 0);
   const canUseAdvancedConfig = isProUser;
-  const canUseAdvancedCharacter = isProUser;
+  const canUseAdvancedCharacter = creditBalance > 0;
   const canPrivate = true;
   const canFork = isProUser;
   const navigate = useNavigate();
@@ -841,7 +842,7 @@ export default function CharacterFormPage() {
             <div>
               <span style={{ fontWeight: 700, color: '#232323', fontSize: '0.97rem' }}>启用详细人物设定</span>
               {!canUseAdvancedCharacter ? (
-                <small style={{ display: 'block', color: '#9333ea', marginTop: 2 }}>升级为Pro用户可填写最多15000字的详细人物设定 <a href="/pro-upgrade" onClick={e => { e.preventDefault(); navigate('/pro-upgrade'); }} style={{ color: '#7c3aed', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}>立即升级</a></small>
+                <small style={{ display: 'block', color: '#dc3545', marginTop: 2 }}>您的点数余额不足，无法使用详细人物设定。 <a href="/credits" onClick={e => { e.preventDefault(); navigate('/credits'); }} style={{ color: '#dc3545', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}>充值点数</a></small>
               ) : effectiveContextLabel === 'advanced' ? (
                 <small style={{ display: 'block', color: '#7c3aed', marginTop: 2 }}>可填写最多15000字的详细人物设定，用于构建更丰富的角色背景</small>
               ) : (
@@ -856,7 +857,7 @@ export default function CharacterFormPage() {
                 id="detailedDescriptionToggle"
                 checked={effectiveContextLabel === 'advanced'}
                 disabled={!canUseAdvancedCharacter}
-                title={!canUseAdvancedCharacter ? '升级为Pro用户后可用' : ''}
+                title={!canUseAdvancedCharacter ? '点数余额不足，请先充值' : ''}
                 onChange={e => handleChange('context_label', e.target.checked ? 'advanced' : 'standard')}
                 style={{ width: '2.5em', height: '1.4em', cursor: canUseAdvancedCharacter ? 'pointer' : 'not-allowed' }}
               />
@@ -892,7 +893,7 @@ export default function CharacterFormPage() {
                   resize: 'vertical',
                 }}
               />
-              <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>创建角色时处理详细人物设定会消耗少量的token</small>
+              <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>处理详细设定会消耗少量点数</small>
               <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
                 {(charData.long_description || '').trim().length}/{ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
               </small>
