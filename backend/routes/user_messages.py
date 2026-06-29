@@ -121,8 +121,6 @@ def submit_ban_appeal(
         raise HTTPException(status_code=400, detail="Your account is not currently banned.")
 
     reason = (payload.reason or "").strip()
-    if not reason:
-        raise HTTPException(status_code=422, detail="Appeal reason cannot be empty.")
     if len(reason) > 2000:
         raise HTTPException(status_code=422, detail="Appeal reason is too long (max 2000 characters).")
 

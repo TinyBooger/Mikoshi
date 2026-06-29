@@ -414,7 +414,7 @@ export default function CharacterFormPage() {
           refreshUserData({ silent: true });
         }
         // If in appeal mode and no pending appeal, submit the content ban appeal after saving
-        if (isAppealMode && !hasPendingAppeal && appealReason.trim()) {
+        if (isAppealMode && !hasPendingAppeal) {
           try {
             await fetch(`${window.API_BASE_URL}/api/content-ban-appeal`, {
               method: 'POST',
@@ -1148,9 +1148,8 @@ export default function CharacterFormPage() {
                 <>
                   <label className="form-label fw-bold" style={{ color: '#232323' }}>
                     {t('character_form.appeal_reason_label', '申诉理由')}
-                    <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
                     <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
-                      {t('character_form.appeal_reason_hint', '请说明您已如何修改内容，以及为何认为应解除限制')}
+                      (选填) {t('character_form.appeal_reason_hint', '请说明您已如何修改内容，以及为何认为应解除限制')}
                     </small>
                   </label>
                   <textarea
@@ -1160,7 +1159,7 @@ export default function CharacterFormPage() {
                     maxLength={1000}
                     placeholder={t('character_form.appeal_reason_placeholder', '请描述您对内容的修改，以及申诉理由…')}
                     onChange={e => setAppealReason(e.target.value)}
-                    required={isAppealMode && !hasPendingAppeal}
+
                     style={{
                       background: '#fffbeb',
                       border: '1.5px solid #f59e0b',

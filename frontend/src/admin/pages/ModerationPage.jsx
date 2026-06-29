@@ -228,7 +228,6 @@ export default function ModerationPage() {
     if (!appealDialog) return;
     const { appeal, action } = appealDialog;
     const reply = appealReply.trim();
-    if (!reply) { alert('A reply message is required.'); return; }
     setAppealActioningId(appeal.id);
     setAppealDialog(null);
     try {
@@ -264,7 +263,6 @@ export default function ModerationPage() {
     if (!contentAppealDialog) return;
     const { appeal, action } = contentAppealDialog;
     const reply = contentAppealReply.trim();
-    if (!reply) { alert('A reply message is required.'); return; }
     setContentAppealActioningId(appeal.id);
     setContentAppealDialog(null);
     try {
@@ -1088,8 +1086,8 @@ export default function ModerationPage() {
                 </div>
                 <div className="mb-1">
                   <label className="form-label fw-semibold">
-                    Reply to User <span className="text-danger">*</span>
-                    <span className="text-muted fw-normal ms-1">(sent as inbox message)</span>
+                    Reply to User
+                    <span className="text-muted fw-normal ms-1">(选填，将作为站内信发送)</span>
                   </label>
                   <textarea
                     className="form-control"
@@ -1099,7 +1097,6 @@ export default function ModerationPage() {
                       : 'e.g. We have reviewed your appeal but our decision stands because the violation was confirmed.'}
                     value={appealReply}
                     onChange={(e) => setAppealReply(e.target.value)}
-                    autoFocus
                   />
                 </div>
                 {isApprove && (
@@ -1118,7 +1115,6 @@ export default function ModerationPage() {
                 <button
                   className={`btn ${isApprove ? 'btn-success' : 'btn-danger'}`}
                   onClick={handleSubmitAppealDialog}
-                  disabled={!appealReply.trim()}
                 >
                   {isApprove ? 'Approve & Unban' : 'Reject Appeal'}
                 </button>
@@ -1181,8 +1177,8 @@ export default function ModerationPage() {
                 )}
                 <div className="mb-1">
                   <label className="form-label fw-semibold">
-                    Reply to Creator <span className="text-danger">*</span>
-                    <span className="text-muted fw-normal ms-1">(sent as inbox message)</span>
+                    Reply to Creator
+                    <span className="text-muted fw-normal ms-1">(选填，将作为站内信发送)</span>
                   </label>
                   <textarea
                     className="form-control"
@@ -1192,7 +1188,6 @@ export default function ModerationPage() {
                       : 'e.g. The content still violates our guidelines. Please review our rules and try again.'}
                     value={contentAppealReply}
                     onChange={(e) => setContentAppealReply(e.target.value)}
-                    autoFocus
                   />
                 </div>
                 {isApprove && (
@@ -1211,7 +1206,6 @@ export default function ModerationPage() {
                 <button
                   className={`btn ${isApprove ? 'btn-success' : 'btn-danger'}`}
                   onClick={handleSubmitContentAppealDialog}
-                  disabled={!contentAppealReply.trim()}
                 >
                   {isApprove ? 'Approve & Lift Restriction' : 'Reject Appeal'}
                 </button>

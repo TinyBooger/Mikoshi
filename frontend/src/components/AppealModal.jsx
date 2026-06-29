@@ -37,10 +37,6 @@ export default function AppealModal({ onClose }) {
 
   const handleSubmit = async () => {
     const trimmed = reason.trim();
-    if (!trimmed) {
-      setError('请填写申诉理由。');
-      return;
-    }
     if (trimmed.length > 2000) {
       setError('申诉理由不能超过 2000 字。');
       return;
@@ -157,7 +153,7 @@ export default function AppealModal({ onClose }) {
           请详细说明您认为封禁有误的原因。管理员将审核您的申诉，并通过站内信告知结果。
         </p>
         <div className="mb-3">
-          <label className="form-label fw-semibold">申诉理由 <span className="text-danger">*</span></label>
+          <label className="form-label fw-semibold">申诉理由 <span className="text-muted fw-normal small">(选填)</span></label>
           <textarea
             className={`form-control ${error ? 'is-invalid' : ''}`}
             rows={5}

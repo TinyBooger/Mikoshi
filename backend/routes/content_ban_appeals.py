@@ -92,8 +92,6 @@ def submit_content_appeal(
         raise HTTPException(status_code=400, detail="entity_type must be character, scene, or persona")
 
     reason = (payload.appeal_reason or "").strip()
-    if not reason:
-        raise HTTPException(status_code=422, detail="appeal_reason is required")
 
     entity = _get_entity(entity_type, payload.entity_id, db)
     if not entity:

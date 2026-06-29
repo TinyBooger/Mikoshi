@@ -1940,12 +1940,10 @@ def resolve_appeal(
         raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
 
     reply = (payload.reply or "").strip()
-    if not reply:
-        raise HTTPException(status_code=422, detail="A reply message is required")
 
     now = datetime.now(UTC)
     appeal.status = "approved" if action == "approve" else "rejected"
-    appeal.admin_reply = reply
+    appeal.admin_reply = reply or None
     appeal.resolved_at = now
     appeal.resolved_by = current_admin.id
 
@@ -1957,15 +1955,16 @@ def resolve_appeal(
             user.ban_reason = None
             user.ban_note = None
 
-    # Send inbox message to the user
-    from routes.user_messages import _send_appeal_result_message
-    _send_appeal_result_message(
-        db=db,
-        user_id=appeal.user_id,
-        action=action,
-        reply=reply,
-        admin_id=current_admin.id,
-    )
+    # Send inbox message to the user (only if a reply was provided)
+    if reply:
+        from routes.user_messages import _send_appeal_result_message
+        _send_appeal_result_message(
+            db=db,
+            user_id=appeal.user_id,
+            action=action,
+            reply=reply,
+            admin_id=current_admin.id,
+        )
 
     db.commit()
     return {"message": f"Appeal #{appeal_id} {appeal.status}", "ok": True}
@@ -2043,12 +2042,10 @@ def resolve_content_appeal(
         raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
 
     reply = (payload.reply or "").strip()
-    if not reply:
-        raise HTTPException(status_code=422, detail="A reply message is required")
 
     now = datetime.now(UTC)
     appeal.status = "approved" if action == "approve" else "rejected"
-    appeal.admin_reply = reply
+    appeal.admin_reply = reply or None
     appeal.resolved_at = now
     appeal.resolved_by = current_admin.id
 
@@ -2062,17 +2059,19 @@ def resolve_content_appeal(
         entity.moderation_status = None
         entity.is_public = True  # snapshot is taken after ban so is_public=False there; always restore on approval
 
-    from routes.user_messages import _send_content_appeal_result_message
-    _send_content_appeal_result_message(
-        db=db,
-        user_id=appeal.creator_id,
-        action=action,
-        reply=reply,
-        entity_type=appeal.entity_type,
-        entity_name=entity_name,
-        entity_id=appeal.entity_id,
-        admin_id=current_admin.id,
-    )
+    # Send inbox message to the creator (only if a reply was provided)
+    if reply:
+        from routes.user_messages import _send_content_appeal_result_message
+        _send_content_appeal_result_message(
+            db=db,
+            user_id=appeal.creator_id,
+            action=action,
+            reply=reply,
+            entity_type=appeal.entity_type,
+            entity_name=entity_name,
+            entity_id=appeal.entity_id,
+            admin_id=current_admin.id,
+        )
 
     db.commit()
     return {"message": f"Content appeal #{appeal_id} {appeal.status}", "ok": True}
