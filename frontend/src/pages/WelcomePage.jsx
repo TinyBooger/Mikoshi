@@ -320,12 +320,6 @@ export default function LoginPage() {
           <p className="text-muted mb-0" style={{ fontSize: '1rem' }}>
             {t('welcome.subtitle')}
           </p>
-          <div
-            className="mt-3 px-3 py-2 rounded-3"
-            style={{ background: '#fff3cd', border: '1px solid #ffc107', fontSize: '0.85rem', color: '#856404' }}
-          >
-            🚧 <strong>内测阶段</strong>：当前平台处于内测阶段，功能持续完善中，感谢您的支持与反馈！
-          </div>
         </div>
 
         {error && <div className="alert alert-danger">{error}</div>}

@@ -270,7 +270,7 @@ export default function ChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [abortController, setAbortController] = useState(null);
   const [chatLimits, setChatLimits] = useState(null);
-  const [tokenLimits, setTokenLimits] = useState(null);
+  const [creditLimits, setCreditLimits] = useState(null);
   const [serverContextWindowUsage, setServerContextWindowUsage] = useState(null);
   const [showContextDetails, setShowContextDetails] = useState(false);
   const [hasLiked, setHasLiked] = useState({ character: false, scene: false, persona: false });
@@ -411,13 +411,13 @@ export default function ChatPage() {
   const selectedWallpaper = WALLPAPER_OPTIONS.find((option) => option.id === selectedWallpaperId) || WALLPAPER_OPTIONS[0];
 
   useEffect(() => {
-    fetchTokenLimits();
+    fetchCreditLimits();
   }, [sessionToken]);
 
   useEffect(() => {
     if (!userData) return;
 
-    applyTokenLimits({
+    applyCreditLimits({
       plan: userData?.is_pro ? 'pro' : 'free',
       cap_scope: userData?.credit_cap_scope,
       credit_cap: userData?.credit_cap,
@@ -482,8 +482,6 @@ export default function ChatPage() {
   const isNewChat = useRef(true);
   const prevSearchParamsRef = useRef(searchParams);
   const lastLimitReminderCountRef = useRef(null);
-  const lastTokenLimitReminderRef = useRef(null);
-
   const maybeShowMessageLimitReminder = (limits) => {
     if (!limits || !limits.is_limited || !limits.approaching_limit || limits.limit_reached) return;
 
@@ -506,36 +504,22 @@ export default function ChatPage() {
     maybeShowMessageLimitReminder(limits);
   };
 
-  const maybeShowTokenLimitReminder = (limits) => {
+  const maybeShowCreditLimitReminder = (limits) => {
     if (!limits || !limits.is_limited) return;
 
-    const cap = Number(limits.credit_cap ?? 0);
     const remaining = Number(limits.remaining_credits ?? 0);
-    if (cap <= 0) return;
+    if (remaining > 0) return;
 
-    if (remaining <= 0) {
-      if (lastTokenLimitReminderRef.current === 'reached') return;
-      lastTokenLimitReminderRef.current = 'reached';
-      toast.show(limits.message || '已达到 token 上限，当前与 token 相关操作已受限。', { type: 'warning' });
-      return;
-    }
-
-    const threshold = Math.max(100, Math.floor(cap * 0.1));
-    if (remaining > threshold) return;
-
-    const reminderKey = `${remaining}`;
-    if (lastTokenLimitReminderRef.current === reminderKey) return;
-    lastTokenLimitReminderRef.current = reminderKey;
-    toast.show(`剩余 token ${formatCompactTokenCount(remaining)} / ${formatCompactTokenCount(cap)}，接近上限。`, { type: 'warning' });
+    toast.show(limits.message || '已达到点数上限，当前与点数相关操作已受限。', { type: 'warning' });
   };
 
-  const applyTokenLimits = (limits) => {
+  const applyCreditLimits = (limits) => {
     if (!limits) return;
-    setTokenLimits(limits);
-    maybeShowTokenLimitReminder(limits);
+    setCreditLimits(limits);
+    maybeShowCreditLimitReminder(limits);
   };
 
-  const fetchTokenLimits = async () => {
+  const fetchCreditLimits = async () => {
     if (!sessionToken) return;
 
     try {
@@ -546,7 +530,7 @@ export default function ChatPage() {
       if (!response.ok) return;
 
       const data = await response.json();
-      applyTokenLimits(data);
+      applyCreditLimits(data);
     } catch {
       // Non-blocking fetch for UI hints only.
     }
@@ -1199,7 +1183,7 @@ export default function ChatPage() {
           applyChatLimits(errorPayload.limits);
         }
         if (errorPayload?.credit_limits) {
-          applyTokenLimits(errorPayload.credit_limits);
+          applyCreditLimits(errorPayload.credit_limits);
         }
         throw new Error(getChatErrorMessage(errorPayload));
       }
@@ -1236,7 +1220,7 @@ export default function ChatPage() {
           const friendlyMessage = getChatErrorMessage(data);
           toast.show(friendlyMessage, { type: 'error' });
           if (data.credit_limits) {
-            applyTokenLimits(data.credit_limits);
+            applyCreditLimits(data.credit_limits);
           }
           if (data.limits) {
             applyChatLimits(data.limits);
@@ -1260,7 +1244,7 @@ export default function ChatPage() {
 
         if (data.done) {
           applyChatLimits(data.limits);
-          applyTokenLimits(data.credit_limits);
+          applyCreditLimits(data.credit_limits);
           if (refreshUserData) {
             refreshUserData({ silent: true });
           }
@@ -1309,8 +1293,8 @@ export default function ChatPage() {
 
   const handleSend = async (event) => {
     event.preventDefault();
-    if (tokenLimits?.cap_reached) {
-      toast.show('已达到 token 上限，暂时无法继续对话。', { type: 'warning' });
+    if (creditLimits?.cap_reached) {
+      toast.show('已达到点数上限，暂时无法继续对话。', { type: 'warning' });
       return;
     }
     if (sending || !input.trim() || !selectedCharacter) return;
@@ -2359,7 +2343,7 @@ export default function ChatPage() {
               </span>
             </div>
           )}
-          {tokenLimits?.cap_reached && (
+          {creditLimits?.cap_reached && (
             <div
               style={{
                 width: '100%',
@@ -2374,11 +2358,11 @@ export default function ChatPage() {
               }}
             >
               {(() => {
-                const isPro = !!tokenLimits?.is_pro;
+                const isPro = !!creditLimits?.is_pro;
                 const scopeLabel = isPro ? '本月剩余点数' : '本日剩余点数';
-                const used = Number(tokenLimits?.cap_scope === 'monthly' ? tokenLimits?.monthly_credit_usage : tokenLimits?.daily_credit_usage) || 0;
-                const cap = Number(tokenLimits?.credit_cap || 0);
-                const walletBalance = Number(tokenLimits?.purchased_credit_balance || 0);
+                const used = Number(creditLimits?.cap_scope === 'monthly' ? creditLimits?.monthly_credit_usage : creditLimits?.daily_credit_usage) || 0;
+                const cap = Number(creditLimits?.credit_cap || 0);
+                const walletBalance = Number(creditLimits?.purchased_credit_balance || 0);
                 const hasWallet = walletBalance > 0;
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
@@ -2405,7 +2389,7 @@ export default function ChatPage() {
                       >
                         充值点数
                       </button>
-                      {!tokenLimits?.is_pro && (
+                      {!creditLimits?.is_pro && (
                         <button
                           type="button"
                           onClick={() => navigate('/pro-upgrade')}
@@ -2567,7 +2551,7 @@ export default function ChatPage() {
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 required
-                disabled={!!tokenLimits?.cap_reached}
+                disabled={!!creditLimits?.cap_reached}
                 onFocus={e => {
                   e.target.style.border = '1.2px solid #18191a';
                 }}
@@ -2654,7 +2638,7 @@ export default function ChatPage() {
                     }
                   }}
                   title={t('chat.input_shortcut_hint')}
-                  disabled={sending || !!tokenLimits?.cap_reached}
+                  disabled={sending || !!creditLimits?.cap_reached}
                 >
                   {sending ? (
                     <span className="spinner-border spinner-border-sm" style={{ color: '#6d638e' }}></span>
