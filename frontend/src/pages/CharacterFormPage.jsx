@@ -146,6 +146,40 @@ export default function CharacterFormPage() {
   const [pictureAspectRatio, setPictureAspectRatio] = useState(1);
   const [avatarPicture, setAvatarPicture] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [selectedDefaultPicture, setSelectedDefaultPicture] = useState(null);
+  const DEFAULT_PICTURES = [
+    { name: 'male_1', src: '/default/male_1.png', label: 'Male 1' },
+    { name: 'male_2', src: '/default/male_2.png', label: 'Male 2' },
+    { name: 'female_1', src: '/default/female_1.png', label: 'Female 1' },
+    { name: 'female_2', src: '/default/female_2.png', label: 'Female 2' },
+  ];
+  const handleSelectDefaultPicture = async (src) => {
+    if (selectedDefaultPicture === src) {
+      // Deselect
+      setSelectedDefaultPicture(null);
+      setPicture(null);
+      setPicturePreview(null);
+      setAvatarPicture(null);
+      setAvatarPreview(null);
+      return;
+    }
+    try {
+      const response = await fetch(src);
+      const blob = await response.blob();
+      const filename = src.split('/').pop();
+      const file = new File([blob], filename, { type: blob.type || 'image/png' });
+      setPicture(file);
+      setAvatarPicture(file);
+      setPicturePreview(src);
+      setAvatarPreview(src);
+      setPictureAspectRatio(1);
+      setSelectedDefaultPicture(src);
+      setRawSelectedFile(null);
+      setShowCrop(false);
+    } catch (err) {
+      toast.show('加载默认图片失败', { type: 'error' });
+    }
+  };
   const [isImprovisingGreeting, setIsImprovisingGreeting] = useState(false);
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
@@ -353,6 +387,10 @@ export default function CharacterFormPage() {
       toast.show(t('character_form.greeting_required'), { type: 'error' });
       return;
     }
+    if (!picture && !selectedDefaultPicture && !picturePreview) {
+      toast.show('请上传或选择角色封面图片', { type: 'error' });
+      return;
+    }
     if (charData.persona.length > MAX_PERSONA_LENGTH) {
       toast.show(`Persona too long (max ${MAX_PERSONA_LENGTH})`, { type: 'error' });
       return;
@@ -538,14 +576,19 @@ export default function CharacterFormPage() {
             </div>
           )}
 
-          {/* Cover + Avatar Pictures */}
+          {/* 角色图片 (mandatory) */}
           <div className="mb-4">
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              角色图片
+              <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
+            </label>
             <div
               style={{
                 position: 'relative',
                 width: '100%',
                 maxWidth: 'min(360px, 100%)',
                 aspectRatio: picturePreview ? String(pictureAspectRatio || 1) : '1 / 1',
+                marginBottom: 12,
               }}
             >
               <label
@@ -601,6 +644,7 @@ export default function CharacterFormPage() {
                     const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
                     if (!f) return;
                     setPicture(f);
+                    setSelectedDefaultPicture(null);
                     const reader = new FileReader();
                     reader.onload = () => {
                       setPicturePreview(reader.result);
@@ -640,7 +684,7 @@ export default function CharacterFormPage() {
                   {avatarPreview ? (
                     <img src={avatarPreview} alt={t('character_form.alt_preview')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.75rem' }}>{t('character_form.avatar_label')}</div>
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.75rem' }}>头像</div>
                   )}
                 </div>
                 <span
@@ -658,6 +702,61 @@ export default function CharacterFormPage() {
                 </span>
               </div>
             </div>
+
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {DEFAULT_PICTURES.map(pic => (
+                <div
+                  key={pic.name}
+                  onClick={() => handleSelectDefaultPicture(pic.src)}
+                  title={selectedDefaultPicture === pic.src ? `${pic.label} — 点击取消选择` : pic.label}
+                  style={{
+                    position: 'relative',
+                    width: 80,
+                    height: 80,
+                    borderRadius: 12,
+                    cursor: 'pointer',
+                    border: selectedDefaultPicture === pic.src ? '3px solid #7c3aed' : '2px solid #e9ecef',
+                    boxShadow: selectedDefaultPicture === pic.src ? '0 0 0 3px rgba(124, 58, 237, 0.25)' : 'none',
+                    transition: 'border 0.15s, box-shadow 0.15s',
+                    flexShrink: 0,
+                  }}
+                >
+                  <div style={{ width: '100%', height: '100%', borderRadius: 12, overflow: 'hidden' }}>
+                    <img
+                      src={pic.src}
+                      alt={pic.label}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                  {selectedDefaultPicture === pic.src && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: -6,
+                        right: -6,
+                        width: 20,
+                        height: 20,
+                        borderRadius: '50%',
+                        background: '#7c3aed',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        lineHeight: 1,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      ×
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <small className="text-muted" style={{ display: 'block', marginTop: 6 }}>
+              或选择默认图片，将同时用作封面和头像
+            </small>
           </div>
 
           {/* Name */}
