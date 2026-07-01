@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import PageWrapper from '../components/PageWrapper';
@@ -87,6 +87,8 @@ export default function SignUpPage() {
                 <label className="form-label">手机号 <span style={{ color: '#e53e3e' }}>*</span></label>
                 <input
                   type="text"
+                  name="phone"
+                  autoComplete="tel"
                   className="form-control"
                   value={phoneNumber}
                   disabled
@@ -110,6 +112,8 @@ export default function SignUpPage() {
                 </label>
                 <input
                   type="email"
+                  name="email"
+                  autoComplete="email"
                   className="form-control"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

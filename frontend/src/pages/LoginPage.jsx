@@ -434,6 +434,8 @@ export default function LoginPage() {
                   </span>
                   <input
                     type="tel"
+                    name="phone"
+                    autoComplete="tel"
                     className="form-control"
                     placeholder="请输入手机号"
                     value={phoneNumber}
@@ -474,6 +476,8 @@ export default function LoginPage() {
                   </span>
                   <input
                     type="text"
+                    name="verification_code"
+                    autoComplete="one-time-code"
                     className="form-control"
                     placeholder="请输入验证码"
                     value={verificationCode}
@@ -553,6 +557,8 @@ export default function LoginPage() {
                   </span>
                   <input
                     type="text"
+                    name="username"
+                    autoComplete="username"
                     className="form-control"
                     placeholder="邮箱或手机号"
                     required
@@ -592,6 +598,8 @@ export default function LoginPage() {
                   </span>
                   <input
                     type="password"
+                    name="password"
+                    autoComplete="current-password"
                     className="form-control"
                     placeholder={t('welcome.password')}
                     required

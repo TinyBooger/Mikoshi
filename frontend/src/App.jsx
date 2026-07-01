@@ -5,7 +5,7 @@ import AdminApp from './admin/AdminApp.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
 import Layout from './components/Layout.jsx';
 import BrowsePage from './pages/BrowsePage.jsx';
-import WelcomePage from './pages/WelcomePage';
+import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import EntityFormPage from './pages/EntityFormPage';
 import CharacterFormPage from './pages/CharacterFormPage';
@@ -61,7 +61,7 @@ function PublicOnlyPage({ children }) {
 function RootIndexPage() {
   const { userData, loading } = useContext(AuthContext);
   if (loading) return null; // or a spinner if you prefer
-  return userData ? <Navigate to="/browse" replace /> : <WelcomePage />;
+  return userData ? <Navigate to="/browse" replace /> : <LoginPage />;
 }
 
 function KeyedChatPage() {
