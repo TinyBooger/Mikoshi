@@ -1,6 +1,5 @@
 import React, { useContext } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider, useLocation } from 'react-router';
-import AuthLayout from './components/AuthLayout';
 import AdminApp from './admin/AdminApp.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
 import Layout from './components/Layout.jsx';
@@ -38,18 +37,19 @@ import CreditTopUpPage from './pages/CreditTopUpPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 function AppRootLayout() {
-  const { userData, loading } = useContext(AuthContext);
+  const { loading } = useContext(AuthContext);
   if (loading) {
     return null; // Or a loading spinner
   }
-  return userData ? <Layout /> : <AuthLayout />;
+  // Always render Layout so unauthenticated users can browse the site
+  return <Layout />;
 }
 
 function ProtectedPage({ children }) {
   const { userData, loading } = useContext(AuthContext);
   const location = useLocation();
   if (loading) return null; // or a spinner if you prefer
-  return userData ? children : <Navigate to="/" replace state={{ from: location.pathname + location.search }} />;
+  return userData ? children : <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
 }
 
 function PublicOnlyPage({ children }) {
@@ -61,7 +61,8 @@ function PublicOnlyPage({ children }) {
 function RootIndexPage() {
   const { userData, loading } = useContext(AuthContext);
   if (loading) return null; // or a spinner if you prefer
-  return userData ? <Navigate to="/browse" replace /> : <LoginPage />;
+  // Show BrowsePage as landing page for unauthenticated users
+  return userData ? <Navigate to="/browse" replace /> : <BrowsePage />;
 }
 
 function KeyedChatPage() {
@@ -77,9 +78,9 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <RootIndexPage /> },
       { path: 'test', element: <ProtectedPage><TestPage /></ProtectedPage> },
-      { path: 'browse', element: <ProtectedPage><BrowsePage /></ProtectedPage> },
-      { path: 'browse/:mainTab/:subTab', element: <ProtectedPage><BrowsePage /></ProtectedPage> },
-      { path: 'browse/:mainTab', element: <ProtectedPage><BrowsePage /></ProtectedPage> },
+      { path: 'browse', element: <BrowsePage /> },
+      { path: 'browse/:mainTab/:subTab', element: <BrowsePage /> },
+      { path: 'browse/:mainTab', element: <BrowsePage /> },
       { path: 'character/create', element: <ProtectedPage><CharacterFormPage /></ProtectedPage> },
       { path: 'character/edit/:id', element: <ProtectedPage><CharacterFormPage /></ProtectedPage> },
       { path: 'character/fork/:id', element: <ProtectedPage><CharacterFormPage /></ProtectedPage> },
@@ -100,11 +101,21 @@ const router = createBrowserRouter([
       { path: 'alipay/return', element: <ProtectedPage><AlipayReturnPage /></ProtectedPage> },
       { path: 'pro-upgrade', element: <ProtectedPage><ProUpgradePage /></ProtectedPage> },
       { path: 'credit-topup', element: <ProtectedPage><CreditTopUpPage /></ProtectedPage> },
-      { path: 'sign-up', element: <PublicOnlyPage><SignUpPage /></PublicOnlyPage> },
-      { path: 'reset-password', element: <PublicOnlyPage><ResetPasswordPage /></PublicOnlyPage> },
       { path: 'terms-of-service', element: <TermsOfServicePage /> },
       { path: 'privacy-policy', element: <PrivacyPolicyPage /> },
     ],
+  },
+  {
+    path: '/login',
+    element: <PublicOnlyPage><LoginPage /></PublicOnlyPage>,
+  },
+  {
+    path: '/sign-up',
+    element: <PublicOnlyPage><SignUpPage /></PublicOnlyPage>,
+  },
+  {
+    path: '/reset-password',
+    element: <PublicOnlyPage><ResetPasswordPage /></PublicOnlyPage>,
   },
   {
     path: '/admin',

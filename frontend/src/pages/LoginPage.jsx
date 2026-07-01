@@ -371,7 +371,7 @@ export default function LoginPage() {
             }}
             onClick={() => setActiveTab('phone')}
           >
-            短信验证码登录/快速注册
+            短信登录/注册
           </button>
           <button
             type="button"
@@ -393,7 +393,7 @@ export default function LoginPage() {
             }}
             onClick={() => setActiveTab('password')}
           >
-            账号/密码登录
+            账号密码登录
           </button>
         </div>
 

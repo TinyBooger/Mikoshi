@@ -89,6 +89,12 @@ export default function CharacterFormPage() {
     presence_penalty: 0,
     frequency_penalty: 0,
   };
+  const WALLPAPER_OPTIONS = [
+    { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
+    { id: 'aurora', labelKey: 'chat.wallpaper_aurora', url: '/wallpapers/aurora.svg' },
+    { id: 'sunrise', labelKey: 'chat.wallpaper_sunrise', url: '/wallpapers/sunrise.svg' },
+    { id: 'waves', labelKey: 'chat.wallpaper_waves', url: '/wallpapers/waves.svg' },
+  ];
   const MAX_NAME_LENGTH = 50;
   const MAX_PERSONA_LENGTH = 400;
   const MAX_TAGLINE_LENGTH = 100;
@@ -140,6 +146,7 @@ export default function CharacterFormPage() {
     max_tokens: DEFAULT_CHAT_CONFIG.max_tokens,
     presence_penalty: DEFAULT_CHAT_CONFIG.presence_penalty,
     frequency_penalty: DEFAULT_CHAT_CONFIG.frequency_penalty,
+    background: JSON.stringify({ type: 'preset', preset_id: 'none' }),
   });
   const [picture, setPicture] = useState(null);
   const [picturePreview, setPicturePreview] = useState(null);
@@ -147,6 +154,8 @@ export default function CharacterFormPage() {
   const [avatarPicture, setAvatarPicture] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [selectedDefaultPicture, setSelectedDefaultPicture] = useState(null);
+  const [backgroundPicture, setBackgroundPicture] = useState(null);
+  const [backgroundPreview, setBackgroundPreview] = useState(null);
   const DEFAULT_PICTURES = [
     { name: 'male_1', src: '/default/male_1.png', label: 'Male 1' },
     { name: 'male_2', src: '/default/male_2.png', label: 'Male 2' },
@@ -290,6 +299,7 @@ export default function CharacterFormPage() {
               max_tokens: stripAdvanced ? DEFAULT_CHAT_CONFIG.max_tokens : normalizeTokenTierValue(loadedModel, data.max_tokens),
               presence_penalty: stripAdvanced ? DEFAULT_CHAT_CONFIG.presence_penalty : clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
               frequency_penalty: stripAdvanced ? DEFAULT_CHAT_CONFIG.frequency_penalty : clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
+              background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
           } else {
             const loadedModel = normalizeModelName(data.model);
@@ -315,6 +325,7 @@ export default function CharacterFormPage() {
               max_tokens: normalizeTokenTierValue(loadedModel, data.max_tokens),
               presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
               frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
+              background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
           }
           setLoading(false);
@@ -329,6 +340,10 @@ export default function CharacterFormPage() {
             setAvatarPreview(`${window.API_BASE_URL.replace(/\/$/, '')}/${String(data.picture).replace(/^\//, '')}`);
           } else {
             setAvatarPreview(null);
+          }
+          // Load background preview for uploaded backgrounds
+          if (data.background && data.background.type === 'upload' && data.background.url) {
+            setBackgroundPreview(`${window.API_BASE_URL.replace(/\/$/, '')}/${String(data.background.url).replace(/^\//, '')}`);
           }
           if (mode === 'edit' && data.moderation_status) {
             setIsAppealMode(true);
@@ -439,6 +454,14 @@ export default function CharacterFormPage() {
     formData.append("is_forkable", String(!!charData.is_forkable));
     if (picture) formData.append("picture", picture);
     if (avatarPicture) formData.append("avatar_picture", avatarPicture);
+    // Background
+    const bgConfig = (() => {
+      try { return JSON.parse(charData.background); } catch (_) { return { type: 'none' }; }
+    })();
+    formData.append("background", JSON.stringify(bgConfig));
+    if (bgConfig.type === 'upload' && backgroundPicture) {
+      formData.append("background_picture", backgroundPicture);
+    }
     setIsSubmitting(true);
     try {
       const res = await fetch(mode === 'edit' ? `${window.API_BASE_URL}/api/update-character` : `${window.API_BASE_URL}/api/create-character`, {
@@ -1143,6 +1166,243 @@ export default function CharacterFormPage() {
               </div>
             </div>
           )}
+
+          {/* Background Configuration */}
+          <div className="mb-4">
+            <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.75rem' }}>
+              聊天背景
+            </label>
+            <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+              {/* Background type cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginBottom: 16 }}>
+                {(() => {
+                  const currentType = (() => {
+                    try { return JSON.parse(charData.background).type; } catch (_) { return 'none'; }
+                  })();
+                  const cards = [
+                    { type: 'preset', icon: 'bi-images', title: '预设背景' },
+                    { type: 'character_picture', icon: 'bi-person-bounding-box', title: '与角色图片相同' },
+                    { type: 'upload', icon: 'bi-cloud-upload', title: '上传自定义' },
+                  ];
+                  return cards.map(card => {
+                    const isActive = currentType === card.type;
+                    return (
+                      <button
+                        key={card.type}
+                        type="button"
+                        onClick={() => {
+                          if (card.type === 'preset') {
+                            handleChange('background', JSON.stringify({ type: 'preset', preset_id: 'none' }));
+                          } else if (card.type === 'upload') {
+                            handleChange('background', JSON.stringify({ type: 'upload' }));
+                          } else {
+                            handleChange('background', JSON.stringify({ type: card.type }));
+                          }
+                          setBackgroundPicture(null);
+                          setBackgroundPreview(null);
+                        }}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '0.85rem 0.6rem',
+                          borderRadius: 12,
+                          border: isActive ? '2px solid #7c3aed' : '1px solid #d1d5db',
+                          background: isActive ? '#f5f3ff' : '#fff',
+                          cursor: 'pointer',
+                          transition: 'border 0.15s, background 0.15s',
+                          textAlign: 'center',
+                        }}
+                      >
+                        <i
+                          className={`bi ${card.icon}`}
+                          style={{
+                            fontSize: '1.5rem',
+                            color: isActive ? '#7c3aed' : '#6b7280',
+                            transition: 'color 0.15s',
+                          }}
+                        ></i>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: isActive ? '#7c3aed' : '#232323' }}>
+                          {card.title}
+                        </div>
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* Preset selection (shown when type is preset) */}
+              {(() => {
+                try { return JSON.parse(charData.background).type === 'preset'; } catch (_) { return false; }
+              })() && (
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: 10 }}>
+                    选择预设背景
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+                    {/* Default (no wallpaper) as first option */}
+                    {(() => {
+                      const selected = (() => {
+                        try { return JSON.parse(charData.background).preset_id === 'none'; } catch (_) { return true; }
+                      })();
+                      return (
+                        <button
+                          key="none"
+                          type="button"
+                          onClick={() => handleChange('background', JSON.stringify({ type: 'preset', preset_id: 'none' }))}
+                          style={{
+                            border: selected ? '2px solid #7c3aed' : '1px solid #e5e7eb',
+                            borderRadius: 10,
+                            background: '#fff',
+                            padding: 6,
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            transition: 'border 0.15s',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: '100%',
+                              height: 60,
+                              borderRadius: 8,
+                              background: 'linear-gradient(135deg,#f8fafc,#e5e7eb)',
+                              border: '1px solid rgba(0,0,0,0.06)',
+                              marginBottom: 6,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#9ca3af',
+                              fontSize: '0.7rem',
+                            }}
+                          >
+                            默认
+                          </div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#111827' }}>
+                            默认
+                          </div>
+                        </button>
+                      );
+                    })()}
+                    {WALLPAPER_OPTIONS.filter(w => w.id !== 'none').map(wallpaper => {
+                      const selected = (() => {
+                        try { return JSON.parse(charData.background).preset_id === wallpaper.id; } catch (_) { return false; }
+                      })();
+                      return (
+                        <button
+                          key={wallpaper.id}
+                          type="button"
+                          onClick={() => handleChange('background', JSON.stringify({ type: 'preset', preset_id: wallpaper.id }))}
+                          style={{
+                            border: selected ? '2px solid #7c3aed' : '1px solid #e5e7eb',
+                            borderRadius: 10,
+                            background: '#fff',
+                            padding: 6,
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            transition: 'border 0.15s',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: '100%',
+                              height: 60,
+                              borderRadius: 8,
+                              background: wallpaper.url ? `url(${wallpaper.url}) center/cover no-repeat` : 'linear-gradient(135deg,#f8fafc,#e5e7eb)',
+                              border: '1px solid rgba(0,0,0,0.06)',
+                              marginBottom: 6,
+                            }}
+                          />
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#111827' }}>
+                            {wallpaper.id === 'aurora' ? '极光' : wallpaper.id === 'sunrise' ? '日出' : '波浪'}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Upload background (shown when type is upload) */}
+              {(() => {
+                try { return JSON.parse(charData.background).type === 'upload'; } catch (_) { return false; }
+              })() && (
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: 10 }}>
+                    上传背景图片
+                  </div>
+                  {backgroundPreview ? (
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <img
+                        src={backgroundPreview}
+                        alt="背景预览"
+                        style={{ maxWidth: 280, maxHeight: 140, borderRadius: 10, border: '1px solid #e5e7eb' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBackgroundPicture(null);
+                          setBackgroundPreview(null);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: -8,
+                          right: -8,
+                          width: 24,
+                          height: 24,
+                          borderRadius: '50%',
+                          background: '#ef4444',
+                          color: '#fff',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.75rem',
+                          lineHeight: 1,
+                        }}
+                      >
+                        <i className="bi bi-x"></i>
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        padding: '1.5rem 1rem',
+                        borderRadius: 12,
+                        border: '2px dashed #d1d5db',
+                        background: '#fff',
+                        cursor: 'pointer',
+                        transition: 'border 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#7c3aed'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; }}
+                    >
+                      <i className="bi bi-cloud-arrow-up" style={{ fontSize: '1.6rem', color: '#9ca3af' }}></i>
+                      <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>点击选择图片</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setBackgroundPicture(file);
+                            setBackgroundPreview(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Visibility & Options */}
           <div className="mb-4">

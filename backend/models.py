@@ -42,6 +42,10 @@ class Character(Base):
     moderation_status = Column(String(20), nullable=True)
     appeal_under_review = Column(Boolean, default=False, nullable=False)
 
+    # Character-specific chat background configuration
+    # { "type": "none"|"preset"|"upload"|"character_picture", "preset_id"?: str, "url"?: str }
+    background = Column(JSONB, default=None, nullable=True)
+
 class User(Base):
     __tablename__ = "users"
 

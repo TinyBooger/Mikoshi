@@ -84,6 +84,7 @@ class CharacterOut(BaseModel):
     liked: bool = False
     moderation_status: Optional[str] = None
     appeal_under_review: bool = False
+    background: Optional[Any] = None
 
     class Config:
         from_attributes = True

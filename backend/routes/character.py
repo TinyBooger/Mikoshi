@@ -167,6 +167,36 @@ def default_character_chat_config():
         "frequency_penalty": 0.0,
     }
 
+ALLOWED_BACKGROUND_TYPES = {"none", "preset", "upload", "character_picture"}
+ALLOWED_PRESET_IDS = {"none", "aurora", "sunrise", "waves"}
+
+def parse_background_config(raw: Optional[str]) -> Optional[dict]:
+    """Parse and validate the background JSON string from the form."""
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    bg_type = data.get("type", "none")
+    if bg_type not in ALLOWED_BACKGROUND_TYPES:
+        return None
+    result = {"type": bg_type}
+    if bg_type == "preset":
+        preset_id = data.get("preset_id", "")
+        if preset_id in ALLOWED_PRESET_IDS:
+            result["preset_id"] = preset_id
+        else:
+            return None
+    elif bg_type == "character_picture":
+        result["preset_id"] = None
+    elif bg_type == "upload":
+        # url will be filled after file upload
+        result["preset_id"] = None
+    return result
+
 @router.post("/api/create-character")
 async def create_character(
     name: str = Form(...),
@@ -189,6 +219,8 @@ async def create_character(
     forked_from_name: Optional[str] = Form(None),
     picture: UploadFile = File(None),
     avatar_picture: UploadFile = File(None),
+    background: Optional[str] = Form(None),
+    background_picture: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -323,6 +355,7 @@ async def create_character(
         avatar_picture=None,
         forked_from_id=forked_from_id,
         forked_from_name=forked_from_name,
+        background=parse_background_config(background),
     )
     db.add(char)
     db.commit()
@@ -372,6 +405,31 @@ async def create_character(
             filename_prefix=f"character_avatar_{char.id}",
         )
 
+    if background_picture:
+        bg_bytes = await background_picture.read()
+        is_safe, label, suggestion = moderate_image_with_decision(bg_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Background image rejected by content moderation ({label})")
+        if suggestion == "Review":
+            enqueue_character_review(
+                db,
+                character_id=char.id,
+                source="moderation_review",
+                reason=f"Background image moderation suggested REVIEW ({label or 'Unknown'})",
+            )
+        import io
+        saved_url = save_image(
+            io.BytesIO(bg_bytes),
+            'character',
+            char.id,
+            background_picture.filename,
+            filename_prefix=f"character_background_{char.id}",
+        )
+        # Update the background JSON with the saved URL
+        current_bg = char.background or {}
+        current_bg["url"] = saved_url
+        char.background = current_bg
+
     # For forks: if no picture/avatar was uploaded, copy from the source character
     if forked_from_id:
         source_char = db.query(Character).filter(Character.id == forked_from_id).first()
@@ -406,9 +464,17 @@ async def update_character(
     long_description: str = Form(""),
     context_label: Optional[str] = Form(None),
     model: str = Form("deepseek-v4-flash"),
+    temperature: Optional[float] = Form(None),
+    top_p: Optional[float] = Form(None),
+    max_tokens: Optional[int] = Form(None),
+    presence_penalty: Optional[float] = Form(None),
+    frequency_penalty: Optional[float] = Form(None),
+    is_public: Optional[bool] = Form(None),
     is_forkable: Optional[bool] = Form(None),
     picture: UploadFile = File(None),
     avatar_picture: UploadFile = File(None),
+    background: Optional[str] = Form(None),
+    background_picture: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -573,6 +639,34 @@ async def update_character(
             avatar_picture.filename,
             filename_prefix=f"character_avatar_{char.id}",
         )
+
+    # Handle background config
+    if background is not None:
+        char.background = parse_background_config(background)
+
+    if background_picture:
+        bg_bytes = await background_picture.read()
+        is_safe, label, suggestion = moderate_image_with_decision(bg_bytes)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Background image rejected by content moderation ({label})")
+        if suggestion == "Review":
+            enqueue_character_review(
+                db,
+                character_id=char.id,
+                source="moderation_review",
+                reason=f"Background image moderation suggested REVIEW ({label or 'Unknown'})",
+            )
+        import io
+        saved_url = save_image(
+            io.BytesIO(bg_bytes),
+            'character',
+            char.id,
+            background_picture.filename,
+            filename_prefix=f"character_background_{char.id}",
+        )
+        current_bg = char.background or {}
+        current_bg["url"] = saved_url
+        char.background = current_bg
 
     if needs_text_review:
         reason = f"Text moderation suggested REVIEW ({review_field}: {review_label or 'Unknown'})"

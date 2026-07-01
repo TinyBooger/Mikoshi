@@ -50,9 +50,10 @@ export default function CharacterSidebar({
   setAdvancedChatConfig,
   onResetAdvancedChatConfig,
   canUseAdvancedChatConfig,
-  wallpaperOptions,
-  selectedWallpaperId,
-  onSelectWallpaper,
+  wallpaper,
+  onSetWallpaper,
+  characterPicture,
+  characterBackground,
   pinnedMemories,
   maxPinnedMemories = 10,
   onJumpToPinnedMemory,
@@ -65,7 +66,6 @@ export default function CharacterSidebar({
   const toast = useToast();
   const [showFullTagline, setShowFullTagline] = React.useState(false);
   const [showProblemReport, setShowProblemReport] = React.useState(false);
-  const [showWallpaperPicker, setShowWallpaperPicker] = React.useState(false);
   const [showMemoryManagement, setShowMemoryManagement] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('chat');
   const [activeHintKey, setActiveHintKey] = React.useState(null);
@@ -591,52 +591,183 @@ export default function CharacterSidebar({
             }}
           >
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.01em' }}>
-              {t('chat.wallpaper')}
+              聊天背景
             </div>
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-secondary"
-              style={{ width: '100%', borderRadius: 10, marginBottom: showWallpaperPicker ? 10 : 0 }}
-              onClick={() => setShowWallpaperPicker((prev) => !prev)}
-            >
-              <i className="bi bi-image me-2"></i>
-              {showWallpaperPicker ? t('chat.wallpaper_hide') : t('chat.wallpaper_choose')}
-            </button>
 
-            {showWallpaperPicker && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-                {(wallpaperOptions || []).map((wallpaper) => {
-                  const selected = selectedWallpaperId === wallpaper.id;
+            {/* Background type cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6, marginBottom: 10 }}>
+              {(() => {
+                const cards = [
+                  { type: 'preset', icon: 'bi-images', title: '预设背景' },
+                  { type: 'character_picture', icon: 'bi-person-bounding-box', title: '与角色图片相同' },
+                  { type: 'character_upload', icon: 'bi-image-alt', title: '作者上传背景', visible: !!(characterBackground?.type === 'upload' && characterBackground?.url) },
+                  { type: 'upload', icon: 'bi-cloud-upload', title: '上传自定义' },
+                ].filter(c => c.visible !== false);
+                return cards.map(card => {
+                  const actualType = ['character_picture', 'custom_upload', 'character_upload'].includes(wallpaper.id) ? wallpaper.id : (['aurora', 'sunrise', 'waves', 'none'].includes(wallpaper.id) ? 'preset' : wallpaper.id);
+                  const active = actualType === card.type;
                   return (
                     <button
-                      key={wallpaper.id}
+                      key={card.type}
                       type="button"
-                      onClick={() => onSelectWallpaper?.(wallpaper.id)}
+                      onClick={() => {
+                        if (card.type === 'preset') {
+                          onSetWallpaper?.({ id: 'none', url: null });
+                        } else if (card.type === 'upload') {
+                          onSetWallpaper?.({ id: 'custom_upload', url: null });
+                        } else if (card.type === 'character_upload') {
+                          const bgUrl = characterBackground?.url;
+                          if (bgUrl) {
+                            onSetWallpaper?.({ id: 'character_upload', url: `${window.API_BASE_URL.replace(/\/$/, '')}/${String(bgUrl).replace(/\\/g, '/').replace(/^\//, '')}` });
+                          }
+                        } else {
+                          const pic = characterPicture;
+                          if (pic) {
+                            onSetWallpaper?.({ id: 'character_picture', url: `${window.API_BASE_URL.replace(/\/$/, '')}/${String(pic).replace(/\\/g, '/').replace(/^\//, '')}` });
+                          }
+                        }
+                      }}
                       style={{
-                        border: selected ? '2px solid #18191a' : '1px solid #d1d5db',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '0.6rem 0.35rem',
                         borderRadius: 10,
-                        background: '#fff',
-                        padding: 6,
-                        textAlign: 'left',
+                        border: active ? '2px solid #7c3aed' : '1px solid #d1d5db',
+                        background: active ? '#f5f3ff' : '#fff',
                         cursor: 'pointer',
+                        transition: 'border 0.15s, background 0.15s',
+                        textAlign: 'center',
                       }}
                     >
-                      <div
-                        style={{
-                          width: '100%',
-                          height: 52,
-                          borderRadius: 8,
-                          background: wallpaper.url ? `url(${wallpaper.url}) center/cover no-repeat` : 'linear-gradient(135deg,#f8fafc,#e5e7eb)',
-                          border: '1px solid rgba(0,0,0,0.06)',
-                          marginBottom: 6,
-                        }}
-                      />
-                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#111827' }}>
-                        {wallpaper.labelKey ? t(wallpaper.labelKey) : wallpaper.name}
+                      <i
+                        className={`bi ${card.icon}`}
+                        style={{ fontSize: '1.1rem', color: active ? '#7c3aed' : '#6b7280', transition: 'color 0.15s' }}
+                      ></i>
+                      <div style={{ fontWeight: 700, fontSize: '0.7rem', color: active ? '#7c3aed' : '#232323', lineHeight: 1.2 }}>
+                        {card.title}
                       </div>
                     </button>
                   );
-                })}
+                });
+              })()}
+            </div>
+
+            {/* Preset grid */}
+            {(['none', 'aurora', 'sunrise', 'waves'].includes(wallpaper.id)) && (
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: 8 }}>
+                  选择预设背景
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => onSetWallpaper?.({ id: 'none', url: null })}
+                    style={{
+                      border: wallpaper.id === 'none' ? '2px solid #7c3aed' : '1px solid #e5e7eb',
+                      borderRadius: 10,
+                      background: '#fff',
+                      padding: 6,
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'border 0.15s',
+                    }}
+                  >
+                    <div style={{ width: '100%', height: 52, borderRadius: 8, background: 'linear-gradient(135deg,#f8fafc,#e5e7eb)', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '0.7rem' }}>
+                      默认
+                    </div>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#111827' }}>默认</div>
+                  </button>
+                  {[
+                    { id: 'aurora', url: '/wallpapers/aurora.svg' },
+                    { id: 'sunrise', url: '/wallpapers/sunrise.svg' },
+                    { id: 'waves', url: '/wallpapers/waves.svg' },
+                  ].map(wp => {
+                    const selected = wallpaper.id === wp.id;
+                    return (
+                      <button
+                        key={wp.id}
+                        type="button"
+                        onClick={() => onSetWallpaper?.({ id: wp.id, url: null })}
+                        style={{
+                          border: selected ? '2px solid #7c3aed' : '1px solid #e5e7eb',
+                          borderRadius: 10,
+                          background: '#fff',
+                          padding: 6,
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          transition: 'border 0.15s',
+                        }}
+                      >
+                        <div style={{ width: '100%', height: 52, borderRadius: 8, background: `url(${wp.url}) center/cover no-repeat`, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 6 }} />
+                        <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#111827' }}>
+                          {wp.id === 'aurora' ? '极光' : wp.id === 'sunrise' ? '日出' : '波浪'}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Character upload (creator's background) */}
+            {wallpaper.id === 'character_upload' && wallpaper.url && (
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: 8 }}>
+                  作者上传上传的背景
+                </div>
+                <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                  <img src={wallpaper.url} alt="作者背景" style={{ width: '100%', height: 80, objectFit: 'cover', display: 'block' }} />
+                </div>
+              </div>
+            )}
+
+            {/* Upload section */}
+            {wallpaper.id === 'custom_upload' && (
+              <div>
+                {wallpaper.url ? (
+                  <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                    <img src={wallpaper.url} alt="背景" style={{ width: '100%', height: 80, objectFit: 'cover', display: 'block' }} />
+                    <button
+                      type="button"
+                      onClick={() => onSetWallpaper?.({ id: 'none', url: null })}
+                      style={{
+                        position: 'absolute', top: 4, right: 4,
+                        width: 20, height: 20, borderRadius: '50%',
+                        border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff',
+                        fontSize: '0.7rem', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                      padding: '0.8rem', borderRadius: 10,
+                      border: '2px dashed #d1d5db', cursor: 'pointer',
+                      background: '#fafafa', textAlign: 'center',
+                    }}
+                  >
+                    <i className="bi bi-cloud-arrow-up" style={{ fontSize: '1.2rem', color: '#9ca3af' }}></i>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6b7280' }}>点击上传图片</div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const url = URL.createObjectURL(file);
+                          onSetWallpaper?.({ id: 'custom_upload', url });
+                        }
+                      }}
+                    />
+                  </label>
+                )}
               </div>
             )}
           </div>

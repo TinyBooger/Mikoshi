@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { useNavigate, useLocation, useOutletContext } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import DiscoverMasonryCard from '../components/DiscoverMasonryCard';
@@ -15,7 +16,7 @@ import textLogo from '../assets/images/logo_text.png';
 
 function BrowsePage() {
   const { t } = useTranslation();
-  const { userData, sessionToken } = useContext(AuthContext);
+  const { userData, sessionToken, loading } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
   const { sidebarVisible, setSidebarVisible } = useOutletContext() || {};
@@ -377,10 +378,6 @@ function BrowsePage() {
 
   // Fetch data
   useEffect(() => {
-    if (!sessionToken) {
-      navigate('/');
-      return;
-    }
     if (page === 1) {
       setIsLoading(true);
     } else {
@@ -402,7 +399,9 @@ function BrowsePage() {
       params.set('sort', activeSubTab);
     }
     const fetchUrl = `${url}?${params.toString()}`;
-    fetch(fetchUrl, { headers: { 'Authorization': sessionToken } })
+    const fetchHeaders = {};
+    if (sessionToken) fetchHeaders['Authorization'] = sessionToken;
+    fetch(fetchUrl, { headers: fetchHeaders })
       .then(res => res.json())
       .then(data => {
         // Expect wrapper: { items, total, page, page_size, short }
@@ -511,6 +510,10 @@ function BrowsePage() {
           50% { filter: saturate(1.35) brightness(1.16); }
           100% { filter: saturate(1) brightness(1); }
         }
+        @keyframes loginBannerSlideDown {
+          0% { transform: translate(-50%, -100%); opacity: 0; }
+          100% { transform: translate(-50%, 0); opacity: 1; }
+        }
       `}</style>
       <OnboardingTour
         isOpen={showOnboarding}
@@ -533,6 +536,78 @@ function BrowsePage() {
             onAppeal={() => setShowAppealModal(true)}
           />
         </div>
+      )}
+
+      {/* Login notice banner for unauthenticated users — portal to body to stay fixed */}
+      {!userData && !loading && ReactDOM.createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: '16px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1050,
+            animation: 'loginBannerSlideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+            maxWidth: 'calc(100vw - 2rem)',
+            width: '480px',
+          }}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(30, 30, 40, 0.95) 0%, rgba(45, 40, 60, 0.95) 100%)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              borderRadius: '16px',
+              padding: '1rem 1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.75rem',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.08) inset',
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>👋</span>
+              <span style={{
+                color: 'rgba(255,255,255,0.9)',
+                fontSize: '0.88rem',
+                fontWeight: 500,
+                lineHeight: 1.3,
+              }}>
+                登录后即可与角色聊天、创建内容，加入社区！
+              </span>
+            </div>
+            <button
+              onClick={() => navigate('/login')}
+              style={{
+                flexShrink: 0,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '0.5rem 1.1rem',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'transform 0.15s, box-shadow 0.15s',
+                boxShadow: '0 2px 8px rgba(102, 126, 234, 0.4)',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(102, 126, 234, 0.5)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.4)';
+              }}
+            >
+              登录
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
 
       <div

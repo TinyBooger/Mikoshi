@@ -265,7 +265,14 @@ export default function ChatPage() {
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [selectedWallpaperId, setSelectedWallpaperId] = useState(() => localStorage.getItem('chat.selectedWallpaper') || 'none');
+  const [wallpaper, setWallpaper] = useState(() => {
+    try {
+      const saved = localStorage.getItem('chat.wallpaper');
+      if (saved) { const parsed = JSON.parse(saved); if (parsed && typeof parsed.id === 'string') return parsed; }
+    } catch (_) {}
+    return { id: 'none', url: null };
+  });
+  const [characterBackground, setCharacterBackground] = useState(null);
   const [sending, setSending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [abortController, setAbortController] = useState(null);
@@ -303,6 +310,26 @@ export default function ChatPage() {
     context_window_tier: DEFAULT_CONTEXT_WINDOW_TIER,
   };
   const normalizeChatModel = (modelName) => (ALLOWED_MODEL_SET.has(modelName) ? modelName : DEFAULT_ADVANCED_CHAT_CONFIG.model);
+  
+  const applyCharacterBackground = (bgConfig, character) => {
+    setCharacterBackground(bgConfig || null);
+    if (!bgConfig || bgConfig.type === 'none') return;
+    if (bgConfig.type === 'preset') {
+      if (bgConfig.preset_id && bgConfig.preset_id !== 'none') {
+        setWallpaper({ id: bgConfig.preset_id, url: null });
+      }
+      return;
+    }
+    if (bgConfig.type === 'upload' && bgConfig.url) {
+      setWallpaper({ id: 'character_upload', url: `${window.API_BASE_URL.replace(/\/$/, '')}/${String(bgConfig.url).replace(/\\/g, '/').replace(/^\//, '')}` });
+    } else if (bgConfig.type === 'character_picture') {
+      const charPic = character?.picture;
+      if (charPic) {
+        setWallpaper({ id: 'character_picture', url: `${window.API_BASE_URL.replace(/\/$/, '')}/${String(charPic).replace(/\\/g, '/').replace(/^\//, '')}` });
+      }
+    }
+  };
+
   const normalizeAdvancedChatConfig = (character) => {
     if (!canUseAdvancedChatConfig) {
       return DEFAULT_ADVANCED_CHAT_CONFIG;
@@ -408,7 +435,13 @@ export default function ChatPage() {
 
   const [characterId, setCharacterId] = useState(searchParams.get('character'));
   const [sceneId, setSceneId] = useState(searchParams.get('scene'));
-  const selectedWallpaper = WALLPAPER_OPTIONS.find((option) => option.id === selectedWallpaperId) || WALLPAPER_OPTIONS[0];
+  const selectedWallpaper = (() => {
+    if (wallpaper.id === 'none' || !wallpaper.url) {
+      const preset = WALLPAPER_OPTIONS.find((o) => o.id === wallpaper.id);
+      return preset || WALLPAPER_OPTIONS[0];
+    }
+    return { id: wallpaper.id, url: wallpaper.url };
+  })();
 
   useEffect(() => {
     fetchCreditLimits();
@@ -434,21 +467,8 @@ export default function ChatPage() {
   }, [userData]);
 
   useEffect(() => {
-    if (!WALLPAPER_OPTIONS.some((option) => option.id === selectedWallpaperId)) {
-      setSelectedWallpaperId('none');
-    }
-  }, [selectedWallpaperId]);
-
-  useEffect(() => {
-    localStorage.setItem('chat.selectedWallpaper', selectedWallpaperId);
-  }, [selectedWallpaperId]);
-
-  const handleSelectWallpaper = (wallpaperId) => {
-    if (!WALLPAPER_OPTIONS.some((option) => option.id === wallpaperId)) return;
-    setSelectedWallpaperId(wallpaperId);
-  };
-
-
+    localStorage.setItem('chat.wallpaper', JSON.stringify(wallpaper));
+  }, [wallpaper]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -973,6 +993,7 @@ export default function ChatPage() {
               character = data;
               setSelectedCharacter(data);
               setAdvancedChatConfig(normalizeAdvancedChatConfig(data));
+              applyCharacterBackground(data.background, data);
               setLikes(data.likes || 0);
               return data;
             })
@@ -987,9 +1008,11 @@ export default function ChatPage() {
         if (selectedCharacter?.id) {
           character = selectedCharacter;
           setAdvancedChatConfig(normalizeAdvancedChatConfig(selectedCharacter));
+          applyCharacterBackground(selectedCharacter?.background, selectedCharacter);
         } else {
           setSelectedCharacter(null);
           setAdvancedChatConfig(DEFAULT_ADVANCED_CHAT_CONFIG);
+          applyCharacterBackground(null, null);
         }
       }
       
@@ -1449,6 +1472,7 @@ export default function ChatPage() {
 
       // History config always has precedence; character defaults are only fallback.
       setAdvancedChatConfig(normalizeAdvancedChatConfigFromEntry(normalizedChat?.chat_config, character));
+      applyCharacterBackground(character?.background, character);
 
       // Refresh liked status for the loaded entities
       const likeParams = [];
@@ -2685,9 +2709,10 @@ export default function ChatPage() {
         setAdvancedChatConfig={setAdvancedChatConfig}
         onResetAdvancedChatConfig={() => setAdvancedChatConfig(normalizeAdvancedChatConfig(selectedCharacter))}
         canUseAdvancedChatConfig={canUseAdvancedChatConfig}
-        wallpaperOptions={WALLPAPER_OPTIONS}
-        selectedWallpaperId={selectedWallpaperId}
-        onSelectWallpaper={handleSelectWallpaper}
+        wallpaper={wallpaper}
+        onSetWallpaper={setWallpaper}
+        characterPicture={selectedCharacter?.picture}
+        characterBackground={characterBackground}
         pinnedMemories={pinnedMemories}
         maxPinnedMemories={MAX_PINNED_MEMORIES}
         onJumpToPinnedMemory={jumpToMessage}
