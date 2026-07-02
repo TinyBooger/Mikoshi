@@ -116,8 +116,10 @@ export default function CharacterFormPage() {
   const { sessionToken, userData, refreshUserData } = useContext(AuthContext);
   const isProUser = !!userData?.is_pro;
   const creditBalance = parseFloat(userData?.purchased_credit_balance || 0);
+  const remainingCredits = parseFloat(userData?.remaining_credits || 0);
   const canUseAdvancedConfig = isProUser;
-  const canUseAdvancedCharacter = creditBalance > 0;
+  // Allow advanced character if user has wallet credits OR remaining daily/monthly free credits
+  const canUseAdvancedCharacter = creditBalance > 0 || remainingCredits > 0;
   const canPrivate = true;
   const canFork = isProUser;
   const navigate = useNavigate();
@@ -964,7 +966,7 @@ export default function CharacterFormPage() {
             <div>
               <span style={{ fontWeight: 700, color: '#232323', fontSize: '0.97rem' }}>启用详细人物设定</span>
               {!canUseAdvancedCharacter ? (
-                <small style={{ display: 'block', color: '#dc3545', marginTop: 2 }}>您的点数余额不足，无法使用详细人物设定。 <a href="/credits" onClick={e => { e.preventDefault(); navigate('/credits'); }} style={{ color: '#dc3545', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}>充值点数</a></small>
+                <small style={{ display: 'block', color: '#dc3545', marginTop: 2 }}>您的点数余额不足，无法使用详细人物设定。 <a href="/credit-topup" onClick={e => { e.preventDefault(); navigate('/credit-topup'); }} style={{ color: '#dc3545', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}>充值点数</a></small>
               ) : effectiveContextLabel === 'advanced' ? (
                 <small style={{ display: 'block', color: '#7c3aed', marginTop: 2 }}>可填写最多15000字的详细人物设定，用于构建更丰富的角色背景</small>
               ) : (
