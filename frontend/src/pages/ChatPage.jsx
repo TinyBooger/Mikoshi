@@ -451,20 +451,25 @@ export default function ChatPage() {
     if (!userData) return;
 
     applyCreditLimits({
-      plan: userData?.is_pro ? 'pro' : 'free',
-      cap_scope: userData?.credit_cap_scope,
-      credit_cap: userData?.credit_cap,
-      remaining_credits: userData?.remaining_credits,
-      cap_reached: !!(userData?.credit_cap_reached),
-      daily_credit_usage: Number(userData?.daily_credit_usage || 0),
-      monthly_credit_usage: Number(userData?.monthly_credit_usage || 0),
-      free_daily_credit_cap: Number(userData?.free_daily_credit_cap || 0),
-      pro_monthly_credit_cap: Number(userData?.pro_monthly_credit_cap || 0),
-      reset_at: userData?.credit_reset_at,
-      is_limited: userData?.credit_cap !== null,
-      purchased_credit_balance: userData?.purchased_credit_balance ?? 0,
+      plan: userData.is_pro ? 'pro' : 'free',
+      cap_scope: userData.credit_cap_scope,
+      credit_cap: userData.credit_cap,
+      remaining_credits: userData.remaining_credits,
+      cap_reached: !!userData.credit_cap_reached,
+      daily_credit_usage: Number(userData.daily_credit_usage || 0),
+      monthly_credit_usage: Number(userData.monthly_credit_usage || 0),
+      free_daily_credit_cap: Number(userData.free_daily_credit_cap || 0),
+      pro_monthly_credit_cap: Number(userData.pro_monthly_credit_cap || 0),
+      reset_at: userData.credit_reset_at,
+      is_limited: userData.credit_cap !== null,
+      purchased_credit_balance: userData.purchased_credit_balance ?? 0,
     });
-  }, [userData]);
+  }, [
+    userData?.purchased_credit_balance,
+    userData?.daily_credit_usage,
+    userData?.monthly_credit_usage,
+    userData?.credit_reset_at,
+  ]);
 
   useEffect(() => {
     localStorage.setItem('chat.wallpaper', JSON.stringify(wallpaper));
