@@ -10,7 +10,7 @@ from __future__ import annotations
 import time
 import logging
 
-from utils.redis_client import get_redis
+from utils.redis_client import get_redis, RedisUnavailable
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +138,15 @@ class RateLimiter:
                 "tier": "pro" if is_pro else "free",
             }
 
+        except RedisUnavailable:
+            logger.debug("Redis unavailable during rate‑limit check — failing open")
+            return {
+                "allowed": True,
+                "remaining": rpm,
+                "limit": rpm,
+                "reset_seconds": 0,
+                "tier": "pro" if is_pro else "free",
+            }
         except Exception:
             logger.exception("Redis error during rate‑limit check — failing open")
             return {
@@ -169,6 +178,13 @@ class RateLimiter:
                 "tier": "pro" if is_pro else "free",
                 "limit_minute": rpm,
                 "remaining_minute": max(0, rpm - count_min),
+            }
+        except RedisUnavailable:
+            logger.debug("Redis unavailable during rate‑limit status check — failing open")
+            return {
+                "tier": "pro" if is_pro else "free",
+                "limit_minute": rpm,
+                "remaining_minute": rpm,
             }
         except Exception:
             logger.exception("Redis error during rate‑limit status check — failing open")
