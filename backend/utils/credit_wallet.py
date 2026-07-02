@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from models import User, UserCreditWalletLedger
 
 DEFAULT_CREDIT_TOPUP_PACKAGES = [
-    {"id": "topup_test", "credits": 10, "price_cny": 0.01, "label": "测试"},
     {"id": "topup_2000", "credits": 2000, "price_cny": 6, "label": "入门"},
     {"id": "topup_8000", "credits": 8000, "price_cny": 18, "label": "热门"},
     {"id": "topup_15000", "credits": 15000, "price_cny": 30, "label": "超值"},

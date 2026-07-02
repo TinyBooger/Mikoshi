@@ -246,7 +246,6 @@ export default function CreditTopUpPage() {
             ) : (
               <div className="row g-3 g-lg-4">
                 {sortedPackages.map((pkg) => {
-                  const isTest = Number(pkg.credits || 0) === 10 && Number(pkg.price_cny || 0) === 0.01;
                   const isPopular = Number(pkg.credits || 0) === 8000;
                   const isBestValue = Number(pkg.credits || 0) === 15000;
                   const isSelected = selectedPackageId === pkg.id;
@@ -271,23 +270,6 @@ export default function CreditTopUpPage() {
                           transition: 'border 0.15s, box-shadow 0.15s',
                         }}
                       >
-                        {isTest && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: -10,
-                              right: 16,
-                              background: '#9ca3af',
-                              color: '#fff',
-                              padding: '0.2rem 0.6rem',
-                              borderRadius: 999,
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                            }}
-                          >
-                            测试专用
-                          </div>
-                        )}
                         {isPopular && (
                           <div
                             style={{
