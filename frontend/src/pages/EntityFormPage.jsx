@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
 import TagsInput from '../components/TagsInput';
 import ImageCropModal from '../components/ImageCropModal';
@@ -63,6 +63,46 @@ export default function EntityFormPage() {
   const MAX_TAGS = entityConfig.maxTags;
 
   const { sessionToken, userData } = useContext(AuthContext);
+
+  // ── Draft helpers ──────────────────────────────────────────────
+  const getDraftKey = useCallback(() => {
+    const uid = userData?.id || 'anonymous';
+    if (mode === 'edit' && id) return `ef_draft_${entityType}_edit_${id}_${uid}`;
+    if (mode === 'fork' && id) return `ef_draft_${entityType}_fork_${id}_${uid}`;
+    return `ef_draft_${entityType}_create_${uid}`;
+  }, [userData?.id, mode, id, entityType]);
+
+  const saveDraft = useCallback((data) => {
+    try {
+      const serializable = {
+        entityData: data.entityData,
+        isImprovisingGreeting: data.isImprovisingGreeting,
+        mode,
+        id: id || null,
+        entityType,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(getDraftKey(), JSON.stringify(serializable));
+    } catch (_) { /* quota exceeded */ }
+  }, [getDraftKey, mode, id, entityType]);
+
+  const clearDraft = useCallback(() => {
+    try { localStorage.removeItem(getDraftKey()); } catch (_) {}
+  }, [getDraftKey]);
+
+  const loadDraft = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(getDraftKey());
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (Date.now() - parsed.savedAt > 7 * 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(getDraftKey());
+        return null;
+      }
+      return parsed;
+    } catch (_) { return null; }
+  }, [getDraftKey]);
+
   const canPrivate = true;
   const navigate = useNavigate();
   const toast = useToast();
@@ -95,6 +135,49 @@ export default function EntityFormPage() {
   const [appealReason, setAppealReason] = useState('');
   const [confirmModal, setConfirmModal] = useState({ show: false });
   const [showUgcPolicyModal, setShowUgcPolicyModal] = useState(false);
+  const draftTimerRef = useRef(null);
+  const draftRestoredRef = useRef(false);
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
+
+  // ── Debounced draft auto-save ─────────────────────────────────
+  useEffect(() => {
+    if (loading) return;
+    if (!draftRestoredRef.current && mode === 'create') return;
+
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      saveDraft({ entityData, isImprovisingGreeting });
+    }, 800);
+
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
+  }, [entityData, isImprovisingGreeting, loading, mode, saveDraft]);
+
+  // ── Restore draft on mount for create mode ────────────────────
+  useEffect(() => {
+    if (mode !== 'create') return;
+    if (draftRestoredRef.current) return;
+    const draft = loadDraft();
+    if (draft && draft.entityData) {
+      setShowDraftBanner(true);
+    } else {
+      draftRestoredRef.current = true;
+    }
+  }, [mode, loadDraft]);
+
+  // ── beforeunload warning for unsaved changes ──────────────────
+  useEffect(() => {
+    const hasContent = entityData.name.trim() || entityData.description.trim() || (entityType === 'scene' && entityData.greeting.trim());
+    if (!hasContent) return;
+
+    const handler = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [entityData.name, entityData.description, entityData.greeting, entityType]);
 
   // Enforce level locks
   useEffect(() => {
@@ -263,6 +346,7 @@ export default function EntityFormPage() {
       );
       const data = await res.json();
       if (res.ok) {
+        clearDraft();
         // If in appeal mode and no pending appeal, submit the content ban appeal after saving
         if (isAppealMode && !hasPendingAppeal && appealReason.trim()) {
           try {
@@ -329,6 +413,74 @@ export default function EntityFormPage() {
         
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           <BanNotice banType={userData?.ban_type} banUntil={userData?.ban_until} context="upload" />
+
+          {/* Draft restore banner */}
+          {showDraftBanner && mode === 'create' && (
+            <div
+              className="alert d-flex align-items-center justify-content-between mb-4"
+              style={{
+                background: '#fef3c7',
+                border: '1px solid #f59e0b',
+                borderRadius: 12,
+                padding: '0.75rem 1rem',
+              }}
+            >
+              <div className="d-flex align-items-center gap-2">
+                <i className="bi bi-file-earmark-text" style={{ fontSize: '1.1rem', color: '#d97706' }}></i>
+                <span style={{ fontSize: '0.9rem', color: '#92400e', fontWeight: 500 }}>
+                  检测到未保存的草稿，是否需要恢复？
+                </span>
+              </div>
+              <div className="d-flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background: '#f59e0b',
+                    color: '#fff',
+                    borderRadius: 8,
+                    border: 'none',
+                    fontWeight: 600,
+                    padding: '0.3rem 0.8rem',
+                  }}
+                  onClick={() => {
+                    const draft = loadDraft();
+                    if (draft && draft.entityData) {
+                      setEntityData(draft.entityData);
+                      if (typeof draft.isImprovisingGreeting === 'boolean') {
+                        setIsImprovisingGreeting(draft.isImprovisingGreeting);
+                      }
+                      toast.show('草稿已恢复', { type: 'success' });
+                    }
+                    draftRestoredRef.current = true;
+                    setShowDraftBanner(false);
+                  }}
+                >
+                  恢复
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background: 'transparent',
+                    color: '#92400e',
+                    borderRadius: 8,
+                    border: '1px solid #d97706',
+                    fontWeight: 500,
+                    padding: '0.3rem 0.8rem',
+                  }}
+                  onClick={() => {
+                    clearDraft();
+                    draftRestoredRef.current = true;
+                    setShowDraftBanner(false);
+                  }}
+                >
+                  丢弃
+                </button>
+              </div>
+            </div>
+          )}
+
           {isAppealMode && (
             <div className="alert alert-warning mb-4" role="alert" style={{ borderRadius: 10 }}>
               <i className="bi bi-megaphone-fill me-2"></i>

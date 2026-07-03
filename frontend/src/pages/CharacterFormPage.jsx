@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
 import TagsInput from '../components/TagsInput';
 import ImageCropModal from '../components/ImageCropModal';
@@ -99,6 +99,7 @@ export default function CharacterFormPage() {
   const MAX_PERSONA_LENGTH = 400;
   const MAX_TAGLINE_LENGTH = 100;
   const ADVANCED_MAX_LONG_DESCRIPTION_LENGTH = 15000;
+
   // Get id param from route
   const params = useParams();
   const id = params.id;
@@ -114,6 +115,46 @@ export default function CharacterFormPage() {
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
 
   const { sessionToken, userData, refreshUserData } = useContext(AuthContext);
+
+  // ── Draft helpers ──────────────────────────────────────────────
+  const getDraftKey = useCallback(() => {
+    const uid = userData?.id || 'anonymous';
+    if (mode === 'edit' && id) return `cf_draft_edit_${id}_${uid}`;
+    if (mode === 'fork' && id) return `cf_draft_fork_${id}_${uid}`;
+    return `cf_draft_create_${uid}`;
+  }, [userData?.id, mode, id]);
+
+  const saveDraft = useCallback((data) => {
+    try {
+      const serializable = {
+        charData: data.charData,
+        isImprovisingGreeting: data.isImprovisingGreeting,
+        mode,
+        id: id || null,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(getDraftKey(), JSON.stringify(serializable));
+    } catch (_) { /* quota exceeded */ }
+  }, [getDraftKey, mode, id]);
+
+  const clearDraft = useCallback(() => {
+    try { localStorage.removeItem(getDraftKey()); } catch (_) {}
+  }, [getDraftKey]);
+
+  const loadDraft = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(getDraftKey());
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      // Ignore drafts older than 7 days
+      if (Date.now() - parsed.savedAt > 7 * 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(getDraftKey());
+        return null;
+      }
+      return parsed;
+    } catch (_) { return null; }
+  }, [getDraftKey]);
+
   const isProUser = !!userData?.is_pro;
   const creditBalance = parseFloat(userData?.purchased_credit_balance || 0);
   const remainingCredits = parseFloat(userData?.remaining_credits || 0);
@@ -198,6 +239,9 @@ export default function CharacterFormPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [appealReason, setAppealReason] = useState('');
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const draftTimerRef = useRef(null);
+  const draftRestoredRef = useRef(false);
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
   const selectedTokenLimits = getTokenLimits(charData.model || DEFAULT_CHAT_CONFIG.model);
   const selectedTokenTiers = getTokenTiers(charData.model || DEFAULT_CHAT_CONFIG.model);
   const effectiveContextLabel = charData.context_label === 'advanced' ? 'advanced' : 'standard';
@@ -220,6 +264,50 @@ export default function CharacterFormPage() {
 
     return tokenPayload.message || '已达到点数额度上限。';
   };
+
+  // ── Debounced draft auto-save ─────────────────────────────────
+  useEffect(() => {
+    // Don't save while still loading existing character data
+    if (loading) return;
+    // Don't save before draft has been restored (avoids overwriting stored draft)
+    if (!draftRestoredRef.current && mode === 'create') return;
+
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      saveDraft({ charData, isImprovisingGreeting });
+    }, 800);
+
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
+  }, [charData, isImprovisingGreeting, loading, mode, saveDraft]);
+
+  // ── Restore draft on mount for create mode ────────────────────
+  useEffect(() => {
+    if (mode !== 'create') return;
+    if (draftRestoredRef.current) return;
+    const draft = loadDraft();
+    if (draft && draft.charData) {
+      setShowDraftBanner(true);
+      // Don't set draftRestoredRef.current here — wait until the user
+      // actually restores or discards, so autosave can't clobber it first.
+    } else {
+      draftRestoredRef.current = true;
+    }
+  }, [mode, loadDraft]);
+
+  // ── beforeunload warning for unsaved changes ──────────────────
+  useEffect(() => {
+    const hasContent = charData.name.trim() || charData.persona.trim() || charData.greeting.trim();
+    if (!hasContent) return;
+
+    const handler = (e) => {
+      e.preventDefault();
+      e.returnValue = ''; // Chrome requires this
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [charData.name, charData.persona, charData.greeting]);
 
   // Enforce level locks on fork/paid options
   useEffect(() => {
@@ -473,6 +561,7 @@ export default function CharacterFormPage() {
       });
       const data = await res.json();
       if (res.ok) {
+        clearDraft();
         if (refreshUserData) {
           refreshUserData({ silent: true });
         }
@@ -547,6 +636,74 @@ export default function CharacterFormPage() {
 
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           <BanNotice banType={userData?.ban_type} banUntil={userData?.ban_until} context="upload" />
+
+          {/* Draft restore banner */}
+          {showDraftBanner && mode === 'create' && (
+            <div
+              className="alert d-flex align-items-center justify-content-between mb-4"
+              style={{
+                background: '#fef3c7',
+                border: '1px solid #f59e0b',
+                borderRadius: 12,
+                padding: '0.75rem 1rem',
+              }}
+            >
+              <div className="d-flex align-items-center gap-2">
+                <i className="bi bi-file-earmark-text" style={{ fontSize: '1.1rem', color: '#d97706' }}></i>
+                <span style={{ fontSize: '0.9rem', color: '#92400e', fontWeight: 500 }}>
+                  检测到未保存的草稿，是否需要恢复？
+                </span>
+              </div>
+              <div className="d-flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background: '#f59e0b',
+                    color: '#fff',
+                    borderRadius: 8,
+                    border: 'none',
+                    fontWeight: 600,
+                    padding: '0.3rem 0.8rem',
+                  }}
+                  onClick={() => {
+                    const draft = loadDraft();
+                    if (draft && draft.charData) {
+                      setCharData(draft.charData);
+                      if (typeof draft.isImprovisingGreeting === 'boolean') {
+                        setIsImprovisingGreeting(draft.isImprovisingGreeting);
+                      }
+                      toast.show('草稿已恢复', { type: 'success' });
+                    }
+                    draftRestoredRef.current = true;
+                    setShowDraftBanner(false);
+                  }}
+                >
+                  恢复
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background: 'transparent',
+                    color: '#92400e',
+                    borderRadius: 8,
+                    border: '1px solid #d97706',
+                    fontWeight: 500,
+                    padding: '0.3rem 0.8rem',
+                  }}
+                  onClick={() => {
+                    clearDraft();
+                    draftRestoredRef.current = true;
+                    setShowDraftBanner(false);
+                  }}
+                >
+                  丢弃
+                </button>
+              </div>
+            </div>
+          )}
+
           {isAppealMode && (
             <div className="alert alert-warning mb-4" role="alert" style={{ borderRadius: 10 }}>
               <i className="bi bi-megaphone-fill me-2"></i>

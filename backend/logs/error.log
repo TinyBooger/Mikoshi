@@ -91865,3 +91865,4 @@ Traceback (most recent call last):
                                    ^^^^^^^^^
 NameError: name 'is_public' is not defined
 
+2026-07-03 16:22:57 - utils.error_logger - CRITICAL - [HTTPError] HTTP 502 error | Endpoint: POST /api/create-character

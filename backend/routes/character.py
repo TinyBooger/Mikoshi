@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import array, TEXT
 from typing import List, Optional
 from datetime import datetime, UTC
 import json
+import logging
 
 from database import get_db
 from models import Character, User, Tag, UserLikedCharacter, ChatHistory
@@ -29,13 +30,15 @@ from utils.user_utils import get_active_ban_type, is_upload_banned
 
 router = APIRouter()
 
+logger = logging.getLogger(__name__)
+
 LONG_DESCRIPTION_CHUNK_PROMPT = """Split the following character description into semantic chunks for an AI roleplay system.
 
 Rules:
 
 * Each chunk should contain one coherent idea or topic.
 * Each chunk must be understandable on its own.
-* Maximum 800 words per chunk.
+* Maximum 800 characters per chunk.
 * Maximum 20 chunks total.
 * Preserve important roleplay information.
 * Avoid repeating information across chunks.
@@ -79,20 +82,20 @@ def _sanitize_chunks(payload: dict) -> list[dict[str, str]]:
         text = str(chunk.get("content", "")).strip()
         if not text:
             continue
-        words = text.split()
-        if len(words) > 800:
-            text = " ".join(words[:800]).strip()
+        if len(text) > 800:
+            text = text[:800].strip()
         cleaned.append({"content": text})
     return cleaned
 
 
 def _fallback_split_chunks(long_description: str) -> list[dict[str, str]]:
-    words = (long_description or "").split()
-    if not words:
+    source = (long_description or "").strip()
+    if not source:
         return []
+    MAX_CHUNK_CHARS = 800
     chunks = []
-    for i in range(0, len(words), 800):
-        piece = " ".join(words[i:i + 800]).strip()
+    for i in range(0, len(source), MAX_CHUNK_CHARS):
+        piece = source[i:i + MAX_CHUNK_CHARS].strip()
         if piece:
             chunks.append({"content": piece})
         if len(chunks) >= 20:
@@ -118,12 +121,17 @@ def split_long_description_chunks(long_description: str) -> tuple[list[dict[str,
         )
         usage = normalize_usage(getattr(response, "usage", None))
         raw = response.choices[0].message.content if response and response.choices else ""
+        logger.info("split_long_description_chunks: raw response length=%d, preview=%s", len(raw or ""), (raw or "")[:300])
         parsed = _extract_json_payload(raw or "")
+        logger.info("split_long_description_chunks: parsed keys=%s", list(parsed.keys()) if isinstance(parsed, dict) else type(parsed).__name__)
         chunks = _sanitize_chunks(parsed)
         if chunks:
+            logger.info("split_long_description_chunks: success, %d chunks produced", len(chunks))
             return chunks, True, usage
+        logger.info("split_long_description_chunks: _sanitize_chunks returned empty, using fallback split")
         return _fallback_split_chunks(source), False, usage
-    except Exception:
+    except Exception as e:
+        logger.info("split_long_description_chunks: exception=%s, using fallback split", e)
         return _fallback_split_chunks(source), False, empty_usage
 
 
@@ -313,7 +321,7 @@ async def create_character(
             )
         long_description_chunks, split_ok, split_usage = split_long_description_chunks(normalized_long_description)
         if not split_ok:
-            raise HTTPException(status_code=502, detail="Failed to split long description into chunks")
+            logger.warning("split_long_description_chunks returned split_ok=False, continuing with fallback chunks (count=%d)", len(long_description_chunks))
         if split_usage["total_tokens"] > 0:
             split_credit_amount = usage_to_credits(split_usage, "deepseek-v4-flash")
             usage_result = apply_credit_usage_with_wallet(
@@ -554,7 +562,7 @@ async def update_character(
                 )
             long_description_chunks, split_ok, split_usage = split_long_description_chunks(normalized_long_description)
             if not split_ok:
-                raise HTTPException(status_code=502, detail="Failed to split long description into chunks")
+                logger.warning("split_long_description_chunks (update) returned split_ok=False, continuing with fallback chunks (count=%d)", len(long_description_chunks))
             if split_usage["total_tokens"] > 0:
                 split_credit_amount = usage_to_credits(split_usage, "deepseek-v4-flash")
                 usage_result = apply_credit_usage_with_wallet(
