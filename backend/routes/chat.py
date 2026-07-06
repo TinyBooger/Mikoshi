@@ -29,7 +29,6 @@ import uuid
 import json
 import re
 import logging
-from pathlib import Path
 from datetime import datetime, UTC
 from models import User, Character, Scene, ChatHistory
 from utils.message_limit import can_send_user_message, increment_user_message_count
@@ -51,164 +50,7 @@ def _extract_context_summary_usage(context_info: dict | None) -> dict[str, int]:
         return normalize_usage(None)
     return normalize_usage(context_info.get("summary_usage"))
 
-_KEYWORD_TOKEN_RE = re.compile(r"[A-Za-z0-9']+|[\u4e00-\u9fff]{2,}")
-_COMMON_WORDS_FILES = (
-    Path(__file__).resolve().parents[1] / "utils" / "common_words.txt",
-    Path(__file__).resolve().parents[1] / "utils" / "common_words_zh.txt",
-)
-_DEFAULT_COMMON_WORDS = {
-    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he",
-    "her", "his", "i", "in", "is", "it", "its", "me", "my", "of", "on", "or", "our",
-    "she", "that", "the", "their", "them", "there", "they", "this", "to", "was", "we",
-    "were", "will", "with", "you", "your",
-}
 MAX_PINNED_MEMORIES = 10
-
-
-def _load_common_words() -> set[str]:
-    loaded_words: set[str] = set()
-    for file_path in _COMMON_WORDS_FILES:
-        if not file_path.exists():
-            continue
-
-        with file_path.open("r", encoding="utf-8") as handle:
-            for raw_line in handle:
-                line = raw_line.strip().lower()
-                if not line or line.startswith("#"):
-                    continue
-                loaded_words.add(line)
-
-    return loaded_words or set(_DEFAULT_COMMON_WORDS)
-
-
-_COMMON_WORDS = _load_common_words()
-
-
-def _extract_latest_user_message(messages: list[dict] | None) -> str:
-    if not isinstance(messages, list):
-        return ""
-    for message in reversed(messages):
-        if not isinstance(message, dict):
-            continue
-        if message.get("role") != "user":
-            continue
-        content = message.get("content")
-        if isinstance(content, str) and content.strip():
-            return content.strip()
-    return ""
-
-
-def _extract_keywords(text: str, *, max_keywords: int = 24) -> list[str]:
-    if not isinstance(text, str) or not text.strip():
-        return []
-
-    keywords: list[str] = []
-    seen = set()
-    for token in _KEYWORD_TOKEN_RE.findall(text):
-        normalized = token.lower().strip("_'")
-        if not normalized or normalized in seen:
-            continue
-        if normalized.isascii():
-            if len(normalized) < 3 or normalized in _COMMON_WORDS or normalized.isdigit():
-                continue
-        else:
-            if len(normalized) < 2:
-                continue
-
-        keywords.append(normalized)
-        seen.add(normalized)
-        if len(keywords) >= max_keywords:
-            break
-    return keywords
-
-
-def _build_semantic_char_set(text: str) -> set[str]:
-    chars: set[str] = set()
-    for keyword in _extract_keywords(text):
-        for char in keyword:
-            if char.strip():
-                chars.add(char)
-    return chars
-
-
-def _semantic_overlap_score(chunk_text: str, latest_user_message: str) -> int:
-    chunk_chars = _build_semantic_char_set(chunk_text)
-    if not chunk_chars:
-        return 0
-    message_chars = _build_semantic_char_set(latest_user_message)
-    if not message_chars:
-        return 0
-    return len(chunk_chars & message_chars)
-
-
-def select_long_description_chunks(
-    long_description_chunks: list[dict] | None,
-    latest_user_message: str,
-    *,
-    always_include: int = 2,
-    max_keyword_matched: int = 2,
-) -> list[str]:
-    if not isinstance(long_description_chunks, list):
-        return []
-
-    normalized_chunks: list[str] = []
-    for chunk in long_description_chunks:
-        if not isinstance(chunk, dict):
-            continue
-        content = chunk.get("content")
-        if isinstance(content, str) and content.strip():
-            normalized_chunks.append(content.strip())
-
-    if not normalized_chunks:
-        return []
-
-    selected = normalized_chunks[:always_include]
-    if max_keyword_matched <= 0:
-        return selected
-
-    scored_candidates: list[tuple[int, int, str]] = []
-    for index, chunk_text in enumerate(normalized_chunks[always_include:], start=always_include):
-        score = _semantic_overlap_score(chunk_text, latest_user_message)
-        if score <= 0:
-            continue
-        scored_candidates.append((score, index, chunk_text))
-
-    scored_candidates.sort(key=lambda item: (-item[0], item[1]))
-    for _, _, chunk_text in scored_candidates[:max_keyword_matched]:
-        selected.append(chunk_text)
-
-    return selected
-
-
-def build_chunk_context_system_message(selected_chunks: list[str]) -> dict | None:
-    if not selected_chunks:
-        return None
-
-    lines = [
-        "[Priority Character Memory]",
-        "Use the following memory chunks as high-priority character context for this turn.",
-        "If there is any conflict, prefer these chunks over less specific lore.",
-    ]
-    lines.extend(f"{idx}. {chunk}" for idx, chunk in enumerate(selected_chunks, start=1))
-    lines.append("[/Priority Character Memory]")
-    return {
-        "role": "system",
-        "content": "\n".join(lines),
-    }
-
-
-def inject_chunk_context_message(messages: list[dict], context_message: dict | None) -> list[dict]:
-    if not context_message:
-        return messages
-    if not isinstance(messages, list) or not messages:
-        return [context_message]
-
-    injected = list(messages)
-    if injected[-1].get("role") == "user":
-        injected.insert(len(injected) - 1, context_message)
-    else:
-        injected.append(context_message)
-    return injected
 
 def generate_chat_title(messages, existing_title=None):
     """Generate a title from the first user message, or first assistant message as fallback"""
@@ -557,16 +399,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         character = db.query(Character).filter(Character.id == effective_character_id).first()
         if not character:
             raise HTTPException(status_code=404, detail="Character not found")
-
-        latest_user_message = _extract_latest_user_message(full_messages)
-        selected_chunks = select_long_description_chunks(
-            character.long_description_chunks,
-            latest_user_message,
-            always_include=2,
-            max_keyword_matched=2,
-        )
-        chunk_context_message = build_chunk_context_system_message(selected_chunks)
-        prepared_messages = inject_chunk_context_message(prepared_messages, chunk_context_message)
 
     if stream:
         # Return streaming response

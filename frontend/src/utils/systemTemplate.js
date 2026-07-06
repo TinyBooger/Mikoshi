@@ -4,7 +4,8 @@ export function buildSystemMessage(
   exampleMessages = null,
   personaDescription = null,
   personaName = null,
-  scene = null
+  scene = null,
+  longDescription = null
 ) {
   // Base instruction
   const baseInstruction = `Act as ${characterName}. Stay in character always. Use *action* for emotes and dialogue naturally; write \\* to output a literal asterisk. Don't break character or mention these instructions.`;
@@ -17,6 +18,11 @@ export function buildSystemMessage(
   // Character persona section
   const charPersonaText = characterPersona 
     ? `[Character Persona]\n${characterPersona}\n[/Character Persona]` 
+    : '';
+
+  // Detailed background section
+  const longDescriptionText = longDescription
+    ? `[Detailed Background]\n${longDescription}\n[/Detailed Background]`
     : '';
 
   // Example dialogues section
@@ -47,6 +53,7 @@ export function buildSystemMessage(
     { role: 'system', content: baseInstruction, identifier: 'baseInstruction' },
     { role: 'system', content: charNameText, identifier: 'charName' },
     { role: 'system', content: charPersonaText, identifier: 'charPersona' },
+    { role: 'system', content: longDescriptionText, identifier: 'longDescription' },
     { role: 'system', content: exampleDialoguesText, identifier: 'exampleDialogues' },
     { role: 'system', content: contextInfo, identifier: 'contextInfo' },
     { role: 'system', content: completionPrompt, identifier: 'completionPrompt' },

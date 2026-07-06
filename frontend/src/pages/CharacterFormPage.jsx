@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext, useRef, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useContext, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
 import TagsInput from '../components/TagsInput';
 import ImageCropModal from '../components/ImageCropModal';
@@ -12,7 +12,7 @@ import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/creditDisplay';
-import { isCreditLocked, getCreditStatus } from '../utils/creditCheck';
+
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import { DEFAULT_CONTEXT_WINDOW_TIER, getFilteredContextWindowTierOptions, normalizeContextWindowTier } from '../utils/contextWindow';
 import ModelSelect from '../components/ModelSelect';
@@ -160,26 +160,9 @@ export default function CharacterFormPage() {
 
   const isProUser = !!userData?.is_pro;
 
-  // Build creditLimits from userData to use unified credit check util.
-  // Mirrors ChatPage's applyCreditLimits shape.
-  const creditLimits = useMemo(() => ({
-    cap_reached: !!userData?.credit_cap_reached,
-    purchased_credit_balance: userData?.purchased_credit_balance ?? 0,
-    remaining_credits: userData?.remaining_credits ?? 0,
-    is_limited: userData?.credit_cap !== null,
-    cap_scope: userData?.credit_cap_scope,
-  }), [
-    userData?.credit_cap_reached,
-    userData?.purchased_credit_balance,
-    userData?.remaining_credits,
-    userData?.credit_cap,
-    userData?.credit_cap_scope,
-  ]);
-
-  const creditStatus = getCreditStatus(creditLimits);
   const canUseAdvancedConfig = isProUser;
-  // Allow advanced character if user has any credits available (quota or wallet)
-  const canUseAdvancedCharacter = !creditStatus.isLocked;
+  // Advanced character context (long description) is available to all users
+  const canUseAdvancedCharacter = true;
   const canPrivate = true;
   const canFork = isProUser;
   const navigate = useNavigate();
@@ -336,16 +319,13 @@ export default function CharacterFormPage() {
       if (!canPrivate && !prev.is_public) {
         next = { ...next, is_public: true };
       }
-      if (!canUseAdvancedCharacter && prev.context_label === 'advanced') {
-        next = { ...next, context_label: 'standard' };
-      }
       // In fork mode, must be free and forkable
       if (mode === 'fork') {
         next = { ...next, is_free: true, price: 0, is_forkable: true };
       }
       return next;
     });
-  }, [canPrivate, canUseAdvancedCharacter, mode]);
+  }, [canPrivate, mode]);
 
   useEffect(() => {
     if (mode === 'edit' || mode === 'fork') {
@@ -382,15 +362,14 @@ export default function CharacterFormPage() {
           
           if (mode === 'fork') {
             const sourceIsAdvanced = data.context_label === 'advanced';
-            const stripAdvanced = sourceIsAdvanced && !canUseAdvancedCharacter;
-            const loadedModel = stripAdvanced ? DEFAULT_CHAT_CONFIG.model : normalizeModelName(data.model);
+            const loadedModel = normalizeModelName(data.model);
             // In fork mode, set forked_from fields and clear the name for new creation
             setCharData({
               name: data.name,
               persona: data.persona || '',
-              context_label: stripAdvanced ? 'standard' : (sourceIsAdvanced ? 'advanced' : 'standard'),
+              context_label: sourceIsAdvanced ? 'advanced' : 'standard',
               sample: data.example_messages || '',
-              long_description: stripAdvanced ? '' : (data.long_description || ''),
+              long_description: data.long_description || '',
               tagline: data.tagline || '',
               tags: data.tags || [],
               greeting: isImprov ? '' : loadedGreeting,
@@ -404,12 +383,12 @@ export default function CharacterFormPage() {
               forked_from_creator_name: data.creator_name || null,
               forked_from_creator_profile_pic: data.creator_profile_pic || null,
               model: loadedModel,
-              temperature: stripAdvanced ? DEFAULT_CHAT_CONFIG.temperature : clampValue(data.temperature, 0, 2, DEFAULT_CHAT_CONFIG.temperature),
-              top_p: stripAdvanced ? DEFAULT_CHAT_CONFIG.top_p : clampValue(data.top_p, 0, 1, DEFAULT_CHAT_CONFIG.top_p),
-              max_tokens: stripAdvanced ? DEFAULT_CHAT_CONFIG.max_tokens : normalizeTokenTierValue(loadedModel, data.max_tokens),
-              presence_penalty: stripAdvanced ? DEFAULT_CHAT_CONFIG.presence_penalty : clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
-              frequency_penalty: stripAdvanced ? DEFAULT_CHAT_CONFIG.frequency_penalty : clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
-              context_window_tier: stripAdvanced ? DEFAULT_CHAT_CONFIG.context_window_tier : normalizeContextWindowTier(data.context_window_tier, { canUseAdvancedConfig }, loadedModel),
+              temperature: clampValue(data.temperature, 0, 2, DEFAULT_CHAT_CONFIG.temperature),
+              top_p: clampValue(data.top_p, 0, 1, DEFAULT_CHAT_CONFIG.top_p),
+              max_tokens: normalizeTokenTierValue(loadedModel, data.max_tokens),
+              presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
+              frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
+              context_window_tier: normalizeContextWindowTier(data.context_window_tier, { canUseAdvancedConfig }, loadedModel),
               background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
           } else {
@@ -1153,9 +1132,7 @@ export default function CharacterFormPage() {
           <div className="mb-3 d-flex align-items-center justify-content-between" style={{ background: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: 14, padding: '0.75rem 1rem' }}>
             <div>
               <span style={{ fontWeight: 700, color: '#232323', fontSize: '0.97rem' }}>启用详细人物设定</span>
-              {!canUseAdvancedCharacter ? (
-                <small style={{ display: 'block', color: '#dc3545', marginTop: 2 }}>您的点数余额不足，无法使用详细人物设定。 <a href="/credit-topup" onClick={e => { e.preventDefault(); navigate('/credit-topup'); }} style={{ color: '#dc3545', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}>充值点数</a></small>
-              ) : effectiveContextLabel === 'advanced' ? (
+              {effectiveContextLabel === 'advanced' ? (
                 <small style={{ display: 'block', color: '#7c3aed', marginTop: 2 }}>可填写最多15000字的详细人物设定，用于构建更丰富的角色背景</small>
               ) : (
                 <small style={{ display: 'block', color: '#888', marginTop: 2 }}>开启后可额外填写最多15000字的详细人物设定</small>
@@ -1168,10 +1145,8 @@ export default function CharacterFormPage() {
                 role="switch"
                 id="detailedDescriptionToggle"
                 checked={effectiveContextLabel === 'advanced'}
-                disabled={!canUseAdvancedCharacter}
-                title={!canUseAdvancedCharacter ? '点数余额不足，请先充值' : ''}
                 onChange={e => handleChange('context_label', e.target.checked ? 'advanced' : 'standard')}
-                style={{ width: '2.5em', height: '1.4em', cursor: canUseAdvancedCharacter ? 'pointer' : 'not-allowed' }}
+                style={{ width: '2.5em', height: '1.4em', cursor: 'pointer' }}
               />
             </div>
           </div>

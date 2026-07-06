@@ -73,6 +73,7 @@ class CharacterOut(BaseModel):
     max_tokens: int = 250
     presence_penalty: float = 0.0
     frequency_penalty: float = 0.0
+    context_window_tier: str = "8k"
     created_time: Any
     creator_id: str
     creator_name: Optional[str] = None

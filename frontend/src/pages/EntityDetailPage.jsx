@@ -286,12 +286,6 @@ export default function EntityDetailPage() {
     secondaryInfo = entity.intro || '';
   }
 
-  const longDescriptionChunks = Array.isArray(entity?.long_description_chunks)
-    ? entity.long_description_chunks
-        .map((chunk) => (typeof chunk?.content === 'string' ? chunk.content.trim() : ''))
-        .filter(Boolean)
-    : [];
-
   const sectionTitleWrapStyle = {
     borderBottom: '1px solid #f0f0f0',
     paddingBottom: '0.55rem',
@@ -779,37 +773,6 @@ export default function EntityDetailPage() {
               </div>
             )}
 
-            {longDescriptionChunks.length > 0 && (
-              <div className="card mb-4">
-                <div className="card-body">
-                  <div style={sectionTitleWrapStyle}>
-                    <h3 style={sectionTitleStyle}>
-                      {t('entity_detail.long_description_chunks', '详细设定分段')}
-                    </h3>
-                  </div>
-                  <div className="d-flex flex-column gap-3">
-                    {longDescriptionChunks.map((chunkText, index) => (
-                      <div
-                        key={`chunk-${index}`}
-                        style={{
-                          padding: '0.75rem 0.9rem',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '10px',
-                          background: '#f8fafc'
-                        }}
-                      >
-                        <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.4rem' }}>
-                          {t('entity_detail.chunk_priority')} {index + 1}
-                        </div>
-                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.68, color: '#444', fontSize: '0.94rem' }}>
-                          {chunkText}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>

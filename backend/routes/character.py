@@ -21,123 +21,20 @@ from utils.validators import validate_character_fields
 from utils.content_censor import censor_form_payload
 from utils.text_moderation import moderate_form_payload_with_review
 from schemas import CharacterOut, CharacterListOut
-from utils.llm_client import client
 from utils.content_review_queue import enqueue_character_review
-from utils.usage_utils import normalize_usage, usage_to_credits
-from utils.credit_usage_ledger import apply_credit_usage_with_wallet
-from utils.credit_cap import can_consume_credits, get_credit_cap_info, build_credit_cap_reached_payload
+from utils.credit_cap import get_credit_cap_info
 from utils.user_utils import get_active_ban_type, is_upload_banned
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-LONG_DESCRIPTION_CHUNK_PROMPT = """Split the following character description into semantic chunks for an AI roleplay system.
-
-Rules:
-
-* Each chunk should contain one coherent idea or topic.
-* Each chunk must be understandable on its own.
-* Maximum 800 characters per chunk.
-* Maximum 20 chunks total.
-* Preserve important roleplay information.
-* Avoid repeating information across chunks.
-* Rewrite content into dense instruction-style text.
-* Use short phrases and compact wording.
-
-Order the chunks by importance for roleplay:
-
-* Most important character traits, behavior rules, and personality first.
-* Then relationships or motivations.
-* Then background or lore.
-* Least important details last.
-
-Output JSON only:
-
-{
-"chunks": [
-{"content": "..."},
-{"content": "..."}
-]
-}"""
-
-
-def _extract_json_payload(raw: str) -> dict:
-    content = (raw or "").strip()
-    if "```json" in content:
-        content = content.split("```json", 1)[1].split("```", 1)[0].strip()
-    elif "```" in content:
-        content = content.split("```", 1)[1].split("```", 1)[0].strip()
-    return json.loads(content)
-
-
-def _sanitize_chunks(payload: dict) -> list[dict[str, str]]:
-    chunks = payload.get("chunks") if isinstance(payload, dict) else []
-    if not isinstance(chunks, list):
-        return []
-    cleaned: list[dict[str, str]] = []
-    for chunk in chunks[:20]:
-        if not isinstance(chunk, dict):
-            continue
-        text = str(chunk.get("content", "")).strip()
-        if not text:
-            continue
-        if len(text) > 800:
-            text = text[:800].strip()
-        cleaned.append({"content": text})
-    return cleaned
-
-
-def _fallback_split_chunks(long_description: str) -> list[dict[str, str]]:
-    source = (long_description or "").strip()
-    if not source:
-        return []
-    MAX_CHUNK_CHARS = 800
-    chunks = []
-    for i in range(0, len(source), MAX_CHUNK_CHARS):
-        piece = source[i:i + MAX_CHUNK_CHARS].strip()
-        if piece:
-            chunks.append({"content": piece})
-        if len(chunks) >= 20:
-            break
-    return chunks
-
-
-def split_long_description_chunks(long_description: str) -> tuple[list[dict[str, str]], bool, dict]:
-    source = (long_description or "").strip()
-    empty_usage = normalize_usage(None)
-    if not source:
-        return [], True, empty_usage
-    try:
-        response = client.chat.completions.create(
-            model="deepseek-v4-flash",
-            messages=[
-                {"role": "system", "content": LONG_DESCRIPTION_CHUNK_PROMPT},
-                {"role": "user", "content": source},
-            ],
-            max_tokens=1800,
-            temperature=0.2,
-            top_p=0.9,
-        )
-        usage = normalize_usage(getattr(response, "usage", None))
-        raw = response.choices[0].message.content if response and response.choices else ""
-        logger.info("split_long_description_chunks: raw response length=%d, preview=%s", len(raw or ""), (raw or "")[:300])
-        parsed = _extract_json_payload(raw or "")
-        logger.info("split_long_description_chunks: parsed keys=%s", list(parsed.keys()) if isinstance(parsed, dict) else type(parsed).__name__)
-        chunks = _sanitize_chunks(parsed)
-        if chunks:
-            logger.info("split_long_description_chunks: success, %d chunks produced", len(chunks))
-            return chunks, True, usage
-        logger.info("split_long_description_chunks: _sanitize_chunks returned empty, using fallback split")
-        return _fallback_split_chunks(source), False, usage
-    except Exception as e:
-        logger.info("split_long_description_chunks: exception=%s, using fallback split", e)
-        return _fallback_split_chunks(source), False, empty_usage
-
 
 def normalize_context_label(value: Optional[str]) -> str:
     return "advanced" if value == "advanced" else "standard"
 
+
+ALLOWED_CONTEXT_WINDOW_TIERS = {"8k", "32k", "128k", "256k", "512k", "1M"}
 
 def parse_character_chat_config(
     model: str,
@@ -146,6 +43,7 @@ def parse_character_chat_config(
     max_tokens: int,
     presence_penalty: float,
     frequency_penalty: float,
+    context_window_tier: str = "8k",
 ):
     safe_model = model if model in ALLOWED_MODEL_IDS else "deepseek-v4-flash"
     safe_temperature = max(0.0, min(2.0, float(temperature)))
@@ -155,6 +53,7 @@ def parse_character_chat_config(
     safe_max_tokens = max(1, min(max_output, int(max_tokens)))
     safe_presence_penalty = max(-2.0, min(2.0, float(presence_penalty)))
     safe_frequency_penalty = max(-2.0, min(2.0, float(frequency_penalty)))
+    safe_context_window_tier = context_window_tier if context_window_tier.lower() in ALLOWED_CONTEXT_WINDOW_TIERS else "8k"
     return {
         "model": safe_model,
         "temperature": safe_temperature,
@@ -162,6 +61,7 @@ def parse_character_chat_config(
         "max_tokens": safe_max_tokens,
         "presence_penalty": safe_presence_penalty,
         "frequency_penalty": safe_frequency_penalty,
+        "context_window_tier": safe_context_window_tier,
     }
 
 
@@ -173,6 +73,7 @@ def default_character_chat_config():
         "max_tokens": 250,
         "presence_penalty": 0.0,
         "frequency_penalty": 0.0,
+        "context_window_tier": "8k",
     }
 
 ALLOWED_BACKGROUND_TYPES = {"none", "preset", "upload", "character_picture"}
@@ -221,6 +122,7 @@ async def create_character(
     max_tokens: int = Form(250),
     presence_penalty: float = Form(0),
     frequency_penalty: float = Form(0),
+    context_window_tier: str = Form("8k"),
     is_public: bool = Form(False),
     is_forkable: bool = Form(False),
     forked_from_id: Optional[int] = Form(None),
@@ -310,33 +212,9 @@ async def create_character(
         max_tokens=max_tokens,
         presence_penalty=presence_penalty,
         frequency_penalty=frequency_penalty,
+        context_window_tier=context_window_tier,
     ) if can_use_advanced_config else default_character_chat_config()
     long_description_chunks = []
-    if context_label == "advanced" and normalized_long_description:
-        credit_check = can_consume_credits(current_user, db)
-        if credit_check["blocked"]:
-            return JSONResponse(
-                content=build_credit_cap_reached_payload(credit_check.get("limit") or {}),
-                status_code=429,
-            )
-        long_description_chunks, split_ok, split_usage = split_long_description_chunks(normalized_long_description)
-        if not split_ok:
-            logger.warning("split_long_description_chunks returned split_ok=False, continuing with fallback chunks (count=%d)", len(long_description_chunks))
-        if split_usage["total_tokens"] > 0:
-            split_credit_amount = usage_to_credits(split_usage, "deepseek-v4-flash")
-            usage_result = apply_credit_usage_with_wallet(
-                db,
-                user=current_user,
-                usage=split_usage,
-                source="character_long_description_split",
-                credit_amount=split_credit_amount,
-            )
-            if not usage_result.get("success"):
-                return JSONResponse(
-                    content=build_credit_cap_reached_payload(usage_result.get("limit") or credit_check.get("limit") or {}),
-                    status_code=429,
-                )
-            db.commit()
 
     char = Character(
         name=name,
@@ -354,6 +232,7 @@ async def create_character(
         max_tokens=chat_config["max_tokens"],
         presence_penalty=chat_config["presence_penalty"],
         frequency_penalty=chat_config["frequency_penalty"],
+        context_window_tier=chat_config["context_window_tier"],
         creator_id=current_user.id,
         creator_name=current_user.name,
         is_public=False if shadow else is_public,
@@ -477,6 +356,7 @@ async def update_character(
     max_tokens: Optional[int] = Form(None),
     presence_penalty: Optional[float] = Form(None),
     frequency_penalty: Optional[float] = Form(None),
+    context_window_tier: Optional[str] = Form(None),
     is_public: Optional[bool] = Form(None),
     is_forkable: Optional[bool] = Form(None),
     picture: UploadFile = File(None),
@@ -537,7 +417,6 @@ async def update_character(
     can_create_private = True
 
     # Advanced character context_label is now open to all users (free & pro).
-    # Credit check happens later when processing long_description.
 
     # Private character creation is open to all users.
     final_is_public = is_public if is_public is not None else char.is_public
@@ -547,41 +426,8 @@ async def update_character(
     final_is_forkable = is_forkable if is_forkable is not None else char.is_forkable
 
     normalized_long_description = long_description.strip()
-    existing_long_description = (char.long_description or "").strip()
-    long_description_changed = normalized_long_description != existing_long_description
 
-    if context_label == "advanced":
-        if not normalized_long_description:
-            long_description_chunks = []
-        elif long_description_changed:
-            credit_check = can_consume_credits(current_user, db)
-            if credit_check["blocked"]:
-                return JSONResponse(
-                    content=build_credit_cap_reached_payload(credit_check.get("limit") or {}),
-                    status_code=429,
-                )
-            long_description_chunks, split_ok, split_usage = split_long_description_chunks(normalized_long_description)
-            if not split_ok:
-                logger.warning("split_long_description_chunks (update) returned split_ok=False, continuing with fallback chunks (count=%d)", len(long_description_chunks))
-            if split_usage["total_tokens"] > 0:
-                split_credit_amount = usage_to_credits(split_usage, "deepseek-v4-flash")
-                usage_result = apply_credit_usage_with_wallet(
-                    db,
-                    user=current_user,
-                    usage=split_usage,
-                    source="character_long_description_split",
-                    credit_amount=split_credit_amount,
-                )
-                if not usage_result.get("success"):
-                    return JSONResponse(
-                        content=build_credit_cap_reached_payload(usage_result.get("limit") or credit_check.get("limit") or {}),
-                        status_code=429,
-                    )
-                db.commit()
-        else:
-            long_description_chunks = char.long_description_chunks or []
-    else:
-        long_description_chunks = []
+    long_description_chunks = []
 
     char.name = name
     char.persona = persona
@@ -595,11 +441,12 @@ async def update_character(
     can_use_advanced_config = is_pro_user
     chat_config = parse_character_chat_config(
         model=model,
-        temperature=temperature,
-        top_p=top_p,
-        max_tokens=max_tokens,
-        presence_penalty=presence_penalty,
-        frequency_penalty=frequency_penalty,
+        temperature=temperature if temperature is not None else char.temperature,
+        top_p=top_p if top_p is not None else char.top_p,
+        max_tokens=max_tokens if max_tokens is not None else char.max_tokens,
+        presence_penalty=presence_penalty if presence_penalty is not None else char.presence_penalty,
+        frequency_penalty=frequency_penalty if frequency_penalty is not None else char.frequency_penalty,
+        context_window_tier=context_window_tier if context_window_tier is not None else char.context_window_tier,
     ) if can_use_advanced_config else default_character_chat_config()
     char.model = chat_config["model"]
     char.temperature = chat_config["temperature"]
@@ -607,6 +454,7 @@ async def update_character(
     char.max_tokens = chat_config["max_tokens"]
     char.presence_penalty = chat_config["presence_penalty"]
     char.frequency_penalty = chat_config["frequency_penalty"]
+    char.context_window_tier = chat_config["context_window_tier"]
 
     if is_public is not None:
         char.is_public = False if shadow else is_public

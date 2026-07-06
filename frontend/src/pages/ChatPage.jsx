@@ -561,7 +561,8 @@ export default function ChatPage() {
       character?.example_messages || '',
       persona?.description || null,
       persona?.name || null,
-      scene?.description || null
+      scene?.description || null,
+      character?.long_description || null
     )
   });
 
