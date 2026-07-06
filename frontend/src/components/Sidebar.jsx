@@ -10,7 +10,7 @@ import textLogo from '../assets/images/logo_text.png';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import TextButton from './TextButton';
-import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/creditDisplay.js';
+import { formatCompactTokenCount, formatCreditCount, getTokenQuotaLabel } from '../utils/creditDisplay.js';
 
 export default function Sidebar({ isMobile, setSidebarVisible }) {
   const navigate = useNavigate();
@@ -1111,7 +1111,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               }}
             >
               <span>钱包点数</span>
-              <span>{formatCompactTokenCount(Number(userData?.purchased_credit_balance || 0))}</span>
+              <span>{formatCreditCount(Number(userData?.purchased_credit_balance || 0))}</span>
             </div>
             <button
               type="button"

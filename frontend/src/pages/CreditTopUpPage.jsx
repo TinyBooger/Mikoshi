@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router';
 import PageWrapper from '../components/PageWrapper';
 import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
-import { formatCompactTokenCount } from '../utils/creditDisplay';
+import { formatCompactTokenCount, formatCreditCount } from '../utils/creditDisplay';
 import { useTranslation } from 'react-i18next';
 import WeChatPayModal from '../components/WeChatPayModal';
 
@@ -236,7 +236,7 @@ export default function CreditTopUpPage() {
               >
                 <div style={{ fontSize: '0.76rem', color: '#6b7280', fontWeight: 700 }}>当前钱包余额（点数）</div>
                 <div style={{ fontSize: '1.2rem', color: '#111827', fontWeight: 800 }}>
-                  {formatCompactTokenCount(Number(userData?.purchased_credit_balance || 0))}
+                  {formatCreditCount(Number(userData?.purchased_credit_balance || 0))}
                 </div>
               </div>
             </div>

@@ -2119,7 +2119,7 @@ export default function ChatPage() {
               </span>
             </div>
           )}
-          {creditLimits?.cap_reached && (
+          {isCreditLocked(creditLimits) && (
             <div
               style={{
                 width: '100%',
@@ -2138,15 +2138,10 @@ export default function ChatPage() {
                 const scopeLabel = isPro ? '本月剩余点数' : '本日剩余点数';
                 const used = Number(creditLimits?.cap_scope === 'monthly' ? creditLimits?.monthly_credit_usage : creditLimits?.daily_credit_usage) || 0;
                 const cap = Number(creditLimits?.credit_cap || 0);
-                const walletBalance = Number(creditLimits?.purchased_credit_balance || 0);
-                const hasWallet = walletBalance > 0;
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
                     <span>
-                      {scopeLabel}已达上限：{formatCompactTokenCount(used)} / {formatCompactTokenCount(cap)}。
-                      {hasWallet
-                        ? ` 当前钱包可用 ${formatCompactTokenCount(walletBalance)} 点数。`
-                        : ' 可升级Pro或购买点数包继续使用。'}
+                      {scopeLabel}已达上限：{formatCompactTokenCount(used)} / {formatCompactTokenCount(cap)}，钱包点数已用尽。可升级Pro或购买点数包继续使用。
                     </span>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       <button
