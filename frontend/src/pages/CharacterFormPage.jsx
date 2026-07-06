@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext, useRef, useCallback } from "react";
+import React, { useEffect, useState, useContext, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
 import TagsInput from '../components/TagsInput';
 import ImageCropModal from '../components/ImageCropModal';
@@ -12,7 +12,9 @@ import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/creditDisplay';
+import { isCreditLocked, getCreditStatus } from '../utils/creditCheck';
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
+import { DEFAULT_CONTEXT_WINDOW_TIER, getFilteredContextWindowTierOptions, normalizeContextWindowTier } from '../utils/contextWindow';
 import ModelSelect from '../components/ModelSelect';
 import BanNotice from '../components/BanNotice';
 
@@ -88,6 +90,7 @@ export default function CharacterFormPage() {
     max_tokens: 4096,
     presence_penalty: 0,
     frequency_penalty: 0,
+    context_window_tier: DEFAULT_CONTEXT_WINDOW_TIER,
   };
   const WALLPAPER_OPTIONS = [
     { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
@@ -156,11 +159,27 @@ export default function CharacterFormPage() {
   }, [getDraftKey]);
 
   const isProUser = !!userData?.is_pro;
-  const creditBalance = parseFloat(userData?.purchased_credit_balance || 0);
-  const remainingCredits = parseFloat(userData?.remaining_credits || 0);
+
+  // Build creditLimits from userData to use unified credit check util.
+  // Mirrors ChatPage's applyCreditLimits shape.
+  const creditLimits = useMemo(() => ({
+    cap_reached: !!userData?.credit_cap_reached,
+    purchased_credit_balance: userData?.purchased_credit_balance ?? 0,
+    remaining_credits: userData?.remaining_credits ?? 0,
+    is_limited: userData?.credit_cap !== null,
+    cap_scope: userData?.credit_cap_scope,
+  }), [
+    userData?.credit_cap_reached,
+    userData?.purchased_credit_balance,
+    userData?.remaining_credits,
+    userData?.credit_cap,
+    userData?.credit_cap_scope,
+  ]);
+
+  const creditStatus = getCreditStatus(creditLimits);
   const canUseAdvancedConfig = isProUser;
-  // Allow advanced character if user has wallet credits OR remaining daily/monthly free credits
-  const canUseAdvancedCharacter = creditBalance > 0 || remainingCredits > 0;
+  // Allow advanced character if user has any credits available (quota or wallet)
+  const canUseAdvancedCharacter = !creditStatus.isLocked;
   const canPrivate = true;
   const canFork = isProUser;
   const navigate = useNavigate();
@@ -189,6 +208,7 @@ export default function CharacterFormPage() {
     max_tokens: DEFAULT_CHAT_CONFIG.max_tokens,
     presence_penalty: DEFAULT_CHAT_CONFIG.presence_penalty,
     frequency_penalty: DEFAULT_CHAT_CONFIG.frequency_penalty,
+    context_window_tier: null,
     background: JSON.stringify({ type: 'preset', preset_id: 'none' }),
   });
   const [picture, setPicture] = useState(null);
@@ -389,6 +409,7 @@ export default function CharacterFormPage() {
               max_tokens: stripAdvanced ? DEFAULT_CHAT_CONFIG.max_tokens : normalizeTokenTierValue(loadedModel, data.max_tokens),
               presence_penalty: stripAdvanced ? DEFAULT_CHAT_CONFIG.presence_penalty : clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
               frequency_penalty: stripAdvanced ? DEFAULT_CHAT_CONFIG.frequency_penalty : clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
+              context_window_tier: stripAdvanced ? DEFAULT_CHAT_CONFIG.context_window_tier : normalizeContextWindowTier(data.context_window_tier, { canUseAdvancedConfig }, loadedModel),
               background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
           } else {
@@ -415,6 +436,7 @@ export default function CharacterFormPage() {
               max_tokens: normalizeTokenTierValue(loadedModel, data.max_tokens),
               presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
               frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
+              context_window_tier: normalizeContextWindowTier(data.context_window_tier, { canUseAdvancedConfig }, loadedModel),
               background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
           }
@@ -464,11 +486,17 @@ export default function CharacterFormPage() {
 
   const handleModelChange = (nextModel) => {
     const nextTokenLimits = getTokenLimits(nextModel);
+    const nextContextTier = normalizeContextWindowTier(
+      charData.context_window_tier,
+      { canUseAdvancedConfig },
+      nextModel,
+    );
     setCharData(prev => ({
       ...prev,
       model: nextModel,
       // Reset to model default for predictable UX when switching models.
       max_tokens: normalizeTokenTierValue(nextModel, nextTokenLimits.defaultValue),
+      context_window_tier: nextContextTier,
     }));
   };
 
@@ -537,6 +565,9 @@ export default function CharacterFormPage() {
   formData.append("max_tokens", String(canUseAdvancedConfig ? safeMaxTokens : DEFAULT_CHAT_CONFIG.max_tokens));
     formData.append("presence_penalty", String(canUseAdvancedConfig ? (charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty) : DEFAULT_CHAT_CONFIG.presence_penalty));
     formData.append("frequency_penalty", String(canUseAdvancedConfig ? (charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty) : DEFAULT_CHAT_CONFIG.frequency_penalty));
+    formData.append("context_window_tier", String(canUseAdvancedConfig
+      ? normalizeContextWindowTier(charData.context_window_tier, { canUseAdvancedConfig }, finalModel)
+      : DEFAULT_CONTEXT_WINDOW_TIER));
     if (!canUseAdvancedConfig) {
       formData.set("model", DEFAULT_CHAT_CONFIG.model);
     }
@@ -1320,6 +1351,46 @@ export default function CharacterFormPage() {
                         disabled={!canUseAdvancedConfig}
                       />
                     </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                      {t('chat.advanced_context_window')}
+                      <InfoHint text={t('chat.advanced_context_window_notice')} />
+                    </label>
+                    {(() => {
+                      const ctxOptions = getFilteredContextWindowTierOptions(
+                        { canUseAdvancedConfig },
+                        charData.model || DEFAULT_CHAT_CONFIG.model,
+                      );
+                      const selectedCtx = normalizeContextWindowTier(
+                        charData.context_window_tier,
+                        { canUseAdvancedConfig },
+                        charData.model || DEFAULT_CHAT_CONFIG.model,
+                      );
+                      return (
+                        <select
+                          className="form-select"
+                          value={selectedCtx}
+                          onChange={e => {
+                            const normalized = normalizeContextWindowTier(
+                              e.target.value,
+                              { canUseAdvancedConfig },
+                              charData.model || DEFAULT_CHAT_CONFIG.model,
+                            );
+                            handleChange('context_window_tier', normalized);
+                          }}
+                          disabled={!canUseAdvancedConfig}
+                          style={{ borderRadius: 12 }}
+                        >
+                          {ctxOptions.map(tier => (
+                            <option key={tier.key} value={tier.key}>
+                              {`${tier.tokens / 1000}k tokens`}
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

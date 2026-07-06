@@ -108,11 +108,9 @@ export default function CharacterSidebar({
 
   const contextWindowTierOptions = getFilteredContextWindowTierOptions({
     canUseAdvancedConfig: canUseAdvancedChatConfig,
-    isProUser,
   }, advancedChatConfig?.model);
   const selectedContextWindowTier = normalizeContextWindowTier(advancedChatConfig?.context_window_tier, {
     canUseAdvancedConfig: canUseAdvancedChatConfig,
-    isProUser,
   }, advancedChatConfig?.model);
   const updateConfig = (key, value, min, max, fallback) => {
     const parsed = Number(value);
@@ -123,7 +121,7 @@ export default function CharacterSidebar({
     const nextTokenLimits = getTokenLimits(nextModel);
     const nextContextTier = normalizeContextWindowTier(
       advancedChatConfig?.context_window_tier,
-      { canUseAdvancedConfig: canUseAdvancedChatConfig, isProUser },
+      { canUseAdvancedConfig: canUseAdvancedChatConfig },
       nextModel,
     );
     setAdvancedChatConfig((prev) => ({
@@ -1123,7 +1121,6 @@ export default function CharacterSidebar({
                 onChange={(e) => {
                   const normalizedTier = normalizeContextWindowTier(e.target.value, {
                     canUseAdvancedConfig: canUseAdvancedChatConfig,
-                    isProUser,
                   }, advancedChatConfig?.model);
                   setAdvancedChatConfig((prev) => ({ ...prev, context_window_tier: normalizedTier }));
                 }}

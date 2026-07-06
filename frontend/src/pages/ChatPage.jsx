@@ -20,6 +20,7 @@ import {
 } from '../utils/contextWindow';
 import { getModelConfig, AVAILABLE_MODEL_IDS, ALLOWED_MODEL_SET } from '../utils/modelConfigs';
 import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/creditDisplay';
+import { isCreditLocked, getCreditStatus } from '../utils/creditCheck';
 
 const WALLPAPER_OPTIONS = [
   { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
@@ -308,7 +309,6 @@ export default function ChatPage() {
     const tokenLimits = getTokenLimits(model);
     const normalizedContextWindowTier = normalizeContextWindowTier(character.context_window_tier, {
       canUseAdvancedConfig: canUseAdvancedChatConfig,
-      isProUser,
     }, model);
     return {
       model,
@@ -333,7 +333,6 @@ export default function ChatPage() {
     const tokenLimits = getTokenLimits(model);
     const normalizedContextWindowTier = normalizeContextWindowTier(rawConfig.context_window_tier, {
       canUseAdvancedConfig: canUseAdvancedChatConfig,
-      isProUser,
     }, model);
 
     return {
@@ -502,8 +501,8 @@ export default function ChatPage() {
   const maybeShowCreditLimitReminder = (limits) => {
     if (!limits || !limits.is_limited) return;
 
-    const remaining = Number(limits.remaining_credits ?? 0);
-    if (remaining > 0) return;
+    // Only show reminder when truly locked (quota exhausted AND wallet empty)
+    if (!isCreditLocked(limits)) return;
 
     toast.show(limits.message || '已达到点数上限，当前与点数相关操作已受限。', { type: 'warning' });
   };
@@ -610,7 +609,6 @@ export default function ChatPage() {
   const getContextWindowUsage = (allMessages) => {
     const effectiveSoftTokenLimit = getContextWindowTokenLimit(advancedChatConfig?.context_window_tier, {
       canUseAdvancedConfig: canUseAdvancedChatConfig,
-      isProUser,
     });
 
     if (!Array.isArray(allMessages)) {
@@ -1291,7 +1289,7 @@ export default function ChatPage() {
 
   const handleSend = async (event) => {
     event.preventDefault();
-    if (creditLimits?.cap_reached) {
+    if (isCreditLocked(creditLimits)) {
       toast.show('已达到点数上限，暂时无法继续对话。', { type: 'warning' });
       return;
     }
@@ -2328,7 +2326,7 @@ export default function ChatPage() {
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 required
-                disabled={!!creditLimits?.cap_reached}
+                disabled={isCreditLocked(creditLimits)}
                 onFocus={e => {
                   e.target.style.border = '1.2px solid #18191a';
                 }}
@@ -2415,7 +2413,7 @@ export default function ChatPage() {
                     }
                   }}
                   title={t('chat.input_shortcut_hint')}
-                  disabled={sending || !!creditLimits?.cap_reached}
+                  disabled={sending || isCreditLocked(creditLimits)}
                 >
                   {sending ? (
                     <span className="spinner-border spinner-border-sm" style={{ color: '#6d638e' }}></span>
