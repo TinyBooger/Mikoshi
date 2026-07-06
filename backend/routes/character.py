@@ -10,7 +10,7 @@ import logging
 
 from database import get_db
 from models import Character, User, Tag, UserLikedCharacter, ChatHistory
-from model_configs import ALLOWED_MODEL_IDS, get_model
+from model_configs import ALLOWED_MODEL_IDS
 
 from utils.session import get_current_user, get_optional_current_user
 from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
@@ -48,9 +48,6 @@ def parse_character_chat_config(
     safe_model = model if model in ALLOWED_MODEL_IDS else "deepseek-v4-flash"
     safe_temperature = max(0.0, min(2.0, float(temperature)))
     safe_top_p = max(0.0, min(1.0, float(top_p)))
-    model_cfg = get_model(safe_model)
-    max_output = model_cfg.max_output_tokens if model_cfg else 8192
-    safe_max_tokens = max(1, min(max_output, int(max_tokens)))
     safe_presence_penalty = max(-2.0, min(2.0, float(presence_penalty)))
     safe_frequency_penalty = max(-2.0, min(2.0, float(frequency_penalty)))
     safe_context_window_tier = context_window_tier if context_window_tier.lower() in ALLOWED_CONTEXT_WINDOW_TIERS else "8k"
@@ -58,7 +55,7 @@ def parse_character_chat_config(
         "model": safe_model,
         "temperature": safe_temperature,
         "top_p": safe_top_p,
-        "max_tokens": safe_max_tokens,
+        "max_tokens": max(1, int(max_tokens)),
         "presence_penalty": safe_presence_penalty,
         "frequency_penalty": safe_frequency_penalty,
         "context_window_tier": safe_context_window_tier,
@@ -70,7 +67,7 @@ def default_character_chat_config():
         "model": "deepseek-v4-flash",
         "temperature": 1.3,
         "top_p": 0.9,
-        "max_tokens": 250,
+        "max_tokens": 4000,
         "presence_penalty": 0.0,
         "frequency_penalty": 0.0,
         "context_window_tier": "8k",
@@ -119,7 +116,7 @@ async def create_character(
     model: str = Form("deepseek-v4-flash"),
     temperature: float = Form(1.3),
     top_p: float = Form(0.9),
-    max_tokens: int = Form(250),
+    max_tokens: int = Form(4000),
     presence_penalty: float = Form(0),
     frequency_penalty: float = Form(0),
     context_window_tier: str = Form("8k"),

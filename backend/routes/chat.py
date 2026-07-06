@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse, StreamingResponse, Response
 from sqlalchemy.orm import Session
 from starlette.requests import ClientDisconnect
 from database import get_db
-from model_configs import ALLOWED_MODEL_IDS, get_model
+from model_configs import ALLOWED_MODEL_IDS
 from utils.session import get_current_user
 from utils.llm_client import client, stream_chat_completion_with_config
 from utils.chat_history_utils import (
@@ -67,7 +67,7 @@ def generate_chat_title(messages, existing_title=None):
 def parse_chat_config(chat_config):
     defaults = {
         "model": "deepseek-v4-flash",
-        "max_tokens": 250,
+        "max_tokens": 4000,
         "temperature": 1.3,
         "top_p": 0.9,
         "presence_penalty": 0.0,
@@ -82,14 +82,11 @@ def parse_chat_config(chat_config):
     if isinstance(model, str) and model in ALLOWED_MODEL_IDS:
         config["model"] = model
 
-    model_cfg = get_model(config["model"])
-    max_output = model_cfg.max_output_tokens if model_cfg else 8192
-
     try:
         config["max_tokens"] = int(chat_config.get("max_tokens", defaults["max_tokens"]))
     except (TypeError, ValueError):
         config["max_tokens"] = defaults["max_tokens"]
-    config["max_tokens"] = max(1, min(max_output, config["max_tokens"]))
+
 
     def clamp_float(key, min_value, max_value):
         try:
@@ -109,7 +106,7 @@ def parse_chat_config(chat_config):
 def default_chat_config():
     return {
         "model": "deepseek-v4-flash",
-        "max_tokens": 250,
+        "max_tokens": 4000,
         "temperature": 1.3,
         "top_p": 0.9,
         "presence_penalty": 0.0,

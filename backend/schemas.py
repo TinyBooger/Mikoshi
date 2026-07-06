@@ -70,7 +70,7 @@ class CharacterOut(BaseModel):
     model: str = "deepseek-v4-flash"
     temperature: float = 1.3
     top_p: float = 0.9
-    max_tokens: int = 250
+    max_tokens: int = 4000
     presence_penalty: float = 0.0
     frequency_penalty: float = 0.0
     context_window_tier: str = "8k"

@@ -28,7 +28,7 @@ def _get_client_for_model(model):
 def stream_chat_completion_with_config(
     messages,
     model="deepseek-v4-flash",
-    max_tokens=250,
+    max_tokens=4000,
     temperature=1.3,
     top_p=0.9,
     presence_penalty=0,

@@ -26,7 +26,7 @@ class Character(Base):
     model = Column(String, nullable=False, default="deepseek-v4-flash")
     temperature = Column(Float, nullable=False, default=1.3)
     top_p = Column(Float, nullable=False, default=0.9)
-    max_tokens = Column(Integer, nullable=False, default=250)
+    max_tokens = Column(Integer, nullable=False, default=4000)
     presence_penalty = Column(Float, nullable=False, default=0)
     frequency_penalty = Column(Float, nullable=False, default=0)
     context_window_tier = Column(String(20), nullable=False, default="8k")
