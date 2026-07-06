@@ -65,37 +65,6 @@ export default function InfoCard({
     setLikeCount(initialLikeCount);
   }, [initialLikeCount, entity.id]);
 
-  // Follow state
-  const isSelf = userData && userData.id === resolvedCreatorId;
-  const canFollow = sessionToken && !isSelf && resolvedCreatorId;
-  const [isFollowing, setIsFollowing] = React.useState(false);
-  const [followLoading, setFollowLoading] = React.useState(false);
-  React.useEffect(() => {
-    if (!canFollow) return;
-    fetch(`${window.API_BASE_URL}/api/users/me/following-ids`, {
-      headers: { Authorization: sessionToken },
-    })
-      .then(res => res.json())
-      .then(data => setIsFollowing((data.following_ids || []).includes(resolvedCreatorId)))
-      .catch(() => {});
-  }, [canFollow, resolvedCreatorId, sessionToken]);
-
-  const handleFollowToggle = async (e) => {
-    e.stopPropagation();
-    if (!canFollow || followLoading) return;
-    setFollowLoading(true);
-    try {
-      const method = isFollowing ? 'DELETE' : 'POST';
-      const res = await fetch(`${window.API_BASE_URL}/api/users/${resolvedCreatorId}/follow`, {
-        method,
-        headers: { Authorization: sessionToken },
-      });
-      if (res.ok) setIsFollowing(f => !f);
-    } catch { /* ignore */ } finally {
-      setFollowLoading(false);
-    }
-  };
-
   return (
     <>
       <div style={{ marginBottom: '1.6rem' }}>
@@ -105,15 +74,16 @@ export default function InfoCard({
             alt="Avatar"
             style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%', border: '2.4px solid #e9ecef', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginRight: 14 }}
           />
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div style={{ fontWeight: 700, color: '#18191a', fontSize: '1.02rem', letterSpacing: '0.2px', marginBottom: 2, wordBreak: 'break-word', lineHeight: 1.2 }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%' }}>
+            <div style={{ fontWeight: 700, color: '#18191a', fontSize: '1.02rem', letterSpacing: '0.2px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2, width: '100%' }}>
               {isPlaceholder ? <span style={{ color: '#bbb', fontStyle: 'italic' }}>{t('info_card.no_selection', { name: resolvedName })}</span> : resolvedName}
             </div>
             <div
               className="d-flex align-items-center"
               style={{
                 gap: '0.35rem',
-                width: 'fit-content',
+                width: '100%',
+                maxWidth: '100%',
                 cursor: resolvedCreatorId ? 'pointer' : 'default',
                 padding: '0.18rem 0.55rem 0.18rem 0.3rem',
                 borderRadius: '999px',
@@ -141,6 +111,8 @@ export default function InfoCard({
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                   textDecoration: creatorHover ? 'underline' : 'none',
+                  flex: 1,
+                  minWidth: 0
                 }}
               >
                 {resolvedCreatorName || t('entity_card.unknown')}
@@ -182,38 +154,6 @@ export default function InfoCard({
                 >
                   <i className={`bi ${(hasLiked && hasLiked[entityType]) ? 'bi-heart-fill' : 'bi-heart'}`} style={{ fontSize: 18, color: '#e53935', verticalAlign: 'middle' }}></i>
                   <span style={{ fontWeight: 600, fontSize: '0.78rem', marginLeft: 2 }}>{likeCount}</span>
-                </button>
-              </div>
-            )}
-            {canFollow && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginTop: 2 }}>
-                <button
-                  onClick={handleFollowToggle}
-                  disabled={followLoading}
-                  style={{
-                    padding: '0.22rem 0.8rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 500,
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: isFollowing ? 'rgba(200,193,225,0.18)' : 'rgba(200,193,225,0.55)',
-                    backdropFilter: 'blur(6px)',
-                    WebkitBackdropFilter: 'blur(6px)',
-                    color: isFollowing ? '#a09abf' : '#736B92',
-                    cursor: followLoading ? 'default' : 'pointer',
-                    opacity: followLoading ? 0.5 : 1,
-                    transition: 'background 0.18s ease, color 0.18s ease',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={e => {
-                    if (followLoading) return;
-                    e.currentTarget.style.background = isFollowing ? 'rgba(200,193,225,0.32)' : 'rgba(200,193,225,0.78)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = isFollowing ? 'rgba(200,193,225,0.18)' : 'rgba(200,193,225,0.55)';
-                  }}
-                >
-                  {isFollowing ? t('user_card.unfollow') : t('user_card.follow')}
                 </button>
               </div>
             )}
