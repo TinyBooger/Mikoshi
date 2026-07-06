@@ -20,18 +20,19 @@ SUMMARY_SYSTEM_PROMPT = (
     "The output must be no more than 300 tokens."
 )
 
-DEFAULT_SOFT_TOKEN_LIMIT = 3000
+DEFAULT_SOFT_TOKEN_LIMIT = 8000
 DEFAULT_RECENT_MESSAGE_COUNT = 2
 DEFAULT_SUMMARY_MAX_TOKENS = 300
-DEFAULT_CONTEXT_WINDOW_TIER = "3k"
+DEFAULT_CONTEXT_WINDOW_TIER = "8k"
 DEFAULT_COMPACTION_TRIGGER_RATIO = 0.95
 
 CONTEXT_WINDOW_TIERS = (
-    {"key": "3k", "tokens": 3000, "pro_only": False},
-    {"key": "6k", "tokens": 6000, "pro_only": False},
-    {"key": "12k", "tokens": 12000, "pro_only": False},
-    {"key": "24k", "tokens": 24000, "pro_only": True},
-    {"key": "32k", "tokens": 32000, "pro_only": True},
+    {"key": "8k",   "tokens": 8000},
+    {"key": "32k",  "tokens": 32000},
+    {"key": "128k", "tokens": 128000},
+    {"key": "256k", "tokens": 256000},
+    {"key": "512k", "tokens": 512000},
+    {"key": "1M",   "tokens": 1000000},
 )
 
 
@@ -46,11 +47,7 @@ def get_context_window_tiers(
     When *model_id* is provided, tiers whose ``tokens`` exceed the model's
     ``context_length`` are excluded.
     """
-    allowed: list[dict] = []
-    for tier in CONTEXT_WINDOW_TIERS:
-        if tier["pro_only"] and not is_pro:
-            continue
-        allowed.append(dict(tier))
+    allowed: list[dict] = [dict(tier) for tier in CONTEXT_WINDOW_TIERS]
 
     if model_id:
         model_cfg = get_model(model_id)
