@@ -412,10 +412,6 @@ export default function ChatPage() {
   })();
 
   useEffect(() => {
-    fetchCreditLimits();
-  }, [sessionToken]);
-
-  useEffect(() => {
     if (!userData) return;
 
     applyCreditLimits({
@@ -476,6 +472,7 @@ export default function ChatPage() {
   const isNewChat = useRef(true);
   const prevSearchParamsRef = useRef(searchParams);
   const lastLimitReminderCountRef = useRef(null);
+  const wasCreditLockedRef = useRef(false);
   const maybeShowMessageLimitReminder = (limits) => {
     if (!limits || !limits.is_limited || !limits.approaching_limit || limits.limit_reached) return;
 
@@ -499,35 +496,17 @@ export default function ChatPage() {
   };
 
   const maybeShowCreditLimitReminder = (limits) => {
-    if (!limits || !limits.is_limited) return;
-
-    // Only show reminder when truly locked (quota exhausted AND wallet empty)
-    if (!isCreditLocked(limits)) return;
-
-    toast.show(limits.message || '已达到点数上限，当前与点数相关操作已受限。', { type: 'warning' });
+    const locked = !!limits?.is_limited && isCreditLocked(limits);
+    if (locked && !wasCreditLockedRef.current) {
+      toast.show(limits.message || '已达到点数上限，当前与点数相关操作已受限。', { type: 'warning' });
+    }
+    wasCreditLockedRef.current = locked;
   };
 
   const applyCreditLimits = (limits) => {
     if (!limits) return;
     setCreditLimits(limits);
     maybeShowCreditLimitReminder(limits);
-  };
-
-  const fetchCreditLimits = async () => {
-    if (!sessionToken) return;
-
-    try {
-      const response = await fetch(`${window.API_BASE_URL}/api/credit-limits`, {
-        headers: { 'Authorization': sessionToken },
-      });
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-      applyCreditLimits(data);
-    } catch {
-      // Non-blocking fetch for UI hints only.
-    }
   };
 
   const getChatErrorMessage = (errorPayload) => {
