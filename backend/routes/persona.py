@@ -6,9 +6,11 @@ from typing import List, Optional
 
 from database import get_db
 from models import Persona, User, Tag, UserLikedPersona
+from schemas import PersonaOut, PersonaListOut
 from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
+from utils.session import get_current_user, get_optional_current_user
 
 router = APIRouter()
 

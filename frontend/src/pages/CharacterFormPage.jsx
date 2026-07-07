@@ -273,7 +273,7 @@ export default function CharacterFormPage() {
     // Don't save while still loading existing character data
     if (loading) return;
     // Don't save before draft has been restored (avoids overwriting stored draft)
-    if (!draftRestoredRef.current && mode === 'create') return;
+    if (!draftRestoredRef.current) return;
 
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
@@ -285,9 +285,10 @@ export default function CharacterFormPage() {
     };
   }, [charData, isImprovisingGreeting, loading, mode, saveDraft]);
 
-  // ── Restore draft on mount for create mode ────────────────────
+  // ── Restore draft on mount (create / edit / fork) ─────────────
   useEffect(() => {
-    if (mode !== 'create') return;
+    // For edit/fork modes, wait until server data finishes loading
+    if ((mode === 'edit' || mode === 'fork') && loading) return;
     if (draftRestoredRef.current) return;
     const draft = loadDraft();
     if (draft && draft.charData) {
@@ -297,7 +298,7 @@ export default function CharacterFormPage() {
     } else {
       draftRestoredRef.current = true;
     }
-  }, [mode, loadDraft]);
+  }, [mode, loadDraft, loading]);
 
   // ── beforeunload warning for unsaved changes ──────────────────
   useEffect(() => {
@@ -648,7 +649,7 @@ export default function CharacterFormPage() {
           <BanNotice banType={userData?.ban_type} banUntil={userData?.ban_until} context="upload" />
 
           {/* Draft restore banner */}
-          {showDraftBanner && mode === 'create' && (
+          {showDraftBanner && (
             <div
               className="alert d-flex align-items-center justify-content-between mb-4"
               style={{
