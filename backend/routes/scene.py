@@ -14,7 +14,6 @@ from utils.session import get_current_user, get_optional_current_user
 from utils.collaborative_filtering import get_cf_scenes
 from datetime import datetime, UTC
 from schemas import SceneOut, SceneListOut
-from utils.content_censor import censor_form_payload
 from utils.user_utils import get_active_ban_type, is_upload_banned
 
 
@@ -60,20 +59,8 @@ async def create_scene(
             detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
         )
 
-    censored_payload, content_censored = censor_form_payload({
-        "name": name,
-        "description": description,
-        "intro": intro,
-        "greeting": greeting,
-        "tags": tags,
-        "forked_from_name": forked_from_name,
-    })
-    name = (censored_payload.get("name") or "").strip()
-    description = (censored_payload.get("description") or "").strip()
-    intro = censored_payload.get("intro")
-    greeting = censored_payload.get("greeting")
-    tags = censored_payload.get("tags") or []
-    forked_from_name = censored_payload.get("forked_from_name")
+    name = name.strip()
+    description = description.strip()
 
     if len(description) > MAX_DESCRIPTION_LENGTH:
         raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
@@ -118,8 +105,7 @@ async def create_scene(
 
     return JSONResponse(content={
         "id": scene.id,
-        "message": "Scene created",
-        "content_censored": content_censored
+        "message": "Scene created"
     })
 
 
@@ -338,20 +324,8 @@ async def update_scene(
             detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
         )
 
-    censored_payload, content_censored = censor_form_payload({
-        "name": name,
-        "description": description,
-        "intro": intro,
-        "greeting": greeting,
-        "tags": tags,
-    })
-    name = censored_payload.get("name")
-    description = censored_payload.get("description")
     if description is not None:
         description = description.strip()
-    intro = censored_payload.get("intro")
-    greeting = censored_payload.get("greeting")
-    tags = censored_payload.get("tags")
     
     # Private scenes are open to all users.
     final_is_public = is_public if is_public is not None else scene.is_public
@@ -385,8 +359,7 @@ async def update_scene(
     db.refresh(scene)
     return JSONResponse(content={
         "id": scene.id,
-        "message": "Scene updated",
-        "content_censored": content_censored
+        "message": "Scene updated"
     })
 
 # Delete Scene

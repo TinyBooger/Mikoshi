@@ -18,7 +18,6 @@ from utils.image_moderation import moderate_image_with_decision
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.collaborative_filtering import get_cf_characters
 from utils.validators import validate_character_fields
-from utils.content_censor import censor_form_payload
 from utils.text_moderation import moderate_form_payload_with_review
 from schemas import CharacterOut, CharacterListOut
 from utils.content_review_queue import enqueue_character_review
@@ -155,24 +154,8 @@ async def create_character(
             detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
         )
 
-    censored_payload, content_censored = censor_form_payload({
-        "name": name,
-        "persona": persona,
-        "tagline": tagline,
-        "tags": tags,
-        "greeting": greeting,
-        "sample_dialogue": sample_dialogue,
-        "long_description": long_description,
-        "forked_from_name": forked_from_name,
-    })
-    name = (censored_payload.get("name") or "").strip()
-    persona = (censored_payload.get("persona") or "").strip()
-    tagline = (censored_payload.get("tagline") or "")
-    tags = censored_payload.get("tags") or []
-    greeting = (censored_payload.get("greeting") or "")
-    sample_dialogue = (censored_payload.get("sample_dialogue") or "")
-    long_description = (censored_payload.get("long_description") or "")
-    forked_from_name = censored_payload.get("forked_from_name")
+    name = name.strip()
+    persona = persona.strip()
     context_label = normalize_context_label(context_label)
 
     existing = db.query(Character).filter(Character.name == name).first()
@@ -332,7 +315,6 @@ async def create_character(
 
     return {
         "message": f"Character '{name}' created.",
-        "content_censored": content_censored,
         "credit_limits": get_credit_cap_info(current_user, db),
     }
 
@@ -388,22 +370,8 @@ async def update_character(
             detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
         )
 
-    censored_payload, content_censored = censor_form_payload({
-        "name": name,
-        "persona": persona,
-        "tagline": tagline,
-        "tags": tags,
-        "greeting": greeting,
-        "sample_dialogue": sample_dialogue,
-        "long_description": long_description,
-    })
-    name = (censored_payload.get("name") or "").strip()
-    persona = (censored_payload.get("persona") or "").strip()
-    tagline = (censored_payload.get("tagline") or "")
-    tags = censored_payload.get("tags") or []
-    greeting = (censored_payload.get("greeting") or "")
-    sample_dialogue = (censored_payload.get("sample_dialogue") or "")
-    long_description = (censored_payload.get("long_description") or "")
+    name = name.strip()
+    persona = persona.strip()
     context_label = normalize_context_label(context_label if context_label is not None else char.context_label)
     
     error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label, long_description)
@@ -533,7 +501,6 @@ async def update_character(
     db.commit()
     return {
         "message": "Character updated successfully",
-        "content_censored": content_censored,
         "credit_limits": get_credit_cap_info(current_user, db),
     }
 

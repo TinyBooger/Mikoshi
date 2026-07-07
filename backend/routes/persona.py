@@ -9,12 +9,6 @@ from models import Persona, User, Tag, UserLikedPersona
 from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
-from utils.session import get_current_user, get_optional_current_user
-from utils.collaborative_filtering import get_cf_personas
-from datetime import datetime, UTC
-from schemas import PersonaOut, PersonaListOut
-from utils.content_censor import censor_form_payload
-from utils.user_utils import get_active_ban_type, is_upload_banned
 
 router = APIRouter()
 
@@ -156,20 +150,9 @@ async def create_persona(
             detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
         )
 
-    censored_payload, content_censored = censor_form_payload({
-        "name": name,
-        "description": description,
-        "intro": intro,
-        "tags": tags,
-        "forked_from_name": forked_from_name,
-    })
-    name = (censored_payload.get("name") or "").strip()
-    description = censored_payload.get("description")
+    name = name.strip()
     if description is not None:
         description = description.strip()
-    intro = censored_payload.get("intro")
-    tags = censored_payload.get("tags") or []
-    forked_from_name = censored_payload.get("forked_from_name")
 
     if description and len(description) > MAX_DESCRIPTION_LENGTH:
         raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
@@ -233,8 +216,7 @@ async def create_persona(
 
     return JSONResponse(content={
         "id": persona.id,
-        "message": "Persona created",
-        "content_censored": content_censored
+        "message": "Persona created"
     })
 
 
@@ -320,18 +302,8 @@ async def update_persona(
             detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
         )
 
-    censored_payload, content_censored = censor_form_payload({
-        "name": name,
-        "description": description,
-        "intro": intro,
-        "tags": tags,
-    })
-    name = censored_payload.get("name")
-    description = censored_payload.get("description")
     if description is not None:
         description = description.strip()
-    intro = censored_payload.get("intro")
-    tags = censored_payload.get("tags")
     
     # Private personas are open to all users.
     final_is_public = is_public if is_public is not None else persona.is_public
@@ -376,8 +348,7 @@ async def update_persona(
     db.refresh(persona)
     return JSONResponse(content={
         "id": persona.id,
-        "message": "Persona updated",
-        "content_censored": content_censored
+        "message": "Persona updated"
     })
 
 # Delete Persona
