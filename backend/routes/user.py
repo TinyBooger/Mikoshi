@@ -323,7 +323,7 @@ async def update_profile(
     if error:
         raise HTTPException(status_code=400, detail=error)
 
-    text_safe, _, blocked_field, blocked_label, _, _ = moderate_form_payload_with_review({
+    text_safe, _, blocked_field, blocked_label, _, _, _, _ = moderate_form_payload_with_review({
         "name": name,
         "bio": bio,
     })
@@ -340,7 +340,7 @@ async def update_profile(
     if profile_pic:
         # Moderate the image before saving
         image_bytes = await profile_pic.read()
-        is_safe, label, _ = moderate_image_with_decision(image_bytes)
+        is_safe, label, _, _ = moderate_image_with_decision(image_bytes)
         if not is_safe:
             raise HTTPException(status_code=400, detail=f"Profile image rejected by content moderation ({label})")
         import io

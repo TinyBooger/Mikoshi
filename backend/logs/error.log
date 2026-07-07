@@ -93354,3 +93354,5 @@ FROM characters
 WHERE characters.is_public = true) AS anon_1]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 
+2026-07-07 17:33:58 - utils.error_logger - ERROR - [TypeError] Uncaught TypeError: Cannot destructure property 'loading' of 'useContext(...)' as it is undefined. | Endpoint: None http://localhost:3000/browse | User: HAeAnts3IJW6bfPHgyjKfcurWfE2
+2026-07-07 17:43:07 - utils.error_logger - ERROR - [TypeError] Uncaught TypeError: Cannot destructure property 'loading' of 'useContext(...)' as it is undefined. | Endpoint: None http://localhost:3000/browse | User: HAeAnts3IJW6bfPHgyjKfcurWfE2

@@ -26,17 +26,18 @@ def _debug_print(message: str) -> None:
     logger.info(message)
 
 
-def moderate_image_with_decision(image_bytes: bytes) -> tuple[bool, str, str]:
+def moderate_image_with_decision(image_bytes: bytes) -> tuple[bool, str, str, str]:
     """
     Submit image bytes to Tencent Cloud Image Moderation Service (IMS).
 
     Returns:
-        (is_safe, label, suggestion)
+        (is_safe, label, suggestion, sub_label)
         - is_safe: True if the image passed (Suggestion == "Pass" or "Review"),
                    False if blocked (Suggestion == "Block").
         - label:   The top-level label returned by the API (e.g. "Porn", "Terror",
                    "Normal"), or an empty string when the API is unavailable.
         - suggestion: Pass | Review | Block | "" when unavailable.
+        - sub_label: secondary sub-label (e.g. "SexyBehavior", "Knife"), or "".
 
     If the IMS credentials are not configured, the function returns (True, "")
     so uploads are not blocked in environments that have not yet set up the
@@ -51,7 +52,7 @@ def moderate_image_with_decision(image_bytes: bytes) -> tuple[bool, str, str]:
             "image_moderation: TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY not set. "
             "Skipping image content moderation."
         )
-        return True, "", ""
+        return True, "", "", ""
 
     region = os.getenv("TENCENTCLOUD_IMS_REGION", "ap-guangzhou")
     biz_type = os.getenv("TENCENTCLOUD_IMS_BIZ_TYPE", "")
@@ -68,7 +69,7 @@ def moderate_image_with_decision(image_bytes: bytes) -> tuple[bool, str, str]:
             "image_moderation: image too large for IMS (%d bytes base64), skipping moderation.",
             len(b64_content),
         )
-        return True, "", ""
+        return True, "", "", ""
 
     try:
         cred = credential.Credential(secret_id, secret_key)
@@ -91,25 +92,27 @@ def moderate_image_with_decision(image_bytes: bytes) -> tuple[bool, str, str]:
 
         suggestion = resp.Suggestion  # "Pass" | "Review" | "Block"
         label = resp.Label or ""
+        sub_label = resp.SubLabel or ""
         score = resp.Score if resp.Score is not None else ""
         request_id = resp.RequestId or ""
 
         _debug_print(
-            f"[image_moderation] result: suggestion={suggestion}, label={label}, score={score}, request_id={request_id}"
+            f"[image_moderation] result: suggestion={suggestion}, label={label}, "
+            f"sub_label={sub_label}, score={score}, request_id={request_id}"
         )
 
         if suggestion == "Block":
-            logger.info("image_moderation: image blocked. Label=%s", label)
-            return False, label, "Block"
+            logger.info("image_moderation: image blocked. Label=%s, SubLabel=%s", label, sub_label)
+            return False, label, "Block", sub_label
 
         if suggestion == "Review":
-            return True, label, "Review"
+            return True, label, "Review", sub_label
 
-        return True, label, "Pass"
+        return True, label, "Pass", sub_label
 
     except TencentCloudSDKException as exc:
         _debug_print(f"[image_moderation] sdk_error: {exc}")
         # Fail open: do not block uploads when the moderation service is
         # temporarily unavailable, but do log the error.
         logger.error("image_moderation: TencentCloudSDKException: %s", exc)
-        return True, "", ""
+        return True, "", "", ""

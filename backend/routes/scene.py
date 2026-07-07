@@ -45,7 +45,7 @@ async def create_scene(
         raise HTTPException(status_code=403, detail="UPLOAD_BANNED")
     shadow = active_ban == "shadow_ban"
 
-    text_safe, _, blocked_field, blocked_label, _, _ = moderate_form_payload_with_review({
+    text_safe, _, blocked_field, blocked_label, _, _, _, _ = moderate_form_payload_with_review({
         "name": name,
         "description": description,
         "intro": intro,
@@ -85,7 +85,7 @@ async def create_scene(
     db.refresh(scene)
     if picture:
         image_bytes = await picture.read()
-        is_safe, label, _ = moderate_image_with_decision(image_bytes)
+        is_safe, label, _, _ = moderate_image_with_decision(image_bytes)
         if not is_safe:
             raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
         import io
@@ -311,7 +311,7 @@ async def update_scene(
         raise HTTPException(status_code=403, detail="UPLOAD_BANNED")
     shadow = active_ban == "shadow_ban"
 
-    text_safe, _, blocked_field, blocked_label, _, _ = moderate_form_payload_with_review({
+    text_safe, _, blocked_field, blocked_label, _, _, _, _ = moderate_form_payload_with_review({
         "name": name,
         "description": description,
         "intro": intro,
@@ -350,7 +350,7 @@ async def update_scene(
         scene.is_forkable = is_forkable
     if picture:
         image_bytes = await picture.read()
-        is_safe, label, _ = moderate_image_with_decision(image_bytes)
+        is_safe, label, _, _ = moderate_image_with_decision(image_bytes)
         if not is_safe:
             raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
         import io

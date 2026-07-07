@@ -175,7 +175,7 @@ def register_with_phone(
                 detail="Cannot use your own invitation code"
             )
 
-    text_safe, _, blocked_field, blocked_label, _, _ = moderate_form_payload_with_review({
+    text_safe, _, blocked_field, blocked_label, _, _, _, _ = moderate_form_payload_with_review({
         "name": name,
         "bio": bio,
     })
@@ -231,7 +231,7 @@ def register_with_phone(
             from utils.local_storage_utils import save_image
 
             image_bytes = profile_pic.file.read()
-            is_safe, label, _ = moderate_image_with_decision(image_bytes)
+            is_safe, label, _, _ = moderate_image_with_decision(image_bytes)
             if not is_safe:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,

@@ -138,7 +138,7 @@ async def create_character(
         raise HTTPException(status_code=403, detail="UPLOAD_BANNED")
     shadow = active_ban == "shadow_ban"
 
-    text_safe, needs_text_review, blocked_field, blocked_label, review_field, review_label = moderate_form_payload_with_review({
+    text_safe, needs_text_review, blocked_field, blocked_label, blocked_sub_label, blocked_keywords, review_field, review_label = moderate_form_payload_with_review({
         "name": name,
         "persona": persona,
         "tagline": tagline,
@@ -149,9 +149,14 @@ async def create_character(
         "forked_from_name": forked_from_name,
     })
     if not text_safe:
+        detail_parts = [f"Text rejected by content moderation ({blocked_field}: {blocked_label})"]
+        if blocked_sub_label:
+            detail_parts.append(f"[SUBLABEL:{blocked_sub_label}]")
+        if blocked_keywords:
+            detail_parts.append(f"[KEYWORDS:{blocked_keywords}]")
         raise HTTPException(
             status_code=400,
-            detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
+            detail=" ".join(detail_parts)
         )
 
     name = name.strip()
@@ -239,9 +244,12 @@ async def create_character(
 
     if picture:
         image_bytes = await picture.read()
-        is_safe, label, suggestion = moderate_image_with_decision(image_bytes)
+        is_safe, label, suggestion, sub_label = moderate_image_with_decision(image_bytes)
         if not is_safe:
-            raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
+            detail_parts = [f"Image rejected by content moderation ({label})"]
+            if sub_label:
+                detail_parts.append(f"[SUBLABEL:{sub_label}]")
+            raise HTTPException(status_code=400, detail=" ".join(detail_parts))
         if suggestion == "Review":
             enqueue_character_review(
                 db,
@@ -253,9 +261,12 @@ async def create_character(
         char.picture = save_image(io.BytesIO(image_bytes), 'character', char.id, picture.filename)
     if avatar_picture:
         avatar_bytes = await avatar_picture.read()
-        is_safe, label, suggestion = moderate_image_with_decision(avatar_bytes)
+        is_safe, label, suggestion, sub_label = moderate_image_with_decision(avatar_bytes)
         if not is_safe:
-            raise HTTPException(status_code=400, detail=f"Avatar image rejected by content moderation ({label})")
+            detail_parts = [f"Avatar image rejected by content moderation ({label})"]
+            if sub_label:
+                detail_parts.append(f"[SUBLABEL:{sub_label}]")
+            raise HTTPException(status_code=400, detail=" ".join(detail_parts))
         if suggestion == "Review":
             enqueue_character_review(
                 db,
@@ -274,9 +285,12 @@ async def create_character(
 
     if background_picture:
         bg_bytes = await background_picture.read()
-        is_safe, label, suggestion = moderate_image_with_decision(bg_bytes)
+        is_safe, label, suggestion, sub_label = moderate_image_with_decision(bg_bytes)
         if not is_safe:
-            raise HTTPException(status_code=400, detail=f"Background image rejected by content moderation ({label})")
+            detail_parts = [f"Background image rejected by content moderation ({label})"]
+            if sub_label:
+                detail_parts.append(f"[SUBLABEL:{sub_label}]")
+            raise HTTPException(status_code=400, detail=" ".join(detail_parts))
         if suggestion == "Review":
             enqueue_character_review(
                 db,
@@ -355,7 +369,7 @@ async def update_character(
         raise HTTPException(status_code=403, detail="UPLOAD_BANNED")
     shadow = active_ban == "shadow_ban"
 
-    text_safe, needs_text_review, blocked_field, blocked_label, review_field, review_label = moderate_form_payload_with_review({
+    text_safe, needs_text_review, blocked_field, blocked_label, blocked_sub_label, blocked_keywords, review_field, review_label = moderate_form_payload_with_review({
         "name": name,
         "persona": persona,
         "tagline": tagline,
@@ -365,9 +379,14 @@ async def update_character(
         "long_description": long_description,
     })
     if not text_safe:
+        detail_parts = [f"Text rejected by content moderation ({blocked_field}: {blocked_label})"]
+        if blocked_sub_label:
+            detail_parts.append(f"[SUBLABEL:{blocked_sub_label}]")
+        if blocked_keywords:
+            detail_parts.append(f"[KEYWORDS:{blocked_keywords}]")
         raise HTTPException(
             status_code=400,
-            detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
+            detail=" ".join(detail_parts)
         )
 
     name = name.strip()
@@ -428,9 +447,12 @@ async def update_character(
 
     if picture:
         image_bytes = await picture.read()
-        is_safe, label, suggestion = moderate_image_with_decision(image_bytes)
+        is_safe, label, suggestion, sub_label = moderate_image_with_decision(image_bytes)
         if not is_safe:
-            raise HTTPException(status_code=400, detail=f"Image rejected by content moderation ({label})")
+            detail_parts = [f"Image rejected by content moderation ({label})"]
+            if sub_label:
+                detail_parts.append(f"[SUBLABEL:{sub_label}]")
+            raise HTTPException(status_code=400, detail=" ".join(detail_parts))
         if suggestion == "Review":
             enqueue_character_review(
                 db,
@@ -442,9 +464,12 @@ async def update_character(
         char.picture = save_image(io.BytesIO(image_bytes), 'character', char.id, picture.filename)
     if avatar_picture:
         avatar_bytes = await avatar_picture.read()
-        is_safe, label, suggestion = moderate_image_with_decision(avatar_bytes)
+        is_safe, label, suggestion, sub_label = moderate_image_with_decision(avatar_bytes)
         if not is_safe:
-            raise HTTPException(status_code=400, detail=f"Avatar image rejected by content moderation ({label})")
+            detail_parts = [f"Avatar image rejected by content moderation ({label})"]
+            if sub_label:
+                detail_parts.append(f"[SUBLABEL:{sub_label}]")
+            raise HTTPException(status_code=400, detail=" ".join(detail_parts))
         if suggestion == "Review":
             enqueue_character_review(
                 db,
@@ -467,9 +492,12 @@ async def update_character(
 
     if background_picture:
         bg_bytes = await background_picture.read()
-        is_safe, label, suggestion = moderate_image_with_decision(bg_bytes)
+        is_safe, label, suggestion, sub_label = moderate_image_with_decision(bg_bytes)
         if not is_safe:
-            raise HTTPException(status_code=400, detail=f"Background image rejected by content moderation ({label})")
+            detail_parts = [f"Background image rejected by content moderation ({label})"]
+            if sub_label:
+                detail_parts.append(f"[SUBLABEL:{sub_label}]")
+            raise HTTPException(status_code=400, detail=" ".join(detail_parts))
         if suggestion == "Review":
             enqueue_character_review(
                 db,
