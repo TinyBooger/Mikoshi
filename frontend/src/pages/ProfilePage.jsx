@@ -5,7 +5,6 @@ import defaultAvatar from '../assets/images/default-avatar.png';
 import ImageCropModal from '../components/ImageCropModal';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
-import { useTranslation } from 'react-i18next';
 import { useToast } from '../components/ToastProvider';
 
 import EntityCard from '../components/EntityCard';
@@ -18,7 +17,6 @@ import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { formatCompactTokenCount, formatCreditCount } from '../utils/creditDisplay';
 
 export default function ProfilePage() {
-  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const MAX_NAME_LENGTH = 50;
   const TAB_TYPES = {
@@ -521,11 +519,8 @@ export default function ProfilePage() {
   }, [isOwnProfile, activeTab, chatHistoryPage, sessionToken]);
 
   const handleDeleteChatByCharacter = async (characterId, characterName) => {
-    const label = characterName || t('profile.this_character') || 'this character';
-    if (!window.confirm(
-      (t('profile.confirm_delete_all_chats') || 'Permanently delete all chats with {character}? This cannot be undone.')
-        .replace('{character}', label)
-    )) return;
+    const label = characterName || '这个角色';
+    if (!window.confirm(`确定要永久删除与 ${label} 的所有聊天记录吗？此操作无法撤销。`)) return;
     setDeletingChatId(characterId ?? characterName);
     try {
       const res = await fetch(`${window.API_BASE_URL}/api/chat/delete-by-character`, {
@@ -538,7 +533,7 @@ export default function ProfilePage() {
           characterId ? c.character_id !== characterId : c.character_name !== characterName
         ));
         setChatHistoryTotal(prev => Math.max(0, prev - 1));
-        toast.show(t('profile.all_chats_deleted') || 'All chats deleted.', { type: 'success' });
+        toast.show('所有聊天记录已删除。', { type: 'success' });
       }
     } finally {
       setDeletingChatId(null);
@@ -556,7 +551,7 @@ export default function ProfilePage() {
         const removedCount = chatHistoryItems.filter(c => c.character_deleted || c.character_moderation_status).length;
         setChatHistoryItems(prev => prev.filter(c => !c.character_deleted && !c.character_moderation_status));
         setChatHistoryTotal(prev => Math.max(0, prev - removedCount));
-        toast.show(t('profile.unavailable_chats_cleared') || 'Unavailable chats cleared.', { type: 'success' });
+        toast.show('不可用聊天记录已清除。', { type: 'success' });
       }
     } finally {
       setClearingUnavailable(false);
@@ -657,7 +652,7 @@ export default function ProfilePage() {
     if (!inviteData?.invitation_code) {
       return (
         <div className="text-center" style={{ color: '#9ca3af', padding: '3rem 0', fontSize: '0.95rem' }}>
-          {t('profile.no_invite_code') || 'No invitation code available.'}
+          {'暂无邀请码。'}
         </div>
       );
     }
@@ -692,7 +687,7 @@ export default function ProfilePage() {
             fontSize: isMobile ? '1rem' : '1.15rem',
             fontWeight: 700, color: '#2d1b4f', margin: '0 0 0.35rem',
           }}>
-            {t('profile.invite_code_tab') || '邀请码'}
+            {'邀请码'}
           </h3>
 
           <p style={{
@@ -700,7 +695,7 @@ export default function ProfilePage() {
             color: '#6b7280', margin: '0 0 1rem',
             lineHeight: 1.5,
           }}>
-            🎁 {t('profile.invite_code_grant') || '使用你的邀请码注册，每位新用户将为你带来'} <strong style={{ color: '#7c3aed' }}>100 {t('profile.credits') || '点数'}</strong> {t('profile.invite_code_grant_suffix') || '奖励(每日限3次)'}
+            🎁 使用你的邀请码注册，每位新用户将为你带来 <strong style={{ color: '#7c3aed' }}>100 点数</strong> 奖励（每日限3次）
           </p>
 
           {/* Code display + copy */}
@@ -747,9 +742,7 @@ export default function ProfilePage() {
                 transition: 'background 0.15s',
               }}
             >
-              {inviteCopied
-                ? (t('profile.copied') || 'Copied!')
-                : (t('profile.copy') || 'Copy')}
+              {inviteCopied ? '已复制！' : '复制'}
             </button>
           </div>
 
@@ -760,7 +753,7 @@ export default function ProfilePage() {
               color: '#9ca3af',
               marginTop: 2,
             }}>
-              {inviteData.invited_count} {t('profile.invited_joined') || 'joined'} · +{inviteData.bonus_credits || 100} {t('profile.credits_each') || 'credits each'} ({inviteData.today_count || 0}/{inviteData.max_per_day || 10} {t('profile.today') || 'today'})
+              {inviteData.invited_count} 人已加入 · +{inviteData.bonus_credits || 100} 点数/人 ({inviteData.today_count || 0}/{inviteData.max_per_day || 10} 今日)
             </div>
           )}
         </div>
@@ -777,7 +770,7 @@ export default function ProfilePage() {
           {loading ? (
             <div className="text-center my-5" style={{ gridColumn: '1/-1' }}>
               <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">{t('profile.loading')}</span>
+                <span className="visually-hidden">{'加载中'}</span>
               </div>
             </div>
           ) : entities && entities.length === 0 ? (
@@ -826,7 +819,7 @@ export default function ProfilePage() {
                       }}
                     >
                       <i className="bi bi-pencil" style={{ fontSize: '0.75rem' }}></i>
-                      {t('profile.edit')}
+                      {'编辑'}
                     </button>
                   )}
                 </div>
@@ -860,7 +853,7 @@ export default function ProfilePage() {
         type = 'character';
         canEditEntity = () => isOwnProfile;
         editUrlPrefix = 'character';
-        emptyMsg = t('profile.no_characters_created');
+        emptyMsg = '你还没有创建任何角色。';
         page = createdCharactersPage;
         total = createdCharactersTotal;
         onPageChange = setCreatedCharactersPage;
@@ -869,7 +862,7 @@ export default function ProfilePage() {
         type = 'scene';
         canEditEntity = () => isOwnProfile;
         editUrlPrefix = 'scene';
-        emptyMsg = t('profile.no_scenes_created');
+        emptyMsg = '你还没有创建任何场景。';
         page = scenesPage;
         total = scenesTotal;
         onPageChange = setScenesPage;
@@ -879,7 +872,7 @@ export default function ProfilePage() {
         type = 'persona';
         canEditEntity = () => isOwnProfile;
         editUrlPrefix = 'persona';
-        emptyMsg = t('profile.no_personas_created');
+        emptyMsg = '你还没有创建任何人设。';
         page = personasPage;
         total = personasTotal;
         onPageChange = setPersonasPage;
@@ -890,7 +883,7 @@ export default function ProfilePage() {
         type = 'character';
         canEditEntity = () => false;
         editUrlPrefix = 'character';
-        emptyMsg = t('profile.no_liked_characters');
+        emptyMsg = '你还没有点赞任何角色。';
         page = likedCharactersPage;
         total = likedCharactersTotal;
         onPageChange = setLikedCharactersPage;
@@ -899,7 +892,7 @@ export default function ProfilePage() {
         type = 'scene';
         canEditEntity = () => false;
         editUrlPrefix = 'scene';
-        emptyMsg = t('profile.no_liked_scenes');
+        emptyMsg = '你还没有点赞任何场景。';
         page = likedScenesPage;
         total = likedScenesTotal;
         onPageChange = setLikedScenesPage;
@@ -908,7 +901,7 @@ export default function ProfilePage() {
         type = 'persona';
         canEditEntity = () => false;
         editUrlPrefix = 'persona';
-        emptyMsg = t('profile.no_liked_personas');
+        emptyMsg = '你还没有点赞任何人设。';
         page = likedPersonasPage;
         total = likedPersonasTotal;
         onPageChange = setLikedPersonasPage;
@@ -928,7 +921,7 @@ export default function ProfilePage() {
       type = 'persona';
       canEditEntity = (entity) => isOwnProfile && String(entity.creator_id) === String(userData?.id);
       editUrlPrefix = 'persona';
-      emptyMsg = t('profile.no_all_personas');
+      emptyMsg = '暂无人设。';
       page = 1;
       total = 0;
       onPageChange = () => {};
@@ -946,7 +939,7 @@ export default function ProfilePage() {
                 onMouseLeave={e => { e.currentTarget.style.background = '#f3f4f6'; }}
                 style={{ fontSize: '0.78rem', padding: '4px 12px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', cursor: clearingUnavailable ? 'not-allowed' : 'pointer', fontWeight: 500, opacity: clearingUnavailable ? 0.6 : 1 }}
               >
-                {clearingUnavailable ? (t('profile.loading') || 'Loading…') : (t('profile.clear_unavailable') || 'Clear Unavailable')}
+                {clearingUnavailable ? '加载中' : '清除不可用'}
               </button>
             </div>
           )}
@@ -956,7 +949,7 @@ export default function ProfilePage() {
             </div>
           ) : chatHistoryItems.length === 0 ? (
             <div className="text-center" style={{ color: '#9ca3af', padding: '3rem 0', fontSize: '0.95rem' }}>
-              {t('profile.no_chat_history') || 'No chat history yet.'}
+              {'暂无聊天记录。'}
             </div>
           ) : (() => {
             const now = new Date();
@@ -970,7 +963,7 @@ export default function ProfilePage() {
               if (dayStart === todayStart)
                 return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
               if (dayStart === yesterdayStart)
-                return t('profile.yesterday') || 'Yesterday';
+                return '昨天';
               return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
             };
 
@@ -983,9 +976,9 @@ export default function ProfilePage() {
             };
 
             const bucketLabels = {
-              today: t('profile.today') || 'Today',
-              yesterday: t('profile.yesterday') || 'Yesterday',
-              earlier: t('profile.earlier') || 'Earlier',
+              today: '今日',
+              yesterday: '昨天',
+              earlier: '更早',
             };
 
             const groups = ['today', 'yesterday', 'earlier']
@@ -1026,20 +1019,20 @@ export default function ProfilePage() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: '0.88rem', color: chat.character_deleted ? '#9ca3af' : '#18191a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {chat.character_name || t('chat.unknown_character') || 'Unknown Character'}
+                    {chat.character_name || '未知角色'}
                   </div>
                   <div style={{ fontSize: '0.77rem', color: '#6b7280', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                     {chat.character_deleted ? (
-                      <span style={{ color: '#ef4444', fontWeight: 600 }}>{t('profile.character_deleted') || 'Deleted'}</span>
+                      <span style={{ color: '#ef4444', fontWeight: 600 }}>{'已删除'}</span>
                     ) : chat.character_moderation_status ? (
-                      <span style={{ color: '#f59e0b', fontWeight: 600 }}>{t('profile.character_moderated') || 'Unavailable'}</span>
+                      <span style={{ color: '#f59e0b', fontWeight: 600 }}>{'不可用'}</span>
                     ) : chat.scene_name ? (
                       <>
                         <span style={{ color: '#9d7fcf', fontWeight: 500 }}>{chat.scene_name}</span>
                         <span style={{ opacity: 0.4 }}>·</span>
                       </>
                     ) : null}
-                    <span>{chat.chat_count} {chat.chat_count === 1 ? (t('profile.session') || 'session') : (t('profile.sessions') || 'sessions')}</span>
+                    <span>{chat.chat_count} 次会话</span>
                     <span style={{ opacity: 0.4 }}>·</span>
                     <span>{formatChatDate(chat.last_updated)}</span>
                   </div>
@@ -1048,7 +1041,7 @@ export default function ProfilePage() {
                   {!chat.character_deleted && !chat.character_moderation_status && (
                     <button
                       type="button"
-                      title={t('profile.open_chat') || 'Open'}
+                      title={'打开'}
                       onClick={() => navigate(`/chat?character=${chat.character_id}`)}
                       style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: '#7c5cbf', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}
                       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.12)'; }}
@@ -1059,7 +1052,7 @@ export default function ProfilePage() {
                   )}
                   <button
                     type="button"
-                    title={t('common.delete') || 'Delete'}
+                    title={'删除'}
                     disabled={deletingChatId === (chat.character_id ?? chat.character_name)}
                     onClick={() => handleDeleteChatByCharacter(chat.character_id, chat.character_name)}
                     style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', opacity: deletingChatId === (chat.character_id ?? chat.character_name) ? 0.4 : 1 }}
@@ -1117,12 +1110,12 @@ export default function ProfilePage() {
         {showSortToggle && (
           <div className="d-flex align-items-center justify-content-end" style={{ marginBottom: 12, gap: isMobile ? 5 : 8 }}>
             <span
-              title={t('browse.sort_by')}
-              aria-label={t('browse.sort_by')}
+              title={'排序方式'}
+              aria-label={'排序方式'}
               style={{ color: '#555', fontSize: isMobile ? '0.78rem' : '0.84rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
             >
               <i className="bi bi-sort-down" aria-hidden="true" style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', lineHeight: 1 }} />
-              <span className="visually-hidden">{t('browse.sort_by')}</span>
+              <span className="visually-hidden">{'排序方式'}</span>
             </span>
             <div
               style={{
@@ -1154,7 +1147,7 @@ export default function ProfilePage() {
                 }}
                 onClick={() => setActiveSort(ENTITY_SORTS.RECENT)}
               >
-                {t('browse.recent')}
+                {'最近'}
               </button>
               <button
                 type="button"
@@ -1169,7 +1162,7 @@ export default function ProfilePage() {
                 }}
                 onClick={() => setActiveSort(ENTITY_SORTS.POPULAR)}
               >
-                {t('browse.popular')}
+                {'热门'}
               </button>
             </div>
           </div>
@@ -1220,11 +1213,11 @@ export default function ProfilePage() {
     const data = await res.json();
     
     if (res.ok) {
-      toast.show(data.message || data.detail);
+      toast.show(data.message || data.detail || '更新成功');
       setShowModal(false);
       await refreshUserData();
     } else {
-      toast.show(getApiErrorMessage(data, t('profile.update_failed'), t));
+      toast.show(getApiErrorMessage(data, '更新失败'));
     }
   };
 
@@ -1255,14 +1248,14 @@ export default function ProfilePage() {
           setUserError(null);
         } else {
           setUserLoading(false);
-          setUserError(t('common.user_not_found'));
+          setUserError('用户不存在');
         }
       }
     }
   }, [isOwnProfile, userData, publicUserData, profileUserId]);
 
   const isActivePro = Boolean(displayUser?.pro_active);
-  const activeLocale = i18n?.resolvedLanguage || i18n?.language;
+  const activeLocale = 'zh-CN';
   const formattedProExpireDate = displayUser?.pro_expire_date
     ? new Date(displayUser.pro_expire_date).toLocaleDateString(activeLocale)
     : null;
@@ -1285,14 +1278,10 @@ export default function ProfilePage() {
   const proExpireDateObj = displayUser?.pro_expire_date ? new Date(displayUser.pro_expire_date) : null;
   const isProDueBeforeNextReset = Boolean(proExpireDateObj && nextTokenResetDate && proExpireDateObj <= nextTokenResetDate);
   const tokenNoticeText = !isActivePro
-    ? t('profile.credit_resets_daily')
+    ? '积分每日重置'
     : isProDueBeforeNextReset
-    ? t('profile.pro_due_no_credit_reset_notice', {
-      date: formattedProExpireDate,
-    })
-    : t('profile.next_credit_reset_notice', {
-      date: formattedNextTokenResetDate,
-    });
+    ? `Pro会员将于 ${formattedProExpireDate} 到期，届时将按当前规则重置积分。`
+    : `下次积分重置时间：${formattedNextTokenResetDate}`;
 
   useEffect(() => {
     setShowProBenefits(false);
@@ -1323,9 +1312,9 @@ export default function ProfilePage() {
       <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '60vh' }}>
         <div className="text-center">
           <div className="spinner-border text-primary" role="status" style={{ width: 36, height: 36 }}>
-            <span className="visually-hidden">{t('profile.loading')}</span>
+            <span className="visually-hidden">{'加载中'}</span>
           </div>
-          <div className="mt-3 text-muted">{t('profile.loading_profile')}</div>
+          <div className="mt-3 text-muted">{'正在加载个人资料…'}</div>
         </div>
       </div>
     );
@@ -1378,8 +1367,8 @@ export default function ProfilePage() {
         {isOwnProfile && (
           <button
             onClick={() => navigate('/settings')}
-            aria-label={t('profile.settings')}
-            title={t('profile.settings')}
+            aria-label={'设置'}
+            title={'设置'}
             style={{
               position: 'absolute',
               top: 8,
@@ -1414,7 +1403,7 @@ export default function ProfilePage() {
           >
             <img
               src={displayUser.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${displayUser.profile_pic.replace(/^\//, '')}` : defaultAvatar}
-              alt={t('profile.alt_profile')}
+              alt={'用户头像'}
               style={{ width: isMobile ? 72 : 104, height: isMobile ? 72 : 104, objectFit: 'cover', borderRadius: '50%', flexShrink: 0 }}
             />
 
@@ -1446,8 +1435,8 @@ export default function ProfilePage() {
                         cursor: 'default',
                       }}
                       title={formattedProExpireDate
-                        ? `${t('profile.pro_remaining_date')}: ${formattedProExpireDate}`
-                        : t('profile.pro_no_expire_date')}
+                        ? `${'Pro 到期时间'}: ${formattedProExpireDate}`
+                        : 'Pro 会员永久有效'}
                     >
                       PRO
                     </span>
@@ -1479,15 +1468,15 @@ export default function ProfilePage() {
                         e.currentTarget.style.background = isFollowing ? 'rgba(200,193,225,0.18)' : 'rgba(200,193,225,0.55)';
                       }}
                     >
-                      {isFollowing ? t('user_card.unfollow') : t('user_card.follow')}
+                      {isFollowing ? '取消关注' : '关注'}
                     </button>
                   )}
                   {!isOwnProfile && sessionToken && (
                     <button
                       type="button"
                       onClick={() => setShowReportUser(true)}
-                      title={t('topbar.report_problem')}
-                      aria-label={t('topbar.report_problem')}
+                      title={'举报此用户'}
+                      aria-label={'举报此用户'}
                       onMouseEnter={() => setReportIconHovered(true)}
                       onMouseLeave={() => setReportIconHovered(false)}
                       style={{
@@ -1510,7 +1499,7 @@ export default function ProfilePage() {
                         className={`bi ${reportIconHovered ? 'bi-exclamation-triangle-fill' : 'bi-exclamation-triangle'}`}
                         style={{ fontSize: '0.85rem' }}
                       />
-                      {t('problem_report.report_button', 'Report')}
+                      {'举报'}
                     </button>
                   )}
                 </div>
@@ -1521,8 +1510,8 @@ export default function ProfilePage() {
                 {displayUser.bio && displayUser.bio.trim()
                   ? displayUser.bio
                   : (isOwnProfile
-                      ? t('profile.bio_prompt')
-                      : t('profile.bio_not_set'))}
+                      ? '添加一段简介，让大家更了解你。'
+                      : '这个用户还没有填写简介。')}
               </p>
 
               {/* Following / Followers counts */}
@@ -1537,7 +1526,7 @@ export default function ProfilePage() {
                     {followCounts.following_count.toLocaleString()}
                   </span>
                   <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2, transition: 'color 0.15s' }}>
-                    {t('profile.following')}
+                    {'关注'}
                   </span>
                 </button>
                 <div style={{ width: 1, height: 28, background: 'rgba(0,0,0,0.1)' }} />
@@ -1551,7 +1540,7 @@ export default function ProfilePage() {
                     {followCounts.follower_count.toLocaleString()}
                   </span>
                   <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2, transition: 'color 0.15s' }}>
-                    {t('profile.followers')}
+                    {'粉丝'}
                   </span>
                 </button>
               </div>
@@ -1589,7 +1578,7 @@ export default function ProfilePage() {
                       cursor: 'pointer',
                     }}
                   >
-                    <span>{t('profile.edit_profile')}</span>
+                    <span>{'编辑资料'}</span>
                     <i
                       className="bi bi-pencil"
                       aria-hidden="true"
@@ -1797,7 +1786,7 @@ export default function ProfilePage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flex: isMobile ? 1 : undefined }}>
                   <div>
                     <div style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 700 }}>
-                      {t('profile.total_chats')}
+                      {'总聊天数'}
                     </div>
                     <div style={{ position: 'relative', display: 'inline-block', fontSize: isMobile ? '1.3rem' : '1.8rem', lineHeight: 1, fontWeight: 800, color: '#111', marginTop: 4 }}>
                       {(isOwnProfile ? displayChats : totalChats).toLocaleString()}
@@ -1848,7 +1837,7 @@ export default function ProfilePage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flex: isMobile ? 1 : undefined, position: 'relative' }}>
                   <div>
                     <div style={{ fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 700 }}>
-                      {t('profile.total_likes')}
+                      {'总点赞数'}
                     </div>
                     <div style={{ position: 'relative', display: 'inline-block', fontSize: isMobile ? '1.3rem' : '1.8rem', lineHeight: 1, fontWeight: 800, color: '#111', marginTop: 4 }}>
                       {(isOwnProfile ? displayLikes : totalLikes).toLocaleString()}
@@ -1953,15 +1942,15 @@ export default function ProfilePage() {
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.06)'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <span>{t('profile.my_creations')}</span>
+                  <span>{'我的创作'}</span>
                   <i className={`bi bi-chevron-${createdExpanded ? 'down' : 'right'}`} style={{ fontSize: '0.65rem', opacity: 0.5, flexShrink: 0 }} />
                 </button>
                 {createdExpanded && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1, paddingLeft: 10, marginTop: 1 }}>
                     {[
-                      { key: SUBTAB_TYPES.CHARACTERS, label: t('profile.characters') },
-                      { key: SUBTAB_TYPES.SCENES,     label: t('profile.scenes') },
-                      { key: SUBTAB_TYPES.PERSONAS,   label: t('profile.personas') },
+                      { key: SUBTAB_TYPES.CHARACTERS, label: '角色' },
+                      { key: SUBTAB_TYPES.SCENES,     label: '场景' },
+                      { key: SUBTAB_TYPES.PERSONAS,   label: '人设' },
                     ].map(sub => {
                       const isActive = activeTab === TAB_TYPES.CREATED && activeSubtab === sub.key;
                       return (
@@ -2015,14 +2004,14 @@ export default function ProfilePage() {
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.06)'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                   >
-                    <span>{t('profile.liked')}</span>
+                    <span>{'收藏'}</span>
                     <i className={`bi bi-chevron-${likedExpanded ? 'down' : 'right'}`} style={{ fontSize: '0.65rem', opacity: 0.5, flexShrink: 0 }} />
                   </button>
                   {likedExpanded && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 1, paddingLeft: 10, marginTop: 1 }}>
                       {[
-                        { key: SUBTAB_TYPES.CHARACTERS, label: t('profile.characters') },
-                        { key: SUBTAB_TYPES.SCENES,     label: t('profile.scenes') },
+                        { key: SUBTAB_TYPES.CHARACTERS, label: '角色' },
+                        { key: SUBTAB_TYPES.SCENES,     label: '场景' },
                       ].map(sub => {
                         const isActive = activeTab === TAB_TYPES.LIKED && activeSubtab === sub.key;
                         return (
@@ -2068,7 +2057,7 @@ export default function ProfilePage() {
                   onMouseEnter={e => { if (activeTab !== TAB_TYPES.MY_PERSONAS) e.currentTarget.style.background = 'rgba(167,139,250,0.06)'; }}
                   onMouseLeave={e => { if (activeTab !== TAB_TYPES.MY_PERSONAS) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  {t('profile.my_personas')}
+                  {'我的人设'}
                 </button>
               )}
 
@@ -2088,7 +2077,7 @@ export default function ProfilePage() {
                   onMouseEnter={e => { if (activeTab !== TAB_TYPES.CHAT_HISTORY) e.currentTarget.style.background = 'rgba(167,139,250,0.06)'; }}
                   onMouseLeave={e => { if (activeTab !== TAB_TYPES.CHAT_HISTORY) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  {t('profile.chat_history') || 'Chat History'}
+                  {'聊天记录'}
                 </button>
               )}
 
@@ -2108,7 +2097,7 @@ export default function ProfilePage() {
                   onMouseEnter={e => { if (activeTab !== TAB_TYPES.INVITE_CODE) e.currentTarget.style.background = 'rgba(167,139,250,0.06)'; }}
                   onMouseLeave={e => { if (activeTab !== TAB_TYPES.INVITE_CODE) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  {t('profile.invite_code_tab') || '邀请码'}
+                  {'邀请码'}
                 </button>
               )}
             </aside>
@@ -2147,7 +2136,7 @@ export default function ProfilePage() {
                     cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s',
                   }}
                 >
-                  <span>{t('profile.my_creations')}</span>
+                  <span>{'我的创作'}</span>
                   <i className={`bi bi-chevron-${createdExpanded ? 'down' : 'right'}`} style={{ fontSize: '0.6rem', opacity: 0.45, flexShrink: 0 }} />
                 </button>
 
@@ -2174,7 +2163,7 @@ export default function ProfilePage() {
                       cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s',
                     }}
                   >
-                    <span>{t('profile.liked')}</span>
+                    <span>{'收藏'}</span>
                     <i className={`bi bi-chevron-${likedExpanded ? 'down' : 'right'}`} style={{ fontSize: '0.6rem', opacity: 0.45, flexShrink: 0 }} />
                   </button>
                 )}
@@ -2197,7 +2186,7 @@ export default function ProfilePage() {
                       cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s',
                     }}
                   >
-                    {t('profile.my_personas')}
+                    {'我的人设'}
                   </button>
                 )}
 
@@ -2214,7 +2203,7 @@ export default function ProfilePage() {
                       cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s',
                     }}
                   >
-                    {t('profile.chat_history') || 'Chat History'}
+                    {'聊天记录'}
                   </button>
                 )}
 
@@ -2231,7 +2220,7 @@ export default function ProfilePage() {
                       cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s',
                     }}
                   >
-                    {t('profile.invite_code_tab') || '邀请码'}
+                    {'邀请码'}
                   </button>
                 )}
               </div>
@@ -2241,13 +2230,13 @@ export default function ProfilePage() {
                 <div style={{ display: 'flex', gap: 1, overflowX: 'auto', padding: '4px 0 2px 6px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {(activeTab === TAB_TYPES.CREATED
                     ? [
-                        { key: SUBTAB_TYPES.CHARACTERS, label: t('profile.characters') },
-                        { key: SUBTAB_TYPES.SCENES,     label: t('profile.scenes') },
-                        { key: SUBTAB_TYPES.PERSONAS,   label: t('profile.personas') },
+                        { key: SUBTAB_TYPES.CHARACTERS, label: '角色' },
+                        { key: SUBTAB_TYPES.SCENES,     label: '场景' },
+                        { key: SUBTAB_TYPES.PERSONAS,   label: '人设' },
                       ]
                     : [
-                        { key: SUBTAB_TYPES.CHARACTERS, label: t('profile.characters') },
-                        { key: SUBTAB_TYPES.SCENES,     label: t('profile.scenes') },
+                        { key: SUBTAB_TYPES.CHARACTERS, label: '角色' },
+                        { key: SUBTAB_TYPES.SCENES,     label: '场景' },
                       ]
                   ).map(sub => {
                     const isActive = activeSubtab === sub.key;
@@ -2287,12 +2276,12 @@ export default function ProfilePage() {
             <div className="modal-dialog mx-auto" style={{ margin: 0, maxWidth: 420, width: '100%' }}>
               <form className="modal-content" onSubmit={handleSave} style={{ borderRadius: 18, border: '2px solid #111', background: '#fff', boxShadow: '0 8px 32px rgba(0,0,0,0.28)', margin: 0 }}>
                 <div className="modal-header" style={{ borderBottom: '2px solid #111', background: '#fff' }}>
-                  <h5 className="modal-title fw-bold" style={{ color: '#111' }}>{t('profile.edit_profile')}</h5>
+                  <h5 className="modal-title fw-bold" style={{ color: '#111' }}>{'编辑资料'}</h5>
                   <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
                 </div>
                 <div className="modal-body">
                   <div className="mb-3 position-relative">
-                    <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.name')}</label>
+                    <label className="form-label fw-bold" style={{ color: '#111' }}>{'昵称'}</label>
                     <input
                       type="text"
                       className="form-control"
@@ -2307,22 +2296,22 @@ export default function ProfilePage() {
                     </small>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.short_bio')} <span style={{ fontWeight: 400, fontSize: '0.9em', color: '#888' }}>{t('profile.optional')}</span></label>
+                    <label className="form-label fw-bold" style={{ color: '#111' }}>{'简介'} <span style={{ fontWeight: 400, fontSize: '0.9em', color: '#888' }}>{'可选'}</span></label>
                     <textarea
                       className="form-control"
                       value={editBio}
                       onChange={e => setEditBio(e.target.value)}
                       rows={2}
                       maxLength={500}
-                      placeholder={t('profile.bio_placeholder')}
+                      placeholder={'介绍一下你自己...'}
                       style={{ background: '#fff', border: '1.5px solid #111', color: '#111' }}
                     />
                   </div>
                   <div className="mb-3">
-                    <label className="form-label fw-bold" style={{ color: '#111' }}>{t('profile.profile_picture')}</label>
+                    <label className="form-label fw-bold" style={{ color: '#111' }}>{'头像'}</label>
                     <div className="d-flex align-items-center gap-3">
                       <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', border: '2px solid #e9ecef', background: '#fff' }}>
-                        <img src={editPicPreview || (userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar)} alt={t('profile.preview_image')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={editPicPreview || (userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar)} alt={'头像预览'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <input
@@ -2346,13 +2335,13 @@ export default function ProfilePage() {
                 </div>
                 <div className="modal-footer" style={{ borderTop: '2px solid #111', background: '#fff' }}>
                   <PrimaryButton type="submit">
-                    {t('profile.save')}
+                    {'保存'}
                   </PrimaryButton>
                   <SecondaryButton
                     type="button"
                     onClick={() => setShowModal(false)}
                   >
-                    {t('profile.cancel')}
+                    {'取消'}
                   </SecondaryButton>
                 </div>
               </form>
@@ -2408,7 +2397,7 @@ export default function ProfilePage() {
               {/* Header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid #f0f0f4' }}>
                 <span style={{ fontWeight: 700, fontSize: '1rem', color: '#18191a' }}>
-                  {followModal === 'following' ? t('profile.following') : t('profile.followers')}
+                  {followModal === 'following' ? '关注' : '粉丝'}
                   <span style={{ marginLeft: 8, fontSize: '0.82rem', color: '#9ca3af', fontWeight: 500 }}>
                     {followModal === 'following' ? followCounts.following_count : followCounts.follower_count}
                   </span>
@@ -2432,7 +2421,7 @@ export default function ProfilePage() {
                   </div>
                 ) : followModalUsers.length === 0 ? (
                   <div style={{ textAlign: 'center', color: '#9ca3af', padding: '2.5rem 1rem', fontSize: '0.9rem' }}>
-                    {followModal === 'following' ? t('profile.no_following') : t('profile.no_followers')}
+                    {followModal === 'following' ? '暂无关注' : '暂无粉丝'}
                   </div>
                 ) : (
                   followModalUsers.map(u => (
@@ -2469,7 +2458,7 @@ export default function ProfilePage() {
                       </div>
                       {typeof u.characters_created === 'number' && u.characters_created > 0 && (
                         <div style={{ fontSize: '0.72rem', color: '#c4b5d6', fontWeight: 600, flexShrink: 0 }}>
-                          {u.characters_created} {t('user_card.characters_created')}
+                          {u.characters_created} {'个角色'}
                         </div>
                       )}
                     </div>
