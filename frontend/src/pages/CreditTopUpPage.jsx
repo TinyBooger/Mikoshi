@@ -5,7 +5,6 @@ import PageWrapper from '../components/PageWrapper';
 import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
 import { formatCompactTokenCount, formatCreditCount } from '../utils/creditDisplay';
-import { useTranslation } from 'react-i18next';
 import WeChatPayModal from '../components/WeChatPayModal';
 
 function isMobileBrowser() {
@@ -20,7 +19,6 @@ function isMobileBrowser() {
 }
 
 export default function CreditTopUpPage() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const toast = useToast();
   const { userData, sessionToken, refreshUserData } = useContext(AuthContext);
@@ -244,7 +242,7 @@ export default function CreditTopUpPage() {
             {loadingPackages ? (
               <div className="text-center py-5 text-muted">正在加载充值包...</div>
             ) : (
-              <div className="row g-3 g-lg-4">
+              <div className="row g-2 g-lg-3">
                 {sortedPackages.map((pkg) => {
                   const isPopular = Number(pkg.credits || 0) === 8000;
                   const isBestValue = Number(pkg.credits || 0) === 15000;
@@ -252,7 +250,7 @@ export default function CreditTopUpPage() {
                   return (
                     <div key={pkg.id} className="col-12 col-md-6 col-lg-4">
                       <div
-                        className="h-100 p-4 rounded-4"
+                        className="h-100 rounded-3"
                         role="button"
                         tabIndex={0}
                         onClick={() => setSelectedPackageId(pkg.id)}
@@ -263,11 +261,17 @@ export default function CreditTopUpPage() {
                             ? '1.5px solid #d8ccef'
                             : '1px solid #e5e7eb',
                           boxShadow: isSelected
-                            ? '0 4px 12px rgba(95, 86, 127, 0.12)'
-                            : '0 4px 12px rgba(15,23,42,0.05)',
+                            ? '0 6px 14px rgba(95, 86, 127, 0.14)'
+                            : '0 2px 8px rgba(15,23,42,0.04)',
                           position: 'relative',
                           cursor: 'pointer',
-                          transition: 'border 0.15s, box-shadow 0.15s',
+                          transition: 'transform 0.16s ease, border 0.16s ease, box-shadow 0.16s ease',
+                          transform: isSelected ? 'translateY(-2px)' : 'translateY(0)',
+                          padding: '0.8rem 0.9rem',
+                          minHeight: '110px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
                         }}
                       >
                         {isPopular && (
@@ -304,13 +308,13 @@ export default function CreditTopUpPage() {
                             最佳性价比
                           </div>
                         )}
-                        <div className="mb-2" style={{ color: '#64748b', fontWeight: 700, fontSize: '0.82rem' }}>
+                        <div style={{ color: '#64748b', fontWeight: 700, fontSize: '0.74rem', marginBottom: '0.25rem' }}>
                           {getLocalizedPackageLabel(pkg.label)}
                         </div>
-                        <div className="mb-1" style={{ fontWeight: 900, color: '#0f172a', fontSize: '1.7rem' }}>
+                        <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.2rem', lineHeight: 1.2 }}>
                           {formatCompactTokenCount(Number(pkg.credits || 0))}
                         </div>
-                        <div className="mb-4" style={{ fontWeight: 800, color: '#16a34a', fontSize: '1.35rem' }}>
+                        <div style={{ fontWeight: 700, color: '#16a34a', fontSize: '1rem', marginTop: '0.25rem' }}>
                           ¥{Number(pkg.price_cny || 0).toFixed(2)}
                         </div>
                       </div>
@@ -413,14 +417,14 @@ export default function CreditTopUpPage() {
 
             {/* Footer Note */}
             <p className="text-muted" style={{ fontSize: '0.9rem' }}>
-              {t('credit_topup.footer_note')}
+              购买即表示您已阅读并同意
               {' '}
               <a href="/terms-of-service" className="text-decoration-none" style={{ color: '#667eea' }}>
-                {t('credit_topup.terms')}
+                服务条款
               </a>
-              {' '}{t('common.and')}{' '}
+              {' '}和{' '}
               <a href="/privacy-policy" className="text-decoration-none" style={{ color: '#667eea' }}>
-                {t('credit_topup.privacy')}
+                隐私政策
               </a>
             </p>
 
