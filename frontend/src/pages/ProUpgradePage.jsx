@@ -209,9 +209,6 @@ export default function ProUpgradePage() {
                   );
                 })}
               </div>
-              <p className="text-muted mt-3 mb-0" style={{ fontSize: '0.85rem' }}>
-                支持随时取消订阅。
-              </p>
             </div>
 
             {/* Payment Methods */}
