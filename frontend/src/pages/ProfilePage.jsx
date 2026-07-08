@@ -15,7 +15,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import ProblemReportModal from '../components/ProblemReportModal';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
-import { formatCompactTokenCount } from '../utils/creditDisplay';
+import { formatCompactTokenCount, formatCreditCount } from '../utils/creditDisplay';
 
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
@@ -1633,6 +1633,51 @@ export default function ProfilePage() {
                     }}
                   ></div>
                 </div>
+                {isOwnProfile && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      padding: '0.58rem 0.7rem',
+                      borderRadius: 12,
+                      background: 'rgba(115, 107, 146, 0.07)',
+                      border: '1px solid rgba(115, 107, 146, 0.12)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#4f456c', fontSize: '0.8rem', fontWeight: 700, minWidth: 0 }}>
+                      <i className="bi bi-wallet2" style={{ fontSize: '0.9rem', color: '#5b2f9b', flexShrink: 0 }} />
+                      <span style={{ whiteSpace: 'nowrap' }}>钱包余额</span>
+                      <span style={{ color: '#5b2f9b', marginLeft: 2, whiteSpace: 'nowrap' }}>{formatCreditCount(Number(displayUser?.purchased_credit_balance || 0))}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/credit-topup')}
+                      style={{
+                        border: 'none',
+                        borderRadius: 999,
+                        background: 'rgba(115, 107, 146, 0.12)',
+                        color: '#4f456c',
+                        padding: '0.38rem 0.7rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        whiteSpace: 'nowrap',
+                        transition: 'background 0.16s ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(115, 107, 146, 0.18)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(115, 107, 146, 0.12)'; }}
+                    >
+                      <i className="bi bi-wallet2" />
+                      <span>充值</span>
+                    </button>
+                  </div>
+                )}
               </div>
               )}
             </div>
@@ -1672,6 +1717,51 @@ export default function ProfilePage() {
                       }}
                     ></div>
                   </div>
+                  {isOwnProfile && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                        padding: '0.58rem 0.7rem',
+                        borderRadius: 12,
+                        background: 'rgba(115, 107, 146, 0.07)',
+                        border: '1px solid rgba(115, 107, 146, 0.12)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#4f456c', fontSize: '0.8rem', fontWeight: 700, minWidth: 0 }}>
+                        <i className="bi bi-wallet2" style={{ fontSize: '0.9rem', color: '#5b2f9b', flexShrink: 0 }} />
+                        <span style={{ whiteSpace: 'nowrap' }}>钱包余额</span>
+                        <span style={{ color: '#5b2f9b', marginLeft: 2, whiteSpace: 'nowrap' }}>{formatCreditCount(Number(displayUser?.purchased_credit_balance || 0))}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/credit-topup')}
+                        style={{
+                          border: 'none',
+                          borderRadius: 999,
+                          background: 'rgba(115, 107, 146, 0.12)',
+                          color: '#4f456c',
+                          padding: '0.38rem 0.7rem',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          whiteSpace: 'nowrap',
+                          transition: 'background 0.16s ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(115, 107, 146, 0.18)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(115, 107, 146, 0.12)'; }}
+                      >
+                        <i className="bi bi-wallet2" />
+                        <span>充值</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

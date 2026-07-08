@@ -238,6 +238,8 @@
     "invite_code_grant_suffix": "bonus",
     "credits": "credits",
     "credits_each": "credits each",
+    "wallet_balance": "Wallet balance",
+    "top_up": "Top up",
     "no_invite_code": "No invitation code available.",
     "copied": "Copied!",
     "copy": "Copy",

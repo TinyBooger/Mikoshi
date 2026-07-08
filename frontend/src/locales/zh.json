@@ -237,6 +237,8 @@
     "invite_code_grant_suffix": "奖励",
     "credits": "点数",
     "credits_each": "点数/人",
+    "wallet_balance": "钱包余额",
+    "top_up": "充值",
     "no_invite_code": "暂无邀请码。",
     "copied": "已复制！",
     "copy": "复制",
