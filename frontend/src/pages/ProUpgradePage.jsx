@@ -1,6 +1,5 @@
 import React, { useState, useContext } from 'react';
 import RefundPolicyModal from '../components/RefundPolicyModal';
-import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
 import PageWrapper from '../components/PageWrapper';
@@ -18,7 +17,6 @@ function isMobileBrowser() {
 }
 
 export default function ProUpgradePage() {
-  const { t } = useTranslation();
   const { userData, sessionToken } = useContext(AuthContext);
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -60,16 +58,16 @@ export default function ProUpgradePage() {
   if (!userData) return null;
 
   return (
-    <PageWrapper title={t('pro_upgrade.title')}>
+    <PageWrapper title="升级为 Pro">
         <div className="row justify-content-center mx-0 pt-4">
           <div className="col-12 col-lg-10 col-xl-8">
             {/* Header Section */}
             <div className="text-center mb-3">
               <h1 className="fw-bold mb-3" style={{ color: '#232323', fontSize: '2.2rem' }}>
-                {t('pro_upgrade.title')}
+                升级为 Pro
               </h1>
               <p className="text-muted" style={{ fontSize: '1.05rem' }}>
-                {t('pro_upgrade.subtitle')}
+                解锁更高的使用额度、优先处理与更灵活的聊天配置体验。
               </p>
             </div>
 
@@ -88,41 +86,41 @@ export default function ProUpgradePage() {
                     <thead>
                       <tr>
                         <th style={{ width: '40%', color: '#6c757d', fontSize: '0.85rem' }}>
-                          {t('pro_upgrade.comparison_aspect')}
+                          对比项
                         </th>
                         <th style={{ width: '30%', color: '#6c757d', fontSize: '0.85rem' }}>
-                          {t('pro_upgrade.comparison_regular')}
+                          免费用户
                         </th>
                         <th style={{ width: '30%', color: '#6c757d', fontSize: '0.85rem' }}>
-                          {t('pro_upgrade.comparison_pro')}
+                          Pro 用户
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {[
                         {
-                          key: 'chat_limit',
-                          label: t('pro_upgrade.compare_chat_limit'),
-                          regular: t('pro_upgrade.compare_chat_limit_regular'),
-                          pro: t('pro_upgrade.compare_chat_limit_pro')
+                          key: 'credit_limit',
+                          label: '积分额度',
+                          regular: '每日 10 点',
+                          pro: '每月享有1万点数，使用更充足'
                         },
                         {
-                          key: 'context_length',
-                          label: t('pro_upgrade.compare_context_length'),
-                          regular: t('pro_upgrade.compare_context_length_regular'),
-                          pro: t('pro_upgrade.compare_context_length_pro')
+                          key: 'priority',
+                          label: '聊天优先级',
+                          regular: '普通排队处理',
+                          pro: '聊天请求将优先处理'
                         },
                         {
                           key: 'chat_setting',
-                          label: t('pro_upgrade.compare_chat_setting'),
-                          regular: t('pro_upgrade.compare_chat_setting_regular'),
-                          pro: t('pro_upgrade.compare_chat_setting_pro')
+                          label: '聊天配置调整',
+                          regular: '仅可使用基础聊天体验',
+                          pro: '可调整模型、温度、上下文长度等高级参数'
                         },
                         {
-                          key: 'character_create',
-                          label: t('pro_upgrade.compare_character_create'),
-                          regular: t('pro_upgrade.compare_character_create_regular'),
-                          pro: t('pro_upgrade.compare_character_create_pro')
+                          key: 'creative_config',
+                          label: '创作与配置',
+                          regular: '可进行基础创作',
+                          pro: '可在创作角色时使用高级参数，获得更丰富的创作体验'
                         }
                       ].map((row, idx) => (
                         <tr key={row.key} style={{ borderTop: idx === 0 ? '1px solid #e9ecef' : '1px solid #f1f3f5' }}>
@@ -149,7 +147,15 @@ export default function ProUpgradePage() {
                   const isSelected = selectedPlan === plan.id;
                   return (
                     <div key={plan.id} className="col-6 col-md-3">
-                      <div style={{ position: 'relative', paddingTop: plan.discount ? '12px' : '0' }}>
+                      <div
+                        style={{
+                          position: 'relative',
+                          paddingTop: '12px',
+                          transform: isSelected ? 'translateY(-4px)' : 'translateY(0)',
+                          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                          zIndex: isSelected ? 2 : 1,
+                        }}
+                      >
                         {plan.discount && (
                           <span
                             style={{
@@ -172,15 +178,16 @@ export default function ProUpgradePage() {
                           type="button"
                           className="btn w-100"
                           onClick={() => setSelectedPlan(plan.id)}
+                          aria-pressed={isSelected}
                           style={{
                             background: isSelected ? '#f1ebfb' : '#fff',
                             border: isSelected ? '1.5px solid #d8ccef' : '1px solid #dee2e6',
                             borderRadius: '16px',
                             padding: '1.1rem 0.75rem',
                             boxShadow: isSelected
-                              ? '0 4px 12px rgba(95, 86, 127, 0.12)'
+                              ? '0 8px 18px rgba(95, 86, 127, 0.16)'
                               : '0 2px 8px rgba(0,0,0,0.04)',
-                            transition: 'all 0.15s ease',
+                            transition: 'all 0.2s ease',
                           }}
                         >
                           <div style={{ color: '#6c757d', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem' }}>
@@ -203,7 +210,7 @@ export default function ProUpgradePage() {
                 })}
               </div>
               <p className="text-muted mt-3 mb-0" style={{ fontSize: '0.85rem' }}>
-                {t('pro_upgrade.cancel_anytime')}
+                支持随时取消订阅。
               </p>
             </div>
 
@@ -286,7 +293,7 @@ export default function ProUpgradePage() {
                 }}
                 onClick={async () => {
                   if (!userData) {
-                    toast.show(t('sidebar.login_first'), { type: 'info' });
+                    toast.show('请先登录后再升级 Pro', { type: 'info' });
                     return;
                   }
 
@@ -407,10 +414,10 @@ export default function ProUpgradePage() {
                 {loading ? (
                   <>
                     <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    {t('common.loading')}
+                    加载中
                   </>
                 ) : (
-                  t('pro_upgrade.upgrade_now')
+                  '立即升级'
                 )}
               </button>
             </div>
@@ -435,14 +442,14 @@ export default function ProUpgradePage() {
 
             {/* Footer Note */}
             <p className="text-muted mb-0" style={{ fontSize: '0.9rem' }}>
-              {t('pro_upgrade.footer_note')}
+              升级即表示您已阅读并同意
               {' '}
               <a href="/terms-of-service" className="text-decoration-none" style={{ color: '#667eea' }}>
-                {t('pro_upgrade.terms')}
+                服务条款
               </a>
-              {' '}{t('common.and')}{' '}
+              {' '}和{' '}
               <a href="/privacy-policy" className="text-decoration-none" style={{ color: '#667eea' }}>
-                {t('pro_upgrade.privacy')}
+                隐私政策
               </a>
             </p>
           </div>
