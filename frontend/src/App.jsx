@@ -35,6 +35,7 @@ import AlipayReturnPage from './pages/AlipayReturnPage.jsx';
 import ProUpgradePage from './pages/ProUpgradePage.jsx';
 import ProUpgradePaymentPage from './pages/ProUpgradePaymentPage.jsx';
 import CreditTopUpPage from './pages/CreditTopUpPage.jsx';
+import PackagePaymentPage from './pages/PackagePaymentPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 function AppRootLayout() {
@@ -102,6 +103,7 @@ const router = createBrowserRouter([
       { path: 'alipay/return', element: <ProtectedPage><AlipayReturnPage /></ProtectedPage> },
       { path: 'pro-upgrade', element: <ProtectedPage><ProUpgradePage /></ProtectedPage> },
       { path: 'pro-upgrade/payment', element: <ProtectedPage><ProUpgradePaymentPage /></ProtectedPage> },
+      { path: 'pro-upgrade/payment/package', element: <ProtectedPage><PackagePaymentPage /></ProtectedPage> },
       { path: 'credit-topup', element: <ProtectedPage><CreditTopUpPage /></ProtectedPage> },
       { path: 'terms-of-service', element: <TermsOfServicePage /> },
       { path: 'privacy-policy', element: <PrivacyPolicyPage /> },

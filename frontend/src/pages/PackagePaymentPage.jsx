@@ -1,0 +1,390 @@
+import React, { useContext, useEffect, useMemo, useState } from 'react';
+import RefundPolicyModal from '../components/RefundPolicyModal';
+import { useNavigate, useSearchParams } from 'react-router';
+import PageWrapper from '../components/PageWrapper';
+import { AuthContext } from '../components/AuthProvider';
+import { useToast } from '../components/ToastProvider';
+import { formatCompactTokenCount, formatCreditCount } from '../utils/creditDisplay';
+import WeChatPayModal from '../components/WeChatPayModal';
+
+function isMobileBrowser() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+
+  return (
+    window.matchMedia?.('(max-width: 768px)').matches ||
+    /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent)
+  );
+}
+
+export default function PackagePaymentPage() {
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [searchParams] = useSearchParams();
+  const packageIdFromQuery = searchParams.get('package');
+  const { userData, sessionToken, refreshUserData } = useContext(AuthContext);
+  const [packages, setPackages] = useState([]);
+  const [loadingPackages, setLoadingPackages] = useState(true);
+  const [selectedPackageId, setSelectedPackageId] = useState(packageIdFromQuery);
+  const [payingPackageId, setPayingPackageId] = useState(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('alipay');
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [wechatQrData, setWechatQrData] = useState(null); // { codeUrl, outTradeNo, amount }
+
+  const baseButtonStyle = {
+    borderRadius: '0.65rem',
+    border: '1px solid #d8dbe2',
+    fontSize: '0.9rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease',
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+  };
+
+  const primaryButtonStyle = {
+    ...baseButtonStyle,
+    background: '#ede7f7',
+    border: '1px solid #ddd4ef',
+    color: '#5f567f',
+  };
+
+  const paymentOptionStyle = (method) => ({
+    ...baseButtonStyle,
+    background: '#fff',
+    border: selectedPaymentMethod === method
+      ? (method === 'alipay' ? '2px solid #1677ff' : '2px solid #07c160')
+      : '1px solid #d9e2ec',
+    borderRadius: '12px',
+    padding: '0.6rem 1rem',
+    boxShadow: selectedPaymentMethod === method
+      ? (method === 'alipay' ? '0 4px 12px rgba(22, 119, 255, 0.15)' : '0 4px 12px rgba(7,193,96,0.15)')
+      : 'none',
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchPackages = async () => {
+      setLoadingPackages(true);
+      try {
+        const response = await fetch(`${window.API_BASE_URL}/api/alipay/credit-packages`);
+        if (!response.ok) {
+          throw new Error('Failed to load token packages');
+        }
+        const data = await response.json();
+        if (!cancelled) {
+          setPackages(Array.isArray(data?.packages) ? data.packages : []);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.show('加载充值包失败，请稍后重试。', { type: 'error' });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingPackages(false);
+        }
+      }
+    };
+
+    fetchPackages();
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
+
+  useEffect(() => {
+    if (packages.length > 0 && selectedPackageId === null) {
+      const sorted = [...packages].sort((a, b) => Number(a.credits || 0) - Number(b.credits || 0));
+      setSelectedPackageId(sorted[0]?.id ?? null);
+    }
+  }, [packages, selectedPackageId]);
+
+  const sortedPackages = useMemo(
+    () => [...packages].sort((a, b) => Number(a.credits || 0) - Number(b.credits || 0)),
+    [packages]
+  );
+
+  const selectedPackage = useMemo(
+    () => sortedPackages.find((p) => p.id === selectedPackageId) || null,
+    [sortedPackages, selectedPackageId]
+  );
+
+  const handlePurchase = async () => {
+    if (!userData || !sessionToken) {
+      toast.show('请先登录', { type: 'info' });
+      navigate('/');
+      return;
+    }
+
+    if (!selectedPackageId || !selectedPackage) {
+      toast.show('请先选择充值套餐', { type: 'info' });
+      return;
+    }
+
+    if (isMobileBrowser() && selectedPaymentMethod === 'wechat') {
+      toast.show('手机端暂不支持微信支付，请使用支付宝支付', { type: 'info' });
+      return;
+    }
+
+    if (selectedPaymentMethod !== 'alipay') {
+    }
+
+    if (selectedPaymentMethod === 'wechat') {
+      setPayingPackageId(selectedPackage.id);
+      try {
+        const res = await fetch(`${window.API_BASE_URL}/api/wechat/create-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: sessionToken },
+          body: JSON.stringify({
+            total_amount: Number(selectedPackage.price_cny),
+            subject: `点数充值 ${formatCompactTokenCount(Number(selectedPackage.credits || 0))}`,
+            body: `购买${formatCompactTokenCount(Number(selectedPackage.credits || 0))} 点数`,
+            order_type: 'credit_topup',
+            user_id: userData.id,
+            package_id: selectedPackage.id,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.success || !data?.code_url) {
+          throw new Error(data?.detail || '创建订单失败');
+        }
+        setWechatQrData({ codeUrl: data.code_url, outTradeNo: data.out_trade_no, amount: Number(selectedPackage.price_cny) });
+      } catch (err) {
+        toast.show(err?.message || '创建微信支付订单失败', { type: 'error' });
+      } finally {
+        setPayingPackageId(null);
+      }
+      return;
+    }
+
+    if (selectedPaymentMethod !== 'alipay') {
+      toast.show('请选择支付方式', { type: 'info' });
+      return;
+    }
+
+    setPayingPackageId(selectedPackage.id);
+    try {
+      const requestBody = {
+        total_amount: Number(selectedPackage.price_cny),
+        subject: `点数充值 ${formatCompactTokenCount(Number(selectedPackage.credits || 0))}`,
+        body: `购买${formatCompactTokenCount(Number(selectedPackage.credits || 0))} 点数`,
+        payment_type: isMobileBrowser() ? 'wap' : 'page',
+        order_type: 'credit_topup',
+        user_id: userData.id,
+        package_id: selectedPackage.id,
+      };
+
+      const response = await fetch(`${window.API_BASE_URL}/api/alipay/create-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: sessionToken,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data?.success || !data?.payment_url) {
+        throw new Error(data?.detail || '创建订单失败');
+      }
+
+      toast.show('订单创建成功，正在跳转到支付页面...', { type: 'success' });
+      if (refreshUserData) {
+        refreshUserData({ silent: true });
+      }
+      setTimeout(() => {
+        window.location.href = data.payment_url;
+      }, 800);
+    } catch (error) {
+      toast.show(error?.message || '创建订单失败', { type: 'error' });
+    } finally {
+      setPayingPackageId(null);
+    }
+  };
+
+  return (
+    <PageWrapper title="点数包购买">
+      <div className="container py-4 py-lg-5">
+        <div className="row justify-content-center">
+          <div className="col-12 col-xl-10">
+            <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+              <div>
+                <h1 className="fw-bold mb-1" style={{ fontSize: '2rem', color: '#1f2937' }}>点数包购买</h1>
+                <p className="text-muted mb-0">
+                  点数充值到钱包后永久有效，不因月度订阅过期而清零。套餐额度用完后自动抵扣钱包点数。
+                  <button className="btn btn-link p-0 ms-2" style={{ fontSize: '0.98em' }} onClick={() => setShowRefundModal(true)}>
+                    退款政策
+                  </button>
+                </p>
+              </div>
+              <div
+                className="px-3 py-2 rounded-3"
+                style={{ background: '#fff', border: '1px solid #e5e7eb', minWidth: 220 }}
+              >
+                <div style={{ fontSize: '0.76rem', color: '#6b7280', fontWeight: 700 }}>当前钱包余额（点数）</div>
+                <div style={{ fontSize: '1.2rem', color: '#111827', fontWeight: 800 }}>
+                  {formatCreditCount(Number(userData?.purchased_credit_balance || 0))}
+                </div>
+              </div>
+            </div>
+
+            {loadingPackages ? (
+              <div className="text-center py-5 text-muted">正在加载充值包...</div>
+            ) : selectedPackage ? (
+              <div className="row justify-content-center mb-4">
+                <div className="col-12 col-md-6 col-lg-4">
+                  <div
+                    className="rounded-3"
+                    style={{
+                      background: '#fff',
+                      border: '1.5px solid #d8ccef',
+                      boxShadow: '0 6px 14px rgba(95, 86, 127, 0.14)',
+                      padding: '1rem 1.2rem',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ color: '#64748b', fontWeight: 700, fontSize: '0.8rem', marginBottom: '0.5rem' }}>
+                      已选套餐
+                    </div>
+                    <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.6rem', lineHeight: 1.2 }}>
+                      {formatCompactTokenCount(Number(selectedPackage.credits || 0))}
+                    </div>
+                    <div style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '0.3rem' }}>点数</div>
+                    <div style={{ fontWeight: 700, color: '#16a34a', fontSize: '1.4rem', marginTop: '0.5rem' }}>
+                      ¥{Number(selectedPackage.price_cny || 0).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-5 text-muted">未找到指定的充值套餐，请返回重新选择。</div>
+            )}
+
+            {/* Payment Methods */}
+            <div className="mt-4 mb-3">
+              <div className="mb-2" style={{ color: '#6c757d', fontSize: '0.82rem', fontWeight: 700 }}>
+                支付方式
+              </div>
+              <div className="d-flex flex-row flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn d-flex align-items-center gap-2"
+                  onClick={() => setSelectedPaymentMethod('alipay')}
+                  style={paymentOptionStyle('alipay')}
+                >
+                  <img
+                    src="/alipay/支付宝logo-方形.png"
+                    alt="支付宝logo"
+                    style={{ width: 22, height: 22, objectFit: 'contain' }}
+                  />
+                  <span style={{ color: '#232323', fontWeight: 700, fontSize: '0.9rem' }}>支付宝</span>
+                  <img
+                    src="/alipay/推荐.png"
+                    alt="推荐"
+                    style={{ height: 18, objectFit: 'contain' }}
+                  />
+                  <input
+                    type="radio"
+                    readOnly
+                    checked={selectedPaymentMethod === 'alipay'}
+                    aria-label="选择支付宝支付"
+                    style={{ accentColor: '#1677ff' }}
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  className="btn d-flex align-items-center gap-2"
+                  onClick={() => { if (!isMobileBrowser()) setSelectedPaymentMethod('wechat'); }}
+                  style={isMobileBrowser() ? {
+                    ...baseButtonStyle,
+                    background: '#e9ecef',
+                    border: '1px solid #ced4da',
+                    color: '#adb5bd',
+                    cursor: 'not-allowed',
+                    borderRadius: '12px',
+                    padding: '0.6rem 1rem',
+                  } : paymentOptionStyle('wechat')}
+                  title={isMobileBrowser() ? '手机端暂不支持微信支付' : ''}
+                >
+                  <i className="bi bi-wechat" style={{ color: isMobileBrowser() ? '#adb5bd' : '#07c160', fontSize: '1.3rem' }} />
+                  <span style={{ color: isMobileBrowser() ? '#adb5bd' : '#232323', fontWeight: 700, fontSize: '0.9rem' }}>微信支付</span>
+                  {isMobileBrowser() ? (
+                    <span style={{ color: '#dc3545', fontSize: '0.72rem', fontWeight: 400 }}>手机端暂不支持</span>
+                  ) : (
+                    <input
+                      type="radio"
+                      readOnly
+                      checked={selectedPaymentMethod === 'wechat'}
+                      aria-label="选择微信支付"
+                      style={{ accentColor: '#07c160' }}
+                    />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Purchase Button */}
+            <div className="text-center mt-4 mb-3">
+              <button
+                className="btn btn-lg fw-bold px-5 py-3 shadow"
+                style={{ ...primaryButtonStyle, borderRadius: '16px', fontSize: '1.05rem', padding: '0.8rem 2.4rem' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#e7e0f4';
+                  e.currentTarget.style.color = '#554d73';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#ede7f7';
+                  e.currentTarget.style.color = '#5f567f';
+                }}
+                onClick={handlePurchase}
+                disabled={!!payingPackageId || !selectedPackage || (selectedPaymentMethod !== 'alipay' && selectedPaymentMethod !== 'wechat')}
+              >
+                {payingPackageId ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    处理中...
+                  </>
+                ) : (
+                  '立即购买'
+                )}
+              </button>
+            </div>
+
+            {/* Footer Note */}
+            <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+              购买即表示您已阅读并同意
+              {' '}
+              <a href="/terms-of-service" className="text-decoration-none" style={{ color: '#667eea' }}>
+                服务条款
+              </a>
+              {' '}和{' '}
+              <a href="/privacy-policy" className="text-decoration-none" style={{ color: '#667eea' }}>
+                隐私政策
+              </a>
+            </p>
+
+          </div>
+        </div>
+      </div>
+      {/* Refund Policy Modal */}
+      <RefundPolicyModal show={showRefundModal} onClose={() => setShowRefundModal(false)} policyType="token" />
+      {/* WeChat Pay QR Modal */}
+      {wechatQrData && (
+        <WeChatPayModal
+          codeUrl={wechatQrData.codeUrl}
+          outTradeNo={wechatQrData.outTradeNo}
+          orderType="credit_topup"
+          amount={wechatQrData.amount}
+          onSuccess={() => {
+            setWechatQrData(null);
+            toast.show('点数充值成功！', { type: 'success' });
+            if (refreshUserData) refreshUserData({ silent: true });
+          }}
+          onCancel={() => setWechatQrData(null)}
+        />
+      )}
+    </PageWrapper>
+  );
+}

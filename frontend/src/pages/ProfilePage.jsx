@@ -1643,7 +1643,7 @@ export default function ProfilePage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => navigate('/credit-topup')}
+                      onClick={() => navigate('/pro-upgrade')}
                       style={{
                         border: 'none',
                         borderRadius: 999,
@@ -1727,7 +1727,7 @@ export default function ProfilePage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => navigate('/credit-topup')}
+                        onClick={() => navigate('/pro-upgrade')}
                         style={{
                           border: 'none',
                           borderRadius: 999,

@@ -1116,7 +1116,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             <button
               type="button"
               className="btn btn-sm w-100 mt-2"
-              onClick={() => handleNavigate('/credit-topup')}
+              onClick={() => handleNavigate('/pro-upgrade')}
               onMouseEnter={e => {
                 e.currentTarget.style.background = 'rgba(115, 107, 146, 0.14)';
               }}

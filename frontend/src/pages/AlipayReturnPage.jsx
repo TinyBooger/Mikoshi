@@ -177,7 +177,7 @@ function AlipayReturnPage() {
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
-                onClick={() => navigate('/credit-topup')}
+                onClick={() => navigate('/pro-upgrade')}
                 style={lavenderButtonStyle}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = '#e7e0f4';

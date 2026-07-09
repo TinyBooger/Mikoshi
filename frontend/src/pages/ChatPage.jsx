@@ -2125,7 +2125,7 @@ export default function ChatPage() {
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       <button
                         type="button"
-                        onClick={() => navigate('/credit-topup')}
+                        onClick={() => navigate('/pro-upgrade')}
                         style={{
                           padding: '0.15rem 0.55rem',
                           borderRadius: 6,
