@@ -2272,16 +2272,54 @@ export default function ProfilePage() {
       {/* Profile Edit Modal - rendered into <main> via portal so it overlays the content area only */}
       {showModal && isOwnProfile && (
         <ModalPortal>
-          <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 2000, position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', boxSizing: 'border-box', paddingTop: '2rem' }}>
-            <div className="modal-dialog mx-auto" style={{ margin: 0, maxWidth: 420, width: '100%' }}>
-              <form className="modal-content" onSubmit={handleSave} style={{ borderRadius: 18, border: '2px solid #111', background: '#fff', boxShadow: '0 8px 32px rgba(0,0,0,0.28)', margin: 0 }}>
-                <div className="modal-header" style={{ borderBottom: '2px solid #111', background: '#fff' }}>
-                  <h5 className="modal-title fw-bold" style={{ color: '#111' }}>{'编辑资料'}</h5>
-                  <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
-                </div>
-                <div className="modal-body">
-                  <div className="mb-3 position-relative">
-                    <label className="form-label fw-bold" style={{ color: '#111' }}>{'昵称'}</label>
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 2000,
+              background: 'rgba(0,0,0,0.28)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '1rem',
+            }}
+            onClick={() => setShowModal(false)}
+          >
+            <form
+              onSubmit={handleSave}
+              style={{
+                background: '#fff',
+                borderRadius: 20,
+                width: '100%',
+                maxWidth: 420,
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+                overflow: 'hidden',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid #f0f0f4' }}>
+                <span style={{ fontWeight: 700, fontSize: '1rem', color: '#18191a' }}>
+                  {'编辑资料'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '1.2rem', padding: '2px 6px', borderRadius: 8, lineHeight: 1, transition: 'color 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#374151'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#9ca3af'}
+                >
+                  <i className="bi bi-x-lg" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* 昵称 */}
+                <div>
+                  <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#18191a', marginBottom: '0.35rem', display: 'block' }}>
+                    {'昵称'}
+                  </label>
+                  <div style={{ position: 'relative' }}>
                     <input
                       type="text"
                       className="form-control"
@@ -2289,63 +2327,119 @@ export default function ProfilePage() {
                       maxLength={MAX_NAME_LENGTH}
                       onChange={e => setEditName(e.target.value)}
                       required
-                      style={{ paddingRight: "3rem", background: '#fff', border: '1.5px solid #111', color: '#111' }}
+                      placeholder={'输入昵称'}
+                      style={{
+                        paddingRight: '3.2rem',
+                        background: '#fff',
+                        border: '1.5px solid #e0e0e0',
+                        borderRadius: 10,
+                        color: '#18191a',
+                        fontSize: '0.9rem',
+                        padding: '0.55rem 0.85rem',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        outline: 'none',
+                        transition: 'border-color 0.2s ease',
+                      }}
+                      onFocus={e => e.target.style.borderColor = '#c4b5d6'}
+                      onBlur={e => e.target.style.borderColor = '#e0e0e0'}
                     />
-                    <small className="position-absolute" style={{ top: 0, right: 0, color: '#888' }}>
+                    <small style={{ position: 'absolute', top: '50%', right: '0.7rem', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '0.72rem', pointerEvents: 'none' }}>
                       {editName.length}/{MAX_NAME_LENGTH}
                     </small>
                   </div>
-                  <div className="mb-3">
-                    <label className="form-label fw-bold" style={{ color: '#111' }}>{'简介'} <span style={{ fontWeight: 400, fontSize: '0.9em', color: '#888' }}>{'可选'}</span></label>
-                    <textarea
-                      className="form-control"
-                      value={editBio}
-                      onChange={e => setEditBio(e.target.value)}
-                      rows={2}
-                      maxLength={500}
-                      placeholder={'介绍一下你自己...'}
-                      style={{ background: '#fff', border: '1.5px solid #111', color: '#111' }}
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label fw-bold" style={{ color: '#111' }}>{'头像'}</label>
-                    <div className="d-flex align-items-center gap-3">
-                      <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', border: '2px solid #e9ecef', background: '#fff' }}>
-                        <img src={editPicPreview || (userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar)} alt={'头像预览'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <input
-                          type="file"
-                          className="form-control"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                            if (f) {
-                              setRawSelectedFile(f);
-                              setShowCrop(true);
-                            }
-                            // Reset so selecting the same file again still fires onChange.
-                            e.target.value = '';
-                          }}
-                          style={{ background: '#fff', border: '1.5px solid #111', color: '#111' }}
-                        />
-                      </div>
+                </div>
+
+                {/* 简介 */}
+                <div>
+                  <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#18191a', marginBottom: '0.35rem', display: 'block' }}>
+                    {'简介'}
+                    <span style={{ fontWeight: 400, fontSize: '0.8rem', color: '#9ca3af', marginLeft: 4 }}>{'（可选）'}</span>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    value={editBio}
+                    onChange={e => setEditBio(e.target.value)}
+                    rows={2}
+                    maxLength={500}
+                    placeholder={'介绍一下你自己...'}
+                    style={{
+                      background: '#fff',
+                      border: '1.5px solid #e0e0e0',
+                      borderRadius: 10,
+                      color: '#18191a',
+                      fontSize: '0.9rem',
+                      padding: '0.55rem 0.85rem',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      outline: 'none',
+                      resize: 'vertical',
+                      transition: 'border-color 0.2s ease',
+                    }}
+                    onFocus={e => e.target.style.borderColor = '#c4b5d6'}
+                    onBlur={e => e.target.style.borderColor = '#e0e0e0'}
+                  />
+                </div>
+
+                {/* 头像 */}
+                <div>
+                  <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#18191a', marginBottom: '0.5rem', display: 'block' }}>
+                    {'头像'}
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', border: '2px solid #f0f0f4', background: '#f9f9fb', flexShrink: 0 }}>
+                      <img
+                        src={editPicPreview || (userData?.profile_pic ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}` : defaultAvatar)}
+                        alt={'头像预览'}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <input
+                        type="file"
+                        className="form-control"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                          if (f) {
+                            setRawSelectedFile(f);
+                            setShowCrop(true);
+                          }
+                          e.target.value = '';
+                        }}
+                        style={{
+                          background: '#fff',
+                          border: '1.5px solid #e0e0e0',
+                          borderRadius: 10,
+                          color: '#18191a',
+                          fontSize: '0.82rem',
+                          padding: '0.45rem 0.7rem',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          outline: 'none',
+                          transition: 'border-color 0.2s ease',
+                        }}
+                        onFocus={e => e.target.style.borderColor = '#c4b5d6'}
+                        onBlur={e => e.target.style.borderColor = '#e0e0e0'}
+                      />
                     </div>
                   </div>
                 </div>
-                <div className="modal-footer" style={{ borderTop: '2px solid #111', background: '#fff' }}>
-                  <PrimaryButton type="submit">
-                    {'保存'}
-                  </PrimaryButton>
-                  <SecondaryButton
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                  >
-                    {'取消'}
-                  </SecondaryButton>
-                </div>
-              </form>
-            </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.6rem', padding: '0.75rem 1.25rem 1rem', borderTop: '1px solid #f0f0f4' }}>
+                <SecondaryButton
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                >
+                  {'取消'}
+                </SecondaryButton>
+                <PrimaryButton type="submit">
+                  {'保存'}
+                </PrimaryButton>
+              </div>
+            </form>
           </div>
         </ModalPortal>
       )}
