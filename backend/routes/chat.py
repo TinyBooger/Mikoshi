@@ -225,10 +225,18 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     fork_from_message_id = data.get("fork_from_message_id")
     can_use_advanced_config = bool(current_user.is_pro)
     raw_chat_config = data.get("chat_config")
-    chat_config = parse_chat_config(raw_chat_config) if can_use_advanced_config else default_chat_config()
+    chat_config = parse_chat_config(raw_chat_config)
+    # Model and context_window_tier are always accepted from the user.
+    # Sampling params (temperature, top_p, max_tokens, penalties) are gated for Pro users.
+    if not can_use_advanced_config:
+        default_cfg = default_chat_config()
+        chat_config["temperature"] = default_cfg["temperature"]
+        chat_config["top_p"] = default_cfg["top_p"]
+        chat_config["max_tokens"] = default_cfg["max_tokens"]
+        chat_config["presence_penalty"] = default_cfg["presence_penalty"]
+        chat_config["frequency_penalty"] = default_cfg["frequency_penalty"]
     context_window_tier, context_window_soft_limit = resolve_context_window_settings(
         raw_chat_config,
-        can_use_advanced_config=can_use_advanced_config,
         is_pro=bool(current_user.is_pro),
         model_id=chat_config.get("model"),
     )

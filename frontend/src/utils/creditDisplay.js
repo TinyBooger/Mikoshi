@@ -27,6 +27,7 @@ export const formatCompactTokenCount = (value) => {
 export const formatCreditCount = (value) => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return '0';
+  if (numeric <= 0) return '0';
   if (numeric < 0.01) return '<0.01';
   return trimTrailingZeros(numeric, 2);
 };

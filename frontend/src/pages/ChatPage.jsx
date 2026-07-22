@@ -301,48 +301,38 @@ export default function ChatPage() {
   };
 
   const normalizeAdvancedChatConfig = (character) => {
-    if (!canUseAdvancedChatConfig) {
-      return DEFAULT_ADVANCED_CHAT_CONFIG;
-    }
     if (!character) return DEFAULT_ADVANCED_CHAT_CONFIG;
     const model = normalizeChatModel(character.model);
     const tokenLimits = getTokenLimits(model);
-    const normalizedContextWindowTier = normalizeContextWindowTier(character.context_window_tier, {
-      canUseAdvancedConfig: canUseAdvancedChatConfig,
-    }, model);
+    const normalizedContextWindowTier = normalizeContextWindowTier(character.context_window_tier, model);
     return {
       model,
-      temperature: clamp(character.temperature, 0, 2, DEFAULT_ADVANCED_CHAT_CONFIG.temperature),
-      top_p: clamp(character.top_p, 0, 1, DEFAULT_ADVANCED_CHAT_CONFIG.top_p),
-      max_tokens: normalizeTokenTierValue(model, clamp(character.max_tokens, tokenLimits.min, tokenLimits.max, tokenLimits.defaultValue)),
-      presence_penalty: clamp(character.presence_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty),
-      frequency_penalty: clamp(character.frequency_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty),
       context_window_tier: normalizedContextWindowTier,
+      temperature: canUseAdvancedChatConfig ? clamp(character.temperature, 0, 2, DEFAULT_ADVANCED_CHAT_CONFIG.temperature) : DEFAULT_ADVANCED_CHAT_CONFIG.temperature,
+      top_p: canUseAdvancedChatConfig ? clamp(character.top_p, 0, 1, DEFAULT_ADVANCED_CHAT_CONFIG.top_p) : DEFAULT_ADVANCED_CHAT_CONFIG.top_p,
+      max_tokens: canUseAdvancedChatConfig ? normalizeTokenTierValue(model, clamp(character.max_tokens, tokenLimits.min, tokenLimits.max, tokenLimits.defaultValue)) : tokenLimits.defaultValue,
+      presence_penalty: canUseAdvancedChatConfig ? clamp(character.presence_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty) : DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty,
+      frequency_penalty: canUseAdvancedChatConfig ? clamp(character.frequency_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty) : DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty,
     };
   };
   const normalizeAdvancedChatConfigFromEntry = (rawConfig, fallbackCharacter = null) => {
     const fallback = normalizeAdvancedChatConfig(fallbackCharacter);
-    if (!canUseAdvancedChatConfig) {
-      return DEFAULT_ADVANCED_CHAT_CONFIG;
-    }
     if (!rawConfig || typeof rawConfig !== 'object') {
       return fallback;
     }
 
     const model = normalizeChatModel(rawConfig.model);
     const tokenLimits = getTokenLimits(model);
-    const normalizedContextWindowTier = normalizeContextWindowTier(rawConfig.context_window_tier, {
-      canUseAdvancedConfig: canUseAdvancedChatConfig,
-    }, model);
+    const normalizedContextWindowTier = normalizeContextWindowTier(rawConfig.context_window_tier, model);
 
     return {
       model,
-      temperature: clamp(rawConfig.temperature, 0, 2, fallback.temperature),
-      top_p: clamp(rawConfig.top_p, 0, 1, fallback.top_p),
-      max_tokens: normalizeTokenTierValue(model, clamp(rawConfig.max_tokens, tokenLimits.min, tokenLimits.max, fallback.max_tokens)),
-      presence_penalty: clamp(rawConfig.presence_penalty, -2, 2, fallback.presence_penalty),
-      frequency_penalty: clamp(rawConfig.frequency_penalty, -2, 2, fallback.frequency_penalty),
       context_window_tier: normalizedContextWindowTier,
+      temperature: canUseAdvancedChatConfig ? clamp(rawConfig.temperature, 0, 2, fallback.temperature) : fallback.temperature,
+      top_p: canUseAdvancedChatConfig ? clamp(rawConfig.top_p, 0, 1, fallback.top_p) : fallback.top_p,
+      max_tokens: canUseAdvancedChatConfig ? normalizeTokenTierValue(model, clamp(rawConfig.max_tokens, tokenLimits.min, tokenLimits.max, fallback.max_tokens)) : fallback.max_tokens,
+      presence_penalty: canUseAdvancedChatConfig ? clamp(rawConfig.presence_penalty, -2, 2, fallback.presence_penalty) : fallback.presence_penalty,
+      frequency_penalty: canUseAdvancedChatConfig ? clamp(rawConfig.frequency_penalty, -2, 2, fallback.frequency_penalty) : fallback.frequency_penalty,
     };
   };
   const [advancedChatConfig, setAdvancedChatConfig] = useState(DEFAULT_ADVANCED_CHAT_CONFIG);
@@ -587,9 +577,7 @@ export default function ChatPage() {
   };
 
   const getContextWindowUsage = (allMessages) => {
-    const effectiveSoftTokenLimit = getContextWindowTokenLimit(advancedChatConfig?.context_window_tier, {
-      canUseAdvancedConfig: canUseAdvancedChatConfig,
-    });
+    const effectiveSoftTokenLimit = getContextWindowTokenLimit(advancedChatConfig?.context_window_tier);
 
     if (!Array.isArray(allMessages)) {
       return {
@@ -598,18 +586,18 @@ export default function ChatPage() {
       };
     }
 
-    const validMessages = allMessages.filter(
-      (message) => message && typeof message === 'object' && message.role && typeof message.content === 'string'
-    );
-
     if (serverContextWindowUsage) {
       const serverInputTokens = Number(serverContextWindowUsage.input_tokens || 0);
 
       return {
         currentTokens: serverInputTokens,
-        softLimit: Number(serverContextWindowUsage.soft_token_limit || effectiveSoftTokenLimit),
+        softLimit: effectiveSoftTokenLimit,
       };
     }
+
+    const validMessages = allMessages.filter(
+      (message) => message && typeof message === 'object' && message.role && typeof message.content === 'string'
+    );
 
     for (let i = validMessages.length - 1; i >= 0; i -= 1) {
       const message = validMessages[i];

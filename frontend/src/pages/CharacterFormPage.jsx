@@ -389,7 +389,7 @@ export default function CharacterFormPage() {
               max_tokens: normalizeTokenTierValue(loadedModel, data.max_tokens),
               presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
               frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
-              context_window_tier: normalizeContextWindowTier(data.context_window_tier, { canUseAdvancedConfig }, loadedModel),
+              context_window_tier: normalizeContextWindowTier(data.context_window_tier, loadedModel),
               background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
           } else {
@@ -416,7 +416,7 @@ export default function CharacterFormPage() {
               max_tokens: normalizeTokenTierValue(loadedModel, data.max_tokens),
               presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
               frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
-              context_window_tier: normalizeContextWindowTier(data.context_window_tier, { canUseAdvancedConfig }, loadedModel),
+              context_window_tier: normalizeContextWindowTier(data.context_window_tier, loadedModel),
               background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
           }
@@ -468,7 +468,6 @@ export default function CharacterFormPage() {
     const nextTokenLimits = getTokenLimits(nextModel);
     const nextContextTier = normalizeContextWindowTier(
       charData.context_window_tier,
-      { canUseAdvancedConfig },
       nextModel,
     );
     setCharData(prev => ({
@@ -540,17 +539,12 @@ export default function CharacterFormPage() {
   const finalTokenLimits = getTokenLimits(finalModel);
   const safeMaxTokens = clampValue(charData.max_tokens, finalTokenLimits.min, finalTokenLimits.max, finalTokenLimits.defaultValue);
   formData.append("model", finalModel);
+    formData.append("context_window_tier", String(normalizeContextWindowTier(charData.context_window_tier, finalModel)));
     formData.append("temperature", String(canUseAdvancedConfig ? (charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature) : DEFAULT_CHAT_CONFIG.temperature));
     formData.append("top_p", String(canUseAdvancedConfig ? (charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p) : DEFAULT_CHAT_CONFIG.top_p));
   formData.append("max_tokens", String(canUseAdvancedConfig ? safeMaxTokens : DEFAULT_CHAT_CONFIG.max_tokens));
     formData.append("presence_penalty", String(canUseAdvancedConfig ? (charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty) : DEFAULT_CHAT_CONFIG.presence_penalty));
     formData.append("frequency_penalty", String(canUseAdvancedConfig ? (charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty) : DEFAULT_CHAT_CONFIG.frequency_penalty));
-    formData.append("context_window_tier", String(canUseAdvancedConfig
-      ? normalizeContextWindowTier(charData.context_window_tier, { canUseAdvancedConfig }, finalModel)
-      : DEFAULT_CONTEXT_WINDOW_TIER));
-    if (!canUseAdvancedConfig) {
-      formData.set("model", DEFAULT_CHAT_CONFIG.model);
-    }
     formData.append("is_public", String(!!charData.is_public));
     formData.append("is_forkable", String(!!charData.is_forkable));
     if (picture) formData.append("picture", picture);
@@ -1181,13 +1175,72 @@ export default function CharacterFormPage() {
                   resize: 'vertical',
                 }}
               />
-              <small style={{ display: 'block', marginTop: 8, color: '#7c3aed' }}>处理详细设定会消耗少量点数</small>
               <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
                 {(charData.long_description || '').trim().length}/{ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
               </small>
             </div>
           )}
 
+          {/* Model & Context Window — available to all users */}
+          <div className="mb-4">
+            <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.75rem' }}>
+              聊天配置
+            </label>
+            <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+              <div className="mb-3">
+                <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                  {t('character_form.advanced.model')}
+                  <InfoHint text={t('character_form.advanced_help.model')} />
+                </label>
+                <ModelSelect
+                  className="form-select"
+                  value={charData.model || DEFAULT_CHAT_CONFIG.model}
+                  onChange={handleModelChange}
+                  style={{ borderRadius: 12 }}
+                />
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                  {t('chat.advanced_context_window')}
+                  <InfoHint text={t('chat.advanced_context_window_notice')} />
+                </label>
+                {(() => {
+                  const ctxOptions = getFilteredContextWindowTierOptions(
+                    charData.model || DEFAULT_CHAT_CONFIG.model,
+                  );
+                  const selectedCtx = normalizeContextWindowTier(
+                    charData.context_window_tier,
+                    charData.model || DEFAULT_CHAT_CONFIG.model,
+                  );
+                  return (
+                    <select
+                      className="form-select"
+                      value={selectedCtx}
+                      onChange={e => {
+                        const normalized = normalizeContextWindowTier(
+                          e.target.value,
+                          charData.model || DEFAULT_CHAT_CONFIG.model,
+                        );
+                        handleChange('context_window_tier', normalized);
+                      }}
+                      style={{ borderRadius: 12 }}
+                    >
+                      {ctxOptions.map(tier => (
+                        <option key={tier.key} value={tier.key}>
+                          {`${tier.tokens / 1000}k tokens`}
+                        </option>
+                      ))}
+                    </select>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+
+          <hr style={{ borderTop: '2px solid #e9ecef', margin: '1.5rem 0' }} />
+
+          {/* Pro-Gated Advanced Options */}
           <div className="mb-4">
             <button
               type="button"
@@ -1221,26 +1274,12 @@ export default function CharacterFormPage() {
                   </a>
                 </div>
               )}
-              {/* Advanced Chat Config */}
+              {/* Pro-Gated Sampling Config */}
               <div className="mb-4">
                 <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.75rem' }}>
-                  {t('character_form.advanced.title')}
+                  {t('character_form.advanced.sampling_title', '采样参数')}
                 </label>
                 <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
-                  <div className="mb-3">
-                    <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                      {t('character_form.advanced.model')}
-                      <InfoHint text={t('character_form.advanced_help.model')} />
-                    </label>
-                    <ModelSelect
-                      className="form-select"
-                      value={charData.model || DEFAULT_CHAT_CONFIG.model}
-                      onChange={handleModelChange}
-                      disabled={!canUseAdvancedConfig}
-                      style={{ borderRadius: 12 }}
-                    />
-                  </div>
-
                   <div className="mb-3">
                     <label className="form-label" style={{ fontSize: '0.9rem' }}>
                       {t('character_form.advanced.temperature')}: {charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature}
@@ -1327,46 +1366,6 @@ export default function CharacterFormPage() {
                         disabled={!canUseAdvancedConfig}
                       />
                     </div>
-                  </div>
-
-                  <div className="mt-3">
-                    <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                      {t('chat.advanced_context_window')}
-                      <InfoHint text={t('chat.advanced_context_window_notice')} />
-                    </label>
-                    {(() => {
-                      const ctxOptions = getFilteredContextWindowTierOptions(
-                        { canUseAdvancedConfig },
-                        charData.model || DEFAULT_CHAT_CONFIG.model,
-                      );
-                      const selectedCtx = normalizeContextWindowTier(
-                        charData.context_window_tier,
-                        { canUseAdvancedConfig },
-                        charData.model || DEFAULT_CHAT_CONFIG.model,
-                      );
-                      return (
-                        <select
-                          className="form-select"
-                          value={selectedCtx}
-                          onChange={e => {
-                            const normalized = normalizeContextWindowTier(
-                              e.target.value,
-                              { canUseAdvancedConfig },
-                              charData.model || DEFAULT_CHAT_CONFIG.model,
-                            );
-                            handleChange('context_window_tier', normalized);
-                          }}
-                          disabled={!canUseAdvancedConfig}
-                          style={{ borderRadius: 12 }}
-                        >
-                          {ctxOptions.map(tier => (
-                            <option key={tier.key} value={tier.key}>
-                              {`${tier.tokens / 1000}k tokens`}
-                            </option>
-                          ))}
-                        </select>
-                      );
-                    })()}
                   </div>
                 </div>
               </div>

@@ -61,13 +61,9 @@ def get_context_window_tiers(
 def resolve_context_window_settings(
     chat_config: dict | None,
     *,
-    can_use_advanced_config: bool,
     is_pro: bool,
     model_id: Optional[str] = None,
 ) -> tuple[str, int]:
-    if not can_use_advanced_config:
-        return DEFAULT_CONTEXT_WINDOW_TIER, DEFAULT_SOFT_TOKEN_LIMIT
-
     allowed_tiers = get_context_window_tiers(is_pro=is_pro, model_id=model_id)
     if not allowed_tiers:
         return DEFAULT_CONTEXT_WINDOW_TIER, DEFAULT_SOFT_TOKEN_LIMIT

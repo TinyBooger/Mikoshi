@@ -1278,7 +1278,7 @@ export default function ProfilePage() {
   const proExpireDateObj = displayUser?.pro_expire_date ? new Date(displayUser.pro_expire_date) : null;
   const isProDueBeforeNextReset = Boolean(proExpireDateObj && nextTokenResetDate && proExpireDateObj <= nextTokenResetDate);
   const tokenNoticeText = !isActivePro
-    ? '积分每日重置'
+    ? '点数每日中午12:00重置'
     : isProDueBeforeNextReset
     ? `Pro会员将于 ${formattedProExpireDate} 到期，届时将按当前规则重置积分。`
     : `下次积分重置时间：${formattedNextTokenResetDate}`;

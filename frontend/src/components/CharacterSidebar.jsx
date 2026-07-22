@@ -106,12 +106,8 @@ export default function CharacterSidebar({
   const selectedTokenLimits = getTokenLimits(advancedChatConfig?.model || 'deepseek-v4-flash');
   const selectedTokenTiers = getTokenTiers(advancedChatConfig?.model || 'deepseek-v4-flash');
 
-  const contextWindowTierOptions = getFilteredContextWindowTierOptions({
-    canUseAdvancedConfig: canUseAdvancedChatConfig,
-  }, advancedChatConfig?.model);
-  const selectedContextWindowTier = normalizeContextWindowTier(advancedChatConfig?.context_window_tier, {
-    canUseAdvancedConfig: canUseAdvancedChatConfig,
-  }, advancedChatConfig?.model);
+  const contextWindowTierOptions = getFilteredContextWindowTierOptions(advancedChatConfig?.model);
+  const selectedContextWindowTier = normalizeContextWindowTier(advancedChatConfig?.context_window_tier, advancedChatConfig?.model);
   const updateConfig = (key, value, min, max, fallback) => {
     const parsed = Number(value);
     const nextValue = Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
@@ -121,7 +117,6 @@ export default function CharacterSidebar({
     const nextTokenLimits = getTokenLimits(nextModel);
     const nextContextTier = normalizeContextWindowTier(
       advancedChatConfig?.context_window_tier,
-      { canUseAdvancedConfig: canUseAdvancedChatConfig },
       nextModel,
     );
     setAdvancedChatConfig((prev) => ({
@@ -1041,159 +1036,174 @@ export default function CharacterSidebar({
           )}
 
         {activeTab === 'advanced' && (
-          <div style={{ marginBottom: 16, position: 'relative' }}>
-            <div style={{
-              background: '#f5f6fa',
-              borderRadius: '0.9rem',
-              padding: '0.9rem',
-              border: '1px solid rgba(24, 25, 26, 0.08)',
-            }}>
-              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#444', marginBottom: 10 }}>
-                {t('chat.advanced_title')}
-              </div>
+          <>
+            {/* Model & Context Window — available to all users */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{
+                background: '#f5f6fa',
+                borderRadius: '0.9rem',
+                padding: '0.9rem',
+                border: '1px solid rgba(24, 25, 26, 0.08)',
+              }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#444', marginBottom: 10 }}>
+                  {t('chat.advanced_title')}
+                </div>
 
-              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                {t('chat.advanced_model')}
-                <InfoHint hintKey="character_form.advanced_help.model" />
-              </label>
-              <ModelSelect
-                className="form-select form-select-sm"
-                value={advancedChatConfig?.model || 'deepseek-v4-flash'}
-                onChange={handleModelChange}
-                disabled={!canUseAdvancedChatConfig}
-                style={{ marginBottom: 10, borderRadius: 8 }}
-              />
+                <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                  {t('chat.advanced_model')}
+                  <InfoHint hintKey="character_form.advanced_help.model" />
+                </label>
+                <ModelSelect
+                  className="form-select form-select-sm"
+                  value={advancedChatConfig?.model || 'deepseek-v4-flash'}
+                  onChange={handleModelChange}
+                  style={{ marginBottom: 10, borderRadius: 8 }}
+                />
 
-              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                {t('chat.advanced_temperature')}: {advancedChatConfig?.temperature ?? 1.3}
-                <InfoHint hintKey="character_form.advanced_help.temperature" />
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="2"
-                step="0.1"
-                value={advancedChatConfig?.temperature ?? 1.3}
-                onChange={(e) => updateConfig('temperature', e.target.value, 0, 2, 1.3)}
-                disabled={!canUseAdvancedChatConfig}
-                style={{ width: '100%', marginBottom: 10 }}
-              />
-
-              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                {t('chat.advanced_top_p')}: {advancedChatConfig?.top_p ?? 0.9}
-                <InfoHint hintKey="character_form.advanced_help.top_p" />
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={advancedChatConfig?.top_p ?? 0.9}
-                onChange={(e) => updateConfig('top_p', e.target.value, 0, 1, 0.9)}
-                disabled={!canUseAdvancedChatConfig}
-                style={{ width: '100%', marginBottom: 10 }}
-              />
-
-              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                {t('chat.advanced_max_tokens')}: {advancedChatConfig?.max_tokens ?? selectedTokenLimits.defaultValue}
-                <InfoHint hintKey="character_form.advanced_help.max_tokens" />
-              </label>
-              <select
-                className="form-select form-select-sm"
-                value={normalizeTokenTierValue(advancedChatConfig?.model || 'deepseek-v4-flash', advancedChatConfig?.max_tokens ?? selectedTokenLimits.defaultValue)}
-                onChange={(e) => setAdvancedChatConfig((prev) => ({ ...prev, max_tokens: Number(e.target.value) }))}
-                disabled={!canUseAdvancedChatConfig}
-                style={{ marginBottom: 10, borderRadius: 8 }}
-              >
-                {selectedTokenTiers.map((tier) => (
-                  <option key={tier.value} value={tier.value}>
-                    {t(`character_form.advanced_token_tiers.${tier.labelKey}`)} ({tier.value})
-                  </option>
-                ))}
-              </select>
-
-              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                {t('chat.advanced_context_window')}
-              </label>
-              <select
-                className="form-select form-select-sm"
-                value={selectedContextWindowTier}
-                onChange={(e) => {
-                  const normalizedTier = normalizeContextWindowTier(e.target.value, {
-                    canUseAdvancedConfig: canUseAdvancedChatConfig,
-                  }, advancedChatConfig?.model);
-                  setAdvancedChatConfig((prev) => ({ ...prev, context_window_tier: normalizedTier }));
-                }}
-                disabled={!canUseAdvancedChatConfig}
-                style={{ marginBottom: 8, borderRadius: 8 }}
-              >
-                {contextWindowTierOptions.map((tier) => (
-                  <option key={tier.key} value={tier.key}>
-                    {`${tier.tokens / 1000}k tokens`}
-                  </option>
-                ))}
-              </select>
-
-              <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4, marginBottom: 10 }}>
-                {t('chat.advanced_context_window_notice')}
-              </div>
-
-              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                {t('chat.advanced_presence_penalty')}: {advancedChatConfig?.presence_penalty ?? 0}
-                <InfoHint hintKey="character_form.advanced_help.presence_penalty" />
-              </label>
-              <input
-                type="range"
-                min="-2"
-                max="2"
-                step="0.1"
-                value={advancedChatConfig?.presence_penalty ?? 0}
-                onChange={(e) => updateConfig('presence_penalty', e.target.value, -2, 2, 0)}
-                disabled={!canUseAdvancedChatConfig}
-                className="form-range"
-                style={{ width: '100%', marginBottom: 10 }}
-              />
-
-              <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                {t('chat.advanced_frequency_penalty')}: {advancedChatConfig?.frequency_penalty ?? 0}
-                <InfoHint hintKey="character_form.advanced_help.frequency_penalty" />
-              </label>
-              <input
-                type="range"
-                min="-2"
-                max="2"
-                step="0.1"
-                value={advancedChatConfig?.frequency_penalty ?? 0}
-                onChange={(e) => updateConfig('frequency_penalty', e.target.value, -2, 2, 0)}
-                disabled={!canUseAdvancedChatConfig}
-                className="form-range"
-                style={{ width: '100%', marginBottom: 8 }}
-              />
-
-              <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4 }}>
-                {t('chat.advanced_hint')}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary"
-                  onClick={onResetAdvancedChatConfig}
-                  disabled={!selectedCharacter || !canUseAdvancedChatConfig}
-                  style={{ borderRadius: 8 }}
+                <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                  {t('chat.advanced_context_window')}
+                </label>
+                <select
+                  className="form-select form-select-sm"
+                  value={selectedContextWindowTier}
+                  onChange={(e) => {
+                    const normalizedTier = normalizeContextWindowTier(e.target.value, advancedChatConfig?.model);
+                    setAdvancedChatConfig((prev) => ({ ...prev, context_window_tier: normalizedTier }));
+                  }}
+                  style={{ marginBottom: 8, borderRadius: 8 }}
                 >
-                  {t('chat.advanced_reset')}
-                </button>
+                  {contextWindowTierOptions.map((tier) => (
+                    <option key={tier.key} value={tier.key}>
+                      {`${tier.tokens / 1000}k tokens`}
+                    </option>
+                  ))}
+                </select>
+
+                <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4 }}>
+                  {t('chat.advanced_context_window_notice')}
+                </div>
               </div>
             </div>
-            {!canUseAdvancedChatConfig && (
-              <div style={{ position: 'absolute', inset: 0, background: 'rgba(245, 246, 250, 0.90)', borderRadius: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
-                <a href="/pro-upgrade" onClick={e => { e.preventDefault(); navigate('/pro-upgrade'); }} style={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.88rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <i className="bi bi-lock-fill" style={{ fontSize: '0.85rem' }}></i>
-                  升级 Pro 解锁高级选项
-                </a>
+
+            <hr style={{ borderTop: '2px solid #e9ecef', margin: '1rem 0' }} />
+
+            {/* Pro-Gated Sampling Params */}
+            <div style={{ marginBottom: 16, position: 'relative' }}>
+              <div style={{
+                background: '#f5f6fa',
+                borderRadius: '0.9rem',
+                padding: '0.9rem',
+                border: '1px solid rgba(24, 25, 26, 0.08)',
+              }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#444', marginBottom: 10 }}>
+                  {t('chat.advanced_sampling_title', '采样参数')}
+                </div>
+
+                <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                  {t('chat.advanced_temperature')}: {advancedChatConfig?.temperature ?? 1.3}
+                  <InfoHint hintKey="character_form.advanced_help.temperature" />
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value={advancedChatConfig?.temperature ?? 1.3}
+                  onChange={(e) => updateConfig('temperature', e.target.value, 0, 2, 1.3)}
+                  disabled={!canUseAdvancedChatConfig}
+                  style={{ width: '100%', marginBottom: 10 }}
+                />
+
+                <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                  {t('chat.advanced_top_p')}: {advancedChatConfig?.top_p ?? 0.9}
+                  <InfoHint hintKey="character_form.advanced_help.top_p" />
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={advancedChatConfig?.top_p ?? 0.9}
+                  onChange={(e) => updateConfig('top_p', e.target.value, 0, 1, 0.9)}
+                  disabled={!canUseAdvancedChatConfig}
+                  style={{ width: '100%', marginBottom: 10 }}
+                />
+
+                <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                  {t('chat.advanced_max_tokens')}: {advancedChatConfig?.max_tokens ?? selectedTokenLimits.defaultValue}
+                  <InfoHint hintKey="character_form.advanced_help.max_tokens" />
+                </label>
+                <select
+                  className="form-select form-select-sm"
+                  value={normalizeTokenTierValue(advancedChatConfig?.model || 'deepseek-v4-flash', advancedChatConfig?.max_tokens ?? selectedTokenLimits.defaultValue)}
+                  onChange={(e) => setAdvancedChatConfig((prev) => ({ ...prev, max_tokens: Number(e.target.value) }))}
+                  disabled={!canUseAdvancedChatConfig}
+                  style={{ marginBottom: 10, borderRadius: 8 }}
+                >
+                  {selectedTokenTiers.map((tier) => (
+                    <option key={tier.value} value={tier.value}>
+                      {t(`character_form.advanced_token_tiers.${tier.labelKey}`)} ({tier.value})
+                    </option>
+                  ))}
+                </select>
+
+                <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                  {t('chat.advanced_presence_penalty')}: {advancedChatConfig?.presence_penalty ?? 0}
+                  <InfoHint hintKey="character_form.advanced_help.presence_penalty" />
+                </label>
+                <input
+                  type="range"
+                  min="-2"
+                  max="2"
+                  step="0.1"
+                  value={advancedChatConfig?.presence_penalty ?? 0}
+                  onChange={(e) => updateConfig('presence_penalty', e.target.value, -2, 2, 0)}
+                  disabled={!canUseAdvancedChatConfig}
+                  className="form-range"
+                  style={{ width: '100%', marginBottom: 10 }}
+                />
+
+                <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                  {t('chat.advanced_frequency_penalty')}: {advancedChatConfig?.frequency_penalty ?? 0}
+                  <InfoHint hintKey="character_form.advanced_help.frequency_penalty" />
+                </label>
+                <input
+                  type="range"
+                  min="-2"
+                  max="2"
+                  step="0.1"
+                  value={advancedChatConfig?.frequency_penalty ?? 0}
+                  onChange={(e) => updateConfig('frequency_penalty', e.target.value, -2, 2, 0)}
+                  disabled={!canUseAdvancedChatConfig}
+                  className="form-range"
+                  style={{ width: '100%', marginBottom: 8 }}
+                />
+
+                <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4 }}>
+                  {t('chat.advanced_hint')}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={onResetAdvancedChatConfig}
+                    disabled={!selectedCharacter || !canUseAdvancedChatConfig}
+                    style={{ borderRadius: 8 }}
+                  >
+                    {t('chat.advanced_reset')}
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
+              {!canUseAdvancedChatConfig && (
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(245, 246, 250, 0.90)', borderRadius: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+                  <a href="/pro-upgrade" onClick={e => { e.preventDefault(); navigate('/pro-upgrade'); }} style={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.88rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <i className="bi bi-lock-fill" style={{ fontSize: '0.85rem' }}></i>
+                    升级 Pro 解锁高级选项
+                  </a>
+                </div>
+              )}
+            </div>
+          </>
         )}
             </aside>
           </div>

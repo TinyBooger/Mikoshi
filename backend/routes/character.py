@@ -198,7 +198,16 @@ async def create_character(
         presence_penalty=presence_penalty,
         frequency_penalty=frequency_penalty,
         context_window_tier=context_window_tier,
-    ) if can_use_advanced_config else default_character_chat_config()
+    )
+    # Model and context_window_tier are always accepted from the user.
+    # Sampling params (temperature, top_p, max_tokens, penalties) are gated for Pro users.
+    if not can_use_advanced_config:
+        default_cfg = default_character_chat_config()
+        chat_config["temperature"] = default_cfg["temperature"]
+        chat_config["top_p"] = default_cfg["top_p"]
+        chat_config["max_tokens"] = default_cfg["max_tokens"]
+        chat_config["presence_penalty"] = default_cfg["presence_penalty"]
+        chat_config["frequency_penalty"] = default_cfg["frequency_penalty"]
     long_description_chunks = []
 
     char = Character(
@@ -431,7 +440,16 @@ async def update_character(
         presence_penalty=presence_penalty if presence_penalty is not None else char.presence_penalty,
         frequency_penalty=frequency_penalty if frequency_penalty is not None else char.frequency_penalty,
         context_window_tier=context_window_tier if context_window_tier is not None else char.context_window_tier,
-    ) if can_use_advanced_config else default_character_chat_config()
+    )
+    # Model and context_window_tier are always accepted from the user.
+    # Sampling params (temperature, top_p, max_tokens, penalties) are gated for Pro users.
+    if not can_use_advanced_config:
+        default_cfg = default_character_chat_config()
+        chat_config["temperature"] = default_cfg["temperature"]
+        chat_config["top_p"] = default_cfg["top_p"]
+        chat_config["max_tokens"] = default_cfg["max_tokens"]
+        chat_config["presence_penalty"] = default_cfg["presence_penalty"]
+        chat_config["frequency_penalty"] = default_cfg["frequency_penalty"]
     char.model = chat_config["model"]
     char.temperature = chat_config["temperature"]
     char.top_p = chat_config["top_p"]

@@ -12,30 +12,26 @@ const CONTEXT_WINDOW_TIERS = [
 ];
 
 /**
- * Return the base tier options filtered only by permissions (pro / advanced).
+ * Return all available context-window tier options.
+ * Context window tiers are available to all users (free & pro).
  * Use {@link getFilteredContextWindowTierOptions} when you also need
  * model-cap filtering.
  */
-export const getContextWindowTierOptions = ({ canUseAdvancedConfig }) => {
-  if (!canUseAdvancedConfig) {
-    return CONTEXT_WINDOW_TIERS.filter((tier) => tier.key === DEFAULT_CONTEXT_WINDOW_TIER);
-  }
-
+export const getContextWindowTierOptions = () => {
   return [...CONTEXT_WINDOW_TIERS];
 };
 
 /**
- * Return context-window tier options filtered by *both* user permissions
- * and the currently-selected model's context-length cap.
+ * Return context-window tier options filtered by the currently-selected
+ * model's context-length cap.
  *
  * Tiers whose `tokens` exceed the model's context length are hidden.
  *
- * @param {{ canUseAdvancedConfig: boolean }} perm
  * @param {string} [modelId]  e.g. "qwen-flash-character" — when omitted,
  *   model filtering is skipped.
  */
-export const getFilteredContextWindowTierOptions = (perm, modelId) => {
-  const base = getContextWindowTierOptions(perm);
+export const getFilteredContextWindowTierOptions = (modelId) => {
+  const base = getContextWindowTierOptions();
   if (!modelId) return base;
 
   const modelCfg = getModelConfig(modelId);
@@ -45,19 +41,19 @@ export const getFilteredContextWindowTierOptions = (perm, modelId) => {
   return base.filter((tier) => tier.tokens <= maxContext);
 };
 
-export const normalizeContextWindowTier = (rawTier, { canUseAdvancedConfig }, modelId) => {
+export const normalizeContextWindowTier = (rawTier, modelId) => {
   const options = modelId
-    ? getFilteredContextWindowTierOptions({ canUseAdvancedConfig }, modelId)
-    : getContextWindowTierOptions({ canUseAdvancedConfig });
+    ? getFilteredContextWindowTierOptions(modelId)
+    : getContextWindowTierOptions();
   const requested = String(rawTier || '').trim().toLowerCase();
   const match = options.find((tier) => tier.key === requested);
   // Default to the max tier for the selected model (last option in filtered list)
   return (match || options[options.length - 1] || { key: DEFAULT_CONTEXT_WINDOW_TIER }).key;
 };
 
-export const getContextWindowTokenLimit = (tierKey, { canUseAdvancedConfig }) => {
-  const normalizedTier = normalizeContextWindowTier(tierKey, { canUseAdvancedConfig });
-  const options = getContextWindowTierOptions({ canUseAdvancedConfig });
+export const getContextWindowTokenLimit = (tierKey) => {
+  const normalizedTier = normalizeContextWindowTier(tierKey);
+  const options = getContextWindowTierOptions();
   const match = options.find((tier) => tier.key === normalizedTier);
   return (match || options[options.length - 1] || { tokens: 8000 }).tokens;
 };
