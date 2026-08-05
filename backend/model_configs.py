@@ -6,7 +6,7 @@ is defined here so that routes and utilities can derive allowed-model sets,
 cost estimates, and capability checks from a single source.
 """
 
-from typing import List, Dict, Optional, Union, Literal
+from typing import List, Dict, Optional
 
 # ---------------------------------------------------------------------------
 # Per-model pricing tier (used when cost varies by input token count)
@@ -97,39 +97,12 @@ class ModelConfig:
         # Fallback to last tier
         return self.pricing_tiers[-1]
 
-    def estimate_cost(
-        self,
-        input_tokens: int,
-        output_tokens: int,
-        *,
-        cache_hit: bool = False,
-    ) -> float:
-        """
-        Estimate cost in **RMB (元)** for a request.
-
-        Returns 0.0 when pricing data is unavailable.
-        """
-        if not self.pricing_tiers:
-            return 0.0
-
-        # Cache-hit pricing (only for models that support it, e.g. DeepSeek)
-        if cache_hit and self.cache_hit_price_per_million is not None:
-            input_price = self.cache_hit_price_per_million
-        else:
-            input_price = self.get_pricing_tier(input_tokens).input_per_million
-
-        output_price = self.get_pricing_tier(input_tokens).output_per_million
-
-        cost_input = (input_tokens / 1_000_000) * input_price
-        cost_output = (output_tokens / 1_000_000) * output_price
-        return round(cost_input + cost_output, 6)
-
     def tokens_to_credits(
         self,
         input_tokens: int,
         output_tokens: int,
         *,
-        cache_hit: bool = False,
+        cached_tokens: int = 0,
     ) -> float:
         """
         Convert token usage to credits (点数).
@@ -137,20 +110,28 @@ class ModelConfig:
         1 credit = ¥0.001 CNY.  Cost(¥) = (tokens / 1M) × price_per_million.
         So credits = cost_¥ × 1000 = (input × input_price + output × output_price) / 1000.
 
+        When *cached_tokens* > 0 and the model has cache-hit pricing,
+        those tokens are billed at the lower cache-hit rate while the
+        remaining prompt tokens use the normal input price.
+
         Returns 0.0 when pricing data is unavailable.
         """
         if not self.pricing_tiers:
             return 0.0
 
-        # Cache-hit pricing (only for models that support it, e.g. DeepSeek)
-        if cache_hit and self.cache_hit_price_per_million is not None:
-            input_price = self.cache_hit_price_per_million
-        else:
-            input_price = self.get_pricing_tier(input_tokens).input_per_million
-
+        input_price = self.get_pricing_tier(input_tokens).input_per_million
         output_price = self.get_pricing_tier(input_tokens).output_per_million
 
-        credit_input = (input_tokens / 1_000_000) * input_price
+        if cached_tokens > 0 and self.cache_hit_price_per_million is not None:
+            cached_input = min(cached_tokens, input_tokens)
+            uncached_input = input_tokens - cached_input
+            credit_input = (
+                (cached_input / 1_000_000) * self.cache_hit_price_per_million
+                + (uncached_input / 1_000_000) * input_price
+            )
+        else:
+            credit_input = (input_tokens / 1_000_000) * input_price
+
         credit_output = (output_tokens / 1_000_000) * output_price
         # 1 credit = ¥0.001 → multiply cost by 1000
         return round((credit_input + credit_output) * 1000, 4)
@@ -198,29 +179,12 @@ MODELS: List[ModelConfig] = [
     # Qwen
     # ------------------------------------------------------------------
     ModelConfig(
-        id="qwen3.7-max",
-        display_name="Qwen 3.7 Max",
-        pricing_tiers=[
-            PricingTier(
-                input_per_million=12.0,
-                output_per_million=36.0,
-                max_tokens=1_000_000,
-            ),
-        ],
-        context_length=1_000_000,
-        max_output_tokens=64_000,
-        max_input_tokens=1_000_000,
-        thinking=True,
-        rpm=30_000,
-        tpm=10_000_000,
-        multiplier=12.0,
-    ),
-    ModelConfig(
         id="qwen3.7-plus",
         display_name="Qwen 3.7 Plus",
         pricing_tiers=[
             PricingTier(input_per_million=2.0, output_per_million=8.0),
         ],
+        cache_hit_price_per_million=0.4,
         context_length=1_000_000,
         max_output_tokens=64_000,
         max_input_tokens=1_000_000,
@@ -235,6 +199,7 @@ MODELS: List[ModelConfig] = [
         pricing_tiers=[
             PricingTier(input_per_million=1.2, output_per_million=7.2),
         ],
+        cache_hit_price_per_million=0.6,
         context_length=1_000_000,
         max_output_tokens=64_000,
         max_input_tokens=1_000_000,
@@ -253,6 +218,7 @@ MODELS: List[ModelConfig] = [
                 max_tokens=32_000,
             ),
         ],
+        cache_hit_price_per_million=0.16,
         context_length=32_000,
         max_output_tokens=4_000,
         max_input_tokens=32_000,
@@ -271,6 +237,7 @@ MODELS: List[ModelConfig] = [
                 max_tokens=8_000,
             ),
         ],
+        cache_hit_price_per_million=0.05,
         context_length=8_000,
         max_output_tokens=4_000,
         max_input_tokens=8_000,
@@ -280,67 +247,6 @@ MODELS: List[ModelConfig] = [
         multiplier=0.3,
     ),
 
-    # ------------------------------------------------------------------
-    # Kimi
-    # ------------------------------------------------------------------
-    ModelConfig(
-        id="kimi-k2.6",
-        display_name="Kimi K2.6",
-        pricing_tiers=[
-            PricingTier(
-                input_per_million=6.4,
-                output_per_million=27.0,
-                max_tokens=224_000,
-            ),
-        ],
-        context_length=256_000,
-        max_output_tokens=16_000,
-        max_input_tokens=224_000,
-        thinking=True,
-        rpm=500,
-        tpm=1_000_000,
-        multiplier=6.4,
-    ),
-
-    # ------------------------------------------------------------------
-    # GLM
-    # ------------------------------------------------------------------
-    ModelConfig(
-        id="glm-5.1",
-        display_name="GLM 5.1",
-        pricing_tiers=[
-            PricingTier(input_per_million=6.0, output_per_million=24.0),
-        ],
-        context_length=200_000,
-        max_output_tokens=128_000,
-        max_input_tokens=200_000,
-        thinking=False,
-        rpm=500,
-        tpm=20_000_000,
-        multiplier=6.0,
-    ),
-
-    # ------------------------------------------------------------------
-    # MiniMax
-    # ------------------------------------------------------------------
-    ModelConfig(
-        id="MiniMax-M2.5",
-        display_name="MiniMax M2.5",
-        pricing_tiers=[
-            PricingTier(
-                input_per_million=2.1,
-                output_per_million=8.4,
-                max_tokens=200_000,
-            ),
-        ],
-        context_length=200_000,
-        max_output_tokens=128_000,
-        max_input_tokens=200_000,
-        thinking=True,
-        rpm=500,
-        tpm=20_000_000,
-        multiplier=2.1,
-    ),
 ]
 
 # -- derived lookups ----------------------------------------------------------

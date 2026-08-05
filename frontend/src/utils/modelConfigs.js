@@ -13,20 +13,11 @@ const MODEL_CONFIGS = [
   { id: "deepseek-v4-pro",    maxOutputTokens: 1_000_000, contextLength: 384_000, multiplier: 3.0 },
 
   // Qwen
-  { id: "qwen3.7-max",         maxOutputTokens: 64_000, contextLength: 1_000_000, multiplier: 12.0 },
   { id: "qwen3.7-plus",        maxOutputTokens: 64_000, contextLength: 1_000_000, multiplier: 2.0 },
   { id: "qwen3.6-flash",       maxOutputTokens: 64_000, contextLength: 1_000_000, multiplier: 1.2 },
   { id: "qwen-plus-character", maxOutputTokens: 4_000,  contextLength: 32_000,    multiplier: 0.8 },
   { id: "qwen-flash-character",maxOutputTokens: 4_000,  contextLength: 8_000,     multiplier: 0.3 },
 
-  // Kimi
-  { id: "kimi-k2.6",           maxOutputTokens: 16_000, contextLength: 256_000,   multiplier: 6.4 },
-
-  // GLM
-  { id: "glm-5.1",             maxOutputTokens: 128_000, contextLength: 200_000,  multiplier: 6.0 },
-
-  // MiniMax
-  { id: "MiniMax-M2.5",        maxOutputTokens: 128_000, contextLength: 200_000,  multiplier: 2.1 },
 ];
 
 /** Fast lookup by model id. */
