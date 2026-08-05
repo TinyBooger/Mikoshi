@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import React, { useEffect, useState, useContext, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, useOutletContext } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import defaultPic from '../assets/images/default-picture.png';
-import { buildSystemMessage } from '../utils/systemTemplate';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { buildSystemMessage } from '../utils/systemTemplate';
 import '../styles/ChatBubble.css';
 import { AuthContext } from '../components/AuthProvider';
 import CharacterModal from '../components/CharacterModal';
@@ -15,6 +14,10 @@ import SceneCharacterSelectModal from '../components/SceneCharacterSelectModal';
 import ConfirmModal from '../components/ConfirmModal';
 import PageWrapper from '../components/PageWrapper';
 import MessageBubble from '../components/MessageBubble';
+import ContextWindowIndicator from '../components/ContextWindowIndicator';
+import { CreditLockedBanner, BanBanner } from '../components/ChatBanners';
+import ChatWelcomeCard from '../components/ChatWelcomeCard';
+import MessageContextMenu from '../components/MessageContextMenu';
 import { useToast } from '../components/ToastProvider';
 import {
   DEFAULT_CONTEXT_WINDOW_TIER,
@@ -22,8 +25,18 @@ import {
   normalizeContextWindowTier,
 } from '../utils/contextWindow';
 import { getModelConfig, AVAILABLE_MODEL_IDS, ALLOWED_MODEL_SET } from '../utils/modelConfigs';
-import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/creditDisplay';
-import { isCreditLocked, getCreditStatus } from '../utils/creditCheck';
+import { isCreditLocked } from '../utils/creditCheck';
+import {
+  normalizeChatEntry,
+  computeForkNav,
+  getMessagePreview,
+  ensureMessageIds,
+  generateMessageId,
+  updateChatEntryBranchMessages,
+  MAX_PINNED_MEMORIES,
+} from '../utils/chatHelpers';
+import { useCreditAndChatLimits } from '../hooks/useCreditAndChatLimits';
+import { usePinnedMemories } from '../hooks/usePinnedMemories';
 
 const WALLPAPER_OPTIONS = [
   { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
@@ -32,8 +45,6 @@ const WALLPAPER_OPTIONS = [
   { id: 'waves', labelKey: 'chat.wallpaper_waves', url: '/wallpapers/waves.svg' },
 ];
 
-const MAX_PINNED_MEMORIES = 10;
-const DEFAULT_BRANCH_ID = 'branch_main';
 const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
 const SHARED_TOKEN_TIERS = [1024, 2048, 4096, 6144, 8192];
 const getTokenLimits = () => SHARED_TOKEN_LIMITS;
@@ -55,176 +66,6 @@ const normalizeTokenTierValue = (modelName, rawValue) => {
   return tiers.reduce((nearest, tier) => (
     Math.abs(tier - clamped) < Math.abs(nearest - clamped) ? tier : nearest
   ), tiers[0]);
-};
-
-const generateMessageId = () => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-};
-
-const ensureMessageIds = (messageList = []) => {
-  if (!Array.isArray(messageList)) return [];
-  return messageList.map((message) => {
-    if (!message || typeof message !== 'object') return message;
-    if (message.role === 'system') return message;
-    const hasValidId = typeof message.message_id === 'string' && message.message_id.trim();
-    return {
-      ...message,
-      message_id: hasValidId ? message.message_id : generateMessageId(),
-      is_pinned: !!message.is_pinned,
-    };
-  });
-};
-
-const normalizeChatBranch = (branch, index = 0) => {
-  const fallbackBranchId = index === 0 ? DEFAULT_BRANCH_ID : `branch_local_${index + 1}`;
-  const branchId = typeof branch?.branch_id === 'string' && branch.branch_id.trim()
-    ? branch.branch_id.trim()
-    : fallbackBranchId;
-
-  return {
-    branch_id: branchId,
-    parent_branch_id: typeof branch?.parent_branch_id === 'string' && branch.parent_branch_id.trim()
-      ? branch.parent_branch_id.trim()
-      : null,
-    parent_message_id: typeof branch?.parent_message_id === 'string' && branch.parent_message_id.trim()
-      ? branch.parent_message_id.trim()
-      : null,
-    label: typeof branch?.label === 'string' && branch.label.trim()
-      ? branch.label.trim()
-      : (index === 0 ? 'Main' : `Branch ${index + 1}`),
-    created_at: branch?.created_at || null,
-    last_updated: branch?.last_updated || null,
-    messages: ensureMessageIds(Array.isArray(branch?.messages) ? branch.messages : []),
-  };
-};
-
-const normalizeChatEntry = (chat) => {
-  if (!chat || typeof chat !== 'object') return null;
-
-  const sourceBranches = Array.isArray(chat.branches) && chat.branches.length > 0
-    ? chat.branches
-    : [{ branch_id: DEFAULT_BRANCH_ID, label: 'Main', messages: chat.messages || [] }];
-  const branches = sourceBranches.map((branch, index) => normalizeChatBranch(branch, index));
-
-  const requestedActiveBranchId = typeof chat.active_branch_id === 'string' && chat.active_branch_id.trim()
-    ? chat.active_branch_id.trim()
-    : branches[0]?.branch_id || DEFAULT_BRANCH_ID;
-  const activeBranch = branches.find((branch) => branch.branch_id === requestedActiveBranchId) || branches[0];
-
-  return {
-    ...chat,
-    branches,
-    active_branch_id: activeBranch?.branch_id || DEFAULT_BRANCH_ID,
-    messages: activeBranch?.messages || [],
-  };
-};
-
-const getActiveBranch = (chat) => {
-  const normalized = normalizeChatEntry(chat);
-  if (!normalized) return null;
-  return normalized.branches.find((branch) => branch.branch_id === normalized.active_branch_id) || normalized.branches[0] || null;
-};
-
-const updateChatEntryBranchMessages = (chatEntry, branchId, nextMessages, extraFields = {}, makeActive = true) => {
-  const normalized = normalizeChatEntry(chatEntry) || normalizeChatEntry({});
-  const normalizedMessages = ensureMessageIds(nextMessages);
-  const nextBranchId = branchId || normalized.active_branch_id || DEFAULT_BRANCH_ID;
-  let branchFound = false;
-
-  const branches = normalized.branches.map((branch) => {
-    if (branch.branch_id !== nextBranchId) return branch;
-    branchFound = true;
-    return {
-      ...branch,
-      ...extraFields,
-      messages: normalizedMessages,
-    };
-  });
-
-  const finalBranches = branchFound
-    ? branches
-    : [
-        ...branches,
-        normalizeChatBranch({
-          branch_id: nextBranchId,
-          label: extraFields.label,
-          parent_branch_id: extraFields.parent_branch_id,
-          parent_message_id: extraFields.parent_message_id,
-          created_at: extraFields.created_at || new Date().toISOString(),
-          last_updated: extraFields.last_updated || new Date().toISOString(),
-          messages: normalizedMessages,
-        }, branches.length),
-      ];
-
-  const activeBranchId = makeActive ? nextBranchId : normalized.active_branch_id;
-  const activeBranch = finalBranches.find((branch) => branch.branch_id === activeBranchId) || finalBranches[0];
-
-  return {
-    ...normalized,
-    branches: finalBranches,
-    active_branch_id: activeBranch?.branch_id || nextBranchId,
-    messages: activeBranch?.messages || [],
-  };
-};
-
-// Computes branch navigator info for each message that sits at a branch divergence point.
-// Returns a Map<messageId, { currentIdx, options: Branch[] }>
-const computeForkNav = (allBranches, activeBranchId) => {
-  if (!allBranches || allBranches.length <= 1) return new Map();
-  const activeBranch = allBranches.find((b) => b.branch_id === activeBranchId);
-  if (!activeBranch) return new Map();
-  const result = new Map();
-
-  // Case 1: active branch has direct children — show navigator at the fork-source message
-  const childrenByParentMsg = {};
-  for (const branch of allBranches) {
-    if (branch.parent_branch_id === activeBranchId && branch.parent_message_id) {
-      if (!childrenByParentMsg[branch.parent_message_id]) {
-        childrenByParentMsg[branch.parent_message_id] = [];
-      }
-      childrenByParentMsg[branch.parent_message_id].push(branch);
-    }
-  }
-  for (const [parentMsgId, children] of Object.entries(childrenByParentMsg)) {
-    result.set(parentMsgId, { currentIdx: 0, options: [activeBranch, ...children] });
-  }
-
-  // Case 2: active branch is a child — show navigator at its first diverging message
-  if (activeBranch.parent_message_id && activeBranch.parent_branch_id) {
-    const parentBranch = allBranches.find((b) => b.branch_id === activeBranch.parent_branch_id);
-    const siblings = allBranches.filter(
-      (b) =>
-        b.parent_branch_id === activeBranch.parent_branch_id &&
-        b.parent_message_id === activeBranch.parent_message_id,
-    );
-    const options = parentBranch ? [parentBranch, ...siblings] : [...siblings];
-    const currentIdx = options.findIndex((b) => b?.branch_id === activeBranchId);
-    const parentMsgIds = new Set(
-      (parentBranch?.messages || []).map((m) => m?.message_id).filter(Boolean),
-    );
-    let forkMessageId = null;
-    for (const msg of activeBranch.messages || []) {
-      if (msg?.message_id && !parentMsgIds.has(msg.message_id)) {
-        forkMessageId = msg.message_id;
-        break;
-      }
-    }
-    if (forkMessageId && !result.has(forkMessageId)) {
-      result.set(forkMessageId, { currentIdx, options });
-    }
-  }
-
-  return result;
-};
-
-const getMessagePreview = (content = '', max = 88) => {
-  if (typeof content !== 'string') return '';
-  const compact = content.replace(/\s+/g, ' ').trim();
-  if (compact.length <= max) return compact;
-  return `${compact.slice(0, max)}...`;
 };
 
 export default function ChatPage() {
@@ -249,7 +90,6 @@ export default function ChatPage() {
   const [chatLimits, setChatLimits] = useState(null);
   const [creditLimits, setCreditLimits] = useState(null);
   const [serverContextWindowUsage, setServerContextWindowUsage] = useState(null);
-  const [showContextDetails, setShowContextDetails] = useState(false);
   const [hasLiked, setHasLiked] = useState({ character: false, scene: false, persona: false });
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -464,42 +304,22 @@ export default function ChatPage() {
   const initialized = useRef(false);
   const isNewChat = useRef(true);
   const prevSearchParamsRef = useRef(searchParams);
-  const lastLimitReminderCountRef = useRef(null);
-  const wasCreditLockedRef = useRef(false);
-  const maybeShowMessageLimitReminder = (limits) => {
-    if (!limits || !limits.is_limited || !limits.approaching_limit || limits.limit_reached) return;
 
-    const currentCount = Number(limits.daily_message_count ?? 0);
-    if (lastLimitReminderCountRef.current === currentCount) return;
-
-    lastLimitReminderCountRef.current = currentCount;
-    const remaining = Number(limits.remaining_messages ?? 0);
-    const cap = Number(limits.daily_message_cap ?? 0);
-
-    toast.show(
-      `今日还可发送 ${remaining} 条消息（${currentCount}/${cap}）。升级 Pro 可解锁无限消息。`,
-      { type: 'warning' }
-    );
-  };
+  const {
+    applyChatLimits: applyChatLimitsToast,
+    applyCreditLimits: applyCreditLimitsToast,
+  } = useCreditAndChatLimits();
 
   const applyChatLimits = (limits) => {
     if (!limits) return;
     setChatLimits(limits);
-    maybeShowMessageLimitReminder(limits);
-  };
-
-  const maybeShowCreditLimitReminder = (limits) => {
-    const locked = !!limits?.is_limited && isCreditLocked(limits);
-    if (locked && !wasCreditLockedRef.current) {
-      toast.show(limits.message || '已达到点数上限，当前与点数相关操作已受限。', { type: 'warning' });
-    }
-    wasCreditLockedRef.current = locked;
+    applyChatLimitsToast(limits);
   };
 
   const applyCreditLimits = (limits) => {
     if (!limits) return;
     setCreditLimits(limits);
-    maybeShowCreditLimitReminder(limits);
+    applyCreditLimitsToast(limits);
   };
 
   const getChatErrorMessage = (errorPayload) => {
@@ -621,136 +441,17 @@ export default function ChatPage() {
     };
   };
 
-  const syncPinnedStateInUserHistory = (chatId, messageId, isPinned) => {
-    if (!chatId || !messageId) return;
-    if (!userData?.chat_history) return;
-
-    setUserData((prev) => {
-      if (!prev?.chat_history) return prev;
-      return {
-        ...prev,
-        chat_history: prev.chat_history.map((chatEntry) => {
-          if (chatEntry.chat_id !== chatId) return chatEntry;
-          const normalizedChat = normalizeChatEntry(chatEntry);
-          if (!normalizedChat) return chatEntry;
-          const activeBranchId = normalizedChat.active_branch_id;
-          return updateChatEntryBranchMessages(
-            normalizedChat,
-            activeBranchId,
-            normalizedChat.messages.map((msg) => {
-              if (!msg || typeof msg !== 'object') return msg;
-              if (msg.message_id !== messageId) return msg;
-              return { ...msg, is_pinned: isPinned };
-            }),
-            {},
-            true
-          );
-        }),
-      };
-    });
-  };
-
-  const persistPinnedMessage = async (message, isPinned) => {
-    if (!selectedChat?.chat_id) return;
-    if (!message?.message_id) return;
-
-    const response = await fetch(`${window.API_BASE_URL}/api/chat/pin-message`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': sessionToken,
-      },
-      body: JSON.stringify({
-        chat_id: selectedChat.chat_id,
-        branch_id: selectedChat.active_branch_id,
-        message_id: message.message_id,
-        is_pinned: !!isPinned,
-        message_role: message.role,
-        message_content: message.content,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorPayload = await response.json().catch(() => null);
-      throw new Error(errorPayload?.error || 'Failed to update pinned memory');
-    }
-  };
-
-  const handleTogglePin = async (messageId, nextPinnedState) => {
-    const targetMessage = messages.find((m) => m?.message_id === messageId);
-    if (!targetMessage) return;
-
-    if (!selectedChat?.chat_id) {
-      toast.show(t('chat.pin_requires_saved_chat') || 'Send a message first to save and pin memories.', { type: 'warning' });
-      return;
-    }
-
-    if (nextPinnedState && !targetMessage.is_pinned) {
-      const currentPinnedCount = messages.filter((m) => m?.role !== 'system' && m?.is_pinned).length;
-      if (currentPinnedCount >= MAX_PINNED_MEMORIES) {
-        toast.show(
-          t('chat.memory_pin_limit_reached', { max: MAX_PINNED_MEMORIES }) || `You can pin up to ${MAX_PINNED_MEMORIES} memories.`,
-          { type: 'warning' }
-        );
-        return;
-      }
-    }
-
-    setMessages((prev) => prev.map((m) => {
-      if (!m || typeof m !== 'object') return m;
-      if (m.message_id !== messageId) return m;
-      return { ...m, is_pinned: nextPinnedState };
-    }));
-
-    setSelectedChat((prev) => {
-      if (!prev) return prev;
-      return updateChatEntryBranchMessages(
-        prev,
-        prev.active_branch_id,
-        prev.messages.map((m) => {
-          if (!m || typeof m !== 'object') return m;
-          if (m.message_id !== messageId) return m;
-          return { ...m, is_pinned: nextPinnedState };
-        }),
-        {},
-        true
-      );
-    });
-
-    syncPinnedStateInUserHistory(selectedChat?.chat_id, messageId, nextPinnedState);
-
-    try {
-      await persistPinnedMessage(targetMessage, nextPinnedState);
-      toast.show(
-        nextPinnedState
-          ? (t('chat.memory_pinned_success') || 'Memory pinned.')
-          : (t('chat.memory_unpinned_success') || 'Memory unpinned.'),
-        { type: 'success' }
-      );
-    } catch (error) {
-      setMessages((prev) => prev.map((m) => {
-        if (!m || typeof m !== 'object') return m;
-        if (m.message_id !== messageId) return m;
-        return { ...m, is_pinned: !nextPinnedState };
-      }));
-      setSelectedChat((prev) => {
-        if (!prev) return prev;
-        return updateChatEntryBranchMessages(
-          prev,
-          prev.active_branch_id,
-          prev.messages.map((m) => {
-            if (!m || typeof m !== 'object') return m;
-            if (m.message_id !== messageId) return m;
-            return { ...m, is_pinned: !nextPinnedState };
-          }),
-          {},
-          true
-        );
-      });
-      syncPinnedStateInUserHistory(selectedChat?.chat_id, messageId, !nextPinnedState);
-      toast.show(error.message || (t('chat.memory_pin_failed') || 'Failed to update memory pin.'), { type: 'error' });
-    }
-  };
+  const {
+    handleTogglePin,
+    syncPinnedStateInUserHistory,
+  } = usePinnedMemories({
+    selectedChat,
+    setSelectedChat,
+    messages,
+    setMessages,
+    setUserData,
+    sessionToken,
+  });
 
   const openMessageMenu = (event, messageId) => {
     event.preventDefault();
@@ -1866,76 +1567,10 @@ export default function ChatPage() {
                 )}
 
                 {showWelcome && (
-                  (() => {
-                    // Build a system-style welcome notice independent from the assistant's greeting message
-                    const charName = selectedCharacter?.name;
-                    const sceneName = selectedScene?.name;
-
-                    // Build the translated welcome title and body using i18n with sensible fallbacks
-                    const title = sceneName
-                      ? (
-                          <>
-                            <span>正在场景 </span>
-                            <span style={{ color: '#8b5cf6', fontWeight: 800 }}>{sceneName}</span>
-                            <span> 中与 </span>
-                            <span style={{ color: '#6366f1', fontWeight: 800 }}>{charName || '角色'}</span>
-                            <span> 对话</span>
-                          </>
-                        )
-                      : (
-                          <>
-                            <span>正在与 </span>
-                            <span style={{ color: '#6366f1', fontWeight: 800 }}>{charName || '角色'}</span>
-                            <span> 对话</span>
-                          </>
-                        );
-
-                    // For the body, prefer a combined sentence with character/persona data.
-                    const mainParts = [];
-                    if (sceneName) {
-                      mainParts.push('让故事自然展开，说点什么来推动这一幕吧。');
-                    } else {
-                      mainParts.push('让对话自然展开，说点什么来开启这段交流吧。');
-                    }
-                    const welcomeText = mainParts.join(' ');
-
-                    const welcomeImageRaw = selectedScene?.picture || selectedCharacter?.avatar_picture || selectedCharacter?.picture || null;
-                    const welcomeImageSrc = welcomeImageRaw
-                      ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(welcomeImageRaw).replace(/^\//, '')}`
-                      : defaultPic;
-                    const welcomeImageAlt = sceneName || charName || 'Character';
-
-                    return (
-                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.2rem' }}>
-                        <div style={{ maxWidth: 720, width: '100%', textAlign: 'center', padding: '0.8rem 0.6rem 0.35rem' }}>
-                          {/* Picture above, centered */}
-                          <img
-                            src={welcomeImageSrc}
-                            alt={welcomeImageAlt}
-                            style={{
-                              width: 96,
-                              height: 96,
-                              objectFit: 'cover',
-                              borderRadius: '50%',
-                              border: '1px solid #c4b5fd',
-                              display: 'block',
-                              margin: '0 auto'
-                            }}
-                          />
-
-                          {/* Title centered */}
-                          <div style={{ fontSize: '1rem', fontWeight: 650, color: '#121212', marginTop: 18 }}>
-                            {title}
-                          </div>
-
-                          {/* Text centered, transparent background so it appears inline in chat */}
-                          <div style={{ marginTop: 14, color: '#4b5563', fontSize: '0.92rem', lineHeight: 1.42 }}>
-                            {welcomeText}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()
+                  <ChatWelcomeCard
+                    selectedCharacter={selectedCharacter}
+                    selectedScene={selectedScene}
+                  />
                 )}
 
                 {nonSystem.length === 0 ? (
@@ -1977,42 +1612,13 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {messageMenu.open && activeMessageForMenu && createPortal(
-          <div
-            ref={messageMenuRef}
-            style={{
-              position: 'fixed',
-              top: Math.max(8, messageMenu.y + 4),
-              left: Math.max(8, Math.min(window.innerWidth - 200, messageMenu.x)),
-              width: 190,
-              background: '#ffffff',
-              border: '1px solid #e5e7eb',
-              borderRadius: 12,
-              boxShadow: '0 10px 28px rgba(0,0,0,0.16)',
-              zIndex: 1200,
-              padding: 6,
-            }}
-          >
-            <button
-              type="button"
-              className="dropdown-item"
-              style={{ borderRadius: 8, fontSize: '0.86rem', display: 'flex', alignItems: 'center', gap: 8 }}
-              onClick={async () => {
-                const nextPinnedState = !activeMessageForMenu.is_pinned;
-                const targetId = activeMessageForMenu.message_id;
-                setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
-                if (!targetId) return;
-                await handleTogglePin(targetId, nextPinnedState);
-              }}
-            >
-              <i className={activeMessageForMenu.is_pinned ? 'bi bi-pin-angle' : 'bi bi-pin-angle-fill'}></i>
-              {activeMessageForMenu.is_pinned
-                ? (t('chat.unpin_memory') || 'Unpin memory')
-                : (t('chat.pin_memory') || 'Pin as memory')}
-            </button>
-          </div>,
-          document.body
-        )}
+        <MessageContextMenu
+          menuState={messageMenu}
+          activeMessage={activeMessageForMenu}
+          menuRef={messageMenuRef}
+          onTogglePin={handleTogglePin}
+          onClose={() => setMessageMenu({ open: false, messageId: null, x: 0, y: 0 })}
+        />
 
         {/* Input Area (no form) */}
         <form
@@ -2030,200 +1636,21 @@ export default function ChatPage() {
         >
           <div style={chatContentRailStyle}>
           {userData?.ban_type === 'full_ban' && (
-            <div
-              style={{
-                width: '100%',
-                marginBottom: 8,
-                padding: '0.55rem 0.75rem',
-                borderRadius: 10,
-                border: '1px solid #fca5a5',
-                background: '#fff1f2',
-                color: '#b91c1c',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              }}
-            >
-              <i className="bi bi-slash-circle-fill" />
-              <span>
-                您的账号已被封禁，无法发送消息。
-                {userData?.ban_until && `封禁将于 ${new Date(userData.ban_until).toLocaleDateString()} 解除。`}
-              </span>
-            </div>
+            <BanBanner userData={userData} />
           )}
           {isCreditLocked(creditLimits) && (
-            <div
-              style={{
-                width: '100%',
-                marginBottom: 8,
-                padding: '0.45rem 0.65rem',
-                borderRadius: 10,
-                border: '1px solid #fecaca',
-                background: '#fff1f2',
-                color: '#b91c1c',
-                fontSize: '0.74rem',
-                fontWeight: 600,
-              }}
-            >
-              {(() => {
-                const isPro = !!creditLimits?.is_pro;
-                const scopeLabel = isPro ? '本月剩余点数' : '本日剩余点数';
-                const used = Number(creditLimits?.cap_scope === 'monthly' ? creditLimits?.monthly_credit_usage : creditLimits?.daily_credit_usage) || 0;
-                const cap = Number(creditLimits?.credit_cap || 0);
-                return (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
-                    <span>
-                      {scopeLabel}已达上限：{formatCompactTokenCount(used)} / {formatCompactTokenCount(cap)}，钱包点数已用尽。可升级Pro或购买点数包继续使用。
-                    </span>
-                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      <button
-                        type="button"
-                        onClick={() => navigate('/pro-upgrade')}
-                        style={{
-                          padding: '0.15rem 0.55rem',
-                          borderRadius: 6,
-                          border: 'none',
-                          background: '#111827',
-                          color: '#fff',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        充值点数
-                      </button>
-                      {!creditLimits?.is_pro && (
-                        <button
-                          type="button"
-                          onClick={() => navigate('/pro-upgrade')}
-                          style={{
-                            padding: '0.15rem 0.55rem',
-                            borderRadius: 6,
-                            border: 'none',
-                            background: '#b91c1c',
-                            color: '#fff',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          升级 Pro
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
+            <CreditLockedBanner creditLimits={creditLimits} />
           )}
           <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'center' }}>
-            <div
-              style={{
-                position: 'relative',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                height: `${CHAT_INPUT_BASE_HEIGHT}px`,
-              }}
-              onMouseEnter={() => setShowContextDetails(true)}
-              onMouseLeave={() => setShowContextDetails(false)}
-            >
-              <button
-                type="button"
-                onFocus={() => setShowContextDetails(true)}
-                onBlur={() => setShowContextDetails(false)}
-                onClick={() => setShowContextDetails((prev) => !prev)}
-                aria-label="上下文窗口使用情况"
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  height: `${CHAT_INPUT_BASE_HEIGHT}px`,
-                  padding: '0 0.2rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: showContextDetails ? 6 : 0,
-                  color: '#6b7280',
-                  transition: 'gap 0.16s ease',
-                  cursor: 'pointer'
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-                  <circle cx="9" cy="9" r={pieRadius} fill="none" stroke="#e5e7eb" strokeWidth="2" />
-                  <circle
-                    cx="9"
-                    cy="9"
-                    r={pieRadius}
-                    fill="none"
-                    stroke={contextUsagePercent >= 90 ? '#dc3545' : '#18191a'}
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeDasharray={pieCircumference}
-                    strokeDashoffset={pieStrokeOffset}
-                    transform="rotate(-90 9 9)"
-                  />
-                </svg>
-                <span
-                  style={{
-                    maxWidth: showContextDetails ? 48 : 0,
-                    opacity: showContextDetails ? 1 : 0,
-                    overflow: 'hidden',
-                    whiteSpace: 'nowrap',
-                    transition: 'max-width 0.18s ease, opacity 0.14s ease',
-                  }}
-                >
-                  {contextUsagePercent}%
-                </span>
-              </button>
-
-              {showContextDetails && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: '140%',
-                    left: 0,
-                    transform: 'none',
-                    minWidth: 220,
-                    background: '#111827',
-                    color: '#f9fafb',
-                    borderRadius: 10,
-                    padding: '10px 12px',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-                    zIndex: 20,
-                    textAlign: 'left'
-                  }}
-                >
-                  <div style={{ fontSize: '0.74rem', fontWeight: 600, marginBottom: 6 }}>上下文使用情况</div>
-                  <div style={{ fontSize: '0.7rem', opacity: 0.9, marginBottom: 8 }}>
-                    {`当前 ${contextWindowUsage.currentTokens}/${contextWindowUsage.softLimit} tokens`}
-                  </div>
-
-                  <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.2)', overflow: 'hidden', marginBottom: 8 }}>
-                    <div
-                      style={{
-                        width: `${contextUsagePercent}%`,
-                        height: '100%',
-                        background: contextUsagePercent >= 90 ? '#ef4444' : '#60a5fa',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>
-                    基于上次请求的上下文使用情况
-                  </div>
-                  <div style={{ fontSize: '0.7rem', opacity: 0.9, marginTop: 4 }}>
-                    到达 95% 上下文窗口时，系统会开始压缩上下文。
-                  </div>
-                  {Number(serverContextWindowUsage?.summary_messages_count || 0) > 0 && (
-                    <div style={{ fontSize: '0.7rem', color: '#86efac', marginTop: 4 }}>
-                      已自动整理旧消息并保留最近 2 条对话用于请求上下文。
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <ContextWindowIndicator
+              contextWindowUsage={contextWindowUsage}
+              serverContextWindowUsage={serverContextWindowUsage}
+              contextUsagePercent={contextUsagePercent}
+              pieRadius={pieRadius}
+              pieCircumference={pieCircumference}
+              pieStrokeOffset={pieStrokeOffset}
+              inputHeight={CHAT_INPUT_BASE_HEIGHT}
+            />
 
             <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex', alignItems: 'center' }}>
               <textarea
