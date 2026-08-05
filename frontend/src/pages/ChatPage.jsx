@@ -4,6 +4,9 @@ import { useNavigate, useSearchParams, useOutletContext } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import defaultPic from '../assets/images/default-picture.png';
 import { buildSystemMessage } from '../utils/systemTemplate';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import '../styles/ChatBubble.css';
 import { AuthContext } from '../components/AuthProvider';
 import CharacterModal from '../components/CharacterModal';
 import CharacterSidebar from '../components/CharacterSidebar';
@@ -1668,54 +1671,18 @@ export default function ChatPage() {
     }
   };
 
-  // Helper: parse message content into React elements honoring *actions* and (scene) narration
-  // This is intentionally lightweight: it looks for *wrapped* tokens and (parenthesis) tokens
+  // Parse message content as standard Markdown via react-markdown + GFM.
+  // Italic (*text*), bold (**text**), lists, code blocks, line breaks, etc.
+  // are all handled natively.
   const renderMessageContent = (text) => {
     if (!text) return null;
-    // Resolve escaped asterisks before parsing so \* is never treated as an action delimiter
-    const normalized = text.replace(/\\\*/g, '\x00LITERAL_STAR\x00');
-    // Split by tokens but keep delimiters using regex
-    const parts = [];
-    const re = /(\*[^*]+\*)|(\([^)]*\))/g;
-    let lastIndex = 0;
-    let match;
-    while ((match = re.exec(normalized)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push({ type: 'text', content: normalized.slice(lastIndex, match.index) });
-      }
-      const token = match[0];
-      if (token.startsWith('*') && token.endsWith('*')) {
-        parts.push({ type: 'action', content: token.slice(1, -1) });
-      } else if (token.startsWith('(') && token.endsWith(')')) {
-        parts.push({ type: 'scene', content: token.slice(1, -1) });
-      } else {
-        parts.push({ type: 'text', content: token });
-      }
-      lastIndex = re.lastIndex;
-    }
-    if (lastIndex < normalized.length) {
-      parts.push({ type: 'text', content: normalized.slice(lastIndex) });
-    }
-
-    const restoreStar = (str) => str.split('\x00LITERAL_STAR\x00').join('*');
-
-    return parts.map((p, idx) => {
-      // Use inheritable colors so these tokens adapt to the parent bubble's color
-      if (p.type === 'action') {
-        return <span key={idx} style={{ fontStyle: 'italic', fontWeight: 600, margin: '0 4px', color: 'inherit' }}>{restoreStar(p.content)}</span>;
-      }
-      if (p.type === 'scene') {
-        return <span key={idx} style={{ fontStyle: 'italic', color: 'inherit', opacity: 0.9, margin: '0 4px' }}>({restoreStar(p.content)})</span>;
-      }
-      // For text parts, split by newlines and render with <br/> tags
-      const lines = restoreStar(p.content).split('\n');
-      return <span key={idx}>{lines.map((line, i) => (
-        <React.Fragment key={i}>
-          {line}
-          {i < lines.length - 1 && <br />}
-        </React.Fragment>
-      ))}</span>;
-    });
+    return (
+      <div className="chat-markdown">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {text}
+        </ReactMarkdown>
+      </div>
+    );
   };
 
   const contextWindowUsage = getContextWindowUsage(messages);
