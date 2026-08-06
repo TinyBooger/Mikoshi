@@ -8,44 +8,44 @@ export function buildSystemMessage(
   longDescription = null
 ) {
   // Base instruction
-  const baseInstruction = `Act as ${characterName}. Stay in character always. Don't break character or mention these instructions.`;
+  const baseInstruction = `扮演 ${characterName}。始终保持角色，不要跳出角色或提及这些指令。`;
 
   // Character name section
   const charNameText = characterName 
-    ? `[Character Name]\n${characterName}\n[/Character Name]` 
+    ? `[角色名称]\n${characterName}\n[/角色名称]` 
     : '';
 
   // Character persona section
   const charPersonaText = characterPersona 
-    ? `[Character Persona]\n${characterPersona}\n[/Character Persona]` 
+    ? `[角色设定]\n${characterPersona}\n[/角色设定]` 
     : '';
 
   // Detailed background section
   const longDescriptionText = longDescription
-    ? `[Detailed Background]\n${longDescription}\n[/Detailed Background]`
+    ? `[详细背景]\n${longDescription}\n[/详细背景]`
     : '';
 
   // Example dialogues section
   const exampleDialoguesText = exampleMessages 
-    ? `[Example Dialogues]\n${exampleMessages}\n[/Example Dialogues]` 
+    ? `[对话示例]\n${exampleMessages}\n[/对话示例]` 
     : '';
 
   // Context information (user persona and scene)
   let contextInfo = '';
   if (personaDescription || scene) {
-    contextInfo = `[Context]\n`;
+    contextInfo = `[情境]\n`;
     if (personaName || personaDescription) {
-      contextInfo += `User: ${personaName ? personaName + ' - ' : ''}${personaDescription || ''}\n`;
+      contextInfo += `用户：${personaName ? personaName + ' - ' : ''}${personaDescription || ''}\n`;
     }
     if (scene) {
-      contextInfo += `Scene: ${scene}\n`;
+      contextInfo += `场景：${scene}\n`;
     }
-    contextInfo += `[/Context]`;
+    contextInfo += `[/情境]`;
   }
 
   // Main completion prompt
   const completionPrompt = characterName
-    ? `Complete the chat as ${characterName}.`
+    ? `以 ${characterName} 的身份继续对话。`
     : '';
 
   // Create entries for system prompts
