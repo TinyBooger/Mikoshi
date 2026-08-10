@@ -17,7 +17,7 @@ export default function ModelSelect({ value, onChange, disabled, className, styl
   const containerRef = useRef(null);
   const listRef = useRef(null);
 
-  const selectedId = value || 'deepseek-v4-flash';
+  const selectedId = value || 'qwen-plus-character';
 
   // Close on outside click
   const handleClickOutside = useCallback((e) => {

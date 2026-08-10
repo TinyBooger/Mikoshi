@@ -8,15 +8,17 @@
  */
 
 const MODEL_CONFIGS = [
+  // Qwen Character
+  { id: "qwen-plus-character", maxOutputTokens: 4_000,  contextLength: 32_000,    multiplier: 0.8 },
+  { id: "qwen-flash-character",maxOutputTokens: 4_000,  contextLength: 8_000,     multiplier: 0.3 },
+
   // DeepSeek
-  { id: "deepseek-v4-flash",  maxOutputTokens: 1_000_000, contextLength: 384_000, multiplier: 1.0 },
   { id: "deepseek-v4-pro",    maxOutputTokens: 1_000_000, contextLength: 384_000, multiplier: 3.0 },
+  { id: "deepseek-v4-flash",  maxOutputTokens: 1_000_000, contextLength: 384_000, multiplier: 1.0 },
 
   // Qwen
   { id: "qwen3.7-plus",        maxOutputTokens: 64_000, contextLength: 1_000_000, multiplier: 2.0 },
   { id: "qwen3.6-flash",       maxOutputTokens: 64_000, contextLength: 1_000_000, multiplier: 1.2 },
-  { id: "qwen-plus-character", maxOutputTokens: 4_000,  contextLength: 32_000,    multiplier: 0.8 },
-  { id: "qwen-flash-character",maxOutputTokens: 4_000,  contextLength: 8_000,     multiplier: 0.3 },
 
 ];
 
@@ -29,7 +31,7 @@ const MODEL_MAP = Object.fromEntries(
  * Return the ModelConfig for *modelId*, or a safe default (deepseek-v4-flash).
  */
 export function getModelConfig(modelId) {
-  return MODEL_MAP[modelId] || MODEL_MAP["deepseek-v4-flash"];
+  return MODEL_MAP[modelId] || MODEL_MAP["qwen-plus-character"];
 }
 
 /**

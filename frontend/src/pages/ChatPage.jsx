@@ -114,7 +114,7 @@ export default function ChatPage() {
   const CHAT_INPUT_MAX_HEIGHT = 200;
   const CHAT_INPUT_BASE_HEIGHT = 44;
   const DEFAULT_ADVANCED_CHAT_CONFIG = {
-    model: 'deepseek-v4-flash',
+    model: 'qwen-plus-character',
     presence_penalty: 0,
     frequency_penalty: 0,
     context_window_tier: DEFAULT_CONTEXT_WINDOW_TIER,
