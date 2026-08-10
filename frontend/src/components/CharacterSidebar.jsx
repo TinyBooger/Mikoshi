@@ -49,6 +49,7 @@ export default function CharacterSidebar({
   advancedChatConfig,
   setAdvancedChatConfig,
   onResetAdvancedChatConfig,
+  onSaveAdvancedChatConfig,
   canUseAdvancedChatConfig,
   wallpaper,
   onSetWallpaper,
@@ -1182,7 +1183,7 @@ export default function CharacterSidebar({
                 <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4 }}>
                   {t('chat.advanced_hint')}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
                   <button
                     type="button"
                     className="btn btn-sm btn-outline-secondary"
@@ -1191,6 +1192,15 @@ export default function CharacterSidebar({
                     style={{ borderRadius: 8 }}
                   >
                     {t('chat.advanced_reset')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={onSaveAdvancedChatConfig}
+                    disabled={!selectedCharacter}
+                    style={{ borderRadius: 8, background: '#7c3aed', borderColor: '#7c3aed' }}
+                  >
+                    {t('chat.advanced_save') || 'Save'}
                   </button>
                 </div>
               </div>

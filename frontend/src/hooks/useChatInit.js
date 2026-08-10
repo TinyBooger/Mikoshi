@@ -41,7 +41,6 @@ export function useChatInit({
 
   // Config helpers
   normalizeAdvancedChatConfig,
-  normalizeAdvancedChatConfigFromEntry,
   applyCharacterBackground,
   buildSystemPromptMessage,
   buildDisplayMessagesForChat,

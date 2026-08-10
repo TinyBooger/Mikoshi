@@ -95,6 +95,15 @@ class User(Base):
     chat_histories = relationship("ChatHistory", back_populates="user", cascade="all, delete-orphan")
 
 
+class UserCharacterConfig(Base):
+    __tablename__ = "user_character_configs"
+
+    user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True, nullable=False)
+    character_id = Column(Integer, ForeignKey('characters.id', ondelete='CASCADE'), primary_key=True, nullable=False)
+    config = Column(JSONB, nullable=False, default={})
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+
 class UserCreditUsageLedger(Base):
     __tablename__ = "user_credit_usage_ledger"
 
@@ -147,7 +156,6 @@ class ChatHistory(Base):
     title = Column(String(255), nullable=False)
     active_branch_id = Column(String, nullable=True)
     messages = Column(JSONB, default=[])
-    chat_config = Column(JSONB, nullable=False, default={})
     is_pinned = Column(Boolean, default=False, nullable=False)
     hidden_from_recent = Column(Boolean, default=False, nullable=False)
     last_updated = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

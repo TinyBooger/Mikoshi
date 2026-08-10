@@ -32,7 +32,7 @@ CONTEXT_WINDOW_TIERS = (
     {"key": "128k", "tokens": 128000},
     {"key": "256k", "tokens": 256000},
     {"key": "512k", "tokens": 512000},
-    {"key": "1M",   "tokens": 1000000},
+    {"key": "1m",   "tokens": 1000000},
 )
 
 

@@ -142,7 +142,6 @@ def _persist_chat_history_turn(
     full_messages: list[dict],
     reply: str,
     response_usage: dict[str, int],
-    persisted_chat_config: dict,
     context_window_soft_limit: int,
     requested_branch_id: str | None,
     fork_from_message_id: str | None,
@@ -188,7 +187,6 @@ def _persist_chat_history_turn(
         "character_picture": character.picture if character else None,
         "title": generate_chat_title(updated_messages, existing_entry.title if existing_entry else None),
         "messages": message_payload,
-        "chat_config": persisted_chat_config,
         "last_updated": datetime.now(UTC),
         "created_at": existing_entry.created_at if existing_entry else datetime.now(UTC),
     }
@@ -240,10 +238,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         is_pro=bool(current_user.is_pro),
         model_id=chat_config.get("model"),
     )
-    persisted_chat_config = {
-        **chat_config,
-        "context_window_tier": context_window_tier,
-    }
     stream = data.get("stream", True)  # Default to streaming
 
     if not messages or not isinstance(messages, list):
@@ -501,7 +495,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             full_messages=full_messages,
                             reply=accumulated_reply,
                             response_usage=response_usage,
-                            persisted_chat_config=persisted_chat_config,
                             context_window_soft_limit=context_window_soft_limit,
                             requested_branch_id=branch_id,
                             fork_from_message_id=fork_from_message_id,
@@ -661,7 +654,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 full_messages=full_messages,
                 reply=reply,
                 response_usage=response_usage,
-                persisted_chat_config=persisted_chat_config,
                 context_window_soft_limit=context_window_soft_limit,
                 requested_branch_id=branch_id,
                 fork_from_message_id=fork_from_message_id,

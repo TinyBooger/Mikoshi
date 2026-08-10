@@ -100,6 +100,29 @@ class CharacterListOut(BaseModel):
     class Config:
         from_attributes = True
 
+
+# --- UserCharacterConfig (per-character user overrides / deltas) ---
+class UserCharacterConfigIn(BaseModel):
+    """Full config sent by the client; backend computes delta vs character defaults."""
+    model: Optional[str] = None
+    temperature: Optional[float] = None
+    top_p: Optional[float] = None
+    max_tokens: Optional[int] = None
+    presence_penalty: Optional[float] = None
+    frequency_penalty: Optional[float] = None
+    context_window_tier: Optional[str] = None
+
+
+class UserCharacterConfigOut(BaseModel):
+    user_id: str
+    character_id: int
+    config: dict
+    updated_at: Any
+
+    class Config:
+        from_attributes = True
+
+
 # CharacterOut model
 class UserOut(BaseModel):
     id: str

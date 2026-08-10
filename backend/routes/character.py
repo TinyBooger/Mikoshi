@@ -33,7 +33,7 @@ def normalize_context_label(value: Optional[str]) -> str:
     return "advanced" if value == "advanced" else "standard"
 
 
-ALLOWED_CONTEXT_WINDOW_TIERS = {"8k", "32k", "128k", "256k", "512k", "1M"}
+ALLOWED_CONTEXT_WINDOW_TIERS = {"8k", "32k", "128k", "256k", "512k", "1m"}
 
 def parse_character_chat_config(
     model: str,

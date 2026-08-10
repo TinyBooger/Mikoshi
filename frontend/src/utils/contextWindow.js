@@ -8,7 +8,7 @@ const CONTEXT_WINDOW_TIERS = [
   { key: '128k', tokens: 128000 },
   { key: '256k', tokens: 256000 },
   { key: '512k', tokens: 512000 },
-  { key: '1M',   tokens: 1000000 },
+  { key: '1m',   tokens: 1000000 },
 ];
 
 /**
@@ -46,14 +46,14 @@ export const normalizeContextWindowTier = (rawTier, modelId) => {
     ? getFilteredContextWindowTierOptions(modelId)
     : getContextWindowTierOptions();
   const requested = String(rawTier || '').trim().toLowerCase();
-  const match = options.find((tier) => tier.key === requested);
+  const match = options.find((tier) => tier.key.toLowerCase() === requested);
   // Default to the max tier for the selected model (last option in filtered list)
   return (match || options[options.length - 1] || { key: DEFAULT_CONTEXT_WINDOW_TIER }).key;
 };
 
 export const getContextWindowTokenLimit = (tierKey) => {
-  const normalizedTier = normalizeContextWindowTier(tierKey);
+  const normalizedTier = normalizeContextWindowTier(tierKey).toLowerCase();
   const options = getContextWindowTierOptions();
-  const match = options.find((tier) => tier.key === normalizedTier);
+  const match = options.find((tier) => tier.key.toLowerCase() === normalizedTier);
   return (match || options[options.length - 1] || { tokens: 8000 }).tokens;
 };

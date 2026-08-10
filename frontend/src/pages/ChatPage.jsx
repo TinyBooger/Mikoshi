@@ -158,26 +158,6 @@ export default function ChatPage() {
       frequency_penalty: canUseAdvancedChatConfig ? clamp(character.frequency_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty) : DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty,
     };
   };
-  const normalizeAdvancedChatConfigFromEntry = (rawConfig, fallbackCharacter = null) => {
-    const fallback = normalizeAdvancedChatConfig(fallbackCharacter);
-    if (!rawConfig || typeof rawConfig !== 'object') {
-      return fallback;
-    }
-
-    const model = normalizeChatModel(rawConfig.model);
-    const tokenLimits = getTokenLimits(model);
-    const normalizedContextWindowTier = normalizeContextWindowTier(rawConfig.context_window_tier, model);
-
-    return {
-      model,
-      context_window_tier: normalizedContextWindowTier,
-      temperature: canUseAdvancedChatConfig ? clamp(rawConfig.temperature, 0, 2, fallback.temperature) : fallback.temperature,
-      top_p: canUseAdvancedChatConfig ? clamp(rawConfig.top_p, 0, 1, fallback.top_p) : fallback.top_p,
-      max_tokens: canUseAdvancedChatConfig ? normalizeTokenTierValue(model, clamp(rawConfig.max_tokens, tokenLimits.min, tokenLimits.max, fallback.max_tokens)) : fallback.max_tokens,
-      presence_penalty: canUseAdvancedChatConfig ? clamp(rawConfig.presence_penalty, -2, 2, fallback.presence_penalty) : fallback.presence_penalty,
-      frequency_penalty: canUseAdvancedChatConfig ? clamp(rawConfig.frequency_penalty, -2, 2, fallback.frequency_penalty) : fallback.frequency_penalty,
-    };
-  };
   const [advancedChatConfig, setAdvancedChatConfig] = useState(DEFAULT_ADVANCED_CHAT_CONFIG);
 
   const [characterModal, setCharacterModal] = useState({ show: false });
@@ -397,6 +377,25 @@ export default function ChatPage() {
     return allMessages.filter(
       (message) => message && typeof message === 'object' && message.role && typeof message.content === 'string'
     );
+  };
+
+  const saveUserCharacterConfig = async () => {
+    if (!characterId || !sessionToken) return;
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/user-character-config/${characterId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': sessionToken,
+        },
+        body: JSON.stringify(advancedChatConfig),
+      });
+      if (!res.ok) throw new Error('Failed to save config');
+      toast.show(t('chat.config_saved') || 'Configuration saved.', { type: 'success' });
+    } catch (err) {
+      console.error('Error saving user config:', err);
+      toast.show(t('chat.config_save_error') || 'Failed to save configuration.', { type: 'error' });
+    }
   };
 
   const getContextWindowUsage = (allMessages) => {
@@ -640,7 +639,22 @@ export default function ChatPage() {
               setAdvancedChatConfig(normalizeAdvancedChatConfig(data));
               applyCharacterBackground(data.background, data);
               setLikes(data.likes || 0);
-              return data;
+              // Fetch user's per-character config delta and merge on top of defaults
+              return fetch(`${window.API_BASE_URL}/api/user-character-config/${characterId}`, {
+                headers: { 'Authorization': sessionToken }
+              }).then(res => res.ok ? res.json() : null).then(configData => {
+                const delta = configData?.config || {};
+                if (Object.keys(delta).length > 0) {
+                  setAdvancedChatConfig(prev => {
+                    const merged = { ...prev };
+                    for (const [key, value] of Object.entries(delta)) {
+                      if (value !== undefined && value !== null) merged[key] = value;
+                    }
+                    return merged;
+                  });
+                }
+                return data;
+              }).catch(() => data);
             })
             .catch(err => {
               console.error('Error fetching character:', err);
@@ -1115,8 +1129,26 @@ export default function ChatPage() {
       
       await Promise.all(promises);
 
-      // History config always has precedence; character defaults are only fallback.
-      setAdvancedChatConfig(normalizeAdvancedChatConfigFromEntry(normalizedChat?.chat_config, character));
+      // Load character defaults + user delta in one atomic state update
+      // (avoid the intermediate render with character defaults that
+      //  would overwrite the correct config set by fetchInitialData)
+      if (character?.id) {
+        fetch(`${window.API_BASE_URL}/api/user-character-config/${character.id}`, {
+          headers: { 'Authorization': sessionToken }
+        }).then(res => res.ok ? res.json() : null).then(data => {
+          const defaults = normalizeAdvancedChatConfig(character);
+          const delta = data?.config || {};
+          const merged = { ...defaults };
+          for (const [key, value] of Object.entries(delta)) {
+            if (value !== undefined && value !== null) merged[key] = value;
+          }
+          setAdvancedChatConfig(merged);
+        }).catch(() => {
+          setAdvancedChatConfig(normalizeAdvancedChatConfig(character));
+        });
+      } else {
+        setAdvancedChatConfig(normalizeAdvancedChatConfig(character));
+      }
       applyCharacterBackground(character?.background, character);
 
       // Refresh liked status for the loaded entities
@@ -1816,6 +1848,7 @@ export default function ChatPage() {
         advancedChatConfig={advancedChatConfig}
         setAdvancedChatConfig={setAdvancedChatConfig}
         onResetAdvancedChatConfig={() => setAdvancedChatConfig(normalizeAdvancedChatConfig(selectedCharacter))}
+        onSaveAdvancedChatConfig={saveUserCharacterConfig}
         canUseAdvancedChatConfig={canUseAdvancedChatConfig}
         wallpaper={wallpaper}
         onSetWallpaper={setWallpaper}
