@@ -725,10 +725,27 @@ export default function EntityDetailPage() {
           </div>
         )}
 
-        {/* Character-specific: Greeting and Sample Dialogue */}
+        {/* Character-specific: Greetings and Sample Dialogue */}
         {type === 'character' && (
           <>
-            {entity.greeting && entity.greeting !== '[IMPROVISE_GREETING]' && (
+            {entity.greetings && Array.isArray(entity.greetings) && entity.greetings.filter(g => g !== '[IMPROVISE_GREETING]').length > 0 && (
+              <div className="card mb-4">
+                <div className="card-body">
+                  <div style={sectionTitleWrapStyle}>
+                    <h3 style={sectionTitleStyle}>
+                      {t('entity_detail.greeting', 'Greeting')}
+                    </h3>
+                  </div>
+                  {entity.greetings.filter(g => g !== '[IMPROVISE_GREETING]').map((g, idx) => (
+                    <p key={idx} style={{ ...sectionBodyStyle, marginBottom: idx < entity.greetings.filter(g => g !== '[IMPROVISE_GREETING]').length - 1 ? '0.75rem' : 0 }}>
+                      {g}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Backward compat for old single-string greeting */}
+            {!entity.greetings && entity.greeting && entity.greeting !== '[IMPROVISE_GREETING]' && (
               <div className="card mb-4">
                 <div className="card-body">
                   <div style={sectionTitleWrapStyle}>

@@ -104,7 +104,7 @@ class CharacterUpdate(BaseModel):
     name: Optional[str] = None
     persona: Optional[str] = None
     tagline: Optional[str] = None
-    greeting: Optional[str] = None
+    greetings: Optional[List[str]] = None
     example_messages: Optional[str] = None
     tags: Optional[List[str]] = None
     is_public: Optional[bool] = None
@@ -1617,8 +1617,8 @@ def update_character(
         character.persona = update_data.persona
     if update_data.tagline is not None:
         character.tagline = update_data.tagline
-    if update_data.greeting is not None:
-        character.greeting = update_data.greeting
+    if update_data.greetings is not None:
+        character.greetings = update_data.greetings
     if update_data.example_messages is not None:
         character.example_messages = update_data.example_messages
     if update_data.tags is not None:
@@ -1638,7 +1638,7 @@ def update_character(
             "name": character.name,
             "tagline": character.tagline,
             "persona": character.persona,
-            "greeting": character.greeting,
+            "greetings": character.greetings,
             "tags": character.tags,
             "is_public": character.is_public,
             "is_forkable": character.is_forkable,

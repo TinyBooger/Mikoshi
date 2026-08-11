@@ -779,15 +779,43 @@ export default function ChatPage() {
   const startNewChat = async (fetchedData) => {
     const { character, scene, persona } = fetchedData || {};
     const sys = buildSystemPromptMessage(character, scene, persona);
-    const openingGreeting = scene
-      ? (typeof scene?.greeting === 'string' && scene.greeting.trim()
-          ? scene.greeting.trim()
-          : SPECIAL_IMPROVISING_GREETING)
-      : character?.greeting;
+
+    // For scenes, keep existing logic (scene.greeting is still a string)
+    // For characters, greetings is now a list; pick one randomly
+    let openingGreeting = null;
+    let useImprovise = false;
+
+    if (scene) {
+      const sceneGreeting = typeof scene?.greeting === 'string' && scene.greeting.trim()
+        ? scene.greeting.trim()
+        : SPECIAL_IMPROVISING_GREETING;
+      if (sceneGreeting === SPECIAL_IMPROVISING_GREETING) {
+        useImprovise = true;
+      } else {
+        openingGreeting = sceneGreeting;
+      }
+    } else if (character?.greetings?.length) {
+      const manualGreetings = character.greetings.filter(g => g !== SPECIAL_IMPROVISING_GREETING);
+      const hasImprovise = character.greetings.includes(SPECIAL_IMPROVISING_GREETING);
+
+      // Build pool: manual greetings + optional improvise slot
+      const pool = [...manualGreetings];
+      if (hasImprovise) pool.push(SPECIAL_IMPROVISING_GREETING);
+
+      if (pool.length > 0) {
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        if (pick === SPECIAL_IMPROVISING_GREETING) {
+          useImprovise = true;
+        } else {
+          openingGreeting = pick;
+        }
+      }
+    }
+
     setSelectedChat(null);
     setInput('');
 
-    if (openingGreeting === SPECIAL_IMPROVISING_GREETING) {
+    if (useImprovise) {
       setMessages([sys]);
       await sendChatTurn({
         nextMessages: [sys],

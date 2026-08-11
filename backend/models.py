@@ -22,7 +22,7 @@ class Character(Base):
     likes = Column(Integer, default=0)
     picture = Column(String, nullable=True)  # path or URL to the picture
     avatar_picture = Column(String, nullable=True)  # separate head/avatar image
-    greeting = Column(String, nullable=True)
+    greetings = Column(JSONB, default=list, nullable=False)  # list of alternate greeting strings; may include "[IMPROVISE_GREETING]"
     model = Column(String, nullable=False, default="deepseek-v4-flash")
     temperature = Column(Float, nullable=False, default=1.3)
     top_p = Column(Float, nullable=False, default=0.9)

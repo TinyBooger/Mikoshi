@@ -44,7 +44,7 @@ def _build_snapshot(entity, entity_type: str) -> dict:
             "name": entity.name,
             "tagline": getattr(entity, "tagline", None),
             "persona": entity.persona,
-            "greeting": entity.greeting,
+            "greetings": entity.greetings,
             "example_messages": getattr(entity, "example_messages", None),
             "tags": entity.tags or [],
             "is_public": entity.is_public,

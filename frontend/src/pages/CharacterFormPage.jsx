@@ -175,7 +175,7 @@ export default function CharacterFormPage() {
     long_description: '',
     tagline: '',
     tags: [],
-    greeting: '',
+    greetings: [],
     is_public: true,
     is_forkable: false,
     is_free: true,
@@ -236,6 +236,16 @@ export default function CharacterFormPage() {
     }
   };
   const [isImprovisingGreeting, setIsImprovisingGreeting] = useState(false);
+  const greetingRefs = useRef(new Map());
+  const autoResizeGreeting = (el) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  };
+  // Auto-resize all greeting textareas when greetings array changes
+  useEffect(() => {
+    greetingRefs.current.forEach((el) => autoResizeGreeting(el));
+  }, [charData.greetings]);
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit' || mode === 'fork');
@@ -302,7 +312,7 @@ export default function CharacterFormPage() {
 
   // ── beforeunload warning for unsaved changes ──────────────────
   useEffect(() => {
-    const hasContent = charData.name.trim() || charData.persona.trim() || charData.greeting.trim();
+    const hasContent = charData.name.trim() || charData.persona.trim() || charData.greetings.some(g => g.trim());
     if (!hasContent) return;
 
     const handler = (e) => {
@@ -311,7 +321,7 @@ export default function CharacterFormPage() {
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [charData.name, charData.persona, charData.greeting]);
+  }, [charData.name, charData.persona, charData.greetings]);
 
   // Enforce level locks on fork/paid options
   useEffect(() => {
@@ -331,7 +341,7 @@ export default function CharacterFormPage() {
   useEffect(() => {
     if (mode === 'edit' || mode === 'fork') {
       if (!id) {
-        toast.show(t('character_form.missing_id'), { type: 'error' });
+        toast.show('缺少角色 ID', { type: 'error' });
         navigate("/");
         return;
       }
@@ -352,14 +362,15 @@ export default function CharacterFormPage() {
         .then(data => {
           if (!data) return;
           if (mode === 'edit' && String(data.creator_id) !== String(userData?.id)) {
-            toast.show(t('character_form.not_authorized_edit'), { type: 'error' });
+            toast.show('您只能编辑自己创建的内容。', { type: 'error' });
             navigate('/profile');
             return;
           }
-          // If greeting equals our special improvising marker, set the checkbox and clear greeting input
-          const loadedGreeting = data.greeting || '';
-          const isImprov = loadedGreeting && loadedGreeting.indexOf(SPECIAL_IMPROVISING_GREETING) !== -1;
-          setIsImprovisingGreeting(!!isImprov);
+          // If greeting equals our special improvising marker, set the checkbox
+          const loadedGreetings = Array.isArray(data.greetings) ? data.greetings : (data.greeting ? [data.greeting] : []);
+          const hasImprov = loadedGreetings.includes(SPECIAL_IMPROVISING_GREETING);
+          setIsImprovisingGreeting(hasImprov);
+          const manualGreetings = loadedGreetings.filter(g => g !== SPECIAL_IMPROVISING_GREETING);
           
           if (mode === 'fork') {
             const sourceIsAdvanced = data.context_label === 'advanced';
@@ -373,7 +384,7 @@ export default function CharacterFormPage() {
               long_description: data.long_description || '',
               tagline: data.tagline || '',
               tags: data.tags || [],
-              greeting: isImprov ? '' : loadedGreeting,
+              greetings: manualGreetings,
               is_public: !!data.is_public,
               is_forkable: true,
               is_free: true,
@@ -403,7 +414,7 @@ export default function CharacterFormPage() {
               long_description: data.long_description || '',
               tagline: data.tagline || '',
               tags: data.tags || [],
-              greeting: isImprov ? '' : loadedGreeting,
+              greetings: manualGreetings,
               is_public: !!data.is_public,
               is_forkable: !!data.is_forkable,
               is_free: true,
@@ -483,20 +494,21 @@ export default function CharacterFormPage() {
     e.preventDefault();
     if (isSubmitting) return;
   if (!sessionToken) {
-      toast.show(t('character_form.not_logged_in'), { type: 'error' });
+      toast.show('您需要登录才能操作。', { type: 'error' });
       navigate("/");
       return;
     }
     if (!charData.name.trim() || !charData.persona.trim()) {
-      toast.show(t('character_form.name_required'), { type: 'error' });
+      toast.show('名称和人设为必填项。', { type: 'error' });
       return;
     }
     if (!charData.tags || charData.tags.length === 0) {
-      toast.show(t('character_form.tags_required'), { type: 'error' });
+      toast.show('请至少添加一个标签。', { type: 'error' });
       return;
     }
-    if (!isImprovisingGreeting && !charData.greeting.trim()) {
-      toast.show(t('character_form.greeting_required'), { type: 'error' });
+    const hasAnyManualGreeting = charData.greetings.some(g => g.trim());
+    if (!isImprovisingGreeting && !hasAnyManualGreeting) {
+      toast.show('请至少添加一条问候语，或启用 AI 生成问候语。', { type: 'error' });
       return;
     }
     if (!picture && !selectedDefaultPicture && !picturePreview) {
@@ -528,9 +540,12 @@ export default function CharacterFormPage() {
     formData.append("context_label", effectiveContextLabel);
     formData.append("tagline", charData.tagline.trim());
     charData.tags.forEach(tag => formData.append("tags", tag));
-  // If improvising greeting is enabled, store the special prompt instead of the input value
-  const finalGreeting = isImprovisingGreeting ? SPECIAL_IMPROVISING_GREETING : charData.greeting.trim();
-  formData.append("greeting", finalGreeting);
+  // Build greetings list: manual greetings + optional improvise sentinel
+  const finalGreetings = [...charData.greetings.filter(g => g.trim())];
+  if (isImprovisingGreeting) {
+    finalGreetings.push(SPECIAL_IMPROVISING_GREETING);
+  }
+  formData.append("greetings", JSON.stringify(finalGreetings));
     formData.append("sample_dialogue", charData.sample.trim());
     if (effectiveContextLabel === 'advanced') {
       formData.append("long_description", trimmedLongDescription);
@@ -579,10 +594,10 @@ export default function CharacterFormPage() {
               body: JSON.stringify({ entity_type: 'character', entity_id: Number(id), appeal_reason: appealReason.trim() }),
             });
           } catch (_) { /* best effort */ }
-          toast.show(t('character_form.appeal_submitted'));
+          toast.show('内容已保存并提交申诉。');
           navigate(`/character/${id}`);
         } else {
-          toast.show(mode === 'edit' ? t('character_form.updated') : mode === 'fork' ? t('character_form.forked') : t('character_form.created'));
+          toast.show(mode === 'edit' ? '角色已更新！' : mode === 'fork' ? '角色已衍生！' : '角色已创建！');
           navigate(mode === 'edit' ? "/profile" : "/profile");
         }
       } else {
@@ -590,11 +605,11 @@ export default function CharacterFormPage() {
         if (tokenCapMessage) {
           toast.show(tokenCapMessage, { type: 'error' });
         } else {
-          toast.show(getApiErrorMessage(data, t('character_form.error'), t), { type: 'error' });
+          toast.show(getApiErrorMessage(data, '发生错误。', t), { type: 'error' });
         }
       }
     } catch (error) {
-      toast.show(t('character_form.error'), { type: 'error' });
+      toast.show('发生错误。', { type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -619,10 +634,10 @@ export default function CharacterFormPage() {
         headers: { 'Authorization': sessionToken }
       });
       const data = await res.json();
-      toast.show(data.message || data.detail || t('character_form.deleted'));
+      toast.show(data.message || data.detail || '已删除角色');
       if (res.ok) navigate("/profile");
     } catch (err) {
-      toast.show(t('character_form.error'), { type: 'error' });
+      toast.show('发生错误。', { type: 'error' });
     }
   };
 
@@ -637,7 +652,7 @@ export default function CharacterFormPage() {
             opacity: 1;
           }
         `}</style>
-          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>{isAppealMode ? t('character_form.appeal_title', '修改并申诉') : mode === 'edit' ? t('character_form.edit_title') : mode === 'fork' ? t('character_form.fork_title') : t('character_form.create_title')}</h2>
+          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>{isAppealMode ? '修改并申诉' : mode === 'edit' ? '编辑角色' : mode === 'fork' ? '衍生角色' : '新建角色'}</h2>
 
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           <BanNotice banType={userData?.ban_type} banUntil={userData?.ban_until} context="upload" />
@@ -712,9 +727,9 @@ export default function CharacterFormPage() {
           {isAppealMode && (
             <div className="alert alert-warning mb-4" role="alert" style={{ borderRadius: 10 }}>
               <i className="bi bi-megaphone-fill me-2"></i>
-              <strong>{t('character_form.appeal_notice_title', '申诉模式')}</strong>
+              <strong>申诉模式</strong>
               <div className="mt-1" style={{ fontSize: '0.88rem' }}>
-                {t('character_form.appeal_notice_body', '您可以修改内容后提交申诉。管理员将审核修改后的版本并决定是否解除限制。')}
+                您可以修改内容后提交申诉。管理员将审核修改后的版本并决定是否解除限制。
               </div>
             </div>
           )}
@@ -732,7 +747,7 @@ export default function CharacterFormPage() {
               <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.1rem', color: '#7c6abf', flexShrink: 0 }}></i>
               <div className="d-flex flex-column" style={{ gap: '2px', minWidth: 0 }}>
                 <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#7c6abf', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {t('character_form.forked_from', '参考自')}
+                  参考自
                 </span>
                 <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#2d2d2d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {charData.forked_from_name}
@@ -794,7 +809,7 @@ export default function CharacterFormPage() {
                 {picturePreview ? (
                   <img
                     src={picturePreview}
-                    alt={t('character_form.alt_preview')}
+                    alt="预览"
                     onLoad={e => {
                       const nextRatio = e.currentTarget.naturalWidth / e.currentTarget.naturalHeight;
                       if (Number.isFinite(nextRatio) && nextRatio > 0) {
@@ -869,7 +884,7 @@ export default function CharacterFormPage() {
                   }}
                 >
                   {avatarPreview ? (
-                    <img src={avatarPreview} alt={t('character_form.alt_preview')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={avatarPreview} alt="预览" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.75rem' }}>头像</div>
                   )}
@@ -949,15 +964,15 @@ export default function CharacterFormPage() {
           {/* Name */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              {t('character_form.name')}
-              <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('character_form.required_marker')}</span>
+              名称
+              <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
             </label>
             <input
               className="form-control"
               required
               value={charData.name}
               maxLength={MAX_NAME_LENGTH}
-              placeholder={t('character_form.placeholders.name')}
+              placeholder="例如：威廉·莎士比亚"
               onChange={e => handleChange('name', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -979,14 +994,14 @@ export default function CharacterFormPage() {
           {/* Tagline */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              {t('character_form.tagline')}
-              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t('character_form.notes.tagline')}</small>
+              简介
+              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>仅用于展示，不影响角色性格和对话风格</small>
             </label>
             <input
               className="form-control"
               value={charData.tagline}
               maxLength={MAX_TAGLINE_LENGTH}
-              placeholder={t('character_form.placeholders.tagline')}
+              placeholder=""
               onChange={e => handleChange('tagline', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -1008,9 +1023,9 @@ export default function CharacterFormPage() {
           {/* Persona */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              {t('character_form.persona')}
-              <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('character_form.required_marker')}</span>
-              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t('character_form.notes.persona')}</small>
+              设定
+              <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
+              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>设定决定了角色的行为方式和说话风格，仅自己可见</small>
             </label>
             <textarea
               className="form-control"
@@ -1018,7 +1033,7 @@ export default function CharacterFormPage() {
               required
               value={charData.persona}
               maxLength={MAX_PERSONA_LENGTH}
-              placeholder={t('character_form.placeholders.persona')}
+              placeholder="描述角色的特质、背景和说话风格。例如：文艺复兴时期的剧作家，语言华丽，喜欢用隐喻。"
               onChange={e => handleChange('persona', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -1038,13 +1053,12 @@ export default function CharacterFormPage() {
             </small>
           </div>
 
-          {/* Greeting */}
-          <div className="mb-4 position-relative">
+          {/* Greetings */}
+          <div className="mb-4">
             <label className="form-label fw-bold d-flex align-items-center gap-3" style={{ color: '#232323' }}>
               <span>
-                {t('character_form.greeting')}
+                问候语
                 <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
-                <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t('character_form.notes.greeting')}</small>
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400, whiteSpace: 'nowrap' }}>
                 <input
@@ -1053,57 +1067,117 @@ export default function CharacterFormPage() {
                   checked={isImprovisingGreeting}
                   onChange={e => setIsImprovisingGreeting(e.target.checked)}
                 />
-                <label htmlFor="improviseGreeting" style={{ margin: 0, fontSize: '0.95rem', cursor: 'pointer' }}>{t('character_form.improvise_greeting')}</label>
+                <label htmlFor="improviseGreeting" style={{ margin: 0, fontSize: '0.95rem', cursor: 'pointer' }}>启用AI生成问候语</label>
               </span>
             </label>
-            <textarea
-              className="form-control"
-              rows={3}
-              value={isImprovisingGreeting ? '' : charData.greeting}
-              maxLength={MAX_GREETING_LENGTH}
-              onChange={e => handleChange('greeting', e.target.value)}
-              disabled={isImprovisingGreeting}
-              placeholder={isImprovisingGreeting ? t('character_form.greeting_improvising_placeholder') : t('character_form.placeholders.greeting')}
-              style={{
-                background: isImprovisingGreeting ? '#f0f0f0' : '#f5f6fa',
-                color: '#18191a',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-                paddingRight: '3rem',
-                resize: 'vertical',
-              }}
-            />
-            <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-              {charData.greeting.length}/{MAX_GREETING_LENGTH}
-            </small>
+
+            {/* Manual greeting entries */}
+            {charData.greetings.map((g, idx) => (
+              <div key={idx} className="d-flex gap-2 mb-2 align-items-start">
+                <span style={{ minWidth: 24, textAlign: 'right', fontWeight: 600, color: '#6b7280', fontSize: '0.88rem', lineHeight: 2.2 }}>#{idx + 1}</span>
+                <textarea
+                  className="form-control"
+                  rows={1}
+                  ref={el => {
+                    if (el) {
+                      greetingRefs.current.set(idx, el);
+                      autoResizeGreeting(el);
+                    } else {
+                      greetingRefs.current.delete(idx);
+                    }
+                  }}
+                  value={g}
+                  maxLength={MAX_GREETING_LENGTH}
+                  onInput={e => autoResizeGreeting(e.target)}
+                  onChange={e => {
+                    const updated = [...charData.greetings];
+                    updated[idx] = e.target.value;
+                    handleChange('greetings', updated);
+                  }}
+                  placeholder=""
+                  style={{
+                    background: '#f5f6fa',
+                    color: '#18191a',
+                    border: '1.5px solid #e9ecef',
+                    borderRadius: 12,
+                    fontSize: '1.02rem',
+                    padding: '0.5rem 0.9rem',
+                    boxShadow: 'none',
+                    outline: 'none',
+                    resize: 'none',
+                    overflow: 'hidden',
+                    flex: 1,
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline-danger btn-sm"
+                  onClick={() => {
+                    const updated = charData.greetings.filter((_, i) => i !== idx);
+                    handleChange('greetings', updated);
+                  }}
+                  style={{ borderRadius: 8, padding: '0.3rem 0.6rem', flexShrink: 0, marginTop: 2 }}
+                  title="删除"
+                >
+                  <i className="bi bi-trash"></i>
+                </button>
+                <small className="text-muted" style={{ minWidth: 45, textAlign: 'right', lineHeight: 2.2 }}>
+                  {g.length}/{MAX_GREETING_LENGTH}
+                </small>
+              </div>
+            ))}
+
+            {/* Add greeting button */}
+            {charData.greetings.length < 20 && (
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm mt-1"
+                onClick={() => handleChange('greetings', [...charData.greetings, ''])}
+                style={{ borderRadius: 10 }}
+              >
+                <i className="bi bi-plus-lg me-1"></i>
+                添加问候语
+              </button>
+            )}
+
+            {/* Show placeholder when list is empty and improvise is off */}
+            {charData.greetings.length === 0 && !isImprovisingGreeting && (
+              <div className="text-muted mt-2" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>
+                请至少添加一条问候语，或启用 AI 生成问候语。
+              </div>
+            )}
+
+            {/* AI-generated entry indicator */}
+            {isImprovisingGreeting && (
+              <div className="mt-2 d-flex align-items-center gap-2" style={{ fontSize: '0.85rem', color: '#7c3aed' }}>
+                <i className="bi bi-magic"></i>
+                <span>AI 生成的问候语将作为一个随机选项。</span>
+              </div>
+            )}
           </div>
 
           {/* Tags */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              {t('character_form.tags')}
-              <span style={{ color: '#d32f2f', marginLeft: 6 }}>{t('character_form.required_marker')}</span>
-              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t('character_form.notes.tags')}</small>
+              标签
+              <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
+              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>第一个标签会显示在封面上</small>
             </label>
-            <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} placeholder={t('character_form.placeholders.tags')} hint={t('character_form.tags_input_hint')} />
+            <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} placeholder="输入标签后按Enter确认" hint="输入标签后点按Enter确认" />
             <small className="text-muted" style={{ top: 0, right: 0 }}>
-              {charData.tags.length}/{MAX_TAGS} {t('character_form.tags_suffix')}
+              {charData.tags.length}/{MAX_TAGS} 个标签
             </small>
           </div>
 
           {/* Sample Dialogue */}
           <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>{t('character_form.sample_dialogue')}</label>
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>示例对话（可选）</label>
             <textarea
               className="form-control"
               rows={Math.max(5, Math.min(20, Math.ceil(charData.sample.length / 80)))}
               value={charData.sample}
               maxLength={MAX_SAMPLE_LENGTH}
-              placeholder={t('character_form.placeholders.sample_dialogue')}
+              placeholder="添加 2–3 句示例台词来体现语气。"
               onChange={e => handleChange('sample', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -1150,9 +1224,9 @@ export default function CharacterFormPage() {
           {effectiveContextLabel === 'advanced' && (
             <div className="mb-4 position-relative">
               <label className="form-label fw-bold" style={{ color: '#232323' }}>
-                {t('character_form.long_description')}
+                详细设定
                 <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
-                  {t('character_form.notes.long_description')}
+                  用于补充更完整的背景、经历、关系与规则，仅自己可见
                 </small>
               </label>
               <textarea
@@ -1160,7 +1234,7 @@ export default function CharacterFormPage() {
                 rows={Math.max(6, Math.min(30, Math.ceil((charData.long_description || '').length / 80)))}
                 value={charData.long_description || ''}
                 maxLength={ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
-                placeholder={t('character_form.placeholders.long_description')}
+                placeholder=""
                 onChange={e => handleChange('long_description', e.target.value)}
                 style={{
                   background: '#f5f6fa',
@@ -1189,7 +1263,7 @@ export default function CharacterFormPage() {
             <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
               <div className="mb-3">
                 <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                  {t('character_form.advanced.model')}
+                  模型
                   <InfoHint text={t('character_form.advanced_help.model')} />
                 </label>
                 <ModelSelect
@@ -1256,9 +1330,9 @@ export default function CharacterFormPage() {
                 fontWeight: 700,
               }}
             >
-              <span>{t('character_form.advanced_options')}</span>
+              <span>高级选项</span>
               <span className="d-inline-flex align-items-center gap-2" style={{ color: '#6b7280', fontWeight: 500, fontSize: '0.92rem' }}>
-                {showAdvancedOptions ? t('character_form.collapse_advanced') : t('character_form.expand_advanced')}
+                {showAdvancedOptions ? '收起' : '展开'}
                 <i className={`bi ${showAdvancedOptions ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i>
               </span>
             </button>
@@ -1277,12 +1351,12 @@ export default function CharacterFormPage() {
               {/* Pro-Gated Sampling Config */}
               <div className="mb-4">
                 <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.75rem' }}>
-                  {t('character_form.advanced.sampling_title', '采样参数')}
+                  采样参数
                 </label>
                 <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
                   <div className="mb-3">
                     <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                      {t('character_form.advanced.temperature')}: {charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature}
+                      温度: {charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature}
                       <InfoHint text={t('character_form.advanced_help.temperature')} />
                     </label>
                     <input
@@ -1299,7 +1373,7 @@ export default function CharacterFormPage() {
 
                   <div className="mb-3">
                     <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                      {t('character_form.advanced.top_p')}: {charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p}
+                      Top P: {charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p}
                       <InfoHint text={t('character_form.advanced_help.top_p')} />
                     </label>
                     <input
@@ -1317,7 +1391,7 @@ export default function CharacterFormPage() {
                   <div className="row g-3">
                     <div className="col-md-4">
                       <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                        {t('character_form.advanced.max_tokens')}: {charData.max_tokens ?? selectedTokenLimits.defaultValue}
+                        最大输出 Token: {charData.max_tokens ?? selectedTokenLimits.defaultValue}
                         <InfoHint text={t('character_form.advanced_help.max_tokens')} />
                       </label>
                       <select
@@ -1336,7 +1410,7 @@ export default function CharacterFormPage() {
                     </div>
                     <div className="col-md-4">
                       <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                        {t('character_form.advanced.presence_penalty')}: {charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty}
+                        存在惩罚: {charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty}
                         <InfoHint text={t('character_form.advanced_help.presence_penalty')} />
                       </label>
                       <input
@@ -1352,7 +1426,7 @@ export default function CharacterFormPage() {
                     </div>
                     <div className="col-md-4">
                       <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                        {t('character_form.advanced.frequency_penalty')}: {charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty}
+                        频率惩罚: {charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty}
                         <InfoHint text={t('character_form.advanced_help.frequency_penalty')} />
                       </label>
                       <input
@@ -1612,7 +1686,7 @@ export default function CharacterFormPage() {
           {/* Visibility & Options */}
           <div className="mb-4">
             <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '1rem' }}>
-              {t('character_form.visibility_settings') || 'Visibility & Access'}
+              可见性与访问权限
             </label>
             
             {/* Public/Private Toggle */}
@@ -1622,16 +1696,16 @@ export default function CharacterFormPage() {
                   <i className={`bi ${charData.is_public ? 'bi-globe2' : 'bi-lock-fill'}`} style={{ fontSize: '1.2rem', color: charData.is_public ? '#10b981' : '#6b7280' }}></i>
                   <div>
                     <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
-                      {charData.is_public ? (t('character_form.public') || 'Public') : (t('character_form.private') || 'Private')}
+                      {charData.is_public ? '公开' : '私密'}
                     </div>
                     <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                       {charData.is_public 
-                        ? (t('character_form.public_desc') || 'Visible to everyone')
-                        : (t('character_form.private_desc') || 'Only visible to you')}
+                        ? '所有人可见'
+                        : '仅自己可见'}
                     </div>
                     {!canPrivate && !charData.is_public && (
                       <div className="text-danger" style={{ fontSize: '0.75rem' }}>
-                        {t('character_form.level_lock_notice', { level: 2 }) || 'This function will be available at level 2'}
+                        该功能将在达到等级 2 后开放
                       </div>
                     )}
                   </div>
@@ -1657,14 +1731,14 @@ export default function CharacterFormPage() {
                   <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.2rem', color: '#22c55e' }}></i>
                   <div>
                     <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
-                      {t('character_form.forkable') || 'Allow Forking'}
+                      开源
                     </div>
                     <div className="text-muted" style={{ fontSize: '0.75rem' }}>
-                      {t('character_form.forkable_desc') || 'Users can create their own versions'}
+                      允许其他用户在此基础上创作
                     </div>
                     {mode === 'fork' && (
                       <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '2px' }}>
-                        {t('character_form.fork_must_stay_forkable')}
+                        衍生作品必须保持开源
                       </div>
                     )}
                   </div>
@@ -1703,17 +1777,17 @@ export default function CharacterFormPage() {
               {hasPendingAppeal ? (
                 <div className="alert alert-info" role="alert" style={{ borderRadius: 10 }}>
                   <i className="bi bi-hourglass-split me-2"></i>
-                  <strong>{t('character_form.appeal_pending_title', '申诉审核中')}</strong>
+                  <strong>申诉审核中</strong>
                   <div className="mt-1" style={{ fontSize: '0.88rem' }}>
-                    {t('character_form.appeal_pending_body', '您已有一份申诉正在审核中。您仍可保存内容修改，但无法再次提交申诉，直到当前申诉处理完毕。')}
+                    您已有一份申诉正在审核中。您仍可保存内容修改，但无法再次提交申诉，直到当前申诉处理完毕。
                   </div>
                 </div>
               ) : (
                 <>
                   <label className="form-label fw-bold" style={{ color: '#232323' }}>
-                    {t('character_form.appeal_reason_label', '申诉理由')}
+                    申诉理由
                     <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
-                      (选填) {t('character_form.appeal_reason_hint', '请说明您已如何修改内容，以及为何认为应解除限制')}
+                      (选填) 请说明您已如何修改内容，以及为何认为应解除限制
                     </small>
                   </label>
                   <textarea
@@ -1721,7 +1795,7 @@ export default function CharacterFormPage() {
                     rows={4}
                     value={appealReason}
                     maxLength={1000}
-                    placeholder={t('character_form.appeal_reason_placeholder', '请描述您对内容的修改，以及申诉理由…')}
+                    placeholder="请描述您对内容的修改，以及申诉理由…"
                     onChange={e => setAppealReason(e.target.value)}
 
                     style={{
@@ -1744,12 +1818,12 @@ export default function CharacterFormPage() {
               {isSubmitting ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  {t('character_form.processing')}
+                  处理中...
                 </>
               ) : (
                 <>
                   <i className={`bi ${isAppealMode && !hasPendingAppeal ? 'bi-megaphone' : 'bi-save'} me-2`}></i>
-                  {isAppealMode && !hasPendingAppeal ? t('character_form.save_and_appeal', '保存并提交申诉') : mode === 'edit' ? t('character_form.save') : t('character_form.create')}
+                  {isAppealMode && !hasPendingAppeal ? '保存并提交申诉' : mode === 'edit' ? '保存' : '创建'}
                 </>
               )}
             </PrimaryButton>
@@ -1769,7 +1843,7 @@ export default function CharacterFormPage() {
                 }}
                 onClick={handleDelete}
               >
-                <i className="bi bi-trash me-2"></i>{t('character_form.delete')}
+                <i className="bi bi-trash me-2"></i>删除
               </PrimaryButton>
             )}
           </div>
@@ -1803,10 +1877,10 @@ export default function CharacterFormPage() {
           >
             <div className="spinner-border" role="status" aria-hidden="true" style={{ width: '2.2rem', height: '2.2rem', color: '#736B92' }}></div>
             <div style={{ marginTop: '0.9rem', fontWeight: 700, color: '#1f2937', fontSize: '1rem' }}>
-              {t('character_form.processing')}
+              处理中...
             </div>
             <div style={{ marginTop: '0.45rem', color: '#4b5563', fontSize: '0.9rem', lineHeight: 1.5 }}>
-              {t('character_form.processing_tip')}
+              角色正在处理中，请稍候。
             </div>
           </div>
         </div>,

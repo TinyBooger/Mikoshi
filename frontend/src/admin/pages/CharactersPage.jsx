@@ -78,7 +78,7 @@ export default function CharactersPage() {
           name: characterData.name,
           tagline: characterData.tagline,
           persona: characterData.persona,
-          greeting: characterData.greeting,
+          greetings: characterData.greetings,
           example_messages: characterData.example_messages,
           tags: characterData.tags,
           is_public: characterData.is_public,
@@ -106,7 +106,7 @@ export default function CharactersPage() {
     { name: 'is_public', label: 'Public', type: 'checkbox', helperText: 'Visible to all users' },
     { name: 'is_forkable', label: 'Open-source (Forkable)', type: 'checkbox', helperText: 'Allow users to fork this character' },
     { name: 'persona', label: 'Persona', type: 'textarea', rows: 5, required: true },
-    { name: 'greeting', label: 'Greeting', type: 'textarea', rows: 3 },
+    { name: 'greetings', label: 'Greetings (JSON array)', type: 'textarea', rows: 3 },
     { name: 'example_messages', label: 'Example Messages', type: 'textarea', rows: 4 },
     { name: 'tags', label: 'Tags', type: 'tags', helperText: 'Separate tags with commas' }
   ];

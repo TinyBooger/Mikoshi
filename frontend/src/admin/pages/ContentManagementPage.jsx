@@ -162,7 +162,7 @@ function CharactersTab() {
       headers: { Authorization: sessionToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: data.name, tagline: data.tagline, persona: data.persona,
-        greeting: data.greeting, example_messages: data.example_messages,
+        greetings: data.greetings, example_messages: data.example_messages,
         tags: data.tags, is_public: data.is_public, is_forkable: data.is_forkable,
       }),
     });
@@ -176,7 +176,7 @@ function CharactersTab() {
     { name: 'is_public', label: 'Public', type: 'checkbox' },
     { name: 'is_forkable', label: 'Forkable', type: 'checkbox' },
     { name: 'persona', label: 'Persona', type: 'textarea', rows: 5, required: true },
-    { name: 'greeting', label: 'Greeting', type: 'textarea', rows: 3 },
+    { name: 'greetings', label: 'Greetings (JSON array)', type: 'textarea', rows: 3 },
     { name: 'example_messages', label: 'Example Messages', type: 'textarea', rows: 4 },
     { name: 'tags', label: 'Tags', type: 'tags' },
   ];

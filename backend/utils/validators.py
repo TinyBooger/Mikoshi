@@ -1,8 +1,9 @@
-def validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label="standard", long_description=""):
+def validate_character_fields(name, persona, tagline, greetings, sample_dialogue, tags, context_label="standard", long_description=""):
     MAX_NAME_LENGTH = 50
     MAX_PERSONA_LENGTH = 400
     MAX_TAGLINE_LENGTH = 200
     MAX_GREETING_LENGTH = 500
+    MAX_GREETINGS_COUNT = 20
     MAX_SAMPLE_LENGTH = 200
     MAX_TAGS = 20
     ADVANCED_MAX_LONG_DESCRIPTION_LENGTH = 15000
@@ -16,8 +17,15 @@ def validate_character_fields(name, persona, tagline, greeting, sample_dialogue,
         return f"Persona too long (max {MAX_PERSONA_LENGTH})"
     if len(tagline) > MAX_TAGLINE_LENGTH:
         return f"Tagline too long (max {MAX_TAGLINE_LENGTH})"
-    if len(greeting) > MAX_GREETING_LENGTH:
-        return f"Greeting too long (max {MAX_GREETING_LENGTH})"
+    # Validate greetings list
+    greetings_list = greetings or []
+    if len(greetings_list) > MAX_GREETINGS_COUNT:
+        return f"Too many greetings (max {MAX_GREETINGS_COUNT})"
+    for g in greetings_list:
+        if not isinstance(g, str):
+            return "Each greeting must be a string"
+        if len(g) > MAX_GREETING_LENGTH:
+            return f"Greeting too long (max {MAX_GREETING_LENGTH})"
     if len(sample_dialogue) > MAX_SAMPLE_LENGTH:
         return f"Sample dialogue too long (max {MAX_SAMPLE_LENGTH})"
     if safe_context_label == "advanced" and len(normalized_long_description) > ADVANCED_MAX_LONG_DESCRIPTION_LENGTH:

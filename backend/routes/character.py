@@ -102,13 +102,37 @@ def parse_background_config(raw: Optional[str]) -> Optional[dict]:
         result["preset_id"] = None
     return result
 
+
+def _parse_greetings(raw: str) -> list[str]:
+    """Parse greetings JSON string into a list. Returns empty list on failure."""
+    if not raw or not raw.strip():
+        return []
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            return [str(g).strip() for g in parsed if str(g).strip()]
+        # Backward compat: single string
+        if isinstance(parsed, str):
+            return [parsed.strip()] if parsed.strip() else []
+        return []
+    except (json.JSONDecodeError, TypeError):
+        # Backward compat: raw string (old format)
+        stripped = raw.strip()
+        return [stripped] if stripped else []
+
+
+def _join_greetings_for_moderation(greetings_list: list[str]) -> str:
+    """Join greetings for text moderation purposes."""
+    return " | ".join(g for g in greetings_list if g != "[IMPROVISE_GREETING]")
+
+
 @router.post("/api/create-character")
 async def create_character(
     name: str = Form(...),
     persona: str = Form(...),
     tagline: str = Form(""),
     tags: List[str] = Form([]),
-    greeting: str = Form(""),
+    greetings: str = Form("[]"),
     sample_dialogue: str = Form(""),
     long_description: str = Form(""),
     context_label: str = Form("standard"),
@@ -138,12 +162,15 @@ async def create_character(
         raise HTTPException(status_code=403, detail="UPLOAD_BANNED")
     shadow = active_ban == "shadow_ban"
 
+    # Parse greetings from JSON string
+    greetings_list = _parse_greetings(greetings)
+
     text_safe, needs_text_review, blocked_field, blocked_label, blocked_sub_label, blocked_keywords, review_field, review_label = moderate_form_payload_with_review({
         "name": name,
         "persona": persona,
         "tagline": tagline,
         "tags": tags,
-        "greeting": greeting,
+        "greeting": _join_greetings_for_moderation(greetings_list),
         "sample_dialogue": sample_dialogue,
         "long_description": long_description,
         "forked_from_name": forked_from_name,
@@ -167,7 +194,7 @@ async def create_character(
     if existing:
         return JSONResponse(content={"error": "Character already exists"}, status_code=400)
     
-    error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label, long_description)
+    error = validate_character_fields(name, persona, tagline, greetings_list, sample_dialogue, tags, context_label, long_description)
     if error:
         raise HTTPException(status_code=400, detail=error)
 
@@ -215,7 +242,7 @@ async def create_character(
         persona=persona,
         tagline=tagline.strip(),
         tags=tags,
-        greeting=greeting.strip(),
+        greetings=greetings_list,
         example_messages=sample_dialogue.strip(),
         long_description=normalized_long_description,
         long_description_chunks=long_description_chunks,
@@ -348,7 +375,7 @@ async def update_character(
     persona: str = Form(...),
     tagline: str = Form(""),
     tags: List[str] = Form([]),
-    greeting: str = Form(""),
+    greetings: str = Form("[]"),
     sample_dialogue: str = Form(""),
     long_description: str = Form(""),
     context_label: Optional[str] = Form(None),
@@ -378,12 +405,15 @@ async def update_character(
         raise HTTPException(status_code=403, detail="UPLOAD_BANNED")
     shadow = active_ban == "shadow_ban"
 
+    # Parse greetings from JSON string
+    greetings_list = _parse_greetings(greetings)
+
     text_safe, needs_text_review, blocked_field, blocked_label, blocked_sub_label, blocked_keywords, review_field, review_label = moderate_form_payload_with_review({
         "name": name,
         "persona": persona,
         "tagline": tagline,
         "tags": tags,
-        "greeting": greeting,
+        "greeting": _join_greetings_for_moderation(greetings_list),
         "sample_dialogue": sample_dialogue,
         "long_description": long_description,
     })
@@ -402,7 +432,7 @@ async def update_character(
     persona = persona.strip()
     context_label = normalize_context_label(context_label if context_label is not None else char.context_label)
     
-    error = validate_character_fields(name, persona, tagline, greeting, sample_dialogue, tags, context_label, long_description)
+    error = validate_character_fields(name, persona, tagline, greetings_list, sample_dialogue, tags, context_label, long_description)
     if error:
         raise HTTPException(status_code=400, detail=error)
     
@@ -426,7 +456,7 @@ async def update_character(
     char.persona = persona
     char.tagline = tagline.strip()
     char.tags = tags
-    char.greeting = greeting.strip()
+    char.greetings = greetings_list
     char.example_messages = sample_dialogue.strip()
     char.long_description = normalized_long_description
     char.long_description_chunks = long_description_chunks
