@@ -1202,8 +1202,8 @@ export default function CharacterFormPage() {
 
               <div>
                 <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                  {t('chat.advanced_context_window')}
-                  <InfoHint text={t('chat.advanced_context_window_notice')} />
+                  上下文长度
+                  <InfoHint text={'更长的上下文长度可以保留更多的历史消息，但是会加速token消耗'} />
                 </label>
                 {(() => {
                   const ctxOptions = getFilteredContextWindowTierOptions(

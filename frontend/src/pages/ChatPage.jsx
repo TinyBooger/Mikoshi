@@ -391,10 +391,10 @@ export default function ChatPage() {
         body: JSON.stringify(advancedChatConfig),
       });
       if (!res.ok) throw new Error('Failed to save config');
-      toast.show(t('chat.config_saved') || 'Configuration saved.', { type: 'success' });
+      toast.show('配置已保存', { type: 'success' });
     } catch (err) {
       console.error('Error saving user config:', err);
-      toast.show(t('chat.config_save_error') || 'Failed to save configuration.', { type: 'error' });
+      toast.show('配置保存失败，请重试。', { type: 'error' });
     }
   };
 
@@ -658,7 +658,7 @@ export default function ChatPage() {
             })
             .catch(err => {
               console.error('Error fetching character:', err);
-              toast.show(t('chat.error_loading_character') || 'Failed to load character.', { type: 'error' });
+              toast.show('加载角色失败，角色可能已被删除。', { type: 'error' });
               setSelectedCharacter(null);
               return null;
             })
@@ -794,7 +794,7 @@ export default function ChatPage() {
         chatId: null,
         sourceBranchId: null,
         restoreMessagesOnError: [sys],
-        errorMessage: t('chat.error_generating_greeting') || 'Failed to generate greeting.',
+        errorMessage: '生成问候失败，请重试。',
         characterOverride: character,
         sceneOverride: scene,
         personaOverride: persona,
@@ -1188,7 +1188,7 @@ export default function ChatPage() {
       setShowChatHistory(false);
     } catch (error) {
       console.error('Error loading chat:', error);
-      toast.show(t('chat.error_loading_chat') || 'Failed to load chat.', { type: 'error' });
+      toast.show('加载对话失败，请重试。', { type: 'error' });
     }
   };
 
@@ -1300,7 +1300,7 @@ export default function ChatPage() {
 
     const trimmedContent = editingMessageText.trim();
     if (!trimmedContent) {
-      toast.show(t('chat.empty_message_error') || 'Message cannot be empty.', { type: 'warning' });
+      toast.show('消息不能为空。', { type: 'warning' });
       return;
     }
 
@@ -1313,7 +1313,7 @@ export default function ChatPage() {
       forkFromMessageId: editingMessageId,
       sourceBranchId: selectedChat?.active_branch_id || null,
       restoreMessagesOnError: forkData.originalMessages,
-      errorMessage: t('chat.edit_branch_failed') || 'Failed to create a new branch from this message.',
+      errorMessage: '从该消息创建分支失败。',
     });
   };
 
@@ -1606,7 +1606,7 @@ export default function ChatPage() {
                 )}
 
                 {nonSystem.length === 0 ? (
-                  <div className="text-muted text-center" style={{ marginTop: '3.2rem', fontSize: '0.88rem' }}>{t('chat.no_messages')}</div>
+                  <div className="text-muted text-center" style={{ marginTop: '3.2rem', fontSize: '0.88rem' }}>暂无消息，快来开始对话吧！</div>
                 ) : (
                   nonSystem.map((m, i) => (
                     <MessageBubble
@@ -1710,7 +1710,7 @@ export default function ChatPage() {
                   WebkitAppearance: 'none',
                   appearance: 'none',
                 }}
-                placeholder={t('chat.input_placeholder')}
+                placeholder={'输入您的消息...'}
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
@@ -1752,7 +1752,7 @@ export default function ChatPage() {
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = '#c82333'}
                   onMouseLeave={e => e.currentTarget.style.background = '#dc3545'}
-                  title={t('chat.stop_generation') || 'Stop'}
+                  title={'停止生成'}
                 >
                   <i className="bi bi-stop-fill"></i>
                 </button>
@@ -1801,7 +1801,7 @@ export default function ChatPage() {
                       e.currentTarget.style.transform = 'translateY(0)';
                     }
                   }}
-                  title={t('chat.input_shortcut_hint')}
+                  title={'按 Enter 发送，Shift+Enter 换行。'}
                   disabled={sending || isCreditLocked(creditLimits)}
                 >
                   {sending ? (

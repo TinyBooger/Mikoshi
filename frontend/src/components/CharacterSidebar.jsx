@@ -72,6 +72,20 @@ export default function CharacterSidebar({
   const [activeHintKey, setActiveHintKey] = React.useState(null);
   const [shareIconFocused, setShareIconFocused] = React.useState(false);
   const [reportIconFocused, setReportIconFocused] = React.useState(false);
+  const [lastSavedConfig, setLastSavedConfig] = React.useState(() =>
+    JSON.parse(JSON.stringify(advancedChatConfig)),
+  );
+  // Re-sync saved baseline when the character changes (parent pushes new config)
+  React.useEffect(() => {
+    setLastSavedConfig(JSON.parse(JSON.stringify(advancedChatConfig)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCharacter?.id]);
+  const isDirty =
+    JSON.stringify(advancedChatConfig) !== JSON.stringify(lastSavedConfig);
+  const handleSaveWithDirty = () => {
+    setLastSavedConfig(JSON.parse(JSON.stringify(advancedChatConfig)));
+    onSaveAdvancedChatConfig();
+  };
   const { t } = useTranslation();
   const isProUser = !!userData?.is_pro;
   const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
@@ -1039,7 +1053,7 @@ export default function CharacterSidebar({
         {activeTab === 'advanced' && (
           <>
             {/* Model & Context Window — available to all users */}
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 4 }}>
               <div style={{
                 background: '#f5f6fa',
                 borderRadius: '0.9rem',
@@ -1047,11 +1061,11 @@ export default function CharacterSidebar({
                 border: '1px solid rgba(24, 25, 26, 0.08)',
               }}>
                 <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#444', marginBottom: 10 }}>
-                  {t('chat.advanced_title')}
+                  模型配置
                 </div>
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                  {t('chat.advanced_model')}
+                  模型
                   <InfoHint hintKey="character_form.advanced_help.model" />
                 </label>
                 <ModelSelect
@@ -1062,7 +1076,7 @@ export default function CharacterSidebar({
                 />
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                  {t('chat.advanced_context_window')}
+                  上下文长度
                 </label>
                 <select
                   className="form-select form-select-sm"
@@ -1081,15 +1095,13 @@ export default function CharacterSidebar({
                 </select>
 
                 <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4 }}>
-                  {t('chat.advanced_context_window_notice')}
+                  更长的上下文长度可以保留更多的历史消息，但是会加速token消耗
                 </div>
               </div>
             </div>
 
-            <hr style={{ borderTop: '2px solid #e9ecef', margin: '1rem 0' }} />
-
             {/* Pro-Gated Sampling Params */}
-            <div style={{ marginBottom: 16, position: 'relative' }}>
+            <div style={{ marginBottom: 16, position: 'relative', marginTop: 4 }}>
               <div style={{
                 background: '#f5f6fa',
                 borderRadius: '0.9rem',
@@ -1097,11 +1109,11 @@ export default function CharacterSidebar({
                 border: '1px solid rgba(24, 25, 26, 0.08)',
               }}>
                 <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#444', marginBottom: 10 }}>
-                  {t('chat.advanced_sampling_title', '采样参数')}
+                  采样参数
                 </div>
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                  {t('chat.advanced_temperature')}: {advancedChatConfig?.temperature ?? 1.3}
+                  温度: {advancedChatConfig?.temperature ?? 1.3}
                   <InfoHint hintKey="character_form.advanced_help.temperature" />
                 </label>
                 <input
@@ -1116,7 +1128,7 @@ export default function CharacterSidebar({
                 />
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                  {t('chat.advanced_top_p')}: {advancedChatConfig?.top_p ?? 0.9}
+                  Top P: {advancedChatConfig?.top_p ?? 0.9}
                   <InfoHint hintKey="character_form.advanced_help.top_p" />
                 </label>
                 <input
@@ -1131,7 +1143,7 @@ export default function CharacterSidebar({
                 />
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                  {t('chat.advanced_max_tokens')}: {advancedChatConfig?.max_tokens ?? selectedTokenLimits.defaultValue}
+                  最大输出 Token: {advancedChatConfig?.max_tokens ?? selectedTokenLimits.defaultValue}
                   <InfoHint hintKey="character_form.advanced_help.max_tokens" />
                 </label>
                 <select
@@ -1149,7 +1161,7 @@ export default function CharacterSidebar({
                 </select>
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                  {t('chat.advanced_presence_penalty')}: {advancedChatConfig?.presence_penalty ?? 0}
+                  存在惩罚: {advancedChatConfig?.presence_penalty ?? 0}
                   <InfoHint hintKey="character_form.advanced_help.presence_penalty" />
                 </label>
                 <input
@@ -1165,7 +1177,7 @@ export default function CharacterSidebar({
                 />
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                  {t('chat.advanced_frequency_penalty')}: {advancedChatConfig?.frequency_penalty ?? 0}
+                  频率惩罚: {advancedChatConfig?.frequency_penalty ?? 0}
                   <InfoHint hintKey="character_form.advanced_help.frequency_penalty" />
                 </label>
                 <input
@@ -1181,27 +1193,7 @@ export default function CharacterSidebar({
                 />
 
                 <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4 }}>
-                  {t('chat.advanced_hint')}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary"
-                    onClick={onResetAdvancedChatConfig}
-                    disabled={!selectedCharacter || !canUseAdvancedChatConfig}
-                    style={{ borderRadius: 8 }}
-                  >
-                    {t('chat.advanced_reset')}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-primary"
-                    onClick={onSaveAdvancedChatConfig}
-                    disabled={!selectedCharacter}
-                    style={{ borderRadius: 8, background: '#7c3aed', borderColor: '#7c3aed' }}
-                  >
-                    {t('chat.advanced_save') || 'Save'}
-                  </button>
+                  修改后会立即用于当前聊天请求。
                 </div>
               </div>
               {!canUseAdvancedChatConfig && (
@@ -1216,6 +1208,38 @@ export default function CharacterSidebar({
           </>
         )}
             </aside>
+            {/* Sticky footer for save/reset buttons - always accessible regardless of pro status */}
+            {activeTab === 'advanced' && (
+              <div style={{
+                flexShrink: 0,
+                padding: '0.75rem 1.2rem',
+                borderTop: '1px solid #e9ecef',
+                background: 'rgba(255, 255, 255, 0.98)',
+                backdropFilter: 'blur(8px)',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 8,
+              }}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={onResetAdvancedChatConfig}
+                  disabled={!selectedCharacter}
+                  style={{ borderRadius: 8 }}
+                >
+                  恢复默认
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary"
+                  onClick={handleSaveWithDirty}
+                  disabled={!selectedCharacter || !isDirty}
+                  style={{ borderRadius: 8, background: '#7c3aed', borderColor: '#7c3aed' }}
+                >
+                  保存
+                </button>
+              </div>
+            )}
           </div>
         </>,
         document.body,
