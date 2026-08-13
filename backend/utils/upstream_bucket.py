@@ -37,7 +37,7 @@ import uuid
 import logging
 from typing import Dict
 
-from utils.redis_client import get_redis
+from utils.redis_client import get_redis, get_blocking_redis
 from model_configs import get_model, MODELS
 
 logger = logging.getLogger(__name__)
@@ -68,7 +68,11 @@ STREAM_MAXLEN = 1000
 XREAD_BLOCK_MS = 5000
 
 # How long a message must be idle before XAUTOCLAIM steals it (ms).
-AUTOCLAIM_MIN_IDLE_MS = 1000
+# 30s is well above the connect/reconnect churn window during a restart, so
+# in-flight entries from a still-alive previous worker aren't re-claimed (and
+# don't burn an extra RPM slot on a phantom re-dispatch), yet short enough
+# that a genuinely crashed worker's pending entries are recovered promptly.
+AUTOCLAIM_MIN_IDLE_MS = 30000
 
 # ---------------------------------------------------------------------------
 # Lua script: atomic check-or-queue
@@ -192,7 +196,10 @@ async def acquire_upstream(
 
         # ---- queued — wait for dispenser signal ----
         signal_key = f"{_SIGNAL_PREFIX}:{request_id}"
-        popped = await redis.blpop(signal_key, timeout=int(timeout_s))
+        # BLPOP blocks for up to `timeout_s`; use the blocking client so the
+        # read is not aborted early by the shared client's short socket timeout.
+        blocking_redis = await get_blocking_redis()
+        popped = await blocking_redis.blpop(signal_key, timeout=int(timeout_s))
 
         if popped is None:
             logger.debug(
@@ -245,7 +252,10 @@ async def _run_dispenser(model_id: str, rpm: int) -> None:
         interval,
     )
 
-    redis = await get_redis()
+    # Use the dedicated blocking client: xreadgroup(block=...) below holds the
+    # connection open for up to XREAD_BLOCK_MS, which the shared client's
+    # socket_timeout=0.2 would otherwise abort with a spurious TimeoutError.
+    redis = await get_blocking_redis()
     pro_key, free_key = _stream_keys(model_id)
     rate_key = f"{_RATE_PREFIX}:{model_id}"
 
