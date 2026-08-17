@@ -6,6 +6,7 @@ import { AuthContext } from './AuthProvider.jsx'; // Import the AuthContext
 import { useToast } from './ToastProvider.jsx';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
+import logo from '../assets/images/logo.png';
 import textLogo from '../assets/images/logo_text.png';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
@@ -407,6 +408,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             handleNavigate('/');
           }}
         >
+          <img src={logo} alt="Logo icon" style={{ height: '1.6rem', width: 'auto', objectFit: 'contain', display: 'block', marginRight: '0.4rem' }} />
           <img src={textLogo} alt="Logo" style={{ height: '1.6rem', width: 'auto', objectFit: 'contain', display: 'block' }} />
         </a>
         {/* Right side: home icon + close sidebar button */}

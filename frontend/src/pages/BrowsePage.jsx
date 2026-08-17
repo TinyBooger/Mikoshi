@@ -11,6 +11,7 @@ import UpdateNotificationModal from '../components/UpdateNotificationModal';
 import MessageCenter from '../components/MessageCenter';
 import BanNotice from '../components/BanNotice';
 import AppealModal from '../components/AppealModal';
+import logo from '../assets/images/logo.png';
 import textLogo from '../assets/images/logo_text.png';
 
 
@@ -645,7 +646,8 @@ function BrowsePage() {
               navigate('/');
             }}
           >
-            <img src={textLogo} alt="Logo" style={{ height: '2.2rem', width: 'auto', objectFit: 'contain', display: 'block', marginLeft: '1rem' }} />
+            <img src={logo} alt="Logo icon" style={{ height: '2.2rem', width: 'auto', objectFit: 'contain', display: 'block', marginLeft: '1rem', marginRight: '0.4rem' }} />
+            <img src={textLogo} alt="Logo" style={{ height: '2.2rem', width: 'auto', objectFit: 'contain', display: 'block' }} />
           </a>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', flex: 1, minWidth: 0 }}>
