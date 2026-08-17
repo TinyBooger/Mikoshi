@@ -6,10 +6,10 @@ import PageWrapper from '../components/PageWrapper';
 import WeChatPayModal from '../components/WeChatPayModal';
 
 const planOptions = [
-  { id: '1month', label: '1个月', amount: 15, unit: '/月' },
-  { id: '3months', label: '3个月', amount: 40, unit: '/3月' },
-  { id: '6months', label: '6个月', amount: 72, unit: '/6月' },
-  { id: '1year', label: '1年', amount: 120, unit: '/年' },
+  { id: '1month', label: '1个月', amount: 15 },
+  { id: '3months', label: '3个月', amount: 40 },
+  { id: '6months', label: '6个月', amount: 72 },
+  { id: '1year', label: '1年', amount: 120 },
 ];
 
 function isMobileBrowser() {
@@ -39,6 +39,15 @@ export default function ProUpgradePaymentPage() {
   });
 
   const plan = planOptions.find((item) => item.id === selectedPlan) || planOptions[0];
+
+  const isProActive = !!userData?.pro_active;
+  const proDaysRemaining = Number(userData?.pro_days_remaining ?? 0);
+  const proExpireLabel = (() => {
+    if (!userData?.pro_expire_date) return '';
+    const d = new Date(userData.pro_expire_date);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  })();
 
   const paymentOptionStyle = (method) => ({
     borderRadius: '12px',
@@ -157,6 +166,26 @@ export default function ProUpgradePaymentPage() {
           <p className="text-muted" style={{ fontSize: isMobile ? '0.85rem' : '1rem' }}>
             选择支付方式完成订阅，立即开启更高额度与优先体验。
           </p>
+          {isProActive && (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                marginTop: isMobile ? 10 : 14,
+                padding: isMobile ? '6px 14px' : '8px 18px',
+                borderRadius: '999px',
+                background: '#f5f3ff',
+                border: '1px solid #ddd6fe',
+                color: '#5b21b6',
+                fontWeight: 700,
+                fontSize: isMobile ? '0.8rem' : '0.9rem',
+              }}
+            >
+              <i className="bi bi-patch-check-fill" />
+              当前为 Pro 用户{proExpireLabel ? ` · 有效期至 ${proExpireLabel}` : ''} · 剩余 {proDaysRemaining} 天，续费将自动延长
+            </div>
+          )}
         </div>
 
         <div className="row justify-content-center">
@@ -168,7 +197,7 @@ export default function ProUpgradePaymentPage() {
                   <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <div>
                       <div style={{ fontSize: isMobile ? '0.9rem' : '1rem', fontWeight: 700, color: '#111827' }}>{plan.label}</div>
-                      <div style={{ color: '#6b7280', fontSize: isMobile ? '0.85rem' : '0.95rem' }}>{plan.amount} 元 {plan.unit}</div>
+                      <div style={{ color: '#6b7280', fontSize: isMobile ? '0.85rem' : '0.95rem' }}>{plan.amount} 元</div>
                     </div>
                     <div className="d-flex flex-wrap gap-2">
                       {planOptions.map((option) => (
@@ -259,12 +288,12 @@ export default function ProUpgradePaymentPage() {
                     onClick={handlePurchase}
                     disabled={loading}
                   >
-                    {loading ? '处理中...' : '前往支付'}
+                    {loading ? '处理中...' : isProActive ? '续费' : '前往支付'}
                   </button>
                 </div>
 
                 <div style={{ color: '#6b7280', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
-                  点击前往支付后将跳转至安全支付页面完成 Pro 会员订阅。若使用微信支付，请确保电脑端浏览器支持扫码。
+                  点击前往支付后将跳转至安全支付页面完成 Pro 用户订阅。若使用微信支付，请确保电脑端浏览器支持扫码。
                 </div>
               </div>
             </div>

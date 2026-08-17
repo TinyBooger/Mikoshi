@@ -299,14 +299,18 @@ def upgrade_to_pro(user: User, db: Session, duration_months: int = 1, duration_d
 
     now = datetime.now(UTC)
 
-    # If already Pro and not expired, extend from current expiration
-    if user.is_pro and user.pro_expire_date and user.pro_expire_date > now:
-        new_expire = _add_months(user.pro_expire_date, duration_months)
+    # Source of truth: derive activity from expiration date, matching get_pro_state()
+    active = get_pro_state(user)["active"]
+    expire_date = getattr(user, "pro_expire_date", None)
+
+    # If already active Pro, extend from current expiration (preserve start date)
+    if active and expire_date:
+        new_expire = _add_months(expire_date, duration_months)
     else:
-        # New Pro subscription or expired
+        # New Pro subscription or expired — reset start date
         user.pro_start_date = now
         new_expire = _add_months(now, duration_months)
-    
+
     user.is_pro = True
     user.pro_expire_date = new_expire
     

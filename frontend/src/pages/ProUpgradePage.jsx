@@ -69,25 +69,33 @@ export default function ProUpgradePage() {
     [packages]
   );
 
+  const isProActive = !!userData?.pro_active;
+  const proDaysRemaining = Number(userData?.pro_days_remaining ?? 0);
+  const proExpireLabel = useMemo(() => {
+    if (!userData?.pro_expire_date) return '';
+    const d = new Date(userData.pro_expire_date);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  }, [userData?.pro_expire_date]);
+
   const freeFeatures = [
-    '每日 10 点积分额度',
-    '普通排队处理',
+    '每日 10 点聊天点数额度',
+    '聊天请求排队处理',
     '仅可使用基础聊天体验',
     '可进行基础创作',
   ];
 
   const proFeatures = [
-    '每月享有1万点数，使用更充足',
+    '每月享有1万聊天点数，聊天额度更充足',
     '聊天请求将优先处理',
-    '可调整模型、温度、上下文长度等高级参数',
+    '可调整模型温度等高级参数',
     '可在创作角色时使用高级参数，获得更丰富的创作体验',
   ];
 
   const packageFeatures = [
     '点数包为更灵活的定制方案',
     '购买的点数存入钱包，永不过期',
-    '免费用户：每日额度用完后自动抵扣钱包点数',
-    'Pro 用户：月度额度用完后自动抵扣钱包点数',
+    '每日/每月点数额度用完后自动抵扣钱包点数',
     '多个档位可选，满足不同用量需求',
   ];
 
@@ -113,10 +121,30 @@ export default function ProUpgradePage() {
     <PageWrapper title="升级为 Pro">
       <div className="container" style={{ minHeight: '100vh', paddingTop: isMobile ? '8vh' : '15vh', paddingBottom: '3.5rem' }}>
         <div className="text-center mb-5">
-          <h1 className="fw-bold mb-2" style={{ fontSize: isMobile ? '1.4rem' : '2rem', color: '#111827' }}>升级为 Pro</h1>
+          <h1 className="fw-bold mb-2" style={{ fontSize: isMobile ? '1.4rem' : '2rem', color: '#111827' }}>升级为 Pro 用户</h1>
           <p className="text-muted mb-0" style={{ fontSize: isMobile ? '0.85rem' : '1rem' }}>
-            选择适合你的方案，立即开启更高额度与优先体验。
+            选择适合你的方案，立即开启更高点数额度与畅聊优先体验。
           </p>
+          {isProActive && (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                marginTop: isMobile ? 12 : 16,
+                padding: isMobile ? '6px 14px' : '8px 18px',
+                borderRadius: '999px',
+                background: '#f5f3ff',
+                border: '1px solid #ddd6fe',
+                color: '#5b21b6',
+                fontWeight: 700,
+                fontSize: isMobile ? '0.8rem' : '0.9rem',
+              }}
+            >
+              <i className="bi bi-patch-check-fill" />
+              当前为 Pro 用户{proExpireLabel ? ` · 有效期至 ${proExpireLabel}` : ''} · 剩余 {proDaysRemaining} 天
+            </div>
+          )}
         </div>
 
         <div className="row justify-content-center g-4 align-items-stretch">
@@ -140,6 +168,7 @@ export default function ProUpgradePage() {
               <button
                 type="button"
                 onClick={handleFreeContinue}
+                disabled={isProActive}
                 style={{
                   width: '100%',
                   borderRadius: isMobile ? '14px' : '18px',
@@ -149,10 +178,11 @@ export default function ProUpgradePage() {
                   fontWeight: 700,
                   fontSize: isMobile ? '0.85rem' : '0.95rem',
                   padding: isMobile ? '0.7rem' : '0.9rem',
-                  cursor: 'pointer',
+                  cursor: isProActive ? 'not-allowed' : 'pointer',
+                  opacity: isProActive ? 0.55 : 1,
                 }}
               >
-                继续免费使用
+                {isProActive ? '已是 Pro 用户' : '继续免费使用'}
               </button>
 
               <div style={{ borderTop: '1px dashed #d1d5db', margin: isMobile ? '14px 0' : '20px 0' }} />
@@ -233,7 +263,7 @@ export default function ProUpgradePage() {
                   cursor: 'pointer',
                 }}
               >
-                成为Pro用户
+                {isProActive ? '续费' : '成为Pro用户'}
               </button>
 
               <div style={{ borderTop: '1px dashed #d1d5db', margin: isMobile ? '14px 0' : '20px 0' }} />
