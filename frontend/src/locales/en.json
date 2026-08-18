@@ -242,7 +242,7 @@
       "model": "Select the language model. Use deepseek-v4-pro for general roleplay, or deepseek-v4-flash when you want faster responses.",
       "temperature": "Controls randomness. Lower values are more stable and predictable; higher values are more creative and varied.",
       "top_p": "Nucleus sampling. Lower values narrow token choices and make replies focused; higher values allow broader and more diverse wording. It is generally not recommended to tune Top P and Temperature at the same time.",
-      "max_tokens": "Maximum response length per reply. deepseek-v4-pro default is 4096 (max 8192). deepseek-v4-flash default is 32768 (max 65536).",
+      "max_tokens": "Maximum response length per reply. Default is 4096 tokens (max 8192).",
       "presence_penalty": "Encourages introducing new topics. Higher values reduce repeating the same ideas.",
       "frequency_penalty": "Reduces repeated words and phrases. Higher values discourage repetitive wording."
     },

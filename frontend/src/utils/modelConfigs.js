@@ -9,16 +9,16 @@
 
 const MODEL_CONFIGS = [
   // Qwen Character
-  { id: "qwen-plus-character", maxOutputTokens: 4_000,  contextLength: 32_000,    multiplier: 0.8 },
-  { id: "qwen-flash-character",maxOutputTokens: 4_000,  contextLength: 8_000,     multiplier: 0.3 },
+  { id: "qwen-plus-character", maxOutputTokens: 4_000,  contextLength: 32_000,    multiplier: 0.5 },
+  { id: "qwen-flash-character",maxOutputTokens: 4_000,  contextLength: 8_000,     multiplier: 0.2 },
 
   // DeepSeek
-  { id: "deepseek-v4-pro",    maxOutputTokens: 1_000_000, contextLength: 384_000, multiplier: 3.0 },
-  { id: "deepseek-v4-flash",  maxOutputTokens: 1_000_000, contextLength: 384_000, multiplier: 1.0 },
+  { id: "deepseek-v4-pro",    maxOutputTokens: 384_000, contextLength: 1_000_000, multiplier: 3.0 },
+  { id: "deepseek-v4-flash",  maxOutputTokens: 384_000, contextLength: 1_000_000, multiplier: 1.0 },
 
   // Qwen
-  { id: "qwen3.7-plus",        maxOutputTokens: 64_000, contextLength: 1_000_000, multiplier: 2.0 },
-  { id: "qwen3.6-flash",       maxOutputTokens: 64_000, contextLength: 1_000_000, multiplier: 1.2 },
+  { id: "qwen3.7-plus",        maxOutputTokens: 64_000, contextLength: 1_000_000, multiplier: 1.3 },
+  { id: "qwen3.6-flash",       maxOutputTokens: 64_000, contextLength: 1_000_000, multiplier: 0.8 },
 
 ];
 
