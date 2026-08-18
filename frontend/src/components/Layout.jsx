@@ -117,21 +117,49 @@ export default function Layout() {
         transition: `transform ${sidebarMotion}`,
       };
 
-  // iOS/Android keyboard handling: dynamically adjust the main content height
-  // when the virtual keyboard appears/disappears.
-  // Uses visualViewport API on iOS (and modern Android Chrome) for accurate
-  // keyboard-aware height, falling back to window.innerHeight on other platforms.
+  // iOS/Android keyboard handling: pin the main content area to the visual
+  // viewport when the virtual keyboard appears/disappears.
+  // On iOS Safari the keyboard pans the visual viewport away from the layout
+  // viewport (visualViewport.offsetTop becomes non-zero), so a height-only
+  // resize is not enough — we set position/top/width/height together and
+  // release back to normal flow when the keyboard closes.
   useEffect(() => {
     const visualViewport = window.visualViewport;
     let rafId = null;
+
+    const isMobileViewport = () => window.innerWidth < 768;
 
     const adjustHeight = () => {
       if (rafId) return; // debounce via requestAnimationFrame
       rafId = requestAnimationFrame(() => {
         const main = mainContentRef.current;
         if (!main) { rafId = null; return; }
-        const visibleHeight = visualViewport ? visualViewport.height : window.innerHeight;
-        main.style.height = `${visibleHeight}px`;
+
+        if (visualViewport && isMobileViewport()) {
+          const keyboardOpen = visualViewport.height < window.innerHeight - 50;
+          if (keyboardOpen) {
+            main.style.position = 'fixed';
+            main.style.top = `${visualViewport.offsetTop}px`;
+            main.style.left = `${visualViewport.offsetLeft}px`;
+            main.style.width = `${visualViewport.width}px`;
+            main.style.height = `${visualViewport.height}px`;
+          } else {
+            // Keyboard closed: release the fixed pin, return to normal flow.
+            main.style.position = 'relative';
+            main.style.top = '';
+            main.style.left = '';
+            main.style.width = '100%';
+            main.style.height = '100dvh';
+          }
+        } else {
+          // Desktop / no visualViewport: keep height in sync with the viewport.
+          main.style.height = `${visualViewport ? visualViewport.height : window.innerHeight}px`;
+        }
+
+        // Single source of truth for keyboard-driven layout: notify the chat
+        // page to re-anchor the latest message after the write above.
+        window.dispatchEvent(new Event('layout-keyboard-adjusted'));
+
         rafId = null;
       });
     };

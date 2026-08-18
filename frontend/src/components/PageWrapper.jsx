@@ -35,7 +35,6 @@ function PageWrapper({ children, style = {}, className = '' }) {
           marginTop: 0,
           marginBottom: 0,
           padding: 0,
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           ...style,
         }
     : {

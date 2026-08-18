@@ -82,7 +82,7 @@ const MessageBubble = React.memo(function MessageBubble({
         alignItems: 'flex-start',
         maxWidth: editingMessageId === m.message_id && m.role === 'user'
           ? (isMobile ? '96%' : '92%')
-          : '80%',
+          : '100%',
       }}
       onMouseEnter={() => onHoverMessage(m.message_id)}
       onMouseLeave={() => onHoverMessage(null)}
@@ -119,7 +119,7 @@ const MessageBubble = React.memo(function MessageBubble({
           flex: 1,
         }}>
           {/* Name header */}
-          <div style={{ fontWeight: 600, fontSize: '0.76rem', opacity: 0.7, marginBottom: 6 }}>
+          <div style={{ fontWeight: 600, fontSize: isMobile ? '0.85rem' : '0.76rem', opacity: 0.7, marginBottom: 6 }}>
             {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
             {m.is_pinned && (
               <span style={{ marginLeft: 8, fontSize: '0.72rem', color: '#334155' }}>
@@ -143,7 +143,7 @@ const MessageBubble = React.memo(function MessageBubble({
               borderRadius: '0.88rem',
               padding: '0.68rem 0.96rem',
               boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              fontSize: '0.82rem',
+              fontSize: isMobile ? '0.95rem' : '0.82rem',
               minWidth: 0,
               wordBreak: 'break-word',
               maxWidth: '100%',

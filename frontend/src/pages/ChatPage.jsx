@@ -258,27 +258,21 @@ export default function ChatPage() {
     });
   }, [messages, isStreaming]);
 
-  // Scroll to bottom when keyboard appears/disappears on mobile.
-  // After Layout.jsx adjusts the main height in response to visualViewport
-  // resize, ensure the latest messages (and input area) stay in view.
+  // Scroll to bottom when the keyboard appears/disappears on mobile.
+  // Keyboard detection/repositioning is centralized in Layout.jsx, which
+  // dispatches a single 'layout-keyboard-adjusted' event after its DOM write.
+  // We only respond here by re-anchoring the latest message.
   useEffect(() => {
-    const visualViewport = window.visualViewport;
-    if (!visualViewport) return;
-
     const scrollToBottom = () => {
-      // Use requestAnimationFrame to run after Layout's height adjustment
+      // Use requestAnimationFrame to run after Layout's height/position write
       requestAnimationFrame(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' });
       });
     };
 
-    visualViewport.addEventListener('resize', scrollToBottom);
-    return () => visualViewport.removeEventListener('resize', scrollToBottom);
+    window.addEventListener('layout-keyboard-adjusted', scrollToBottom);
+    return () => window.removeEventListener('layout-keyboard-adjusted', scrollToBottom);
   }, []);
-
-  // Mobile keyboard handling is centralized in Layout.jsx (visualViewport API).
-  // This ChatPage no longer duplicates the main height adjustment to avoid
-  // race conditions and layout jank when the virtual keyboard appears.
 
   const navigate = useNavigate();
   const initialized = useRef(false);
@@ -1065,11 +1059,20 @@ export default function ChatPage() {
     setInitModal(true);
   };
 
-  // Handle keyboard shortcuts (Enter to send, Shift+Enter for new line)
+  // Handle keyboard shortcuts.
+  // Desktop: Enter sends, Shift+Enter inserts a new line.
+  // Mobile: Enter inserts a new line (send via the send button), since
+  // virtual keyboards have no accessible Shift key.
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend(e);
+    if (e.key === 'Enter') {
+      if (isMobile) {
+        // Let the textarea's native behavior insert a newline.
+        return;
+      }
+      if (!e.shiftKey) {
+        e.preventDefault();
+        handleSend(e);
+      }
     }
   };
 
