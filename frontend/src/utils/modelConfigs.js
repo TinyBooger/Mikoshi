@@ -18,7 +18,7 @@ const MODEL_CONFIGS = [
 
   // Qwen
   { id: "qwen3.7-plus",        maxOutputTokens: 64_000, contextLength: 1_000_000, multiplier: 1.3 },
-  { id: "qwen3.6-flash",       maxOutputTokens: 64_000, contextLength: 1_000_000, multiplier: 0.8 },
+  { id: "qwen3.7-flash",       maxOutputTokens: 128_000, contextLength: 1_000_000, multiplier: 0.13 },
 
 ];
 
