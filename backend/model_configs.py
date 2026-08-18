@@ -101,7 +101,7 @@ class ModelConfig:
         rpm: Optional[int] = None,
         tpm: Optional[int] = None,
         max_concurrent: Optional[int] = None,
-        # Cost multiplier (relative to deepseek-v4-flash = 1x)
+        # Cost multiplier (relative to qwen-plus-character = 1x)
         multiplier: float = 1.0,
     ):
         self.id = id
@@ -221,7 +221,7 @@ MODELS: List[ModelConfig] = [
         max_output_tokens=384_000,
         thinking=True,
         max_concurrent=2500,
-        multiplier=1.0,
+        multiplier=1.9,
     ),
     ModelConfig(
         id="deepseek-v4-pro",
@@ -240,7 +240,7 @@ MODELS: List[ModelConfig] = [
         max_output_tokens=384_000,
         thinking=True,
         max_concurrent=500,
-        multiplier=3.0,
+        multiplier=5.6,
     ),
 
     # ------------------------------------------------------------------
@@ -259,7 +259,7 @@ MODELS: List[ModelConfig] = [
         thinking=True,
         rpm=30_000,
         tpm=10_000_000,
-        multiplier=1.3,
+        multiplier=2.5,
     ),
     ModelConfig(
         id="qwen3.7-flash",
@@ -274,7 +274,7 @@ MODELS: List[ModelConfig] = [
         thinking=True,
         rpm=30_000,
         tpm=5_000_000,
-        multiplier=0.13,
+        multiplier=0.25,
     ),
     ModelConfig(
         id="qwen-plus-character",
@@ -293,7 +293,7 @@ MODELS: List[ModelConfig] = [
         thinking=False,
         rpm=120,
         tpm=500_000,
-        multiplier=0.5,
+        multiplier=1.0,
     ),
     ModelConfig(
         id="qwen-flash-character",
@@ -312,7 +312,7 @@ MODELS: List[ModelConfig] = [
         thinking=False,
         rpm=120,
         tpm=500_000,
-        multiplier=0.2,
+        multiplier=0.3,
     ),
 
 ]
