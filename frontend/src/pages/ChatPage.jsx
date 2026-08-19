@@ -107,6 +107,13 @@ export default function ChatPage() {
   // Ref for messages container to enable auto-scrolling
   const messagesEndRef = useRef(null);
   const messageMenuRef = useRef(null);
+  // Monotonic counter used to invalidate superseded chat turns so a stale
+  // stream can never clobber state from a newer request.
+  const chatGenerationIdRef = useRef(0);
+  // Reserved chat_id for a brand-new chat whose opening greeting is still
+  // streaming. Lets a message sent mid-greeting reuse the same chat instead
+  // of minting a second (orphaned) chat_id on the backend.
+  const pendingChatIdRef = useRef(null);
 
   const [selectedPersona, setSelectedPersona] = useState(null);
   const [selectedScene, setSelectedScene] = useState(null);
@@ -536,6 +543,11 @@ export default function ChatPage() {
     const searchParamsChanged = searchParams !== prevSearchParamsRef.current;
     prevSearchParamsRef.current = searchParams;
 
+    console.trace('[searchParams effect] fired', { 
+      prev: prevSearchParamsRef.current?.toString(), 
+      next: searchParams?.toString() 
+    });
+
     if (searchParamsChanged) {
       setCharacterId(searchParams.get('character'));
       setSceneId(searchParams.get('scene'));
@@ -543,6 +555,7 @@ export default function ChatPage() {
       if (!searchParams.get('scene')) setSelectedScene(null);
       setSelectedPersona(null);
       setSelectedChat(null);
+      pendingChatIdRef.current = null;
       setMessages([]);
       setEditingMessageId(null);
       setEditingMessageText('');
@@ -807,13 +820,18 @@ export default function ChatPage() {
     }
 
     setSelectedChat(null);
+    pendingChatIdRef.current = null;
     setInput('');
 
     if (useImprovise) {
+      // Reserve the chat_id up front (mirroring the backend's uuid.uuid4())
+      // so a message sent while this greeting is still streaming reuses the
+      // same chat instead of minting a second, orphaned chat_id.
+      pendingChatIdRef.current = generateMessageId();
       setMessages([sys]);
       await sendChatTurn({
         nextMessages: [sys],
-        chatId: null,
+        chatId: pendingChatIdRef.current,
         sourceBranchId: null,
         restoreMessagesOnError: [sys],
         errorMessage: '生成问候失败，请重试。',
@@ -838,7 +856,7 @@ export default function ChatPage() {
 
   const sendChatTurn = async ({
     nextMessages,
-    chatId = selectedChat?.chat_id,
+    chatId = selectedChat?.chat_id || pendingChatIdRef.current,
     forkFromMessageId = null,
     sourceBranchId = selectedChat?.active_branch_id || null,
     restoreMessagesOnError = nextMessages,
@@ -849,10 +867,20 @@ export default function ChatPage() {
   }) => {
     if (!characterOverride) return;
 
+    // Cancel any in-flight turn for this chat before starting a new one.
+    if (abortController) {
+      abortController.abort();
+    }
+
+    // Claim a new generation token so any response from the cancelled request
+    // (chunk, done, error, or finally) is treated as stale and ignored.
+    const requestGenerationId = ++chatGenerationIdRef.current;
+
     setSending(true);
     setIsStreaming(true);
 
     const requestMessages = compactMessagesForRequest(nextMessages);
+    const baseMessageCount = Array.isArray(nextMessages) ? nextMessages.length : 0;
     const controller = new AbortController();
     const assistantMessageId = generateMessageId();
     setAbortController(controller);
@@ -870,6 +898,7 @@ export default function ChatPage() {
           chat_id: chatId,
           branch_id: sourceBranchId,
           fork_from_message_id: forkFromMessageId,
+          base_message_count: baseMessageCount,
           scene_id: sceneOverride?.id || null,
           persona_id: personaOverride?.id || null,
           messages: requestMessages,
@@ -902,6 +931,12 @@ export default function ChatPage() {
       let pendingEventBuffer = '';
 
       const processEventPayload = (rawPayload) => {
+        // Ignore any event from a superseded request. A new turn has been
+        // started, so this response is stale and must not touch state.
+        if (requestGenerationId !== chatGenerationIdRef.current) {
+          return;
+        }
+
         const payload = rawPayload
           .split('\n')
           .filter((line) => line.startsWith('data: '))
@@ -933,6 +968,7 @@ export default function ChatPage() {
         }
 
         if (data.chunk) {
+          console.log('[RAW chunk]', data.chunk);
           accumulatedReply += data.chunk;
           setMessages((prev) => {
             const newMessages = [...prev];
@@ -947,6 +983,7 @@ export default function ChatPage() {
         }
 
         if (data.done) {
+          console.log('[RAW chat_entry]', JSON.stringify(data.chat_entry));
           applyChatLimits(data.limits);
           applyCreditLimits(data.credit_limits);
           if (refreshUserData) {
@@ -957,9 +994,7 @@ export default function ChatPage() {
           }
           if (data.chat_entry) {
             const nextChatEntry = upsertChatHistoryEntryLocally(data.chat_entry);
-            setMessages(buildDisplayMessagesForChat(nextChatEntry));
-          } else {
-            setMessages(ensureMessageIds([...nextMessages, { role: 'assistant', content: accumulatedReply, message_id: assistantMessageId, is_pinned: false }]));
+            setMessages(buildDisplayMessagesForChat(nextChatEntry, characterOverride, sceneOverride, personaOverride));
           }
         }
       };
@@ -984,14 +1019,21 @@ export default function ChatPage() {
         processEventPayload(pendingEventBuffer);
       }
     } catch (err) {
+      // A superseded request must not show errors or restore stale messages.
+      if (requestGenerationId !== chatGenerationIdRef.current) {
+        return;
+      }
       if (err.name !== 'AbortError') {
         toast.show(err.message || errorMessage, { type: 'error' });
       }
       setMessages(ensureMessageIds(restoreMessagesOnError));
     } finally {
-      setSending(false);
-      setIsStreaming(false);
-      setAbortController(null);
+      // Only the latest request may clear sending/streaming state.
+      if (requestGenerationId === chatGenerationIdRef.current) {
+        setSending(false);
+        setIsStreaming(false);
+        setAbortController(null);
+      }
     }
   };
 
@@ -1038,6 +1080,7 @@ export default function ChatPage() {
   // Unified new chat action respecting current entry mode
   const handleNewChat = async () => {
     setSelectedChat(null);
+    pendingChatIdRef.current = null;
     setMessages([]);
     setEditingMessageId(null);
     setEditingMessageText('');

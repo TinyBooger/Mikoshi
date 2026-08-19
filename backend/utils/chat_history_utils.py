@@ -3,6 +3,10 @@ from __future__ import annotations
 from datetime import datetime, UTC
 import uuid
 from typing import Any, List, Optional
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session, object_session
@@ -369,6 +373,18 @@ def _sync_chat_history_store(db: Session, entry: ChatHistory, payload: dict[str,
             incoming = incoming_messages[index]
 
             incoming_role = str(incoming.get("role") or "").strip().lower()
+            stored_role = str(stored.role or "").strip().lower()
+
+            # System messages (the instruction prompt and context-compression
+            # summaries) are ephemeral and legitimately mutable across turns —
+            # the frontend rebuilds the instruction prompt from current character
+            # data, and summaries evolve with re-summarization. Their divergence
+            # is NOT evidence of a stale/concurrent turn, so they must not break
+            # the append-only prefix check. The instruction prompt stored at
+            # idx 0 is never read back by the client anyway.
+            if stored_role == "system" or incoming_role == "system":
+                continue
+
             incoming_usage = incoming.get("usage") if isinstance(incoming.get("usage"), dict) else None
             incoming_message_id = incoming.get("message_id") if isinstance(incoming.get("message_id"), str) else None
             incoming_is_pinned = bool(incoming.get("is_pinned")) if incoming_role in {"user", "assistant"} else False
@@ -380,6 +396,9 @@ def _sync_chat_history_store(db: Session, entry: ChatHistory, payload: dict[str,
                 or bool(stored.is_pinned) != incoming_is_pinned
                 or (stored.usage or None) != incoming_usage
             ):
+                logger.warning(
+                    f"🚫 can_append broke | chat={entry.chat_id} branch={branch_id} idx={index} | stored_id={stored.message_id!r} incoming_id={incoming_message_id!r} | stored_content={stored.content[:30]!r} incoming_content={(incoming.get('content') or '')[:30]!r}"
+                )
                 can_append = False
                 break
 

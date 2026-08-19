@@ -145,9 +145,16 @@ def _persist_chat_history_turn(
     context_window_soft_limit: int,
     requested_branch_id: str | None,
     fork_from_message_id: str | None,
+    base_message_count: int | None = None,
 ) -> ChatHistory:
     assistant_message = _build_assistant_message(reply, response_usage)
-    updated_messages = full_messages + [assistant_message]
+
+
+    # Re-read the freshest persisted entry within THIS session. A concurrent
+    # turn may have already advanced the branch; using the request-time
+    # snapshot would let this stale turn roll it back.
+    if chat_id:
+        existing_entry = fetch_chat_history_entry(db_session, current_user_id, chat_id)
 
     existing_payload = normalize_chat_history_payload(existing_entry.messages if existing_entry else [])
     if existing_entry:
@@ -158,6 +165,27 @@ def _persist_chat_history_turn(
                 "branches": serialized_existing.get("branches") or [],
             }
         )
+
+    # Hardening against overlapping turns: if the client's snapshot is behind
+    # the currently persisted branch, this turn is stale and must not overwrite
+    # history that already advanced past it. Reject it and return the freshest
+    # entry so the client can reconcile to the latest state.
+    if not fork_from_message_id:
+        target_branch_id = requested_branch_id or get_chat_history_active_branch_id(existing_payload)
+        existing_branch = get_chat_history_branch(existing_payload, target_branch_id)
+        current_message_count = len(existing_branch.get("messages") or [])
+        if base_message_count is not None and current_message_count > base_message_count:
+            logger.warning(
+                "Stale chat turn rejected | user=%s | chat=%s | branch=%s | current_messages=%d | base_message_count=%d",
+                current_user_id,
+                chat_id,
+                target_branch_id,
+                current_message_count,
+                base_message_count,
+            )
+            return existing_entry
+
+    updated_messages = full_messages + [assistant_message]
 
     if fork_from_message_id:
         message_payload, _ = fork_chat_history_branch(
@@ -221,6 +249,12 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     persona_id = data.get("persona_id")
     branch_id = data.get("branch_id")
     fork_from_message_id = data.get("fork_from_message_id")
+    raw_base_message_count = data.get("base_message_count")
+    base_message_count = None
+    if isinstance(raw_base_message_count, int) and raw_base_message_count >= 0:
+        base_message_count = raw_base_message_count
+    elif isinstance(raw_base_message_count, str) and raw_base_message_count.strip().isdigit():
+        base_message_count = int(raw_base_message_count.strip())
     can_use_advanced_config = bool(current_user.is_pro)
     raw_chat_config = data.get("chat_config")
     chat_config = parse_chat_config(raw_chat_config)
@@ -498,6 +532,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             context_window_soft_limit=context_window_soft_limit,
                             requested_branch_id=branch_id,
                             fork_from_message_id=fork_from_message_id,
+                            base_message_count=base_message_count,
                         )
                         serialized_entry = serialize_chat_history_entry(entry)
                         current_credit_limit_info = get_credit_cap_info(stream_user, db_session)
@@ -657,6 +692,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 context_window_soft_limit=context_window_soft_limit,
                 requested_branch_id=branch_id,
                 fork_from_message_id=fork_from_message_id,
+                base_message_count=base_message_count,
             )
             serialized_entry = serialize_chat_history_entry(entry)
 
