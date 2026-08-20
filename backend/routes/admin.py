@@ -9,6 +9,7 @@ from models import User, Character, Tag, SearchTerm, ChatHistory, ChatHistoryMes
 from utils.session import get_current_admin_user
 from utils.security_middleware import get_rate_limit_status
 from utils.user_utils import enrich_user_with_character_count, build_user_response
+from utils.sms_utils import is_dev_environment, get_dev_sms_bypass_info, set_dev_sms_bypass_enabled, DEV_SMS_BYPASS_CODE
 from typing import List, Optional, Dict
 from pydantic import BaseModel
 from schemas import UserOut, UserMessageOut
@@ -137,6 +138,10 @@ class ContentModerationRequest(BaseModel):
 
 class TagUpdate(BaseModel):
     name: Optional[str] = None
+
+
+class DevSmsBypassToggle(BaseModel):
+    enabled: bool
 
 
 class ContentReviewResolveRequest(BaseModel):
@@ -2075,3 +2080,31 @@ def resolve_content_appeal(
 
     db.commit()
     return {"message": f"Content appeal #{appeal_id} {appeal.status}", "ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Dev-only: SMS verification bypass toggle
+# ---------------------------------------------------------------------------
+
+@router.get("/dev-sms-bypass")
+def get_dev_sms_bypass(
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """获取开发环境万能验证码状态（仅开发环境，管理后台用）。"""
+    if not is_dev_environment():
+        return {"available": False, "enabled": False, "code": None}
+    info = get_dev_sms_bypass_info()
+    return {"available": True, "enabled": info['enabled'], "code": info['code']}
+
+
+@router.post("/dev-sms-bypass")
+def toggle_dev_sms_bypass(
+    payload: DevSmsBypassToggle,
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """开启/关闭开发环境万能验证码（仅开发环境，管理后台用）。"""
+    if not is_dev_environment():
+        raise HTTPException(status_code=404, detail="Dev SMS bypass is not available in production")
+    set_dev_sms_bypass_enabled(payload.enabled)
+    info = get_dev_sms_bypass_info()
+    return {"available": True, "enabled": info['enabled'], "code": info['code']}

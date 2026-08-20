@@ -11,7 +11,7 @@ from schemas import AuthUserOut, VerifyPhoneOut
 from utils.session import create_session_token
 from utils.user_utils import build_user_response
 from utils.validators import validate_account_fields
-from utils.sms_utils import send_verification_code, verify_code, create_verified_phone_token, verify_phone_token
+from utils.sms_utils import send_verification_code, verify_code, create_verified_phone_token, verify_phone_token, get_dev_sms_bypass_info
 from utils.captcha_utils import verify_captcha_param
 from utils.request_utils import get_client_ip, get_device_fingerprint, update_tracking_array
 from utils.image_moderation import moderate_image_with_decision
@@ -22,6 +22,17 @@ from typing import Optional
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# Dev-only endpoint: expose the universal verification code so the frontend
+# can display it on the login page (production returns disabled).
+@router.get("/api/dev-sms-bypass")
+def dev_sms_bypass():
+    """开发环境万能验证码配置（生产环境返回 disabled）"""
+    info = get_dev_sms_bypass_info()
+    if info is None:
+        return {"enabled": False, "code": None}
+    return info
 
 
 # Send SMS verification code endpoint

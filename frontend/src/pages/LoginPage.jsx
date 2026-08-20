@@ -36,6 +36,9 @@ export default function LoginPage() {
   const phoneCaptchaInitialized = useRef(false);
   const passwordCaptchaInitialized = useRef(false);
 
+  // 开发环境万能验证码（绕过短信验证，仅用于测试）
+  const [devBypassCode, setDevBypassCode] = useState(null);
+
   const handlePasswordLogin = async (account = emailRef.current, pwd = passwordRef.current) => {
     setError('');
     const safeEmail = account?.trim();
@@ -111,6 +114,20 @@ export default function LoginPage() {
   useEffect(() => {
     passwordRef.current = password;
   }, [password]);
+
+  // 开发环境：拉取万能验证码配置并在登录页展示
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${window.API_BASE_URL}/api/dev-sms-bypass`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data && data.enabled && data.code) {
+          setDevBypassCode(data.code);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Initialize the relevant captcha after mount and when the active tab changes
   useEffect(() => {
@@ -201,7 +218,7 @@ export default function LoginPage() {
   const handlePhoneLogin = async (e) => {
     e.preventDefault();
     
-    if (!captchaVerified) {
+    if (!captchaVerified && !devBypassCode) {
       // If not verified, trigger captcha manually
       if (captchaRef.current) {
         captchaRef.current.showCaptcha();
@@ -405,6 +422,21 @@ export default function LoginPage() {
 
         {activeTab === 'phone' ? (
           <form onSubmit={handlePhoneLogin}>
+            {devBypassCode && (
+              <div
+                style={{
+                  marginBottom: '0.75rem',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: 8,
+                  background: '#fff8e1',
+                  border: '1px dashed #f0a500',
+                  color: '#8a6d00',
+                  fontSize: '0.8rem',
+                }}
+              >
+                🧪 开发环境万能验证码：<strong>{devBypassCode}</strong>（跳过短信，仅用于测试）
+              </div>
+            )}
             <div className="mb-3">
               <div
                 style={{
@@ -513,7 +545,7 @@ export default function LoginPage() {
             <PrimaryButton
               type="submit"
               className="w-100"
-              disabled={loading || !captchaVerified}
+              disabled={loading || (!captchaVerified && !devBypassCode)}
               style={{ padding: '0.65rem', fontSize: '1rem', background: '#7f72a8' }}
               onMouseEnter={e => { e.currentTarget.style.background = '#6e6394'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#7f72a8'; }}

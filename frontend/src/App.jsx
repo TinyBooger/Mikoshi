@@ -25,6 +25,7 @@ import NotificationsPage from './admin/pages/NotificationsPage.jsx';
 import ErrorLogsPage from './admin/pages/ErrorLogsPage.jsx';
 import AuditLogsPage from './admin/pages/AuditLogsPage.jsx';
 import UserStatsPage from './admin/pages/UserStatsPage.jsx';
+import SystemSettingsPage from './admin/pages/SystemSettingsPage.jsx';
 import TestPage from './pages/TestPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import TermsOfServicePage from './pages/TermsOfServicePage.jsx';
@@ -137,6 +138,7 @@ const router = createBrowserRouter([
       { path: 'error-logs', element: <ErrorLogsPage /> },
       { path: 'audit-logs', element: <AuditLogsPage /> },
       { path: 'user-stats', element: <UserStatsPage /> },
+      { path: 'system-settings', element: <SystemSettingsPage /> },
     ],
   },
   {

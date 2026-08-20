@@ -15,6 +15,41 @@ verification_codes: Dict[str, dict] = {}
 # 已验证手机号的临时token（验证通过后5分钟内有效，用于注册）
 verified_phone_tokens: Dict[str, dict] = {}
 
+# 开发环境万能验证码（仅非生产环境生效，用于跳过短信验证，方便本地/测试）
+DEV_SMS_BYPASS_CODE = '888888'
+
+# 运行时开关（默认开启，仅非生产环境可启用；可通过管理后台切换）
+_dev_sms_bypass_enabled = True
+
+
+def is_dev_environment() -> bool:
+    """当前是否为非生产环境（开发/测试）。"""
+    return os.getenv('ENVIRONMENT', 'development').strip().lower() != 'production'
+
+
+def is_dev_sms_bypass_active() -> bool:
+    """万能验证码当前是否生效（非生产环境且开关开启）。"""
+    return is_dev_environment() and _dev_sms_bypass_enabled
+
+
+def set_dev_sms_bypass_enabled(enabled: bool) -> None:
+    """设置万能验证码开关（仅非生产环境可启用）。"""
+    global _dev_sms_bypass_enabled
+    _dev_sms_bypass_enabled = bool(enabled)
+
+
+def get_dev_sms_bypass_info():
+    """
+    返回开发环境短信验证码绕过配置，供前端展示万能验证码。
+    生产环境返回 None。
+    """
+    if not is_dev_environment():
+        return None
+    return {
+        'enabled': _dev_sms_bypass_enabled,
+        'code': DEV_SMS_BYPASS_CODE,
+    }
+
 
 def create_sms_client() -> DypnsapiClient:
     """
@@ -125,6 +160,10 @@ def verify_code(phone_number: str, code: str) -> bool:
     Returns:
         bool: 验证是否成功
     """
+    # 开发环境万能验证码：跳过短信验证，方便本地/测试环境登录
+    if is_dev_sms_bypass_active() and code and code == DEV_SMS_BYPASS_CODE:
+        return True
+
     if phone_number not in verification_codes:
         return False
     
