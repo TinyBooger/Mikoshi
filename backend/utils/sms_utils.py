@@ -62,8 +62,8 @@ async def send_verification_code(phone_number: str) -> dict:
         client = create_sms_client()
         request = dypnsapi_models.SendSmsVerifyCodeRequest(
             phone_number=phone_number,
-            sign_name='速通互联验证码',
-            template_code='100001',
+            sign_name=os.getenv('ALIBABA_CLOUD_SMS_SIGN_NAME', '恒创联众'),
+            template_code=os.getenv('ALIBABA_CLOUD_SMS_TEMPLATE_CODE', '100001'),
             template_param='{"code":"##code##","min":"5"}',  # 验证码占位符
             code_type=1,  # 数字验证码
             code_length=6,  # 6位验证码
