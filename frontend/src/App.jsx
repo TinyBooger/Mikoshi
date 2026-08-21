@@ -106,8 +106,6 @@ const router = createBrowserRouter([
       { path: 'pro-upgrade/payment', element: <ProtectedPage><ProUpgradePaymentPage /></ProtectedPage> },
       { path: 'pro-upgrade/payment/package', element: <ProtectedPage><PackagePaymentPage /></ProtectedPage> },
       { path: 'credit-topup', element: <ProtectedPage><CreditTopUpPage /></ProtectedPage> },
-      { path: 'terms-of-service', element: <TermsOfServicePage /> },
-      { path: 'privacy-policy', element: <PrivacyPolicyPage /> },
     ],
   },
   {
@@ -121,6 +119,14 @@ const router = createBrowserRouter([
   {
     path: '/reset-password',
     element: <PublicOnlyPage><ResetPasswordPage /></PublicOnlyPage>,
+  },
+  {
+    path: '/terms-of-service',
+    element: <TermsOfServicePage />,
+  },
+  {
+    path: '/privacy-policy',
+    element: <PrivacyPolicyPage />,
   },
   {
     path: '/admin',

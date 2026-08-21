@@ -1,33 +1,22 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
 
 export default function PrivacyPolicyPage() {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
   const isChinese = i18n.language === 'zh';
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa', padding: '2rem' }}>
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      overflow: 'auto',
+      WebkitOverflowScrolling: 'touch',
+    }}>
+      <div style={{ minHeight: '100%', backgroundColor: '#f8f9fa', padding: '2rem' }}>
       <div className="container" style={{ maxWidth: 800 }}>
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          style={{ 
-            background: 'none', 
-            border: 'none', 
-            color: '#222', 
-            fontWeight: 600, 
-            fontSize: '1rem', 
-            cursor: 'pointer', 
-            display: 'flex', 
-            alignItems: 'center',
-            marginBottom: '2rem'
-          }}
-        >
-          <span style={{ fontSize: '1.5rem', marginRight: 6 }}>&larr;</span> {t('common.back')}
-        </button>
-
         <div style={{ backgroundColor: 'white', padding: '3rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <h1 className="mb-4">{t('privacy.title')}</h1>
           <p className="text-muted mb-4">{t('privacy.last_updated')}: 2025-11-17</p>
@@ -181,6 +170,7 @@ export default function PrivacyPolicyPage() {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }
