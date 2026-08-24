@@ -692,7 +692,7 @@ export default function ProfilePage() {
             fontSize: isMobile ? '1rem' : '1.15rem',
             fontWeight: 700, color: '#2d1b4f', margin: '0 0 0.35rem',
           }}>
-            {'邀请码'}
+            {'好友邀请码'}
           </h3>
 
           <p style={{
@@ -2104,7 +2104,7 @@ export default function ProfilePage() {
                   onMouseEnter={e => { if (activeTab !== TAB_TYPES.INVITE_CODE) e.currentTarget.style.background = 'rgba(167,139,250,0.06)'; }}
                   onMouseLeave={e => { if (activeTab !== TAB_TYPES.INVITE_CODE) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  {'邀请码'}
+                  {'好友邀请码'}
                 </button>
               )}
             </aside>
