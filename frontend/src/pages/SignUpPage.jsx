@@ -1,6 +1,5 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { useTranslation } from 'react-i18next';
 import PageWrapper from '../components/PageWrapper';
 import ImageCropModal from '../components/ImageCropModal';
 import { AuthContext } from '../components/AuthProvider';
@@ -8,7 +7,6 @@ import PrimaryButton from '../components/PrimaryButton';
 import TextButton from '../components/TextButton';
 
 export default function SignUpPage() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
@@ -69,13 +67,13 @@ export default function SignUpPage() {
     
     // Validate password confirmation
     if (password !== confirmPassword) {
-      setError(t('signup.passwords_no_match'));
+      setError('两次输入的密码不一致');
       return;
     }
     
     // Validate terms
     if (!agreedToTerms) {
-      setError(t('signup.terms_required'));
+      setError('请勾选同意用户协议和隐私政策');
       return;
     }
     
@@ -83,7 +81,7 @@ export default function SignUpPage() {
     if (success.success) {
       navigate('/', { replace: true });
     } else {
-      setError(success.message || t('signup.registration_failed'));
+      setError(success.message || '注册失败。请检查您的邀请码。');
     }
   };
 
@@ -103,7 +101,7 @@ export default function SignUpPage() {
               onClick={handleGoBack}
               style={{ display: 'block', marginBottom: '0.5rem' }}
             >
-              <span style={{ fontSize: '1.5rem', marginRight: 6 }}>&larr;</span> {t('signup.back')}
+              <span style={{ fontSize: '1.5rem', marginRight: 6 }}>&larr;</span> 返回
             </TextButton>
             {error && <div className="alert alert-danger">{error}</div>}
             {loading && <div className="text-center"><div className="spinner-border text-primary" role="status"></div></div>}
@@ -153,7 +151,7 @@ export default function SignUpPage() {
                       {profilePreview ? (
                         <img
                           src={profilePreview}
-                          alt={t('signup.profile_preview')}
+                          alt="头像预览"
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                       ) : (
@@ -207,7 +205,7 @@ export default function SignUpPage() {
               </div>
               <div className="mb-3">
                 <label className="form-label">
-                  {t('signup.email')} <span className="text-muted">（可选）</span>
+                  邮箱 <span className="text-muted">（可选）</span>
                 </label>
                 <input
                   type="email"
@@ -219,7 +217,7 @@ export default function SignUpPage() {
                 />
               </div>
               <div className="mb-3">
-                <label className="form-label">{t('signup.password')} <span style={{ color: '#e53e3e' }}>*</span></label>
+                <label className="form-label">密码 <span style={{ color: '#e53e3e' }}>*</span></label>
                 <input
                   type="password"
                   className="form-control"
@@ -257,7 +255,7 @@ export default function SignUpPage() {
                 )}
               </div>
               <div className="mb-3">
-                <label className="form-label">{t('signup.confirm_password')} <span style={{ color: '#e53e3e' }}>*</span></label>
+                <label className="form-label">确认密码 <span style={{ color: '#e53e3e' }}>*</span></label>
                 <input
                   type="password"
                   className="form-control"
@@ -269,7 +267,7 @@ export default function SignUpPage() {
                 />
               </div>
               <div className="mb-3">
-                <label className="form-label">{t('signup.short_bio')} <span className="text-muted">（可选）</span></label>
+                <label className="form-label">简介 <span className="text-muted">（可选）</span></label>
                 <textarea
                   className="form-control"
                   value={bio}
@@ -279,7 +277,7 @@ export default function SignUpPage() {
                 />
               </div>
               <div className="mb-3">
-                <label className="form-label">{t('signup.invitation_code')} <span className="text-muted">（可选）</span></label>
+                <label className="form-label">好友邀请码 <span className="text-muted">（可选）</span></label>
                 <input
                   type="text"
                   className="form-control"
@@ -303,18 +301,18 @@ export default function SignUpPage() {
                     style={{ width: '1.25em', height: '1.25em', flexShrink: 0 }}
                   />
                   <label className="form-check-label" htmlFor="termsCheckbox" style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>
-                    {t('signup.agree_to_terms_prefix')}{' '}
+                    我已阅读并同意{' '}
                     <a href="/terms-of-service" target="_blank" rel="noopener noreferrer" style={{ color: '#0066cc', textDecoration: 'none' }}>
-                      {t('signup.terms_link')}
+                      《用户协议》
                     </a>
-                    {' '}{t('signup.and')}{' '}
+                    {' '}和{' '}
                     <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color: '#0066cc', textDecoration: 'none' }}>
-                      {t('signup.privacy_link')}
+                      《隐私政策》
                     </a>
                   </label>
                 </div>
               </div>
-              <PrimaryButton type="submit" className="w-100">{t('signup.submit')}</PrimaryButton>
+              <PrimaryButton type="submit" className="w-100">提交</PrimaryButton>
             </form>
           </div>
         </div>
