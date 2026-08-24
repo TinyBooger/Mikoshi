@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import ImageCropModal from '../components/ImageCropModal';
 import { AuthContext } from '../components/AuthProvider';
@@ -37,18 +37,23 @@ export default function ProfilePage() {
   };
 
   const { userId: profileUserId } = useParams(); // get userId from route params
+  const [searchParams] = useSearchParams();
   const { userData, sessionToken, refreshUserData } = useContext(AuthContext);
   const toast = useToast();
 
   // Determine if this is the current user's own profile
   const isOwnProfile = !profileUserId || (userData && String(userData.id) === String(profileUserId));
+  // Deep-link support: /profile?tab=invite opens the invitation-code tab (own profile only)
+  const initialTab = (!profileUserId && searchParams.get('tab') === 'invite')
+    ? TAB_TYPES.INVITE_CODE
+    : TAB_TYPES.CREATED;
   // If public view, fetch userData for the profile being viewed
   const [publicUserData, setPublicUserData] = useState(null);
   const [createdCharacters, setCreatedCharacters] = useState([]);
   const [likedCharacters, setLikedCharacters] = useState([]);
   const [personas, setPersonas] = useState([]);
   const [likedPersonas, setLikedPersonas] = useState([]);
-  const [activeTab, setActiveTab] = useState(TAB_TYPES.CREATED);
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [activeSubtab, setActiveSubtab] = useState(SUBTAB_TYPES.CHARACTERS);
   const [createdExpanded, setCreatedExpanded] = useState(true);
   const [likedExpanded, setLikedExpanded] = useState(false);
@@ -695,7 +700,7 @@ export default function ProfilePage() {
             color: '#6b7280', margin: '0 0 1rem',
             lineHeight: 1.5,
           }}>
-            🎁 使用你的邀请码注册，每位新用户将为你带来 <strong style={{ color: '#7c3aed' }}>100 点数</strong> 奖励（每日限3次）
+            🎁 每位使用你的邀请码注册的新用户将为你带来 <strong style={{ color: '#7c3aed' }}>100 点数</strong> 奖励（每日限3次）
           </p>
 
           {/* Code display + copy */}
@@ -1263,10 +1268,12 @@ export default function ProfilePage() {
   const tokenUsed = Number(tokenScope === 'monthly'
     ? (displayUser?.monthly_credit_usage)
     : (displayUser?.daily_credit_usage)) || 0;
+  // Keep the displayed credit usage number to at most 2 decimals.
+  const tokenUsedRounded = Math.round(tokenUsed * 100) / 100;
   const tokenCap = Number((displayUser?.credit_cap) || 0);
   const tokenUsageValue = tokenCap > 0
-    ? `${formatCompactTokenCount(tokenUsed)} / ${formatCompactTokenCount(tokenCap)}`
-    : formatCompactTokenCount(tokenUsed);
+    ? `${formatCompactTokenCount(tokenUsedRounded)} / ${formatCompactTokenCount(tokenCap)}`
+    : formatCompactTokenCount(tokenUsedRounded);
   const tokenProgressPercent = tokenCap > 0
     ? Math.min(100, Math.max(0, (tokenUsed / tokenCap) * 100))
     : 0;

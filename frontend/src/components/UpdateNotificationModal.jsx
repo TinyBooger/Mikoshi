@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
 import PrimaryButton from './PrimaryButton';
 
 export default function UpdateNotificationModal({ show, onClose }) {
-  const { t } = useTranslation();
+  const navigate = useNavigate();
   const [visible, setVisible] = useState(show);
   const [notification, setNotification] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,6 +51,33 @@ export default function UpdateNotificationModal({ show, onClose }) {
   const handleClose = () => {
     setVisible(false);
     onClose();
+  };
+
+  // CTA convention: admins embed [label](/path) in the message text (no DB field needed).
+  // e.g. "邀请好友得 100 点数！[去复制邀请码](/profile?tab=invite)"
+  // eslint-disable-next-line no-useless-escape
+  const LINK_RE = /\[([^\]]+)\]\(([^)]+)\)/;
+  const parsedLink = (() => {
+    if (!notification?.message) return null;
+    const m = notification.message.match(LINK_RE);
+    if (!m) return null;
+    return {
+      label: m[1],
+      target: m[2],
+      cleanedMessage: notification.message.replace(m[0], '').trim(),
+    };
+  })();
+
+  const handleNavigate = () => {
+    if (!parsedLink) return;
+    const target = parsedLink.target;
+    setVisible(false);
+    onClose();
+    if (/^https?:\/\//i.test(target)) {
+      window.open(target, '_blank', 'noopener,noreferrer');
+    } else {
+      navigate(target);
+    }
   };
 
   if (!visible || loading) return null;
@@ -121,13 +148,13 @@ export default function UpdateNotificationModal({ show, onClose }) {
             ></button>
           </div>
           <div style={{ color: '#555', fontSize: isMobile ? '0.8rem' : '0.95rem', lineHeight: '1.6' }}>
-            <p style={{ marginBottom: isMobile ? '0.5rem' : '0.75rem' }}>
-              {notification.message}
+            <p style={{ marginBottom: isMobile ? '0.5rem' : '0.75rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {parsedLink ? parsedLink.cleanedMessage : notification.message}
             </p>
             {notification.features && notification.features.length > 0 && (
               <div style={{ marginBottom: isMobile ? '0.5rem' : '0.75rem' }}>
                 <strong style={{ fontSize: isMobile ? '0.75rem' : '0.9rem' }}>
-                  {t('update_notification.features_title')}
+                  活动详情：
                 </strong>
                 <ul className="mt-2 mb-0" style={{ paddingLeft: isMobile ? '1rem' : '1.2rem', fontSize: isMobile ? '0.75rem' : '0.9rem' }}>
                   {notification.features.map((feature, idx) => (
@@ -136,29 +163,38 @@ export default function UpdateNotificationModal({ show, onClose }) {
                 </ul>
               </div>
             )}
-            <div 
-              className="rounded-3"
-              style={{ 
-                padding: isMobile ? '0.5rem' : '0.75rem',
-                background: 'rgba(115,107,146,0.08)', 
-                borderLeft: '3px solid #736B92' 
-              }}
-            >
-              <div className="d-flex align-items-start gap-2">
-                <i className="bi bi-info-circle-fill" style={{ color: '#736B92', fontSize: isMobile ? '0.85rem' : '1.1rem', marginTop: '2px' }}></i>
-                <div style={{ fontSize: isMobile ? '0.7rem' : '0.85rem' }}>
-                  {t('update_notification.feedback_message')}
-                </div>
-              </div>
-            </div>
           </div>
           <div style={{ marginTop: isMobile ? '0.75rem' : '1rem' }}>
+            {parsedLink && (
+              <button
+                onClick={handleNavigate}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px',
+                  width: '100%',
+                  marginBottom: '0.5rem',
+                  padding: isMobile ? '0.4rem' : '0.6rem',
+                  border: '1px solid #c4b8e8',
+                  borderRadius: isMobile ? 6 : 8,
+                  background: '#f5f3ff',
+                  color: '#5b4fa8',
+                  fontSize: isMobile ? '0.8rem' : '0.95rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <i className="bi bi-box-arrow-up-right" style={{ fontSize: isMobile ? '0.7rem' : '0.85rem' }}></i>
+                {parsedLink.label}
+              </button>
+            )}
             <PrimaryButton
               className="w-100"
               onClick={handleClose}
               style={{ borderRadius: isMobile ? 6 : 8, padding: isMobile ? '0.4rem' : '0.6rem', fontWeight: 600, fontSize: isMobile ? '0.8rem' : '0.95rem' }}
             >
-              {t('update_notification.got_it')}
+              知道了！
             </PrimaryButton>
           </div>
         </div>

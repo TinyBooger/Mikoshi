@@ -797,17 +797,6 @@
     "success_message": "感谢！您的举报已成功提交。",
     "submission_error": "提交失败，请重试。"
   },
-  "update_notification": {
-    "title": "Alpha 测试更新",
-    "welcome_title": "欢迎参与 Alpha 测试！🎉",
-    "alpha_message": "感谢您参与我们的 Alpha 测试阶段！我们很高兴您能来到这里，您的反馈非常宝贵。",
-    "features_title": "最新功能：",
-    "feature_1": "增强的聊天体验和改进的 AI 回复",
-    "feature_2": "全新的角色创建工具和自定义选项",
-    "feature_3": "错误修复和性能改进",
-    "feedback_message": "发现 bug 或有建议？点击旗帜图标报告问题！",
-    "got_it": "知道了！"
-  },
   "onboarding": {
     "step_count": "第 {{current}} 步，共 {{total}} 步",
     "skip": "跳过引导",

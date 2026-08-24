@@ -367,6 +367,19 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   // Width is now controlled entirely by parent Layout; child fills available space.
   // (Bug fix) Removed internal fixed width that prevented desktop toggle from hiding the sidebar.
 
+  // Shared style for the pop-out dropdown items (profile menu & create-content menu).
+  // Roomier on desktop; larger tap targets on mobile so thumbs can hit items easily.
+  const dropdownItemStyle = {
+    color: '#232323',
+    background: 'transparent',
+    transition: 'background 0.12s, color 0.12s',
+    fontSize: isMobile ? '0.95rem' : '0.9rem',
+    padding: isMobile ? '0.85rem 1rem' : '0.7rem 1rem',
+    whiteSpace: 'normal',
+    wordWrap: 'break-word',
+    lineHeight: 1.4,
+  };
+
   return (
     <aside
       className="d-flex flex-column h-100"
@@ -629,7 +642,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
           title={t('sidebar.create_tooltip')}>
             <button
               className={`fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center${createOpen ? ' active' : ''}`}
-              style={{ fontSize: '0.86rem', letterSpacing: '0.4px', background: createOpen ? '#dbeafe' : '#fff', color: '#232323', borderRadius: 19, padding: '9px 0', border: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 700, transition: 'background 0.2s' }}
+              style={{ fontSize: isMobile ? '0.95rem' : '0.86rem', letterSpacing: '0.4px', background: createOpen ? '#dbeafe' : '#fff', color: '#232323', borderRadius: 19, padding: isMobile ? '12px 0' : '9px 0', border: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 700, transition: 'background 0.2s' }}
               onClick={() => setCreateOpen(v => !v)}
               onMouseEnter={e => { if (!createOpen) e.currentTarget.style.background = '#f5f6fa'; }}
               onMouseLeave={e => { if (!createOpen) e.currentTarget.style.background = '#fff'; }}
@@ -715,17 +728,18 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               top: isMobile ? '100%' : 0,
               marginTop: isMobile ? '0.25rem' : 0,
               marginLeft: isMobile ? 0 : '0.5rem',
-              minWidth: isMobile ? '100%' : 160,
+              minWidth: isMobile ? '100%' : 200,
               maxWidth: isMobile ? '100%' : 'none',
               width: isMobile ? '100%' : 'auto',
-              fontSize: '0.86rem',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
+              fontSize: isMobile ? '0.95rem' : '0.9rem',
+              padding: '0.5rem',
+              boxShadow: '0 4px 18px rgba(0,0,0,0.12)'
             }}
           >
             <li>
               <button
                 className="dropdown-item rounded-3 fw-bold"
-                style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem', whiteSpace: 'normal', wordWrap: 'break-word' }}
+                style={dropdownItemStyle}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { 
@@ -737,10 +751,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 <i className="bi bi-person-plus me-2"></i> {t('sidebar.create_character')}
               </button>
             </li>
+            <li className="dropdown-divider" style={{ borderTop: '1px solid rgba(35, 35, 35, 0.09)', margin: '0.3rem 0.4rem' }} />
             <li>
               <button
                 className="dropdown-item rounded-3 fw-bold"
-                style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem', whiteSpace: 'normal', wordWrap: 'break-word' }}
+                style={dropdownItemStyle}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { 
@@ -752,10 +767,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 <i className="bi bi-easel2 me-2"></i> {t('sidebar.create_scene')}
               </button>
             </li>
+            <li className="dropdown-divider" style={{ borderTop: '1px solid rgba(35, 35, 35, 0.09)', margin: '0.3rem 0.4rem' }} />
             <li>
               <button
                 className="dropdown-item rounded-3 fw-bold"
-                style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.86rem', whiteSpace: 'normal', wordWrap: 'break-word' }}
+                style={dropdownItemStyle}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { 
@@ -783,7 +799,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               <h6 className="fw-bold text-center mb-2" style={{ fontSize: '0.85rem', color: '#736B92' }}>
                 {t('sidebar.empty_state_title')}
               </h6>
-              <div className="d-flex flex-column gap-2 mb-3" style={{ fontSize: '0.75rem', color: '#6c757d' }}>
+              <div className="d-flex flex-column gap-2" style={{ fontSize: '0.75rem', color: '#6c757d' }}>
                 <div className="d-flex align-items-start gap-2">
                   <span style={{ color: '#736B92' }}>→</span>
                   <span>{t('sidebar.empty_state_step1')}</span>
@@ -797,25 +813,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                   <span>{t('sidebar.empty_state_step3')}</span>
                 </div>
               </div>
-              <button
-                className="btn btn-sm w-100 fw-bold"
-                style={{ 
-                  background: '#736B92', 
-                  color: '#fff', 
-                  fontSize: '0.75rem',
-                  borderRadius: '12px',
-                  padding: '0.4rem 0.8rem',
-                  border: 'none',
-                  transition: 'all 0.2s'
-                }}
-                onClick={() => {
-                  handleNavigate('/browse/popular');
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = '#5d5675'}
-                onMouseLeave={e => e.currentTarget.style.background = '#736B92'}
-              >
-                {t('sidebar.browse_characters')}
-              </button>
             </div>
           ) : (
             <>
@@ -1207,14 +1204,15 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 left: 0,
                 right: 0,
                 bottom: '100%',
-                fontSize: '0.8rem',
+                fontSize: isMobile ? '0.95rem' : '0.9rem',
+                padding: '0.5rem',
                 maxWidth: '100%'
               }}
             >
               <li>
                 <button
                   className="dropdown-item rounded-3 fw-bold"
-                  style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem', whiteSpace: 'normal', wordWrap: 'break-word' }}
+                  style={dropdownItemStyle}
                   onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                   onClick={() => { 
@@ -1225,26 +1223,30 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                   <i className="bi bi-person-circle me-2"></i> {t('sidebar.profile')}
                 </button>
               </li>
+              <li className="dropdown-divider" style={{ borderTop: '1px solid rgba(35, 35, 35, 0.09)', margin: '0.3rem 0.4rem' }} />
               {userData?.is_admin && (
-                <li>
-                  <button
-                    className="dropdown-item rounded-3 fw-bold"
-                    style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem', whiteSpace: 'normal', wordWrap: 'break-word' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
-                    onClick={() => { 
-                      setProfileOpen(false); 
-                      handleNavigate("/admin"); 
-                    }}
-                  >
-                    <i className="bi bi-shield-lock me-2"></i> {t('sidebar.admin_panel')}
-                  </button>
-                </li>
+                <>
+                  <li>
+                    <button
+                      className="dropdown-item rounded-3 fw-bold"
+                      style={dropdownItemStyle}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
+                      onClick={() => { 
+                        setProfileOpen(false); 
+                        handleNavigate("/admin"); 
+                      }}
+                    >
+                      <i className="bi bi-shield-lock me-2"></i> {t('sidebar.admin_panel')}
+                    </button>
+                  </li>
+                  <li className="dropdown-divider" style={{ borderTop: '1px solid rgba(35, 35, 35, 0.09)', margin: '0.3rem 0.4rem' }} />
+                </>
               )}
               <li>
                 <button
                   className="dropdown-item rounded-3 fw-bold"
-                  style={{ color: '#232323', background: 'transparent', transition: 'background 0.12s, color 0.12s', fontSize: '0.8rem', whiteSpace: 'normal', wordWrap: 'break-word' }}
+                  style={dropdownItemStyle}
                   onMouseEnter={e => { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                   onClick={() => { setProfileOpen(false); handleLogout(); }}

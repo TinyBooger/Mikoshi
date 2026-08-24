@@ -217,6 +217,10 @@ export default function NotificationsPage() {
                   required
                   placeholder="Main message to display to users"
                 />
+                <div className="form-text">
+                  To add a clickable button, embed <code>[label](/path)</code> in the message, e.g.{' '}
+                  <code>[去填写邀请码](/profile?tab=invite)</code>.
+                </div>
               </div>
 
               <div className="mb-3">
