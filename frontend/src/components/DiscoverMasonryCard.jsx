@@ -294,7 +294,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
                   boxShadow: '0 1px 5px rgba(146, 98, 19, 0.35)',
                 }}
               >
-                万字
+                进阶
               </span>
               {isAdvancedBadgeHovered && (
                 <span
@@ -314,7 +314,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
                     pointerEvents: 'none',
                   }}
                 >
-                  该角色有着更丰富的细节
+                  进阶角色，拥有更丰富的细节
                 </span>
               )}
             </div>

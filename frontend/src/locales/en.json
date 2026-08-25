@@ -376,7 +376,6 @@
   "topbar": {
     "show_sidebar": "Show sidebar",
     "hide_sidebar": "Hide sidebar",
-    "show_character_sidebar": "Show character sidebar",
     "hide_character_sidebar": "Hide character sidebar",
     "search_placeholder": "Search characters...",
     "suggestion_count": "({{count}})",
@@ -553,11 +552,6 @@
     "save": "保存"
   },
   "confirm": {
-    "delete_chat": {
-      "title": "Delete chat",
-      "message": "Are you sure you want to delete this chat?"
-    }
-    ,
     "delete_scene": {
       "title": "Delete scene",
       "message": "Are you sure you want to delete this scene?"

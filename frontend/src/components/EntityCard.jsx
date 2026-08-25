@@ -41,6 +41,7 @@ export default function EntityCard({
   const [likeCount, setLikeCount] = useState(() => typeof entity?.likes === 'number' ? entity.likes : 0);
   const [isLikeLoading, setIsLikeLoading] = useState(false);
   const [isLikeHovered, setIsLikeHovered] = useState(false);
+  const [isAdvancedBadgeHovered, setIsAdvancedBadgeHovered] = useState(false);
   const navigate = useNavigate();
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 600);
@@ -132,6 +133,7 @@ export default function EntityCard({
 
   const clickSuppressed = disableClick;
   const isOwnPersona = type === 'persona' && !!(userData && String(userData.id) === String(creator_id));
+  const isAdvancedCharacter = type === 'character' && entity?.context_label === 'advanced';
 
   useEffect(() => {
     setIsPersonaAdded(isOwnPersona || !!entity?.liked);
@@ -304,6 +306,51 @@ export default function EntityCard({
         )}
         {/* Status badges in top-right corner */}
         <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4, zIndex: 2 }}>
+          {isAdvancedCharacter && (
+            <div
+              style={{ position: 'relative', display: 'inline-flex' }}
+              onMouseEnter={() => setIsAdvancedBadgeHovered(true)}
+              onMouseLeave={() => setIsAdvancedBadgeHovered(false)}
+            >
+              <span
+                style={{
+                  background: 'linear-gradient(135deg, #F8E39A 0%, #E1B755 45%, #C88A1B 100%)',
+                  color: '#4A3210',
+                  fontSize: '0.58rem',
+                  padding: '2px 6px',
+                  borderRadius: '999px',
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  border: '1px solid rgba(255, 245, 203, 0.9)',
+                  letterSpacing: '0.3px',
+                  boxShadow: '0 1px 5px rgba(146, 98, 19, 0.35)',
+                }}
+              >
+                进阶
+              </span>
+              {isAdvancedBadgeHovered && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    right: 0,
+                    whiteSpace: 'nowrap',
+                    background: 'rgba(35, 27, 10, 0.95)',
+                    color: '#F7E6B5',
+                    fontSize: '0.64rem',
+                    lineHeight: 1.2,
+                    padding: '0.28rem 0.45rem',
+                    borderRadius: '0.35rem',
+                    border: '1px solid rgba(248, 227, 154, 0.4)',
+                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.25)',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  进阶角色，拥有更丰富的细节
+                </span>
+              )}
+            </div>
+          )}
           {is_public === false && (
             <span
               title={t('entity_card.private') || 'Private'}

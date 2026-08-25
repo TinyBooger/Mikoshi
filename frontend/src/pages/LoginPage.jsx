@@ -142,6 +142,11 @@ export default function LoginPage() {
     return () => clearTimeout(timer);
   }, [activeTab]);
 
+  // 阿里云验证码2.0官方文档说明：
+  // 1. 验证码实例仅提供 show() / hide() / startTracelessVerification() 方法，没有 reload() 方法；
+  // 2. 如业务需要重新进行验证码验证，需重新调用 initAliyunCaptcha 重新初始化验证码。
+  // 因此这里在验证通过并完成业务处理后主动重新初始化，避免第二次点击"获取验证码"时
+  // 弹出的是上一次已"验证通过"的旧实例（旧实例不会再触发 success 回调，短信也就无法发送）。
   const initPhoneCaptcha = () => {
     if (phoneCaptchaInitialized.current) return;
     if (!window.initAliyunCaptcha) return;
@@ -164,6 +169,10 @@ export default function LoginPage() {
         } else {
           if (toast && toast.show) toast.show(result.message || '发送失败', { type: 'error' });
         }
+        // 官方文档：如业务需要重新进行验证码验证，调用 initAliyunCaptcha 重新初始化验证码，
+        // 确保下一次点击时弹出的是全新的一道验证码
+        phoneCaptchaInitialized.current = false;
+        initPhoneCaptcha();
       },
       fail: (failParams) => {
         console.error("验证码验证失败", failParams);
@@ -197,6 +206,9 @@ export default function LoginPage() {
         setPasswordCaptchaVerified(true);
         setPasswordCaptchaParam(captchaVerifyParam);
         await handlePasswordLogin(emailRef.current, passwordRef.current);
+        // 官方文档：如业务需要重新进行验证码验证，调用 initAliyunCaptcha 重新初始化验证码
+        passwordCaptchaInitialized.current = false;
+        initPasswordCaptcha();
       },
       fail: (failParams) => {
         console.error("密码登录验证码失败", failParams);
@@ -258,35 +270,15 @@ export default function LoginPage() {
     setCaptchaParam(null);
     setPasswordCaptchaVerified(false);
     setPasswordCaptchaParam(null);
-    
-    // Aliyun Captcha SDK 实例可能没有 reset() 方法，
-    // 安全地尝试 reload() 或重置初始化状态让 useEffect 重新创建
-    if (captchaRef.current) {
-      try {
-        if (typeof captchaRef.current.reset === 'function') {
-          captchaRef.current.reset();
-        } else if (typeof captchaRef.current.reload === 'function') {
-          captchaRef.current.reload();
-        }
-      } catch (e) {
-        console.warn('Failed to reset phone captcha:', e);
-      }
-      captchaRef.current = null;
-      phoneCaptchaInitialized.current = false;
-    }
-    if (passwordCaptchaRef.current) {
-      try {
-        if (typeof passwordCaptchaRef.current.reset === 'function') {
-          passwordCaptchaRef.current.reset();
-        } else if (typeof passwordCaptchaRef.current.reload === 'function') {
-          passwordCaptchaRef.current.reload();
-        }
-      } catch (e) {
-        console.warn('Failed to reset password captcha:', e);
-      }
-      passwordCaptchaRef.current = null;
-      passwordCaptchaInitialized.current = false;
-    }
+
+    // 官方文档：重新验证需重新调用 initAliyunCaptcha 重新初始化验证码。
+    // 重置 initialized 标志后重新初始化，让下一次验证弹出全新的一道验证码；
+    // 若对应 Tab 尚未挂载（按钮不在 DOM 中），初始化函数会安全返回，
+    // 待切换 Tab 时由 useEffect 完成初始化。
+    phoneCaptchaInitialized.current = false;
+    initPhoneCaptcha();
+    passwordCaptchaInitialized.current = false;
+    initPasswordCaptcha();
   };
 
   return (

@@ -170,6 +170,10 @@ export default function ChatPage() {
   const [characterModal, setCharacterModal] = useState({ show: false });
   const [personaModal, setPersonaModal] = useState({ show: false });
   const [initModal, setInitModal] = useState(false);
+  // Heads-up shown to free users before starting a chat with an advanced
+  // character (long description ⇒ higher token/point consumption).
+  const [advancedChatConfirm, setAdvancedChatConfirm] = useState(false);
+  const pendingAdvancedChatStartRef = useRef(null);
 
   // Loading state for initial data fetch
   const [initLoading, setInitLoading] = useState(false);
@@ -563,6 +567,11 @@ export default function ChatPage() {
       setServerContextWindowUsage(null);
       isNewChat.current = true;
       setInitModal(false);
+      // Dismiss the advanced-character confirm if the route changes while it
+      // is open, so a stale confirm can never start the old character's chat
+      // in a new context.
+      setAdvancedChatConfirm(false);
+      pendingAdvancedChatStartRef.current = null;
       initialized.current = false;
     }
 
@@ -784,6 +793,22 @@ export default function ChatPage() {
   };
 
   const startNewChat = async (fetchedData) => {
+    const { character } = fetchedData || {};
+
+    // Free users starting a chat with an advanced character (long description
+    // ⇒ higher token/point consumption) get a heads-up before the chat begins.
+    // This fires after character data has loaded but before the first greeting
+    // message is generated/sent.
+    if (!isProUser && character?.context_label === 'advanced') {
+      pendingAdvancedChatStartRef.current = fetchedData;
+      setAdvancedChatConfirm(true);
+      return;
+    }
+
+    await proceedStartNewChat(fetchedData);
+  };
+
+  const proceedStartNewChat = async (fetchedData) => {
     const { character, scene, persona } = fetchedData || {};
     const sys = buildSystemPromptMessage(character, scene, persona);
 
@@ -852,6 +877,24 @@ export default function ChatPage() {
       };
     }
     setMessages(ensureMessageIds(greet ? [sys, greet] : [sys]));
+  };
+
+  const handleAdvancedChatConfirm = () => {
+    setAdvancedChatConfirm(false);
+    const pending = pendingAdvancedChatStartRef.current;
+    pendingAdvancedChatStartRef.current = null;
+    if (pending) {
+      proceedStartNewChat(pending);
+    }
+  };
+
+  const handleAdvancedChatExit = () => {
+    setAdvancedChatConfirm(false);
+    pendingAdvancedChatStartRef.current = null;
+    // Exiting means not starting this chat at all — go back to where the
+    // user came from. Falls back to the chat page's default state if there
+    // is no history entry.
+    navigate(-1);
   };
 
   const sendChatTurn = async ({
@@ -1583,7 +1626,7 @@ export default function ChatPage() {
                 setShowChatSettingsHint(false);
                 onToggleCharacterSidebar();
               }}
-              aria-label={characterSidebarVisible ? t('topbar.hide_character_sidebar') : t('topbar.show_character_sidebar')}
+              aria-label={characterSidebarVisible ? '隐藏角色侧边栏' : '显示角色侧边栏'}
               style={{
                 border: 'none',
                 background: 'transparent',
@@ -1998,10 +2041,19 @@ export default function ChatPage() {
       />
       <ConfirmModal
         show={confirmModal.show}
-        title={t('confirm.delete_chat.title')}
-        message={t('confirm.delete_chat.message')}
+        title="删除会话"
+        message="您确定要删除此会话吗？"
         onConfirm={handleDeleteConfirmed}
         onCancel={() => setConfirmModal({ show: false, chatId: null })}
+      />
+      <ConfirmModal
+        show={advancedChatConfirm}
+        title="进阶角色提醒"
+        message="该角色是进阶角色，点数消耗量大，推荐Pro用户使用"
+        confirmText="继续对话"
+        cancelText="退出"
+        onConfirm={handleAdvancedChatConfirm}
+        onCancel={handleAdvancedChatExit}
       />
     </PageWrapper>
   );
