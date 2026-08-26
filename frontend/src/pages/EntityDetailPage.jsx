@@ -79,7 +79,7 @@ export default function EntityDetailPage() {
       })
       .catch(err => {
         console.error(err);
-        toast.show(t('entity_detail.fetch_error'), { type: 'error' });
+        toast.show('加载实体失败', { type: 'error' });
         navigate('/');
       });
   }, [type, id, sessionToken, navigate]);
@@ -191,13 +191,13 @@ export default function EntityDetailPage() {
       setLiked(prevLiked);
       setEntity((prev) => (prev ? { ...prev, likes: prevLikes } : prev));
       console.error(err);
-      toast.show(t('entity_detail.like_error'), { type: 'error' });
+      toast.show('点赞失败', { type: 'error' });
     }
   };
 
   const handleEdit = () => {
     if (!entity || String(userData?.id) !== String(entity.creator_id)) {
-      toast.show(t('entity_detail.not_authorized_edit'), { type: 'error' });
+      toast.show('您只能编辑自己创建的内容。', { type: 'error' });
       return;
     }
     if (type === 'character') {
@@ -328,17 +328,17 @@ export default function EntityDetailPage() {
               <i className="bi bi-eye-slash-fill" style={{ color: '#d97706', fontSize: '1.1rem', flexShrink: 0, marginTop: '2px' }}></i>
               <div className="flex-grow-1">
                 <div style={{ fontWeight: 700, color: '#92400e', marginBottom: '2px' }}>
-                  {t('entity_detail.restricted_title', '内容可见性已限制')}
+                  内容可见性已限制
                 </div>
                 <div style={{ fontSize: '0.88rem', color: '#78350f', marginBottom: isOwner && hasPending ? '0.6rem' : 0 }}>
                   {isOwner
-                    ? t('entity_detail.restricted_owner_body', '您的内容因违反社区规范，已被限制在公开推荐及搜索中显示。仍可通过本链接访问，但不会出现在浏览或推荐页面中。点击“编辑”可修改内容并提交申诉。')
-                    : t('entity_detail.restricted_visitor_body', '此内容目前不在公开推荐列表中，但可通过此链接访问。')}
+                    ? '您的内容因违反社区规范，已被限制在公开推荐及搜索中显示。仍可通过本链接访问，但不会出现在浏览或推荐页面中。点击“编辑”可修改内容并提交申诉。'
+                    : '此内容目前不在公开推荐列表中，但可通过此链接访问。'}
                 </div>
                 {isOwner && hasPending && (
                   <span className="badge bg-secondary" style={{ fontSize: '0.82rem' }}>
                     <i className="bi bi-hourglass-split me-1"></i>
-                    {t('entity_detail.appeal_pending', '申诉审核中')}
+                    申诉审核中
                   </span>
                 )}
               </div>
@@ -355,17 +355,17 @@ export default function EntityDetailPage() {
               <i className="bi bi-ban" style={{ color: '#e11d48', fontSize: '1.1rem', flexShrink: 0, marginTop: '2px' }}></i>
               <div className="flex-grow-1">
                 <div style={{ fontWeight: 700, color: '#9f1239', marginBottom: '2px' }}>
-                  {t('entity_detail.takedown_title', '内容已被下架')}
+                  内容已被下架
                 </div>
                 <div style={{ fontSize: '0.88rem', color: '#881337', marginBottom: isOwner && hasPending ? '0.6rem' : 0 }}>
                   {isOwner
-                    ? t('entity_detail.takedown_owner_body', '您的内容因违反社区规范已被下架，其他用户无法访问。点击“编辑”可修改内容并提交申诉，由管理员审核。')
-                    : t('entity_detail.takedown_body', '此内容因违反社区规范已被下架，其他用户无法访问。')}
+                    ? '您的内容因违反社区规范已被下架，其他用户无法访问。点击“编辑”可修改内容并提交申诉，由管理员审核。'
+                    : '此内容因违反社区规范已被下架，其他用户无法访问。'}
                 </div>
                 {isOwner && hasPending && (
                   <span className="badge bg-secondary" style={{ fontSize: '0.82rem' }}>
                     <i className="bi bi-hourglass-split me-1"></i>
-                    {t('entity_detail.appeal_pending', '申诉审核中')}
+                    申诉审核中
                   </span>
                 )}
               </div>
@@ -410,7 +410,7 @@ export default function EntityDetailPage() {
                       onMouseLeave={() => setIsForkableBadgeHovered(false)}
                     >
                       <span
-                        title={t('entity_card.forkable') || 'Forkable'}
+                        title="允许二创"
                         style={{
                           background: 'rgba(34, 197, 94, 0.9)',
                           color: '#fff',
@@ -444,7 +444,7 @@ export default function EntityDetailPage() {
                             pointerEvents: 'none',
                           }}
                         >
-                          {t('entity_card.forkable') || 'Forkable'}
+                          允许二创
                         </span>
                       )}
                     </div>
@@ -487,14 +487,14 @@ export default function EntityDetailPage() {
                       transition: 'color 0.18s ease, text-decoration-color 0.18s ease'
                     }}
                   >
-                    {entity.creator_name || t('entity_detail.unknown')}
+                    {entity.creator_name || '未知'}
                   </span>
                 </div>
                 {/* Display forked_from information */}
                 {entity.forked_from_id && entity.forked_from_name && (
                   <p className="text-muted mb-0" style={{ fontSize: '0.85rem' }}>
                     <i className="bi bi-code-fork me-1"></i>
-                    {t('entity_detail.forked_from')} {entity.forked_from_name}
+                    基于此内容进行二次创作：{entity.forked_from_name}
                   </p>
                 )}
                 {/* Follow button — visible when not the owner */}
@@ -532,7 +532,7 @@ export default function EntityDetailPage() {
                 )}
               </div>
               {!entity.is_public && (
-                <span className="badge bg-secondary ms-3 mt-1">{t('entity_detail.private')}</span>
+                <span className="badge bg-secondary ms-3 mt-1">私密</span>
               )}
             </div>
 
@@ -570,7 +570,7 @@ export default function EntityDetailPage() {
               <button
                 onClick={handleLike}
                 className="d-flex align-items-center"
-                aria-label={liked ? t('entity_detail.unlike', 'Unlike') : t('entity_detail.like', 'Like')}
+                aria-label={liked ? '取消点赞' : '点赞'}
                 style={{
                   gap: '6px',
                   padding: '6px 10px',
@@ -646,29 +646,34 @@ export default function EntityDetailPage() {
                     }}
                   >
                     <i className="bi bi-chat-dots me-2"></i>
-                    {t('entity_detail.start_chat', 'Start Chat')}
+                    开始聊天
                   </PrimaryButton>
                 )}
 
-                <SecondaryButton
-                  onClick={handleFork}
-                  disabled={!entity.is_forkable}
-                  title={!entity.is_forkable ? t('entity_detail.not_forkable') : undefined}
-                  style={!entity.is_forkable ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
-                >
-                  <i className="bi bi-diagram-3-fill me-2"></i>
-                  {t('entity_detail.fork')}
-                </SecondaryButton>
+                <div className="d-flex flex-column" style={{ gap: '3px' }}>
+                  <SecondaryButton
+                    onClick={handleFork}
+                    disabled={!entity.is_forkable}
+                    title={!entity.is_forkable ? '该条目不允许二创' : undefined}
+                    style={!entity.is_forkable ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+                  >
+                    <i className="bi bi-diagram-3-fill me-2"></i>
+                    复制并编辑
+                  </SecondaryButton>
+                  <span className="text-muted" style={{ fontSize: '0.72rem', maxWidth: '260px' }}>
+                    基于此角色创建二次创作版本，自动标注原作者及原角色。
+                  </span>
+                </div>
 
                 {isOwner && (
                   <SecondaryButton
                     onClick={handleEdit}
                     disabled={disableEditForAppealReview}
-                    title={disableEditForAppealReview ? t('entity_detail.appeal_pending_disable_edit', '申诉审核中，暂时无法再次提交编辑申诉') : undefined}
+                    title={disableEditForAppealReview ? '申诉审核中，暂时无法再次提交编辑申诉' : undefined}
                     style={disableEditForAppealReview ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
                   >
                     <i className="bi bi-pencil me-2"></i>
-                    {t('entity_detail.edit', 'Edit')}
+                    编辑
                   </SecondaryButton>
                 )}
                 {!isOwner && sessionToken && (
@@ -714,8 +719,8 @@ export default function EntityDetailPage() {
               <div style={sectionTitleWrapStyle}>
                 <h3 style={sectionTitleStyle}>
                   {type === 'character' 
-                    ? t('entity_detail.persona') 
-                    : t('entity_detail.description')}
+                    ? '设定'
+                    : '描述'}
                 </h3>
               </div>
               <p style={sectionBodyStyle}>
@@ -733,7 +738,7 @@ export default function EntityDetailPage() {
                 <div className="card-body">
                   <div style={sectionTitleWrapStyle}>
                     <h3 style={sectionTitleStyle}>
-                      {t('entity_detail.greeting', 'Greeting')}
+                      问候语
                     </h3>
                   </div>
                   {entity.greetings.filter(g => g !== '[IMPROVISE_GREETING]').map((g, idx) => (
@@ -750,7 +755,7 @@ export default function EntityDetailPage() {
                 <div className="card-body">
                   <div style={sectionTitleWrapStyle}>
                     <h3 style={sectionTitleStyle}>
-                      {t('entity_detail.greeting', 'Greeting')}
+                      问候语
                     </h3>
                   </div>
                   <p style={sectionBodyStyle}>
@@ -765,7 +770,7 @@ export default function EntityDetailPage() {
                 <div className="card-body">
                   <div style={sectionTitleWrapStyle}>
                     <h3 style={sectionTitleStyle}>
-                      {t('entity_detail.sample_dialogue', 'Sample Dialogue')}
+                      示例对话
                     </h3>
                   </div>
                   <p style={sectionBodyStyle}>
@@ -780,7 +785,7 @@ export default function EntityDetailPage() {
                 <div className="card-body">
                   <div style={sectionTitleWrapStyle}>
                     <h3 style={sectionTitleStyle}>
-                      {t('entity_detail.long_description', '详细人物设定')}
+                      详细人物设定
                     </h3>
                   </div>
                   <p style={sectionBodyStyle}>
@@ -819,16 +824,16 @@ export default function EntityDetailPage() {
               fontSize: '0.9rem',
             }}
           >
-            <span><i className="bi bi-clock-history me-2"></i>{t('entity_detail.appeal_history_title', '申诉历史')} ({contentAppeals.length})</span>
+            <span><i className="bi bi-clock-history me-2"></i>申诉历史 ({contentAppeals.length})</span>
             <i className={`bi ${showAppealHistory ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i>
           </button>
           {showAppealHistory && (
             <div className="d-flex flex-column gap-3">
               {contentAppeals.map((appeal) => {
                 const statusColors = {
-                  pending:  { bg: '#eff6ff', border: '#3b82f6', badge: 'bg-primary', label: t('entity_detail.appeal_status_pending',  '审核中') },
-                  approved: { bg: '#f0fdf4', border: '#22c55e', badge: 'bg-success', label: t('entity_detail.appeal_status_approved', '已通过') },
-                  rejected: { bg: '#fff1f2', border: '#f43f5e', badge: 'bg-danger',  label: t('entity_detail.appeal_status_rejected', '未通过') },
+                  pending:  { bg: '#eff6ff', border: '#3b82f6', badge: 'bg-primary', label: '审核中' },
+                  approved: { bg: '#f0fdf4', border: '#22c55e', badge: 'bg-success', label: '已通过' },
+                  rejected: { bg: '#fff1f2', border: '#f43f5e', badge: 'bg-danger',  label: '未通过' },
                 };
                 const sc = statusColors[appeal.status] || statusColors.pending;
                 return (
@@ -843,17 +848,17 @@ export default function EntityDetailPage() {
                       <span className={`badge ${sc.badge}`}>{sc.label}</span>
                     </div>
                     <div style={{ fontSize: '0.88rem', marginBottom: '0.4rem' }}>
-                      <strong>{t('entity_detail.appeal_reason_label', '申诉理由')}：</strong>{appeal.appeal_reason}
+                      <strong>申诉理由：</strong>{appeal.appeal_reason}
                     </div>
                     {appeal.admin_reply && (
                       <div style={{ fontSize: '0.88rem', color: '#475569' }}>
-                        <strong>{t('entity_detail.appeal_admin_reply', '管理员回复')}：</strong>{appeal.admin_reply}
+                        <strong>管理员回复：</strong>{appeal.admin_reply}
                       </div>
                     )}
                     {appeal.snapshot && (
                       <details style={{ marginTop: '0.6rem' }}>
                         <summary style={{ fontSize: '0.82rem', color: '#64748b', cursor: 'pointer' }}>
-                          {t('entity_detail.appeal_snapshot', '提交时内容快照')}
+                          提交时内容快照
                         </summary>
                         <pre style={{ fontSize: '0.78rem', background: '#f8fafc', borderRadius: 6, padding: '0.5rem', marginTop: '0.4rem', overflow: 'auto', maxHeight: 200 }}>
                           {JSON.stringify(appeal.snapshot, null, 2)}
@@ -876,8 +881,8 @@ export default function EntityDetailPage() {
       />
       <ConfirmModal
         show={showForkAdvancedConfirm}
-        title={t('entity_detail.fork_advanced_confirm_title', '参考创作进阶角色')}
-        message={t('entity_detail.fork_advanced_confirm_body', '该角色包含详细人物设定和进阶配置，这些内容仅限 Pro 用户使用，不会被复制到您的版本。是否继续？')}
+        title="二次创作进阶角色"
+        message="该角色包含详细人物设定和进阶配置，这些内容仅限 Pro 用户使用，不会被复制到您的版本。是否继续？"
         confirmText={t('common.confirm', '继续')}
         cancelText={t('common.cancel', '取消')}
         onConfirm={() => { setShowForkAdvancedConfirm(false); doForkNavigate(); }}

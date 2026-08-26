@@ -92,7 +92,7 @@ export default function InfoCard({
                 transition: 'background-color 0.16s ease, color 0.16s ease',
                 marginBottom: 2,
               }}
-              title={resolvedCreatorName || t('entity_card.unknown')}
+              title={resolvedCreatorName || '未知'}
               onClick={onCreatorClick}
               onMouseEnter={() => setCreatorHover && setCreatorHover(true)}
               onMouseLeave={() => setCreatorHover && setCreatorHover(false)}
@@ -115,7 +115,7 @@ export default function InfoCard({
                   minWidth: 0
                 }}
               >
-                {resolvedCreatorName || t('entity_card.unknown')}
+                {resolvedCreatorName || '未知'}
               </span>
             </div>
             {typeof resolvedChatCount === 'number' && (

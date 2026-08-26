@@ -103,11 +103,11 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
   }
 
   // Creator name logic
-  let creatorDisplay = t('entity_card.unknown');
+  let creatorDisplay = '未知';
   if (creator_name) {
     creatorDisplay = typeof creator_name === 'object' ? creator_name.name : creator_name;
   } else if (entity.creator_name) {
-    creatorDisplay = entity.creator_name || t('entity_card.unknown');
+    creatorDisplay = entity.creator_name || '未知';
   }
 
   // Width (slightly larger desktop)
@@ -167,7 +167,7 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
         {entity.is_forkable && (
           <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 10 }}>
             <span
-              title={t('entity_card.forkable') || 'Forkable'}
+              title="允许二创"
               style={{
                 background: 'rgba(34, 197, 94, 0.95)',
                 color: '#fff',
@@ -255,7 +255,7 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
             overflow: 'hidden',
           }}
         >
-          {description || <span style={{ opacity: 0.55 }}>{t('entity_card.no_description')}</span>}
+          {description || <span style={{ opacity: 0.55 }}>暂无简介</span>}
         </div>
 
         <div
@@ -302,7 +302,7 @@ export default function SceneCard({ type, entity, onClick, disableClick = false 
             onMouseLeave={(e) => e.currentTarget.style.background = '#736B92'}
           >
             <i className="bi bi-info-circle me-1"></i>
-            {t('entity_card.view_detail')}
+            查看详情
           </button>
         )}
       </div>

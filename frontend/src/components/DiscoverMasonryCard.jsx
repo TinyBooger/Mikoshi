@@ -77,11 +77,11 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
 
   const tagAccent = getTagAccentColor(primaryTag);
 
-  let creatorDisplay = t('entity_card.unknown');
+  let creatorDisplay = '未知';
   if (creator_name) {
     creatorDisplay = typeof creator_name === 'object' ? creator_name.name : creator_name;
   } else if (entity.creator_name) {
-    creatorDisplay = entity.creator_name || t('entity_card.unknown');
+    creatorDisplay = entity.creator_name || '未知';
   }
 
   const creatorAvatarRaw =
@@ -321,7 +321,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
           )}
           {is_public === false && (
             <span
-              title={t('entity_card.private') || 'Private'}
+              title="私密"
               style={{
                 background: 'rgba(107, 114, 128, 0.9)',
                 color: '#fff',
@@ -337,7 +337,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
           )}
           {is_forkable && (
             <span
-              title={t('entity_card.forkable') || 'Forkable'}
+              title="允许二创"
               style={{
                 background: 'rgba(34, 197, 94, 0.9)',
                 color: '#fff',
@@ -400,7 +400,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
                 whiteSpace: 'nowrap',
               }}>
                 <i className="bi bi-diagram-3-fill" style={{ fontSize: '0.5rem', marginRight: '2px' }}></i>
-                {t('entity_card.forked')}
+                二创
               </span>
             )}
           </h5>
@@ -419,7 +419,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
             color: '#a0a0a0',
           }}
         >
-          {description || t('entity_card.no_description')}
+          {description || '暂无简介'}
         </p>
 
         <div className="d-flex align-items-center justify-content-between" style={{ fontSize: isMobile ? '0.63rem' : '0.68rem', color: '#6c757d', gap: isMobile ? '0.4rem' : '0.5rem', lineHeight: 1.4 }}>
@@ -481,7 +481,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
               onClick={handleAddPersona}
               onMouseEnter={() => setIsAddPersonaHovered(true)}
               onMouseLeave={() => setIsAddPersonaHovered(false)}
-              title={isPersonaAdded ? t('entity_card.added_to_personas') : t('entity_card.add_to_personas')}
+              title={isPersonaAdded ? '已添加人设' : '添加到我的人设'}
               disabled={isAddPersonaLoading || isOwnPersona}
               style={{
                 width: isMobile ? '28px' : '30px',
@@ -520,7 +520,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
                 onClick={handleLike}
                 onMouseEnter={() => setIsLikeHovered(true)}
                 onMouseLeave={() => setIsLikeHovered(false)}
-                title={isLiked ? t('entity_card.unlike') : t('entity_card.like')}
+                title={isLiked ? '取消点赞' : '点赞'}
                 disabled={isLikeLoading}
                 style={{
                   background: 'transparent',
@@ -579,7 +579,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
             }}
           >
             <i className="bi bi-info-circle me-1"></i>
-            {t('entity_card.view_detail')}
+            查看详情
           </button>
         )}
       </div>

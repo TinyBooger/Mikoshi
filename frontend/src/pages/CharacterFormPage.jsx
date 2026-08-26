@@ -597,7 +597,7 @@ export default function CharacterFormPage() {
           toast.show('内容已保存并提交申诉。');
           navigate(`/character/${id}`);
         } else {
-          toast.show(mode === 'edit' ? '角色已更新！' : mode === 'fork' ? '角色已衍生！' : '角色已创建！');
+          toast.show(mode === 'edit' ? '角色已更新！' : mode === 'fork' ? '角色已完成二次创作！' : '角色已创建！');
           navigate(mode === 'edit' ? "/profile" : "/profile");
         }
       } else {
@@ -652,7 +652,7 @@ export default function CharacterFormPage() {
             opacity: 1;
           }
         `}</style>
-          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>{isAppealMode ? '修改并申诉' : mode === 'edit' ? '编辑角色' : mode === 'fork' ? '衍生角色' : '新建角色'}</h2>
+          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>{isAppealMode ? '修改并申诉' : mode === 'edit' ? '编辑角色' : mode === 'fork' ? '二次创作角色' : '新建角色'}</h2>
 
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           <BanNotice banType={userData?.ban_type} banUntil={userData?.ban_until} context="upload" />
@@ -747,7 +747,7 @@ export default function CharacterFormPage() {
               <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.1rem', color: '#7c6abf', flexShrink: 0 }}></i>
               <div className="d-flex flex-column" style={{ gap: '2px', minWidth: 0 }}>
                 <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#7c6abf', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  参考自
+                  基于此角色进行二次创作
                 </span>
                 <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#2d2d2d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {charData.forked_from_name}
@@ -1731,14 +1731,14 @@ export default function CharacterFormPage() {
                   <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.2rem', color: '#22c55e' }}></i>
                   <div>
                     <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
-                      开源
+                      允许二次创作
                     </div>
                     <div className="text-muted" style={{ fontSize: '0.75rem' }}>
-                      允许其他用户在此基础上创作
+                      允许其他用户以此角色为基础进行二次创作，并自动标注原作者及原角色
                     </div>
                     {mode === 'fork' && (
                       <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '2px' }}>
-                        衍生作品必须保持开源
+                        二创作品必须允许二次创作
                       </div>
                     )}
                   </div>

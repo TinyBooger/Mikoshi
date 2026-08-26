@@ -99,7 +99,7 @@ def verify_phone(
     if not verify_code(phone_number, verification_code):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired verification code"
+            detail="验证码无效或已过期"
         )
     
     # 查找用户

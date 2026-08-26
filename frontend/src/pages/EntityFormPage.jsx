@@ -40,7 +40,6 @@ export default function EntityFormPage() {
       maxIntroLength: 200,
       maxTags: 20,
       apiEndpoint: 'personas',
-      expGainAction: 'create_persona',
       transactionKeyPrefix: 'persona_form',
       requiredFields: ['name', 'tags'],
     },
@@ -50,7 +49,6 @@ export default function EntityFormPage() {
       maxIntroLength: 100,
       maxTags: 20,
       apiEndpoint: 'scenes',
-      expGainAction: 'create_scene',
       transactionKeyPrefix: 'scene_form',
       requiredFields: ['name', 'description', 'tags'],
     },
@@ -360,7 +358,7 @@ export default function EntityFormPage() {
           toast.show(t(`${entityConfig.transactionKeyPrefix}.appeal_submitted`));
           navigate(`/${entityType}/${id}`);
         } else {
-          toast.show(mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.updated`) : mode === 'fork' ? t(`${entityConfig.transactionKeyPrefix}.forked`) : t(`${entityConfig.transactionKeyPrefix}.created`));
+          toast.show(mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.updated`) : mode === 'fork' ? `${entityType === 'persona' ? '自设' : '场景'}已完成二次创作！` : t(`${entityConfig.transactionKeyPrefix}.created`));
           navigate("/profile");
         }
       } else {
@@ -409,7 +407,7 @@ export default function EntityFormPage() {
           }
         `}</style>
         <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>
-          {isAppealMode ? t(`${entityConfig.transactionKeyPrefix}.appeal_title`, '修改并申诉') : mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.edit_title`) : mode === 'fork' ? t(`${entityConfig.transactionKeyPrefix}.fork_title`) : t(`${entityConfig.transactionKeyPrefix}.create_title`)}
+          {isAppealMode ? t(`${entityConfig.transactionKeyPrefix}.appeal_title`, '修改并申诉') : mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.edit_title`) : mode === 'fork' ? `二次创作${entityType === 'persona' ? '自设' : '场景'}` : t(`${entityConfig.transactionKeyPrefix}.create_title`)}
         </h2>
         
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
@@ -505,7 +503,7 @@ export default function EntityFormPage() {
               <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.1rem', color: '#7c6abf', flexShrink: 0 }}></i>
               <div className="d-flex flex-column" style={{ gap: '2px', minWidth: 0 }}>
                 <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#7c6abf', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {t(`${entityConfig.transactionKeyPrefix}.forked_from`)}
+                  基于此内容进行二次创作
                 </span>
                 <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#2d2d2d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {entityData.forked_from_name}
@@ -861,14 +859,14 @@ export default function EntityFormPage() {
                   <i className="bi bi-diagram-3-fill" style={{ fontSize: '1.2rem', color: '#22c55e' }}></i>
                   <div>
                     <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
-                      {t(`${entityConfig.transactionKeyPrefix}.forkable`) || 'Allow Forking'}
+                      允许二创
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                      {t(`${entityConfig.transactionKeyPrefix}.forkable_desc`) || 'Users can create their own versions'}
+                      允许其他用户以此内容为基础进行二次创作，并自动标注原作者及原内容
                     </div>
                     {mode === 'fork' && (
                       <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '2px' }}>
-                        {t(`${entityConfig.transactionKeyPrefix}.fork_must_stay_forkable`)}
+                        二创作品必须允许二次创作
                       </div>
                     )}
                   </div>

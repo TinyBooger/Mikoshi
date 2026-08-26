@@ -178,7 +178,7 @@ export default function SettingsPage() {
     e?.preventDefault();
     setPasswordError('');
     if (newPassword !== confirmNewPassword) {
-      setPasswordError(t('settings.passwords_no_match'));
+      setPasswordError('两次输入的密码不一致');
       return;
     }
     setChangingPassword(true);
@@ -190,10 +190,10 @@ export default function SettingsPage() {
       });
       const data = await res.json();
         if (res.ok) {
-          toast.show(data.message || t('settings.password_changed'), { type: 'info' });
+          toast.show(data.message || '密码已更改', { type: 'info' });
           setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); setShowPasswordForm(false);
         } else {
-          const msg = data.detail || data.message || t('settings.failed_change_password');
+          const msg = data.detail || data.message || '修改密码失败';
           setPasswordError(msg);
           toast.show(msg, { type: 'error' });
         }
@@ -216,10 +216,10 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.show(data.message || t('settings.email_updated'), { type: 'info' });
+        toast.show(data.message || '邮箱已更新', { type: 'info' });
         setNewEmail(''); setShowEmailForm(false);
       } else {
-        const msg = data.detail || data.message || t('settings.failed_change_email');
+        const msg = data.detail || data.message || '修改邮箱失败';
         setEmailError(msg);
         toast.show(msg, { type: 'error' });
       }
@@ -239,13 +239,13 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.show(data.message || t('settings.account_deletion_scheduled'), { type: 'info' });
+        toast.show(data.message || '账号删除申请已提交', { type: 'info' });
         // log user out locally
         logout();
         // navigate to welcome
         window.location.href = '/';
       } else {
-        toast.show(data.detail || data.message || t('settings.failed_delete_account'), { type: 'error' });
+        toast.show(data.detail || data.message || '删除账号失败', { type: 'error' });
       }
     } catch (err) {
       toast.show(t('common.network_error'), { type: 'error' });
@@ -272,7 +272,7 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.show(data.message || t('settings.code_sent'), { type: 'info' });
+        toast.show(data.message || '验证码已发送', { type: 'info' });
         startResendTimer();
       } else {
         const msg = data.detail || data.message || '发送验证码失败';
@@ -297,11 +297,11 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.show(data.message || t('settings.code_verified'), { type: 'success' });
+        toast.show(data.message || '验证成功', { type: 'success' });
         setPhoneChangeStep(2);
         setCurrentPhoneCode('');
       } else {
-        const msg = data.detail || data.message || t('settings.invalid_code');
+        const msg = data.detail || data.message || '验证码错误或已过期';
         setPhoneError(msg);
         toast.show(msg, { type: 'error' });
       }
@@ -314,7 +314,7 @@ export default function SettingsPage() {
 
   const sendCodeToNewPhone = async () => {
     if (!newPhoneNumber || !/^1[3-9]\d{9}$/.test(newPhoneNumber)) {
-      setPhoneError(t('settings.invalid_phone_format'));
+      setPhoneError('手机号格式不正确');
       return;
     }
     setSendingCode(true);
@@ -327,7 +327,7 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.show(data.message || t('settings.code_sent'), { type: 'info' });
+        toast.show(data.message || '验证码已发送', { type: 'info' });
         setPhoneChangeStep(3);
         startResendTimer();
       } else {
@@ -353,11 +353,11 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.show(data.message || t('settings.phone_change_success'), { type: 'success' });
+        toast.show(data.message || '手机号更换成功', { type: 'success' });
         setShowPhoneForm(false);
         refreshUserData();
       } else {
-        const msg = data.detail || data.message || t('settings.phone_change_failed');
+        const msg = data.detail || data.message || '更换手机号失败';
         setPhoneError(msg);
         toast.show(msg, { type: 'error' });
       }

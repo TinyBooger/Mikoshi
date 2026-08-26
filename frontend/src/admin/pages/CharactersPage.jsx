@@ -104,7 +104,7 @@ export default function CharactersPage() {
     { name: 'name', label: 'Name', type: 'text', required: true },
     { name: 'tagline', label: 'Tagline', type: 'text' },
     { name: 'is_public', label: 'Public', type: 'checkbox', helperText: 'Visible to all users' },
-    { name: 'is_forkable', label: 'Open-source (Forkable)', type: 'checkbox', helperText: 'Allow users to fork this character' },
+    { name: 'is_forkable', label: '允许二创', type: 'checkbox', helperText: '允许其他用户以此角色为基础进行二次创作' },
     { name: 'persona', label: 'Persona', type: 'textarea', rows: 5, required: true },
     { name: 'greetings', label: 'Greetings (JSON array)', type: 'textarea', rows: 3 },
     { name: 'example_messages', label: 'Example Messages', type: 'textarea', rows: 4 },

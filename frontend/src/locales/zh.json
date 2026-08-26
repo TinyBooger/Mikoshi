@@ -160,23 +160,10 @@
     "phone_change_desc_step2": "请输入您想要绑定的新手机号码。",
     "phone_change_desc_step3": "请输入发送到新手机号的验证码以完成更换。",
     "phone_change_warning": "⚠️ 重要提示：更换手机号后，您需要使用新手机号登录账号。",
-    "phone_change_success": "手机号更换成功",
-    "phone_change_failed": "更换手机号失败",
-    "code_sent": "验证码已发送",
-    "code_verified": "验证成功",
-    "invalid_code": "验证码错误或已过期",
     "phone_already_used": "该手机号已被其他账号使用",
-    "invalid_phone_format": "手机号格式不正确",
     "danger_zone": "危险操作",
     "delete_account": "删除账号",
-    "delete_account_confirm": "您确定要删除账号吗？此操作不可恢复。",
-    "passwords_no_match": "两次输入的密码不一致",
-    "email_updated": "邮箱已更新",
-    "password_changed": "密码已更改",
-    "failed_change_password": "修改密码失败",
-    "failed_change_email": "修改邮箱失败",
-    "account_deletion_scheduled": "账号删除申请已提交",
-    "failed_delete_account": "删除账号失败"
+    "delete_account_confirm": "您确定要删除账号吗？此操作不可恢复。"
   },
   "welcome": {
     "title": "欢迎来到语伴岛",
@@ -231,7 +218,6 @@
     "edit_title": "编辑自设",
     "create_title": "新建自设",
     "create_description": "自设可以用于在聊天时让 AI 知道你的身份、说话风格与偏好。",
-    "fork_title": "衍生自设",
     "name": "名称",
     "description": "描述",
     "intro": "简介",
@@ -249,7 +235,6 @@
     "name_required": "名称为必填项。",
     "updated": "自设已更新！",
     "created": "自设已创建！",
-    "forked": "自设已衍生！",
     "appeal_submitted": "内容已保存并提交申诉。",
     "deleted": "已删除自设",
     "processing": "处理中...",
@@ -273,17 +258,12 @@
     "private": "私密",
     "public_desc": "所有人可见",
     "private_desc": "仅自己可见",
-    "forkable": "开源",
-    "forkable_desc": "允许其他用户在此基础上创作",
-    "fork_must_stay_forkable": "衍生作品必须保持开源",
-    "forked_from": "参考自",
     "level_lock_notice": "该功能将在达到等级 {{level}} 后开放"
   },
   "scene_form": {
     "edit_title": "编辑场景",
     "create_title": "新建场景",
     "create_description": "场景可以用于在聊天时设定背景、氛围与故事发生环境。",
-    "fork_title": "衍生场景",
     "name": "名称",
     "description": "描述",
     "greeting": "开场白",
@@ -304,7 +284,6 @@
     "greeting_required": "请填写开场白，或者启用即兴开场白。",
     "updated": "场景已更新！",
     "created": "场景已创建！",
-    "forked": "场景已衍生！",
     "appeal_submitted": "内容已保存并提交申诉。",
     "deleted": "已删除场景",
     "processing": "处理中...",
@@ -331,10 +310,7 @@
     "public": "公开",
     "private": "私密",
     "public_desc": "所有人可见",
-    "private_desc": "仅自己可见",
-    "forkable": "开源",
-    "forkable_desc": "允许其他用户在此基础上创作",
-    "forked_from": "参考自"
+    "private_desc": "仅自己可见"
   },
   
   "common": {
@@ -551,50 +527,6 @@
       "message": "您确定要删除此角色吗？"
     }
   },
-  "entity_card": {
-    "unknown": "未知",
-    "no_description": "暂无简介",
-    "views": "浏览",
-    "likes": "点赞",
-    "private": "私密",
-    "forkable": "开源",
-    "forked": "衍生",
-    "paid": "付费",
-    "view_detail": "查看详情",
-    "add_to_personas": "添加到我的人设",
-    "added_to_personas": "已添加人设"
-  },
-  "entity_detail": {
-    "fetch_error": "加载实体失败",
-    "like_error": "点赞失败",
-    "not_authorized_edit": "您只能编辑自己创建的内容。",
-    "confirm_delete": "您确定要删除吗？",
-    "delete_success": "删除成功",
-    "delete_error": "删除失败",
-    "by": "作者",
-    "unknown": "未知",
-    "private": "私密",
-    "views": "浏览",
-    "likes": "点赞",
-    "not_forkable": "该条目不可开源",
-    "forked_from": "参考自",
-    "start_chat": "开始聊天",
-    "like": "点赞",
-    "unlike": "取消点赞",
-    "edit": "编辑",
-    "delete": "删除",
-    "forkable": "开源",
-    "persona": "设定",
-    "description": "描述",
-    "greeting": "问候语",
-    "sample_dialogue": "示例对话",
-    "fork": "参考创作",
-    "fork_advanced_confirm_title": "参考创作进阶角色",
-    "fork_advanced_confirm_body": "该角色包含详细人物设定和进阶配置，这些内容不会被复制到您的版本。是否继续？",
-    "long_description": "详细人物设定",
-    "long_description_chunks": "详细设定分段",
-    "chunk_priority": "分段"
-  },
   "terms": {
     "title": "语伴岛 用户服务协议",
     "last_updated": "最后更新",
@@ -771,56 +703,6 @@
     "replay_tour": "重播引导"
   },
 
-  "level_progress": {
-    "level_names": {
-      "L1": "新手",
-      "L2": "创作者",
-      "L3": "进阶",
-      "L4": "专业",
-      "L5": "精英",
-      "L6": "大师"
-    },
-    "unlocks": {
-      "L1": "创建角色、场景、人设",
-      "L2": "参考、私密角色",
-      "L3": "解锁模型参数高级设置",
-      "L4": "提示词控制、创作者数据",
-      "L5": "精选推荐、测试功能",
-      "L6": "创作者徽章、收益工具"
-    },
-    "details_button": "等级详情",
-    "unlocks_label": "解锁：",
-    "exp_label": "经验",
-    "next_label": "下一等级：",
-    "max_level": "已达最高等级",
-    "max_level_body": "你已达到最高等级。",
-    "keep_creating": "继续创作来保持亮点！",
-    "unlock_path": "等级路径",
-    "next_level": "下一等级",
-    "maxed": "已满级",
-    "maxed_desc": "尽享所有创作者特权",
-    "earn_exp": "获得经验的方式",
-    "rewards": {
-      "create_character": "创建角色 (+30)",
-      "create_scene": "创建场景 (+15)",
-      "create_persona": "创建人设 (+15)",
-      "character_liked": "角色被点赞 (+5)",
-      "forked": "被参考 (+10)",
-      "daily_chat": "每日聊天 (+20)"
-    },
-    "daily_limits": {
-      "daily_chat": "1次/天",
-      "create_character": "2次/天",
-      "create_scene": "2次/天",
-      "create_persona": "2次/天",
-      "character_liked": "20次/天"
-    },
-    "view_all_levels": "查看所有等级",
-    "level_requirements_title": "等级需求",
-    "table_level": "等级",
-    "table_exp_required": "所需经验",
-    "table_benefits": "获得的权益"
-  },
   "user_card": {
     "no_bio": "暂无简介",
     "chats": "聊天",
