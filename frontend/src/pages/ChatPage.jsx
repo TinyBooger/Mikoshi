@@ -37,6 +37,7 @@ import {
 } from '../utils/chatHelpers';
 import { useCreditAndChatLimits } from '../hooks/useCreditAndChatLimits';
 import { usePinnedMemories } from '../hooks/usePinnedMemories';
+import { startVoiceRecording, stopVoiceRecording } from '../utils/voiceRecorder';
 
 const WALLPAPER_OPTIONS = [
   { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
@@ -82,6 +83,8 @@ export default function ChatPage() {
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [wallpaper, setWallpaper] = useState({ id: 'none', url: null });
   const [characterBackground, setCharacterBackground] = useState(null);
   const [sending, setSending] = useState(false);
@@ -1120,6 +1123,71 @@ export default function ChatPage() {
     }
   };
 
+  // Auto-resize the textarea whenever the input changes, including
+  // programmatic updates (e.g. voice-to-text transcription results).
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const newHeight = Math.max(
+      CHAT_INPUT_BASE_HEIGHT,
+      Math.min(el.scrollHeight, CHAT_INPUT_MAX_HEIGHT)
+    );
+    el.style.height = `${newHeight}px`;
+    el.style.overflowY = el.scrollHeight > CHAT_INPUT_MAX_HEIGHT ? 'auto' : 'hidden';
+  }, [input]);
+
+  // Voice-to-text: record audio and transcribe it into the input field.
+  const handleVoiceToggle = async () => {
+    if (isRecording) {
+      await transcribeVoiceRecording();
+      return;
+    }
+    try {
+      await startVoiceRecording();
+      setIsRecording(true);
+    } catch (err) {
+      toast.show(err?.message || '无法启动麦克风录音，请检查权限。', { type: 'error' });
+    }
+  };
+
+  const transcribeVoiceRecording = async () => {
+    let audioBlob;
+    try {
+      audioBlob = await stopVoiceRecording();
+    } catch (err) {
+      setIsRecording(false);
+      toast.show(err?.message || '录音结束失败，请重试。', { type: 'error' });
+      return;
+    }
+    setIsRecording(false);
+    setIsTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.wav');
+      const res = await fetch(`${window.API_BASE_URL}/api/chat/voice-to-text`, {
+        method: 'POST',
+        headers: { Authorization: sessionToken },
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.detail || '语音识别失败，请重试。');
+      }
+      const data = await res.json();
+      const text = (data?.text || '').trim();
+      if (!text) {
+        toast.show('未识别到语音内容，请重试。', { type: 'warning' });
+        return;
+      }
+      setInput((prev) => (prev ? `${prev}\n${text}` : text));
+    } catch (err) {
+      toast.show(err?.message || '语音识别失败，请重试。', { type: 'error' });
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
   // Unified new chat action respecting current entry mode
   const handleNewChat = async () => {
     setSelectedChat(null);
@@ -1811,7 +1879,7 @@ export default function ChatPage() {
                   border: '1.2px solid #e9ecef',
                   background: '#fff',
                   padding: '0.6rem 0.96rem',
-                  paddingRight: '2.3rem',
+                  paddingRight: '5.7rem',
                   fontSize: '16px',
                   outline: 'none',
                   color: '#232323',
@@ -1839,6 +1907,42 @@ export default function ChatPage() {
                 onBlur={e => e.target.style.border = '1.2px solid #e9ecef'}
                 rows={1}
               />
+              <button
+                type="button"
+                onClick={handleVoiceToggle}
+                disabled={isTranscribing || isCreditLocked(creditLimits)}
+                style={{
+                  position: 'absolute',
+                  right: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2 + 38 + 6}px`,
+                  bottom: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
+                  background: isRecording
+                    ? 'linear-gradient(180deg, #ffe3e3 0%, #ffd0d0 100%)'
+                    : 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)',
+                  color: isRecording ? '#c0392b' : '#5f567f',
+                  border: '1px solid rgba(255, 255, 255, 0.78)',
+                  borderRadius: '50%',
+                  width: 38,
+                  height: 38,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 16,
+                  boxShadow: isRecording
+                    ? '0 8px 16px rgba(220, 53, 69, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85)'
+                    : '0 8px 16px rgba(141, 125, 176, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
+                  transition: 'background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease',
+                  cursor: isTranscribing ? 'wait' : 'pointer',
+                  outline: 'none',
+                  flexShrink: 0,
+                }}
+                title={isRecording ? '点击结束并识别' : '语音输入'}
+              >
+                {isTranscribing ? (
+                  <span className="spinner-border spinner-border-sm" style={{ color: '#6d638e' }}></span>
+                ) : (
+                  <i className={`bi ${isRecording ? 'bi-stop-fill' : 'bi-mic-fill'}`}></i>
+                )}
+              </button>
               {isStreaming ? (
                 <button
                   type="button"

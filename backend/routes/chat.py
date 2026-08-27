@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse, StreamingResponse, Response
 from sqlalchemy.orm import Session
 from starlette.requests import ClientDisconnect
@@ -6,6 +6,7 @@ from database import get_db
 from model_configs import ALLOWED_MODEL_IDS
 from utils.session import get_current_user
 from utils.llm_client import client, stream_chat_completion_with_config
+from utils.asr_utils import transcribe_audio_bytes
 from utils.chat_history_utils import (
     fetch_chat_history_entry,
     upsert_chat_history_entry,
@@ -233,6 +234,26 @@ def _persist_chat_history_turn(
         chat_id=chat_id,
         payload=payload,
     )
+
+@router.post("/api/chat/voice-to-text")
+async def voice_to_text(
+    audio: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Transcribe an uploaded voice recording to text.
+
+    Accepts a WAV audio file (16 kHz mono) and returns the recognized sentence
+    using DashScope paraformer-realtime.
+    """
+    audio_bytes = await audio.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="No audio data received")
+
+    result = transcribe_audio_bytes(audio_bytes)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Voice recognition failed"))
+
+    return {"text": result.get("text", "")}
 
 @router.post("/api/chat")
 async def chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
