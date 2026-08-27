@@ -29,15 +29,36 @@ export function ToastProvider({ children }) {
       {children}
       <div style={styles.container} aria-live="polite" aria-atomic="true">
         {toasts.map(t => (
-          <div key={t.id} style={{ ...styles.toast, ...(t.type === 'error' ? styles.error : {}) }}>
-            {t.message}
-            <button onClick={() => hide(t.id)} style={styles.close}>×</button>
+          <div key={t.id} style={{ ...styles.toast, ...(typeStyles[t.type] || {}) }}>
+            <span style={{ ...styles.icon, ...(iconStyles[t.type] || iconStyles.info) }}>
+              {icons[t.type] || icons.info}
+            </span>
+            <span style={styles.message}>{t.message}</span>
+            <button onClick={() => hide(t.id)} style={styles.close} aria-label="关闭">×</button>
           </div>
         ))}
       </div>
     </ToastContext.Provider>
   );
 }
+
+const icons = {
+  success: '✓',
+  error: '×',
+  info: 'ⓘ'
+};
+
+const iconStyles = {
+  success: { color: '#16a34a', background: '#dcfce7' },
+  error: { color: '#dc2626', background: '#fee2e2' },
+  info: { color: '#2563eb', background: '#dbeafe' }
+};
+
+const typeStyles = {
+  success: { borderColor: '#bbf7d0' },
+  error: { background: '#fff6f6', borderColor: '#f5c6cb' },
+  info: { borderColor: '#bfdbfe' }
+};
 
 const styles = {
   container: {
@@ -56,18 +77,32 @@ const styles = {
     background: '#fff',
     padding: '0.7rem 1.2rem',
     borderRadius: 10,
-    boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
+    boxShadow: '0 10px 30px rgba(15, 23, 42, 0.22), 0 4px 10px rgba(15, 23, 42, 0.12)',
     border: '1px solid #e9ecef',
     color: '#232323',
-    position: 'relative'
-    ,
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 10,
     whiteSpace: 'normal',
     wordBreak: 'break-word',
     paddingRight: 40
   },
-  error: {
-    background: '#fff6f6',
-    borderColor: '#f5c6cb'
+  icon: {
+    width: 22,
+    height: 22,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    fontSize: 13,
+    fontWeight: 700,
+    lineHeight: 1
+  },
+  message: {
+    flex: 1,
+    minWidth: 0
   },
   close: {
     position: 'absolute',
