@@ -53,6 +53,93 @@ def record_credit_usage(
     db_session.execute(stmt)
 
 
+def record_fixed_credit_usage(
+    db_session: Session,
+    *,
+    user_id: str,
+    credit_amount: float,
+    usage_timestamp: datetime | None = None,
+    use_free_daily_reset: bool = False,
+) -> None:
+    """Increment credit usage for a service that does not consume LLM tokens."""
+    if credit_amount <= 0:
+        return
+
+    when = usage_timestamp or datetime.now(UTC)
+    usage_date = get_free_daily_usage_date(when) if use_free_daily_reset else when.date()
+    stmt = insert(UserCreditUsageLedger).values(
+        user_id=user_id,
+        usage_date=usage_date,
+        prompt_tokens=0,
+        completion_tokens=0,
+        total_tokens=0,
+        credit_amount=credit_amount,
+    )
+    stmt = stmt.on_conflict_do_update(
+        index_elements=[UserCreditUsageLedger.user_id, UserCreditUsageLedger.usage_date],
+        set_={
+            "credit_amount": UserCreditUsageLedger.credit_amount + credit_amount,
+            "updated_at": datetime.now(UTC),
+        },
+    )
+    db_session.execute(stmt)
+
+
+def apply_fixed_credit_usage_with_wallet(
+    db_session: Session,
+    *,
+    user: User,
+    credit_amount: float,
+    source: str,
+    idempotency_key: str,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Apply fixed service usage to plan quota first, then purchased credits."""
+    if credit_amount <= 0:
+        return {"success": True, "credit_amount": 0.0, "consumed_from_wallet": False}
+
+    credit_check = can_consume_credits(user, db_session)
+    if credit_check.get("blocked"):
+        return {
+            "success": False,
+            "error": "CREDIT_CAP_REACHED",
+            "limit": credit_check.get("limit") or {},
+            "consumed_from_wallet": False,
+        }
+
+    if credit_check.get("consume_from_wallet"):
+        consumed, balance_after = consume_wallet_credits(
+            db_session,
+            user_id=user.id,
+            credits=credit_amount,
+            source=source,
+            idempotency_key=idempotency_key,
+            metadata=metadata,
+        )
+        if not consumed:
+            return {
+                "success": False,
+                "error": "INSUFFICIENT_WALLET_CREDITS",
+                "wallet_balance": balance_after,
+                "required_credits": credit_amount,
+                "consumed_from_wallet": False,
+            }
+        return {
+            "success": True,
+            "credit_amount": credit_amount,
+            "consumed_from_wallet": True,
+            "wallet_balance": balance_after,
+        }
+
+    record_fixed_credit_usage(
+        db_session,
+        user_id=user.id,
+        credit_amount=credit_amount,
+        use_free_daily_reset=not is_user_pro_active(user),
+    )
+    return {"success": True, "credit_amount": credit_amount, "consumed_from_wallet": False}
+
+
 def apply_credit_usage_with_wallet(
     db_session: Session,
     *,

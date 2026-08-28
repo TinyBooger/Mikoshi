@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Request, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, StreamingResponse, Response
 from sqlalchemy.orm import Session
 from starlette.requests import ClientDisconnect
-from database import get_db
+from database import get_db, SessionLocal
 from model_configs import ALLOWED_MODEL_IDS
-from utils.session import get_current_user
+from utils.session import get_current_user, verify_session_token
 from utils.llm_client import client, stream_chat_completion_with_config
-from utils.asr_utils import transcribe_audio_bytes
+from utils.asr_utils import ASR_MODEL, ASR_SAMPLE_RATE, DASHSCOPE_API_KEY
 from utils.chat_history_utils import (
     fetch_chat_history_entry,
     upsert_chat_history_entry,
@@ -35,7 +35,7 @@ from models import User, Character, Scene, ChatHistory
 from utils.message_limit import can_send_user_message, increment_user_message_count
 from utils.context_window import compact_conversation_messages, resolve_context_window_settings
 from utils.usage_utils import normalize_usage, usage_to_credits
-from utils.credit_usage_ledger import apply_credit_usage_with_wallet
+from utils.credit_usage_ledger import apply_credit_usage_with_wallet, apply_fixed_credit_usage_with_wallet
 from utils.credit_cap import can_consume_credits, get_credit_cap_info, build_credit_cap_reached_payload
 from utils.model_rate_limiter import rate_limiter
 from utils.upstream_bucket import acquire_upstream
@@ -235,25 +235,117 @@ def _persist_chat_history_turn(
         payload=payload,
     )
 
-@router.post("/api/chat/voice-to-text")
-async def voice_to_text(
-    audio: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-):
-    """Transcribe an uploaded voice recording to text.
+@router.websocket("/api/chat/voice-to-text/stream")
+async def voice_to_text_stream(websocket: WebSocket):
+    """Receive 16 kHz mono PCM frames and emit interim ASR transcripts."""
+    import asyncio
+    from dashscope.audio.asr import Recognition, RecognitionCallback, RecognitionResult
 
-    Accepts a WAV audio file (16 kHz mono) and returns the recognized sentence
-    using DashScope paraformer-realtime.
-    """
-    audio_bytes = await audio.read()
-    if not audio_bytes:
-        raise HTTPException(status_code=400, detail="No audio data received")
+    await websocket.accept()
+    db = SessionLocal()
+    recognition = None
+    loop = asyncio.get_running_loop()
+    events = asyncio.Queue()
+    audio_bytes = 0
+    user = None
 
-    result = transcribe_audio_bytes(audio_bytes)
-    if not result.get("success"):
-        raise HTTPException(status_code=400, detail=result.get("message", "Voice recognition failed"))
+    class Callback(RecognitionCallback):
+        def on_event(self, result):
+            sentence = result.get_sentence()
+            if isinstance(sentence, list):
+                sentence = sentence[-1] if sentence else {}
+            if isinstance(sentence, dict) and sentence.get("text"):
+                loop.call_soon_threadsafe(events.put_nowait, {
+                    "type": "transcript",
+                    "text": sentence["text"],
+                    "is_final": RecognitionResult.is_sentence_end(sentence),
+                })
 
-    return {"text": result.get("text", "")}
+        def on_error(self, result):
+            loop.call_soon_threadsafe(events.put_nowait, {
+                "type": "error",
+                "message": result.message or "Voice recognition failed",
+            })
+
+        def on_complete(self):
+            loop.call_soon_threadsafe(events.put_nowait, {"type": "complete"})
+
+    try:
+        auth_message = await websocket.receive_json()
+        user_id = verify_session_token(auth_message.get("token"))
+        user = db.query(User).filter(User.id == user_id).first() if user_id else None
+        if not user:
+            await websocket.send_json({"type": "error", "message": "Invalid or missing session token"})
+            return
+        if not DASHSCOPE_API_KEY:
+            await websocket.send_json({"type": "error", "message": "DASHSCOPE_API_KEY is not configured"})
+            return
+
+        recognition = Recognition(
+            model=ASR_MODEL,
+            format="pcm",
+            sample_rate=ASR_SAMPLE_RATE,
+            language_hints=["zh", "en"],
+            callback=Callback(),
+        )
+        recognition.start()
+        await websocket.send_json({"type": "ready"})
+
+        async def send_events():
+            while True:
+                event = await events.get()
+                await websocket.send_json(event)
+                if event["type"] in {"complete", "error"}:
+                    break
+
+        event_task = asyncio.create_task(send_events())
+        try:
+            while True:
+                message = await websocket.receive()
+                if message.get("bytes") is not None:
+                    frame = message["bytes"]
+                    audio_bytes += len(frame)
+                    recognition.send_audio_frame(frame)
+                elif message.get("text"):
+                    command = json.loads(message["text"])
+                    if command.get("type") == "stop":
+                        recognition.stop()
+                        break
+        finally:
+            if recognition and getattr(recognition, "_running", False):
+                recognition.stop()
+            await event_task
+
+        duration_seconds = audio_bytes / (ASR_SAMPLE_RATE * 2)
+        if duration_seconds > 0:
+            credit_amount = round(duration_seconds * 0.24, 6)
+            usage_result = apply_fixed_credit_usage_with_wallet(
+                db,
+                user=user,
+                credit_amount=credit_amount,
+                source="voice_to_text",
+                idempotency_key=f"voice_to_text:{uuid.uuid4()}",
+                metadata={"duration_seconds": round(duration_seconds, 3), "model": ASR_MODEL},
+            )
+            if not usage_result.get("success"):
+                await websocket.send_json({"type": "error", "message": "Insufficient credits for voice recognition"})
+                db.rollback()
+            else:
+                db.commit()
+                await websocket.send_json({"type": "charged", "credit_amount": credit_amount})
+    except WebSocketDisconnect:
+        if recognition and getattr(recognition, "_running", False):
+            recognition.stop()
+        db.rollback()
+    except Exception as exc:
+        logger.exception("Live voice-to-text error")
+        db.rollback()
+        try:
+            await websocket.send_json({"type": "error", "message": str(exc)})
+        except Exception:
+            pass
+    finally:
+        db.close()
 
 @router.post("/api/chat")
 async def chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

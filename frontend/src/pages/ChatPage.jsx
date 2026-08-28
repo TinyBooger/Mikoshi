@@ -37,7 +37,7 @@ import {
 } from '../utils/chatHelpers';
 import { useCreditAndChatLimits } from '../hooks/useCreditAndChatLimits';
 import { usePinnedMemories } from '../hooks/usePinnedMemories';
-import { startVoiceRecording, stopVoiceRecording } from '../utils/voiceRecorder';
+import { cancelVoiceRecording, startVoiceRecording, stopVoiceRecording } from '../utils/voiceRecorder';
 
 const WALLPAPER_OPTIONS = [
   { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
@@ -85,6 +85,10 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const voiceSocketRef = useRef(null);
+  const voicePrefixRef = useRef('');
+  const voiceTranscriptRef = useRef('');
+  const voicePartialRef = useRef('');
   const [wallpaper, setWallpaper] = useState({ id: 'none', url: null });
   const [characterBackground, setCharacterBackground] = useState(null);
   const [sending, setSending] = useState(false);
@@ -205,6 +209,9 @@ export default function ChatPage() {
   // Cleanup: abort any ongoing streaming request on unmount
   useEffect(() => {
     return () => {
+      cancelVoiceRecording();
+      voiceSocketRef.current?.close();
+      voiceSocketRef.current = null;
       if (abortController) {
         abortController.abort();
       }
@@ -1140,51 +1147,60 @@ export default function ChatPage() {
   // Voice-to-text: record audio and transcribe it into the input field.
   const handleVoiceToggle = async () => {
     if (isRecording) {
-      await transcribeVoiceRecording();
+      const socket = voiceSocketRef.current;
+      if (socket?.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'stop' }));
+      }
+      await stopVoiceRecording();
+      setIsRecording(false);
+      setIsTranscribing(true);
       return;
     }
     try {
-      await startVoiceRecording();
+      const apiUrl = new URL(window.API_BASE_URL || window.location.origin);
+      const protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+      const socket = new WebSocket(`${protocol}//${apiUrl.host}/api/chat/voice-to-text/stream`);
+      voiceSocketRef.current = socket;
+      voicePrefixRef.current = input.trim() ? `${input.trim()}\n` : '';
+      voiceTranscriptRef.current = '';
+      voicePartialRef.current = '';
+
+      await new Promise((resolve, reject) => {
+        socket.onopen = () => {
+          socket.send(JSON.stringify({ token: sessionToken }));
+        };
+        socket.onmessage = (event) => {
+          const message = JSON.parse(event.data);
+          if (message.type === 'ready') {
+            resolve();
+          } else if (message.type === 'transcript') {
+            if (message.is_final) {
+              voiceTranscriptRef.current += message.text;
+              voicePartialRef.current = '';
+            } else {
+              voicePartialRef.current = message.text;
+            }
+            setInput(`${voicePrefixRef.current}${voiceTranscriptRef.current}${voicePartialRef.current}`);
+          } else if (message.type === 'complete') {
+            setIsTranscribing(false);
+          } else if (message.type === 'charged') {
+            setIsTranscribing(false);
+            socket.close();
+          } else if (message.type === 'error') {
+            reject(new Error(message.message || '语音识别失败，请重试。'));
+          }
+        };
+        socket.onerror = () => reject(new Error('无法连接语音识别服务，请重试。'));
+      });
+
+      await startVoiceRecording((frame) => {
+        if (socket.readyState === WebSocket.OPEN) socket.send(frame);
+      });
       setIsRecording(true);
     } catch (err) {
+      voiceSocketRef.current?.close();
+      voiceSocketRef.current = null;
       toast.show(err?.message || '无法启动麦克风录音，请检查权限。', { type: 'error' });
-    }
-  };
-
-  const transcribeVoiceRecording = async () => {
-    let audioBlob;
-    try {
-      audioBlob = await stopVoiceRecording();
-    } catch (err) {
-      setIsRecording(false);
-      toast.show(err?.message || '录音结束失败，请重试。', { type: 'error' });
-      return;
-    }
-    setIsRecording(false);
-    setIsTranscribing(true);
-    try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.wav');
-      const res = await fetch(`${window.API_BASE_URL}/api/chat/voice-to-text`, {
-        method: 'POST',
-        headers: { Authorization: sessionToken },
-        body: formData,
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.detail || '语音识别失败，请重试。');
-      }
-      const data = await res.json();
-      const text = (data?.text || '').trim();
-      if (!text) {
-        toast.show('未识别到语音内容，请重试。', { type: 'warning' });
-        return;
-      }
-      setInput((prev) => (prev ? `${prev}\n${text}` : text));
-    } catch (err) {
-      toast.show(err?.message || '语音识别失败，请重试。', { type: 'error' });
-    } finally {
-      setIsTranscribing(false);
     }
   };
 

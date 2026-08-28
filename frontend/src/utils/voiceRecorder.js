@@ -1,8 +1,4 @@
-// Minimal WAV recorder for the voice-to-text feature.
-//
-// We record raw PCM at 16 kHz mono via the Web Audio API and wrap it in a WAV
-// header so the backend can send it directly to DashScope paraformer-realtime
-// (format="wav", sample_rate=16000) without any server-side transcoding.
+// Live PCM recorder for DashScope paraformer-realtime.
 
 const WAV_SAMPLE_RATE = 16000;
 const BUFFER_SIZE = 4096;
@@ -11,67 +7,80 @@ let audioContext = null;
 let mediaStream = null;
 let sourceNode = null;
 let processorNode = null;
-let chunks = [];
+let audioChunkHandler = null;
+let resampleBuffer = new Float32Array(0);
+let resamplePosition = 0;
 
-function writeString(view, offset, str) {
-  for (let i = 0; i < str.length; i += 1) {
-    view.setUint8(offset + i, str.charCodeAt(i));
+function encodePcmFrame(floatSamples) {
+  const pcm = new Int16Array(floatSamples.length);
+  for (let i = 0; i < floatSamples.length; i += 1) {
+    const sample = Math.max(-1, Math.min(1, floatSamples[i]));
+    pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
   }
+  return pcm.buffer;
 }
 
-function encodeWav(floatSamples, sampleRate) {
-  const length = floatSamples.length;
-  const pcm = new Int16Array(length);
-  for (let i = 0; i < length; i += 1) {
-    const s = Math.max(-1, Math.min(1, floatSamples[i]));
-    pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+function resampleFrame(floatSamples, sourceSampleRate) {
+  if (sourceSampleRate === WAV_SAMPLE_RATE) {
+    return encodePcmFrame(floatSamples);
   }
 
-  const buffer = new ArrayBuffer(44 + pcm.length * 2);
-  const view = new DataView(buffer);
+  const combined = new Float32Array(resampleBuffer.length + floatSamples.length);
+  combined.set(resampleBuffer);
+  combined.set(floatSamples, resampleBuffer.length);
 
-  writeString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + pcm.length * 2, true);
-  writeString(view, 8, 'WAVE');
-  writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true); // PCM chunk size
-  view.setUint16(20, 1, true); // PCM format
-  view.setUint16(22, 1, true); // mono
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true); // byte rate
-  view.setUint16(32, 2, true); // block align
-  view.setUint16(34, 16, true); // bits per sample
-  writeString(view, 36, 'data');
-  view.setUint32(40, pcm.length * 2, true);
-  new Int16Array(buffer, 44).set(pcm);
+  const sourceStep = sourceSampleRate / WAV_SAMPLE_RATE;
+  const output = [];
+  while (resamplePosition + 1 < combined.length) {
+    const index = Math.floor(resamplePosition);
+    const fraction = resamplePosition - index;
+    output.push(combined[index] + (combined[index + 1] - combined[index]) * fraction);
+    resamplePosition += sourceStep;
+  }
 
-  return new Blob([buffer], { type: 'audio/wav' });
+  const consumedSamples = Math.floor(resamplePosition);
+  resampleBuffer = combined.slice(consumedSamples);
+  resamplePosition -= consumedSamples;
+
+  return output.length > 0 ? encodePcmFrame(output) : null;
 }
 
-export async function startVoiceRecording() {
+function resetResampler() {
+  resampleBuffer = new Float32Array(0);
+  resamplePosition = 0;
+}
+
+export async function startVoiceRecording(onAudioChunk = null) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     throw new Error('当前浏览器不支持麦克风录音');
   }
 
-  mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  audioContext = new (window.AudioContext || window.webkitAudioContext)({
-    sampleRate: WAV_SAMPLE_RATE,
-  });
-  sourceNode = audioContext.createMediaStreamSource(mediaStream);
-  processorNode = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
-  chunks = [];
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioContext = new (window.AudioContext || window.webkitAudioContext)({
+      sampleRate: WAV_SAMPLE_RATE,
+    });
+    sourceNode = audioContext.createMediaStreamSource(mediaStream);
+    processorNode = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
+    audioChunkHandler = onAudioChunk;
+    resetResampler();
+    processorNode.onaudioprocess = (event) => {
+      const inputData = event.inputBuffer.getChannelData(0);
+      const pcmFrame = resampleFrame(inputData, audioContext.sampleRate);
+      if (pcmFrame) audioChunkHandler?.(pcmFrame);
+    };
 
-  processorNode.onaudioprocess = (event) => {
-    const inputData = event.inputBuffer.getChannelData(0);
-    chunks.push(new Float32Array(inputData));
-  };
-
-  sourceNode.connect(processorNode);
-  // ScriptProcessorNode needs to be connected to the destination to fire.
-  processorNode.connect(audioContext.destination);
+    sourceNode.connect(processorNode);
+    // ScriptProcessorNode needs to be connected to the destination to fire.
+    processorNode.connect(audioContext.destination);
+  } catch (error) {
+    cancelVoiceRecording();
+    throw error;
+  }
 }
 
-export async function stopVoiceRecording() {
+function releaseRecordingResources() {
+  let closePromise = Promise.resolve();
   if (processorNode) {
     processorNode.disconnect();
     processorNode.onaudioprocess = null;
@@ -80,34 +89,31 @@ export async function stopVoiceRecording() {
     sourceNode.disconnect();
   }
   if (audioContext) {
-    try {
-      await audioContext.close();
-    } catch (err) {
-      // ignore close failures
-    }
+    closePromise = audioContext.close().catch(() => undefined);
   }
   if (mediaStream) {
     mediaStream.getTracks().forEach((track) => track.stop());
   }
+  return closePromise;
+}
 
-  const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const merged = new Float32Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    merged.set(chunk, offset);
-    offset += chunk.length;
-  }
-  chunks = [];
-
-  // Reset module state.
+export function cancelVoiceRecording() {
+  void releaseRecordingResources();
   audioContext = null;
   mediaStream = null;
   sourceNode = null;
   processorNode = null;
+  audioChunkHandler = null;
+  resetResampler();
+}
 
-  if (length === 0) {
-    throw new Error('未捕获到任何音频');
-  }
+export async function stopVoiceRecording() {
+  await releaseRecordingResources();
 
-  return encodeWav(merged, WAV_SAMPLE_RATE);
+  audioContext = null;
+  mediaStream = null;
+  sourceNode = null;
+  processorNode = null;
+  audioChunkHandler = null;
+  resetResampler();
 }
