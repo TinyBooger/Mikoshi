@@ -1608,12 +1608,16 @@ export default function ChatPage() {
   // Parse message content as standard Markdown via react-markdown + GFM.
   // Italic (*text*), bold (**text**), lists, code blocks, line breaks, etc.
   // are all handled natively.
-  const renderMessageContent = (text) => {
+  const renderMessageContent = (text, role) => {
     if (!text) return null;
+    // User messages are typed input where literal newlines matter, so convert
+    // single newlines into Markdown hard breaks (two trailing spaces). Character
+    // messages are left as-is to preserve their existing formatting.
+    const content = role === 'user' ? text.replace(/([^\n])\n(?!\n)/g, '$1  \n') : text;
     return (
       <div className="chat-markdown">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {text}
+          {content}
         </ReactMarkdown>
       </div>
     );

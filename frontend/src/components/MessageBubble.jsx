@@ -1,5 +1,6 @@
 import React from 'react';
 import defaultPic from '../assets/images/default-picture.png';
+import defaultAvatar from '../assets/images/default-avatar.png';
 
 const getMessageActionButtonStyle = (disabled) => ({
   border: 'none',
@@ -99,7 +100,7 @@ const MessageBubble = React.memo(function MessageBubble({
                   ? `${window.API_BASE_URL.replace(/\/$/, '')}/${(selectedPersona.avatar_picture || selectedPersona.picture).replace(/^\//, '')}`
                   : userData?.profile_pic
                   ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}`
-                  : defaultPic)
+                  : defaultAvatar)
                 : ((selectedCharacter?.avatar_picture || selectedCharacter?.picture)
                   ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(selectedCharacter.avatar_picture || selectedCharacter.picture).replace(/^\//, '')}`
                   : defaultPic)
@@ -168,7 +169,7 @@ const MessageBubble = React.memo(function MessageBubble({
                   }}
                 />
               ) : (
-                <div>{renderMessageContent(m.content)}</div>
+                <div>{renderMessageContent(m.content, m.role)}</div>
               )}
             </div>
 
