@@ -38,6 +38,7 @@ import {
 import { useCreditAndChatLimits } from '../hooks/useCreditAndChatLimits';
 import { usePinnedMemories } from '../hooks/usePinnedMemories';
 import { cancelVoiceRecording, startVoiceRecording, stopVoiceRecording } from '../utils/voiceRecorder';
+import { NAV_WIDTH, SIDEBAR_WIDTH, CHAT_CONTENT_PADDING } from '../constants/layout';
 
 const WALLPAPER_OPTIONS = [
   { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
@@ -1644,14 +1645,14 @@ export default function ChatPage() {
   const pieStrokeOffset = pieCircumference * (1 - contextUsageRatio);
 
   // Centered content rail — keeps messages, avatars and input fixed-width and centered
-  // regardless of sidebar toggle state. Baseline: both sidebars open = left nav (15rem)
-  // + character sidebar (19rem) + message area side-padding (1.2rem × 2) = 36.4rem.
+  // regardless of sidebar toggle state. Baseline when both sidebars are open:
+  // left nav + character sidebar + message area side-padding on each side.
   const chatContentRailStyle = {
     width: '100%',
     maxWidth: isMobile
       ? '100%'
       : characterSidebarVisible
-        ? 'min(calc(100vw - 36.4rem), 100%)'
+        ? `min(calc(100vw - ${NAV_WIDTH} - ${SIDEBAR_WIDTH} - ${CHAT_CONTENT_PADDING} - ${CHAT_CONTENT_PADDING}), 100%)`
         : '100%',
     marginLeft: 'auto',
     marginRight: 'auto',
@@ -1749,6 +1750,7 @@ export default function ChatPage() {
       {/* Main Chat Area */}
       <div style={{ 
         flex: 1, 
+        minWidth: 0, 
         display: 'flex', 
         flexDirection: 'column', 
         minHeight: 0, 

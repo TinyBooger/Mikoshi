@@ -2,7 +2,7 @@ def validate_character_fields(name, persona, tagline, greetings, sample_dialogue
     MAX_NAME_LENGTH = 50
     MAX_PERSONA_LENGTH = 400
     MAX_TAGLINE_LENGTH = 200
-    MAX_GREETING_LENGTH = 500
+    MAX_GREETING_LENGTH = 3000
     MAX_GREETINGS_COUNT = 20
     MAX_SAMPLE_LENGTH = 200
     MAX_TAGS = 20

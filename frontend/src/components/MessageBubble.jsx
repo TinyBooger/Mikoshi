@@ -144,7 +144,7 @@ const MessageBubble = React.memo(function MessageBubble({
               borderRadius: '0.88rem',
               padding: '0.68rem 0.96rem',
               boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              fontSize: isMobile ? '0.95rem' : '0.82rem',
+              fontSize: isMobile ? '1.06rem' : '1rem',
               minWidth: 0,
               wordBreak: 'break-word',
               maxWidth: '100%',
@@ -168,6 +168,11 @@ const MessageBubble = React.memo(function MessageBubble({
                     minHeight: 96,
                   }}
                 />
+              ) : m.role === 'assistant' && !(m.content && m.content.trim()) ? (
+                <div className="ai-thinking">
+                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  <span>思考中...</span>
+                </div>
               ) : (
                 <div>{renderMessageContent(m.content, m.role)}</div>
               )}

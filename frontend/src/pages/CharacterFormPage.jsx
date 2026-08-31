@@ -111,7 +111,7 @@ export default function CharacterFormPage() {
   const mode = id ? (isForkMode ? 'fork' : 'edit') : 'create';
   const [isAppealMode, setIsAppealMode] = useState(false);
   const [hasPendingAppeal, setHasPendingAppeal] = useState(false);
-  const MAX_GREETING_LENGTH = 200;
+  const MAX_GREETING_LENGTH = 3000;
   const MAX_SAMPLE_LENGTH = 200;
   const MAX_TAGS = 20;
   // Special prompt stored when a character uses an improvising greeting
@@ -237,15 +237,20 @@ export default function CharacterFormPage() {
   };
   const [isImprovisingGreeting, setIsImprovisingGreeting] = useState(false);
   const greetingRefs = useRef(new Map());
-  const autoResizeGreeting = (el) => {
+  const taglineRef = useRef(null);
+  const autoResizeTextarea = (el) => {
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = el.scrollHeight + 'px';
   };
   // Auto-resize all greeting textareas when greetings array changes
   useEffect(() => {
-    greetingRefs.current.forEach((el) => autoResizeGreeting(el));
+    greetingRefs.current.forEach((el) => autoResizeTextarea(el));
   }, [charData.greetings]);
+  // Auto-resize the tagline textarea when its value changes (e.g. loaded in edit mode)
+  useEffect(() => {
+    autoResizeTextarea(taglineRef.current);
+  }, [charData.tagline]);
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [loading, setLoading] = useState(mode === 'edit' || mode === 'fork');
@@ -508,7 +513,7 @@ export default function CharacterFormPage() {
     }
     const hasAnyManualGreeting = charData.greetings.some(g => g.trim());
     if (!isImprovisingGreeting && !hasAnyManualGreeting) {
-      toast.show('请至少添加一条问候语，或启用 AI 生成问候语。', { type: 'error' });
+      toast.show('请至少添加一条开场白，或启用 AI 生成开场白。', { type: 'error' });
       return;
     }
     if (!picture && !selectedDefaultPicture && !picturePreview) {
@@ -997,11 +1002,17 @@ export default function CharacterFormPage() {
               简介
               <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>仅用于展示，不影响角色性格和对话风格</small>
             </label>
-            <input
+            <textarea
               className="form-control"
+              rows={1}
+              ref={el => {
+                taglineRef.current = el;
+                autoResizeTextarea(el);
+              }}
               value={charData.tagline}
               maxLength={MAX_TAGLINE_LENGTH}
               placeholder=""
+              onInput={e => autoResizeTextarea(e.target)}
               onChange={e => handleChange('tagline', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -1013,6 +1024,8 @@ export default function CharacterFormPage() {
                 boxShadow: 'none',
                 outline: 'none',
                 paddingRight: '3rem',
+                resize: 'none',
+                overflow: 'hidden',
               }}
             />
             <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
@@ -1057,7 +1070,7 @@ export default function CharacterFormPage() {
           <div className="mb-4">
             <label className="form-label fw-bold d-flex align-items-center gap-3" style={{ color: '#232323' }}>
               <span>
-                问候语
+                开场白
                 <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400, whiteSpace: 'nowrap' }}>
@@ -1067,7 +1080,7 @@ export default function CharacterFormPage() {
                   checked={isImprovisingGreeting}
                   onChange={e => setIsImprovisingGreeting(e.target.checked)}
                 />
-                <label htmlFor="improviseGreeting" style={{ margin: 0, fontSize: '0.95rem', cursor: 'pointer' }}>启用AI生成问候语</label>
+                <label htmlFor="improviseGreeting" style={{ margin: 0, fontSize: '0.95rem', cursor: 'pointer' }}>启用AI生成开场白</label>
               </span>
             </label>
 
@@ -1081,14 +1094,14 @@ export default function CharacterFormPage() {
                   ref={el => {
                     if (el) {
                       greetingRefs.current.set(idx, el);
-                      autoResizeGreeting(el);
+                      autoResizeTextarea(el);
                     } else {
                       greetingRefs.current.delete(idx);
                     }
                   }}
                   value={g}
                   maxLength={MAX_GREETING_LENGTH}
-                  onInput={e => autoResizeGreeting(e.target)}
+                  onInput={e => autoResizeTextarea(e.target)}
                   onChange={e => {
                     const updated = [...charData.greetings];
                     updated[idx] = e.target.value;
@@ -1136,14 +1149,14 @@ export default function CharacterFormPage() {
                 style={{ borderRadius: 10 }}
               >
                 <i className="bi bi-plus-lg me-1"></i>
-                添加问候语
+                添加开场白
               </button>
             )}
 
             {/* Show placeholder when list is empty and improvise is off */}
             {charData.greetings.length === 0 && !isImprovisingGreeting && (
               <div className="text-muted mt-2" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>
-                请至少添加一条问候语，或启用 AI 生成问候语。
+                请至少添加一条开场白，或启用 AI 生成开场白。
               </div>
             )}
 
@@ -1151,7 +1164,7 @@ export default function CharacterFormPage() {
             {isImprovisingGreeting && (
               <div className="mt-2 d-flex align-items-center gap-2" style={{ fontSize: '0.85rem', color: '#7c3aed' }}>
                 <i className="bi bi-magic"></i>
-                <span>AI 生成的问候语将作为一个随机选项。</span>
+                <span>AI 生成的开场白将作为一个随机选项。</span>
               </div>
             )}
           </div>

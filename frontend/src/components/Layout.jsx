@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Outlet, useLocation } from 'react-router';
 import Sidebar from './Sidebar.jsx';
 import { AuthContext } from './AuthProvider.jsx';
+import { NAV_WIDTH } from '../constants/layout';
 
 export default function Layout() {
   const { refreshUserData } = useContext(AuthContext);
@@ -110,7 +111,7 @@ export default function Layout() {
         top: 0,
         left: 0,
         bottom: 0,
-        width: '15rem',
+        width: NAV_WIDTH,
         zIndex: 1000,
         background: 'transparent',
         transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
@@ -236,8 +237,8 @@ export default function Layout() {
           ref={mainContentRef}
           className="flex-grow-1 d-flex flex-column"
           style={{
-            width: isMobile ? '100%' : `calc(100% - ${sidebarVisible ? '15rem' : '0px'})`,
-            marginLeft: !isMobile && sidebarVisible ? '15rem' : '0',
+            width: isMobile ? '100%' : `calc(100% - ${sidebarVisible ? NAV_WIDTH : '0px'})`,
+            marginLeft: !isMobile && sidebarVisible ? NAV_WIDTH : '0',
             zIndex: 1,
             transition: `margin-left ${sidebarMotion}, width ${sidebarMotion}`,
             background: 'transparent',

@@ -12,6 +12,7 @@ import {
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import ModelSelect from './ModelSelect';
 import { useToast } from '../components/ToastProvider';
+import { SIDEBAR_WIDTH, SIDEBAR_BORDER_WIDTH } from '../constants/layout';
 
 
 // Accept all required props for the sidebar
@@ -203,86 +204,63 @@ export default function CharacterSidebar({
   const isSceneMode = !!selectedScene;
   const isCharacterMode = !isSceneMode && !!selectedCharacter;
   const sidebarMotion = '0.35s cubic-bezier(.4,0,.2,1)';
-  // Sidebar animation style for both mobile and desktop
-  const sidebarStyle = isMobile
-    ? {
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: '90vw',
-        maxWidth: '19rem', // Reduced max width for mobile
-        zIndex: 1000,
-        background: 'rgba(255, 255, 255, 0.98)',
-        boxShadow: 'none',
-        borderLeft: '1.2px solid #e9ecef',
-        transform: characterSidebarVisible ? 'translateX(0)' : 'translateX(100%)',
-        transition: `transform ${sidebarMotion}, opacity ${sidebarMotion}`,
-        overscrollBehavior: 'contain',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        pointerEvents: characterSidebarVisible ? 'auto' : 'none',
-        opacity: characterSidebarVisible ? 1 : 0,
-        borderRadius: 0,
-      }
-    : {
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: '19rem', // Reduced width for desktop
-        zIndex: 1000,
-        transform: characterSidebarVisible ? 'translateX(0)' : 'translateX(19rem)',
-        transition: `transform ${sidebarMotion}, opacity ${sidebarMotion}`,
-        boxShadow: 'none',
-        borderLeft: '1.2px solid #e9ecef',
-        overscrollBehavior: 'contain',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        pointerEvents: characterSidebarVisible ? 'auto' : 'none',
-        opacity: characterSidebarVisible ? 1 : 0,
-        flexShrink: 0,
-        background: 'rgba(255, 255, 255, 0.98)',
-        borderRadius: 0,
-      };
 
-  const desktopSpacerStyle = isMobile
-    ? null
-    : {
-        width: '19rem',
-        height: '100vh',
-        marginLeft: characterSidebarVisible ? '0' : '-19rem',
-        transition: `margin-left ${sidebarMotion}`,
-        flexShrink: 0,
-        pointerEvents: 'none',
-      };
+  // Mobile: a fixed, right-side slide-in drawer rendered over the content via
+  // portal (a legitimate overlay pattern on small screens).
+  const mobileSidebarStyle = {
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: '90vw',
+    maxWidth: SIDEBAR_WIDTH,
+    zIndex: 1000,
+    background: 'rgba(255, 255, 255, 0.98)',
+    boxShadow: 'none',
+    borderLeft: `${SIDEBAR_BORDER_WIDTH} solid #e9ecef`,
+    boxSizing: 'border-box',
+    transform: characterSidebarVisible ? 'translateX(0)' : 'translateX(100%)',
+    transition: `transform ${sidebarMotion}, opacity ${sidebarMotion}`,
+    overscrollBehavior: 'contain',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    pointerEvents: characterSidebarVisible ? 'auto' : 'none',
+    opacity: characterSidebarVisible ? 1 : 0,
+    borderRadius: 0,
+  };
 
-  return (
+  // Desktop: a real in-flow flex sibling. The outer wrapper collapses/expands
+  // its width (reserving actual layout space) while the inner container keeps a
+  // fixed width so its content never reflows during the slide. No portal, no
+  // spacer, no duplicated magic width — flexbox guarantees the sidebar and Main
+  // Chat Area widths always sum correctly.
+  const desktopSidebarStyle = {
+    flexShrink: 0,
+    width: characterSidebarVisible ? SIDEBAR_WIDTH : '0px',
+    height: '100%',
+    minHeight: 0,
+    overflow: 'hidden',
+    transition: `width ${sidebarMotion}`,
+    boxSizing: 'border-box',
+    display: 'flex',
+  };
+
+  const desktopSidebarInnerStyle = {
+    width: SIDEBAR_WIDTH,
+    minWidth: SIDEBAR_WIDTH,
+    height: '100%',
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    background: 'rgba(255, 255, 255, 0.98)',
+    borderLeft: `${SIDEBAR_BORDER_WIDTH} solid #e9ecef`,
+    boxSizing: 'border-box',
+  };
+
+  const sidebarBody = (
     <>
-      {desktopSpacerStyle && <div aria-hidden="true" style={desktopSpacerStyle} />}
-      {createPortal(
-        <>
-          {/* Overlay for mobile CharacterSidebar */}
-          {isMobile && characterSidebarVisible && (
-            <div
-              onClick={() => onToggleCharacterSidebar()}
-              style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100vw',
-                bottom: 0,
-                background: 'rgba(0,0,0,0.3)',
-                zIndex: 999,
-                cursor: 'pointer',
-                touchAction: 'manipulation',
-              }}
-            />
-          )}
-          <div style={sidebarStyle}>
-            <aside style={{ width: '100%', minHeight: 0, flex: 1, background: 'transparent', borderRadius: 0, margin: 0, boxShadow: 'none', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', boxSizing: 'border-box', overflowY: 'auto', overflowX: 'hidden' }}>
+      <aside style={{ width: '100%', minHeight: 0, flex: 1, background: 'transparent', borderRadius: 0, margin: 0, boxShadow: 'none', display: 'flex', flexDirection: 'column', padding: '1.2rem 1.2rem 0.96rem 1.2rem', boxSizing: 'border-box', overflowY: 'auto', overflowX: 'hidden' }}>
           {/* CharacterSidebar Header: collapse toggle left, share + report right */}
           <div style={{
             display: 'flex',
@@ -1240,9 +1218,39 @@ export default function CharacterSidebar({
                 </button>
               </div>
             )}
-          </div>
-        </>,
-        document.body,
+      </>
+    );
+
+  return (
+    <>
+      {isMobile ? (
+        createPortal(
+          <>
+            {/* Overlay for mobile CharacterSidebar */}
+            {characterSidebarVisible && (
+              <div
+                onClick={() => onToggleCharacterSidebar()}
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  width: '100vw',
+                  bottom: 0,
+                  background: 'rgba(0,0,0,0.3)',
+                  zIndex: 999,
+                  cursor: 'pointer',
+                  touchAction: 'manipulation',
+                }}
+              />
+            )}
+            <div style={mobileSidebarStyle}>{sidebarBody}</div>
+          </>,
+          document.body,
+        )
+      ) : (
+        <div style={desktopSidebarStyle}>
+          <div style={desktopSidebarInnerStyle}>{sidebarBody}</div>
+        </div>
       )}
       {/* Problem Report Modal via portal */}
       <ProblemReportModal
