@@ -229,7 +229,7 @@ def create_moderation_message(
 
     # Ban type → scope description
     _BAN_SCOPE = {
-        "upload_ban": "您将无法创建或编辑任何内容（角色、场景、人设）",
+        "upload_ban": "您将无法创建或编辑任何内容（角色、场景、自设）",
         "full_ban":   "您将无法发送消息、创建或编辑任何内容",
         "shadow_ban": "您的账号功能已受到限制",
     }
@@ -337,7 +337,7 @@ def create_content_moderation_message(
     _TYPE_LABELS = {
         "character": "角色",
         "scene": "场景",
-        "persona": "人设",
+        "persona": "自设",
     }
 
     if action not in {"restrict", "takedown", "delete"}:

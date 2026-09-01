@@ -1,10 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 
 export default function PersonaModal({ show, onClose, onSelect, sessionToken, refreshUserData, userData }) {
-  const { t } = useTranslation();
   const [userPersonas, setUserPersonas] = useState([]);
   const [popularPersonas, setPopularPersonas] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -103,7 +101,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
         if (response.ok) {
           setDefaultPersonaId(null);
         } else {
-          alert('Failed to unset persona as default');
+          alert('取消默认设置失败');
         }
       } else {
         const response = await fetch(`${window.API_BASE_URL}/api/personas/${personaId}/set-default`, {
@@ -113,12 +111,12 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
         if (response.ok) {
           setDefaultPersonaId(personaId);
         } else {
-          alert('Failed to set persona as default');
+          alert('设置默认失败');
         }
       }
     } catch (error) {
       console.error('Error setting default persona:', error);
-      alert('Error setting default persona');
+      alert('设置默认时出错');
     }
   };
 
@@ -152,11 +150,11 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
       if (response.ok) {
         setDefaultPersonaId(null);
       } else {
-        alert('Failed to unset persona as default');
+        alert('取消默认设置失败');
       }
     } catch (error) {
       console.error('Error unsetting default persona:', error);
-      alert('Error unsetting default persona');
+      alert('取消默认时出错');
     }
   };
 
@@ -178,11 +176,11 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
           setDefaultPersonaId(null);
         }
       } else {
-        alert('Failed to delete persona');
+        alert('删除自设失败');
       }
     } catch (error) {
       console.error('Error deleting persona:', error);
-      alert('Error deleting persona');
+      alert('删除时出错');
     }
   };
 
@@ -216,7 +214,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
       <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: isMobile ? '95vw' : '600px', width: '100%', margin: 'auto' }}>
         <div className="modal-content" style={{ maxHeight: isMobile ? '85vh' : '80vh', display: 'flex', flexDirection: 'column', borderRadius: 14, border: '1px solid #ece9f4', boxShadow: '0 8px 20px rgba(15, 23, 42, 0.1)' }}>
           <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h5 className="modal-title">{t('persona_modal.title')}</h5>
+            <h5 className="modal-title">选择自设</h5>
             <button
               type="button"
               onClick={onClose}
@@ -240,7 +238,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = '#f3f4f6';
               }}
-              aria-label={t('persona_modal.cancel')}
+              aria-label="取消"
             >
               <i className="bi bi-x"></i>
             </button>
@@ -248,7 +246,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
           <div className="modal-body" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0, padding: isMobile ? '1rem 0.5rem' : '1rem' }}>
             {/* User Personas Section - Always at Top */}
             <div style={{ marginBottom: '1.5rem' }}>
-              <h6 className="mb-3" style={{ fontWeight: 700, fontSize: '0.95rem', color: '#232323' }}>{t('persona_modal.my_personas')}</h6>
+              <h6 className="mb-3" style={{ fontWeight: 700, fontSize: '0.95rem', color: '#232323' }}>我的自设</h6>
               {userPersonas.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {userPersonas.map(persona => (
@@ -266,7 +264,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                           }}
                         >
                           <div style={{ fontSize: '0.88rem', color: '#232323', fontWeight: 500 }}>
-                            {t('persona_modal.confirm_delete')}
+                            确定要删除此自设吗？
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                             <button
@@ -282,7 +280,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                                 e.currentTarget.style.background = '#fef2f2';
                               }}
                             >
-                              {t('persona_modal.delete')}
+                              删除
                             </button>
                             <button
                               onClick={cancelDelete}
@@ -297,7 +295,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                                 e.currentTarget.style.background = '#f3f4f6';
                               }}
                             >
-                              {t('persona_modal.cancel')}
+                              取消
                             </button>
                           </div>
                         </div>
@@ -353,9 +351,9 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                                   ? '#e8ddf6'
                                   : '#f3f4f6';
                               }}
-                              title={defaultPersonaId === persona.id ? 'Click to unset default' : 'Click to set as default'}
+                              title={defaultPersonaId === persona.id ? '取消默认' : '设为默认'}
                             >
-                              {defaultPersonaId === persona.id ? t('persona_modal.unset_default') : t('persona_modal.set_as_default')}
+                              {defaultPersonaId === persona.id ? '取消默认' : '设置为默认'}
                             </button>
                             <button
                               onClick={(e) => handleDeletePersona(e, persona.id)}
@@ -372,7 +370,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                                 e.currentTarget.style.background = '#fef2f2';
                               }}
                             >
-                              {t('persona_modal.delete')}
+                              删除
                             </button>
                           </div>
                         </div>
@@ -381,7 +379,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                   ))}
                 </div>
               ) : (
-                <div className="text-muted text-center" style={{ padding: '1rem', fontSize: '0.88rem' }}>{t('persona_modal.no_personas')}</div>
+                <div className="text-muted text-center" style={{ padding: '1rem', fontSize: '0.88rem' }}>尚无自设</div>
               )}
             </div>
 
@@ -392,7 +390,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
             <input
               type="text"
               className="form-control mb-3"
-              placeholder={t('persona_modal.search_placeholder')}
+              placeholder="按名称搜索自设..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               autoFocus={userPersonas.length === 0}
@@ -401,9 +399,9 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
             {/* Search Results or Popular Personas Section */}
             {searchTerm.trim() ? (
               <>
-                <h6 className="mb-3" style={{ fontWeight: 700, fontSize: '0.95rem', color: '#232323' }}>{t('persona_modal.search_results')}</h6>
+                <h6 className="mb-3" style={{ fontWeight: 700, fontSize: '0.95rem', color: '#232323' }}>搜索结果</h6>
                 {loading ? (
-                  <div className="text-center text-muted">{t('persona_modal.searching')}</div>
+                  <div className="text-center text-muted">搜索中...</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {searchResults.length > 0 ? (
@@ -447,14 +445,14 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                         </div>
                       ))
                     ) : (
-                      <div className="text-muted text-center">{t('persona_modal.no_personas_found')}</div>
+                      <div className="text-muted text-center">未找到自设。</div>
                     )}
                   </div>
                 )}
               </>
             ) : (
               <>
-                <h6 className="mb-3" style={{ fontWeight: 700, fontSize: '0.95rem', color: '#232323' }}>{t('persona_modal.popular_personas')}</h6>
+                <h6 className="mb-3" style={{ fontWeight: 700, fontSize: '0.95rem', color: '#232323' }}>热门自设</h6>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {popularPersonas.length > 0 ? (
                     popularPersonas.map(persona => (
@@ -497,7 +495,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                       </div>
                     ))
                   ) : (
-                    <div className="text-muted text-center">{t('persona_modal.no_popular_personas')}</div>
+                    <div className="text-muted text-center">暂无热门自设。</div>
                   )}
                 </div>
               </>
@@ -515,7 +513,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                 e.currentTarget.style.background = '#f3f4f6';
               }}
             >
-              {t('persona_modal.cancel')}
+              取消
             </button>
             <button
               type="button"
@@ -530,7 +528,7 @@ export default function PersonaModal({ show, onClose, onSelect, sessionToken, re
                 e.currentTarget.style.color = '#5f567f';
               }}
             >
-              {t('persona_modal.confirm')}
+              确认
             </button>
           </div>
         </div>

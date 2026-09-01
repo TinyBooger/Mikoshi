@@ -508,7 +508,7 @@ export default function CharacterFormPage() {
       return;
     }
     if (!charData.name.trim() || !charData.persona.trim()) {
-      toast.show('名称和人设为必填项。', { type: 'error' });
+      toast.show('名称和自设为必填项。', { type: 'error' });
       return;
     }
     if (!charData.tags || charData.tags.length === 0) {
@@ -662,7 +662,10 @@ export default function CharacterFormPage() {
             opacity: 1;
           }
         `}</style>
-          <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>{isAppealMode ? '修改并申诉' : mode === 'edit' ? '编辑角色' : mode === 'fork' ? '二次创作角色' : '新建角色'}</h2>
+          <h2 className="fw-bold text-dark mb-2" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>{isAppealMode ? '修改并申诉' : mode === 'edit' ? '编辑角色' : mode === 'fork' ? '二次创作角色' : '创建角色'}</h2>
+          <p className="text-muted mb-4" style={{ fontSize: '0.95rem', textAlign: 'left', width: '100%' }}>
+            创建与你对话的 AI 角色，赋予它独特的性格、背景与故事。
+          </p>
 
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           <BanNotice banType={userData?.ban_type} banUntil={userData?.ban_until} context="upload" />

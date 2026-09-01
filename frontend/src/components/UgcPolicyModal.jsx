@@ -15,7 +15,7 @@ export default function UgcPolicyModal({ show, onClose, onAgree }) {
 
         <div style={styles.body}>
           <div style={styles.scrollArea}>
-            <p style={styles.paragraph}>在创建并发布角色、场景、人设前，请了解以下规则：</p>
+            <p style={styles.paragraph}>在创建并发布角色、场景、自设前，请了解以下规则：</p>
             <ul style={styles.list}>
               <li>你对上传的文本、图片等内容拥有合法权利，或已获得充分授权。</li>
               <li>不得上传、改编或分发未经授权的受版权保护内容。</li>

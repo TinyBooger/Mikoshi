@@ -523,7 +523,7 @@ export default function EntityCard({
                 onClick={handleAddPersona}
                 onMouseEnter={() => setIsAddPersonaHovered(true)}
                 onMouseLeave={() => setIsAddPersonaHovered(false)}
-                title={isPersonaAdded ? '已添加人设' : '添加到我的人设'}
+                title={isPersonaAdded ? '已添加自设' : '添加到我的自设'}
                 disabled={isAddPersonaLoading || isOwnPersona}
                 style={{
                   width: '30px',
@@ -686,7 +686,7 @@ export default function EntityCard({
                 onClick={handleAddPersona}
                 onMouseEnter={() => setIsAddPersonaHovered(true)}
                 onMouseLeave={() => setIsAddPersonaHovered(false)}
-                title={isPersonaAdded ? '已添加人设' : '添加到我的人设'}
+                title={isPersonaAdded ? '已添加自设' : '添加到我的自设'}
                 disabled={isAddPersonaLoading || isOwnPersona}
                 style={{
                   width: '28px',

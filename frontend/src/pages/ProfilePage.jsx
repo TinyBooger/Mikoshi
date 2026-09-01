@@ -877,7 +877,7 @@ export default function ProfilePage() {
         type = 'persona';
         canEditEntity = () => isOwnProfile;
         editUrlPrefix = 'persona';
-        emptyMsg = '你还没有创建任何人设。';
+        emptyMsg = '你还没有创建任何自设。';
         page = personasPage;
         total = personasTotal;
         onPageChange = setPersonasPage;
@@ -906,7 +906,7 @@ export default function ProfilePage() {
         type = 'persona';
         canEditEntity = () => false;
         editUrlPrefix = 'persona';
-        emptyMsg = '你还没有点赞任何人设。';
+        emptyMsg = '你还没有点赞任何自设。';
         page = likedPersonasPage;
         total = likedPersonasTotal;
         onPageChange = setLikedPersonasPage;
@@ -926,7 +926,7 @@ export default function ProfilePage() {
       type = 'persona';
       canEditEntity = (entity) => isOwnProfile && String(entity.creator_id) === String(userData?.id);
       editUrlPrefix = 'persona';
-      emptyMsg = '暂无人设。';
+      emptyMsg = '暂无自设。';
       page = 1;
       total = 0;
       onPageChange = () => {};
@@ -1957,7 +1957,7 @@ export default function ProfilePage() {
                     {[
                       { key: SUBTAB_TYPES.CHARACTERS, label: '角色' },
                       { key: SUBTAB_TYPES.SCENES,     label: '场景' },
-                      { key: SUBTAB_TYPES.PERSONAS,   label: '人设' },
+                      { key: SUBTAB_TYPES.PERSONAS,   label: '自设' },
                     ].map(sub => {
                       const isActive = activeTab === TAB_TYPES.CREATED && activeSubtab === sub.key;
                       return (
@@ -2048,7 +2048,7 @@ export default function ProfilePage() {
 
               {isOwnProfile && <div style={{ height: 1, background: 'rgba(0,0,0,0.06)', margin: '4px 2px' }} />}
 
-              {/* 我的人设 */}
+              {/* 我的自设 */}
               {isOwnProfile && (
                 <button
                   type="button"
@@ -2064,7 +2064,7 @@ export default function ProfilePage() {
                   onMouseEnter={e => { if (activeTab !== TAB_TYPES.MY_PERSONAS) e.currentTarget.style.background = 'rgba(167,139,250,0.06)'; }}
                   onMouseLeave={e => { if (activeTab !== TAB_TYPES.MY_PERSONAS) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  {'我的人设'}
+                  {'我的自设'}
                 </button>
               )}
 
@@ -2180,7 +2180,7 @@ export default function ProfilePage() {
                   <span style={{ width: 1, alignSelf: 'stretch', margin: '4px 3px', background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />
                 )}
 
-                {/* 我的人设 (standalone) */}
+                {/* 我的自设 (standalone) */}
                 {isOwnProfile && (
                   <button
                     type="button"
@@ -2193,7 +2193,7 @@ export default function ProfilePage() {
                       cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s',
                     }}
                   >
-                    {'我的人设'}
+                    {'我的自设'}
                   </button>
                 )}
 
@@ -2239,7 +2239,7 @@ export default function ProfilePage() {
                     ? [
                         { key: SUBTAB_TYPES.CHARACTERS, label: '角色' },
                         { key: SUBTAB_TYPES.SCENES,     label: '场景' },
-                        { key: SUBTAB_TYPES.PERSONAS,   label: '人设' },
+                        { key: SUBTAB_TYPES.PERSONAS,   label: '自设' },
                       ]
                     : [
                         { key: SUBTAB_TYPES.CHARACTERS, label: '角色' },

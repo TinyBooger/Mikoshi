@@ -408,9 +408,12 @@ export default function EntityFormPage() {
             opacity: 1;
           }
         `}</style>
-        <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>
-          {isAppealMode ? '修改并申诉' : mode === 'edit' ? (entityType === 'persona' ? '编辑自设' : '编辑场景') : mode === 'fork' ? `二次创作${entityType === 'persona' ? '自设' : '场景'}` : (entityType === 'persona' ? '新建自设' : '新建场景')}
+        <h2 className="fw-bold text-dark mb-2" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>
+          {isAppealMode ? '修改并申诉' : mode === 'edit' ? (entityType === 'persona' ? '编辑自设' : '编辑场景') : mode === 'fork' ? `二次创作${entityType === 'persona' ? '自设' : '场景'}` : (entityType === 'persona' ? '创建自设' : '创建场景')}
         </h2>
+        <p className="text-muted mb-4" style={{ fontSize: '0.95rem', textAlign: 'left', width: '100%' }}>
+          {entityType === 'persona' ? '创建代表你本人的角色设定，在聊天中以这个自设与角色互动。' : '创建可在聊天中导入的背景场景，为故事搭建舞台、营造氛围。'}
+        </p>
         
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           <BanNotice banType={userData?.ban_type} banUntil={userData?.ban_until} context="upload" />

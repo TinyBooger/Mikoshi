@@ -481,7 +481,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
               onClick={handleAddPersona}
               onMouseEnter={() => setIsAddPersonaHovered(true)}
               onMouseLeave={() => setIsAddPersonaHovered(false)}
-              title={isPersonaAdded ? '已添加人设' : '添加到我的人设'}
+              title={isPersonaAdded ? '已添加自设' : '添加到我的自设'}
               disabled={isAddPersonaLoading || isOwnPersona}
               style={{
                 width: isMobile ? '28px' : '30px',
