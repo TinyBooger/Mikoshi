@@ -1044,7 +1044,7 @@ export default function CharacterFormPage() {
           {/* Persona */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              设定
+              核心设定
               <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
               <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>设定决定了角色的行为方式和说话风格，仅自己可见</small>
             </label>
@@ -1071,6 +1071,9 @@ export default function CharacterFormPage() {
             />
             <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
               {charData.persona.length}/{MAX_PERSONA_LENGTH}
+            </small>
+            <small style={{ display: 'block', color: '#9ca3af', marginBottom: 6, fontSize: '0.8rem' }}>
+              如果想要写下更长的设定内容，下方"启用详细人物设定"按钮可启用更长的设定长度
             </small>
           </div>
 
@@ -1223,9 +1226,14 @@ export default function CharacterFormPage() {
             <div>
               <span style={{ fontWeight: 700, color: '#232323', fontSize: '0.97rem' }}>启用详细人物设定</span>
               {effectiveContextLabel === 'advanced' ? (
-                <small style={{ display: 'block', color: '#7c3aed', marginTop: 2 }}>可填写最多15000字的详细人物设定，用于构建更丰富的角色背景</small>
+                <small style={{ display: 'block', color: '#b45309', marginTop: 2, fontWeight: 600 }}>
+                  <i className="bi bi-info-circle me-1"></i>
+                  角色卡片封面将显示「进阶角色」标识，表示该角色消耗更多点数
+                </small>
               ) : (
-                <small style={{ display: 'block', color: '#888', marginTop: 2 }}>开启后可额外填写最多15000字的详细人物设定</small>
+                <small style={{ display: 'block', color: '#888', marginTop: 2 }}>
+                  开启后，角色卡片封面将显示「进阶角色」标识，表示该角色消耗更多点数
+                </small>
               )}
             </div>
             <div className="form-check form-switch mb-0" style={{ paddingLeft: 0 }}>

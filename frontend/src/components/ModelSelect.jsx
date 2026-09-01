@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { getModelMultiplier, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
+import { getModelMultiplier, getModelDescription, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 
 /**
  * Custom model selector dropdown with styled multiplier display.
@@ -95,6 +95,22 @@ export default function ModelSelect({ value, onChange, disabled, className, styl
     transition: 'background 0.1s',
   });
 
+  const itemMainStyle = {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 8,
+    minWidth: 0,
+  };
+
+  const itemDescStyle = {
+    fontSize: '0.72rem',
+    color: '#9ca3af',
+    fontWeight: 400,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  };
+
   const multiplierStyle = {
     fontSize: '0.72rem',
     opacity: 0.45,
@@ -102,6 +118,8 @@ export default function ModelSelect({ value, onChange, disabled, className, styl
     marginLeft: 12,
     fontWeight: 500,
   };
+
+  const selectedDescription = getModelDescription(selectedId);
 
   return (
     <div ref={containerRef} style={{ position: 'relative' }} onKeyDown={handleKeyDown}>
@@ -114,7 +132,12 @@ export default function ModelSelect({ value, onChange, disabled, className, styl
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span>{selectedId}</span>
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+          <span>{selectedId}</span>
+          {selectedDescription && (
+            <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 400 }}>{selectedDescription}</span>
+          )}
+        </span>
         <span style={{ fontSize: '0.72rem', opacity: 0.45, fontWeight: 500 }}>
           {getModelMultiplier(selectedId)}× ▾
         </span>
@@ -139,7 +162,12 @@ export default function ModelSelect({ value, onChange, disabled, className, styl
                   if (!isSelected) e.currentTarget.style.background = 'transparent';
                 }}
               >
-                <span>{modelId}</span>
+                <span style={itemMainStyle}>
+                  <span>{modelId}</span>
+                  {getModelDescription(modelId) && (
+                    <span style={itemDescStyle}>{getModelDescription(modelId)}</span>
+                  )}
+                </span>
                 <span style={multiplierStyle}>{getModelMultiplier(modelId)}×</span>
               </div>
             );
