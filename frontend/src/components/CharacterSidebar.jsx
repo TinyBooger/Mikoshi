@@ -91,11 +91,11 @@ export default function CharacterSidebar({
   const isProUser = !!userData?.is_pro;
   const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
   const SHARED_TOKEN_TIERS = [
-    { value: 1024, labelKey: 'short_sentence' },
-    { value: 2048, labelKey: 'paragraph' },
-    { value: 4096, labelKey: 'long' },
-    { value: 6144, labelKey: 'very_long' },
-    { value: 8192, labelKey: 'maximum' },
+    { value: 1024, label: '短句' },
+    { value: 2048, label: '段落' },
+    { value: 4096, label: '长回复' },
+    { value: 6144, label: '超长回复' },
+    { value: 8192, label: '最大' },
   ];
   const getTokenLimits = () => SHARED_TOKEN_LIMITS;
   /**
@@ -142,14 +142,13 @@ export default function CharacterSidebar({
       context_window_tier: nextContextTier,
     }));
   };
-  const InfoHint = ({ hintKey }) => {
-    const text = t(hintKey);
-    const isOpen = activeHintKey === hintKey;
+  const InfoHint = ({ text }) => {
+    const isOpen = activeHintKey === text;
     return (
       <span style={{ marginLeft: 6, display: 'inline-flex', alignItems: 'center', position: 'relative' }}>
         <button
           type="button"
-          onClick={() => setActiveHintKey((prev) => (prev === hintKey ? null : hintKey))}
+          onClick={() => setActiveHintKey((prev) => (prev === text ? null : text))}
           title={text}
           aria-label={text}
           style={{
@@ -1044,7 +1043,7 @@ export default function CharacterSidebar({
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                   模型
-                  <InfoHint hintKey="character_form.advanced_help.model" />
+                  <InfoHint text="选择语言模型。`deepseek-v4-pro` 更适合通用角色扮演；`deepseek-v4-flash` 回复更快。" />
                 </label>
                 <ModelSelect
                   className="form-select form-select-sm"
@@ -1092,7 +1091,7 @@ export default function CharacterSidebar({
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                   温度: {advancedChatConfig?.temperature ?? 1.3}
-                  <InfoHint hintKey="character_form.advanced_help.temperature" />
+                  <InfoHint text="控制随机性。值越低越稳定可预测；值越高越有创意和变化。" />
                 </label>
                 <input
                   type="range"
@@ -1107,7 +1106,7 @@ export default function CharacterSidebar({
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                   Top P: {advancedChatConfig?.top_p ?? 0.9}
-                  <InfoHint hintKey="character_form.advanced_help.top_p" />
+                  <InfoHint text="核采样范围。值越低可选词更集中、回复更收敛；值越高表达更发散多样。一般不建议与 Temperature 同时调节。" />
                 </label>
                 <input
                   type="range"
@@ -1122,7 +1121,7 @@ export default function CharacterSidebar({
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                   最大输出 Token: {advancedChatConfig?.max_tokens ?? selectedTokenLimits.defaultValue}
-                  <InfoHint hintKey="character_form.advanced_help.max_tokens" />
+                  <InfoHint text="单次回复的最大长度。默认 4096 tokens（最大 8192）。" />
                 </label>
                 <select
                   className="form-select form-select-sm"
@@ -1133,14 +1132,14 @@ export default function CharacterSidebar({
                 >
                   {selectedTokenTiers.map((tier) => (
                     <option key={tier.value} value={tier.value}>
-                      {t(`character_form.advanced_token_tiers.${tier.labelKey}`)} ({tier.value})
+                      {tier.label} ({tier.value})
                     </option>
                   ))}
                 </select>
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                   存在惩罚: {advancedChatConfig?.presence_penalty ?? 0}
-                  <InfoHint hintKey="character_form.advanced_help.presence_penalty" />
+                  <InfoHint text="鼓励引入新内容。值越高，越不容易反复围绕同一主题。" />
                 </label>
                 <input
                   type="range"
@@ -1156,7 +1155,7 @@ export default function CharacterSidebar({
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                   频率惩罚: {advancedChatConfig?.frequency_penalty ?? 0}
-                  <InfoHint hintKey="character_form.advanced_help.frequency_penalty" />
+                  <InfoHint text="抑制重复用词。值越高，越能减少词语和句式重复。" />
                 </label>
                 <input
                   type="range"

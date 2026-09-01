@@ -40,8 +40,6 @@ export default function EntityFormPage() {
       maxIntroLength: 200,
       maxTags: 20,
       apiEndpoint: 'personas',
-      transactionKeyPrefix: 'persona_form',
-      requiredFields: ['name', 'tags'],
     },
     scene: {
       maxNameLength: 50,
@@ -49,8 +47,6 @@ export default function EntityFormPage() {
       maxIntroLength: 100,
       maxTags: 20,
       apiEndpoint: 'scenes',
-      transactionKeyPrefix: 'scene_form',
-      requiredFields: ['name', 'description', 'tags'],
     },
   };
 
@@ -197,7 +193,7 @@ export default function EntityFormPage() {
   useEffect(() => {
     if (mode === 'edit' || mode === 'fork') {
       if (!id) {
-        toast.show(t(`${entityConfig.transactionKeyPrefix}.missing_id`), { type: 'error' });
+        toast.show(entityType === 'persona' ? '缺少自设 ID' : '缺少场景 ID', { type: 'error' });
         navigate("/");
         return;
       }
@@ -218,7 +214,7 @@ export default function EntityFormPage() {
         .then(data => {
           if (!data) return;
           if (mode === 'edit' && String(data.creator_id) !== String(userData?.id)) {
-            toast.show(t(`${entityConfig.transactionKeyPrefix}.not_authorized_edit`), { type: 'error' });
+            toast.show('您只能编辑自己创建的内容。', { type: 'error' });
             navigate('/profile');
             return;
           }
@@ -293,20 +289,26 @@ export default function EntityFormPage() {
     e.preventDefault();
     if (isSubmitting) return;
     if (!sessionToken) {
-      toast.show(t(`${entityConfig.transactionKeyPrefix}.not_logged_in`), { type: 'error' });
+      toast.show('您需要登录才能操作。', { type: 'error' });
       navigate("/");
       return;
     }
 
     // Validate required fields
-    for (const field of entityConfig.requiredFields) {
+    const requiredFields = entityType === 'scene' ? ['name', 'description', 'tags'] : ['name', 'tags'];
+    const requiredMessages = {
+      name: entityType === 'persona' ? '名称为必填项。' : '名称和描述为必填项。',
+      description: '描述为必填项。',
+      tags: '请至少添加一个标签。',
+    };
+    for (const field of requiredFields) {
       if (!entityData[field] || (typeof entityData[field] === 'string' && !entityData[field].trim()) || (Array.isArray(entityData[field]) && entityData[field].length === 0)) {
-        toast.show(t(`${entityConfig.transactionKeyPrefix}.${field}_required`), { type: 'error' });
+        toast.show(requiredMessages[field], { type: 'error' });
         return;
       }
     }
     if (entityType === 'scene' && !isImprovisingGreeting && !entityData.greeting.trim()) {
-      toast.show(t('scene_form.greeting_required'), { type: 'error' });
+      toast.show('请填写开场白，或者启用即兴开场白。', { type: 'error' });
       return;
     }
     const formData = new FormData();
@@ -355,17 +357,17 @@ export default function EntityFormPage() {
               body: JSON.stringify({ entity_type: entityType, entity_id: Number(id), appeal_reason: appealReason.trim() }),
             });
           } catch (_) { /* best effort */ }
-          toast.show(t(`${entityConfig.transactionKeyPrefix}.appeal_submitted`));
+          toast.show('内容已保存并提交申诉。');
           navigate(`/${entityType}/${id}`);
         } else {
-          toast.show(mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.updated`) : mode === 'fork' ? `${entityType === 'persona' ? '自设' : '场景'}已完成二次创作！` : t(`${entityConfig.transactionKeyPrefix}.created`));
+          toast.show(mode === 'edit' ? (entityType === 'persona' ? '自设已更新！' : '场景已更新！') : mode === 'fork' ? `${entityType === 'persona' ? '自设' : '场景'}已完成二次创作！` : (entityType === 'persona' ? '自设已创建！' : '场景已创建！'));
           navigate("/profile");
         }
       } else {
-        toast.show(getApiErrorMessage(data, t(`${entityConfig.transactionKeyPrefix}.error`), t), { type: 'error' });
+        toast.show(getApiErrorMessage(data, '发生错误。'), { type: 'error' });
       }
     } catch (error) {
-      toast.show(t(`${entityConfig.transactionKeyPrefix}.error`), { type: 'error' });
+      toast.show('发生错误。', { type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -387,10 +389,10 @@ export default function EntityFormPage() {
         headers: { 'Authorization': sessionToken }
       });
       const data = await res.json();
-      toast.show(data.message || data.detail || t(`${entityConfig.transactionKeyPrefix}.deleted`));
+      toast.show(data.message || data.detail || (entityType === 'persona' ? '已删除自设' : '已删除场景'));
       if (res.ok) navigate("/profile");
     } catch (err) {
-      toast.show(t(`${entityConfig.transactionKeyPrefix}.error`), { type: 'error' });
+      toast.show('发生错误。', { type: 'error' });
     }
   };
 
@@ -407,7 +409,7 @@ export default function EntityFormPage() {
           }
         `}</style>
         <h2 className="fw-bold text-dark mb-4" style={{ fontSize: '2.1rem', letterSpacing: '0.5px', textAlign: 'left', width: '100%' }}>
-          {isAppealMode ? t(`${entityConfig.transactionKeyPrefix}.appeal_title`, '修改并申诉') : mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.edit_title`) : mode === 'fork' ? `二次创作${entityType === 'persona' ? '自设' : '场景'}` : t(`${entityConfig.transactionKeyPrefix}.create_title`)}
+          {isAppealMode ? '修改并申诉' : mode === 'edit' ? (entityType === 'persona' ? '编辑自设' : '编辑场景') : mode === 'fork' ? `二次创作${entityType === 'persona' ? '自设' : '场景'}` : (entityType === 'persona' ? '新建自设' : '新建场景')}
         </h2>
         
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
@@ -483,9 +485,9 @@ export default function EntityFormPage() {
           {isAppealMode && (
             <div className="alert alert-warning mb-4" role="alert" style={{ borderRadius: 10 }}>
               <i className="bi bi-megaphone-fill me-2"></i>
-              <strong>{t(`${entityConfig.transactionKeyPrefix}.appeal_notice_title`, '申诉模式')}</strong>
+              <strong>申诉模式</strong>
               <div className="mt-1" style={{ fontSize: '0.88rem' }}>
-                {t(`${entityConfig.transactionKeyPrefix}.appeal_notice_body`, '您可以修改内容后提交申诉。管理员将审核修改后的版本并决定是否解除限制。')}
+                您可以修改内容后提交申诉。管理员将审核修改后的版本并决定是否解除限制。
               </div>
             </div>
           )}
@@ -660,7 +662,7 @@ export default function EntityFormPage() {
           {/* Name */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              {t(`${entityConfig.transactionKeyPrefix}.name`)}
+              名称
               <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
             </label>
             <input
@@ -668,7 +670,7 @@ export default function EntityFormPage() {
               required
               value={entityData.name}
               maxLength={MAX_NAME_LENGTH}
-              placeholder={t(`${entityConfig.transactionKeyPrefix}.placeholders.name`)}
+              placeholder={entityType === 'scene' ? '例如："霓虹小巷"' : ''}
               onChange={e => handleChange('name', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -690,15 +692,15 @@ export default function EntityFormPage() {
           {/* Intro (short tagline-like summary) */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              {t(`${entityConfig.transactionKeyPrefix}.intro`)}
-              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t(`${entityConfig.transactionKeyPrefix}.notes.intro`)}</small>
+              简介
+              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>封面介绍</small>
             </label>
             <textarea
               className="form-control"
               rows={Math.max(1, Math.min(3, Math.ceil(entityData.intro.length / 80)))}
               value={entityData.intro}
               maxLength={MAX_INTRO_LENGTH}
-              placeholder={t(`${entityConfig.transactionKeyPrefix}.placeholders.intro`)}
+              placeholder=""
               onChange={e => handleChange('intro', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -721,16 +723,16 @@ export default function EntityFormPage() {
           {/* Description (main content field) */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              {t(`${entityConfig.transactionKeyPrefix}.description`)}
+              描述
               <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
-              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t(`${entityConfig.transactionKeyPrefix}.notes.description`)}</small>
+              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{entityType === 'persona' ? '性格、背景故事等' : '决定了场景的背景设定和氛围'}</small>
             </label>
             <textarea
               className="form-control"
               rows={Math.max(5, Math.min(20, Math.ceil(entityData.description.length / 80)))}
               value={entityData.description}
               maxLength={MAX_DESC_LENGTH}
-              placeholder={t(`${entityConfig.transactionKeyPrefix}.placeholders.description`)}
+              placeholder={entityType === 'scene' ? '描述该场景的背景、氛围和故事。例如：雨夜的赛博朋克后街，招牌闪烁。' : ''}
               onChange={e => handleChange('description', e.target.value)}
               style={{
                 background: '#f5f6fa',
@@ -754,9 +756,9 @@ export default function EntityFormPage() {
             <div className="mb-4 position-relative">
               <label className="form-label fw-bold d-flex align-items-center gap-3" style={{ color: '#232323' }}>
                 <span>
-                  {t('scene_form.greeting')}
+                  开场白
                   <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
-                  <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t('scene_form.notes.greeting')}</small>
+                  <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{''}</small>
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400, whiteSpace: 'nowrap' }}>
                   <input
@@ -765,7 +767,7 @@ export default function EntityFormPage() {
                     checked={isImprovisingGreeting}
                     onChange={e => setIsImprovisingGreeting(e.target.checked)}
                   />
-                  <label htmlFor="improviseSceneGreeting" style={{ margin: 0, fontSize: '0.95rem', cursor: 'pointer' }}>{t('scene_form.improvise_greeting')}</label>
+                  <label htmlFor="improviseSceneGreeting" style={{ margin: 0, fontSize: '0.95rem', cursor: 'pointer' }}>即兴开场白</label>
                 </span>
               </label>
               <textarea
@@ -775,7 +777,7 @@ export default function EntityFormPage() {
                 maxLength={MAX_GREETING_LENGTH}
                 onChange={e => handleChange('greeting', e.target.value)}
                 disabled={isImprovisingGreeting}
-                placeholder={isImprovisingGreeting ? t('scene_form.greeting_improvising_placeholder') : t('scene_form.placeholders.greeting')}
+                placeholder={isImprovisingGreeting ? '系统将自动生成动态开场白。' : ''}
                 style={{
                   background: isImprovisingGreeting ? '#f0f0f0' : '#f5f6fa',
                   color: '#18191a',
@@ -798,23 +800,23 @@ export default function EntityFormPage() {
           {/* Tags */}
           <div className="mb-4">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              {t(`${entityConfig.transactionKeyPrefix}.tags`)}
+              标签
               <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
-              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{t(`${entityConfig.transactionKeyPrefix}.notes.tags`)}</small>
+              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>第一个标签会显示在封面上。</small>
             </label>
             <TagsInput
               tags={entityData.tags}
               setTags={tags => handleChange('tags', tags)}
               maxTags={MAX_TAGS}
-              placeholder={t(`${entityConfig.transactionKeyPrefix}.placeholders.tags`)}
-              hint={t(`${entityConfig.transactionKeyPrefix}.tags_input_hint`)}
+              placeholder="输入完一个标签后按Enter键确认"
+              hint="输入标签后按Enter确认"
             />
           </div>
 
           {/* Visibility & Options */}
           <div className="mb-4">
             <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '1rem' }}>
-              {t(`${entityConfig.transactionKeyPrefix}.visibility_settings`) || 'Visibility & Access'}
+              可见性与访问权限
             </label>
 
             {/* Public/Private Toggle */}
@@ -824,16 +826,14 @@ export default function EntityFormPage() {
                   <i className={`bi ${entityData.is_public ? 'bi-globe2' : 'bi-lock-fill'}`} style={{ fontSize: '1.2rem', color: entityData.is_public ? '#10b981' : '#6b7280' }}></i>
                   <div>
                     <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>
-                      {entityData.is_public ? (t(`${entityConfig.transactionKeyPrefix}.public`) || 'Public') : (t(`${entityConfig.transactionKeyPrefix}.private`) || 'Private')}
+                      {entityData.is_public ? '公开' : '私密'}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                      {entityData.is_public
-                        ? (t(`${entityConfig.transactionKeyPrefix}.public_desc`) || 'Visible to everyone')
-                        : (t(`${entityConfig.transactionKeyPrefix}.private_desc`) || 'Only visible to you')}
+                      {entityData.is_public ? '所有人可见' : '仅自己可见'}
                     </div>
                     {!canPrivate && !entityData.is_public && (
                       <div className="text-danger" style={{ fontSize: '0.75rem' }}>
-                        {t(`${entityConfig.transactionKeyPrefix}.level_lock_notice`, { level: 2 })}
+                        该功能将在达到等级 2 后开放
                       </div>
                     )}
                   </div>
@@ -905,18 +905,18 @@ export default function EntityFormPage() {
               {hasPendingAppeal ? (
                 <div className="alert alert-info" role="alert" style={{ borderRadius: 10 }}>
                   <i className="bi bi-hourglass-split me-2"></i>
-                  <strong>{t(`${entityConfig.transactionKeyPrefix}.appeal_pending_title`, '申诉审核中')}</strong>
+                  <strong>申诉审核中</strong>
                   <div className="mt-1" style={{ fontSize: '0.88rem' }}>
-                    {t(`${entityConfig.transactionKeyPrefix}.appeal_pending_body`, '您已有一份申诉正在审核中。您仍可保存内容修改，但无法再次提交申诉，直到当前申诉处理完毕。')}
+                    您已有一份申诉正在审核中。您仍可保存内容修改，但无法再次提交申诉，直到当前申诉处理完毕。
                   </div>
                 </div>
               ) : (
                 <>
                   <label className="form-label fw-bold" style={{ color: '#232323' }}>
-                    {t(`${entityConfig.transactionKeyPrefix}.appeal_reason_label`, '申诉理由')}
+                    申诉理由
                     <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
                     <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
-                      {t(`${entityConfig.transactionKeyPrefix}.appeal_reason_hint`, '请说明您已如何修改内容，以及为何认为应解除限制')}
+                      请说明您已如何修改内容，以及为何认为应解除限制
                     </small>
                   </label>
                   <textarea
@@ -924,7 +924,7 @@ export default function EntityFormPage() {
                     rows={4}
                     value={appealReason}
                     maxLength={1000}
-                    placeholder={t(`${entityConfig.transactionKeyPrefix}.appeal_reason_placeholder`, '请描述您对内容的修改，以及申诉理由…')}
+                    placeholder="请描述您对内容的修改，以及申诉理由…"
                     onChange={e => setAppealReason(e.target.value)}
                     required={isAppealMode && !hasPendingAppeal}
                     style={{
@@ -948,12 +948,12 @@ export default function EntityFormPage() {
               {isSubmitting ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  {t(`${entityConfig.transactionKeyPrefix}.processing`)}
+                  处理中...
                 </>
               ) : (
                 <>
                   <i className={`bi ${isAppealMode && !hasPendingAppeal ? 'bi-megaphone' : 'bi-save'} me-2`}></i>
-                  {isAppealMode && !hasPendingAppeal ? t(`${entityConfig.transactionKeyPrefix}.save_and_appeal`, '保存并提交申诉') : mode === 'edit' ? t(`${entityConfig.transactionKeyPrefix}.save`) : t(`${entityConfig.transactionKeyPrefix}.create`)}
+                  {isAppealMode && !hasPendingAppeal ? '保存并提交申诉' : mode === 'edit' ? '保存' : '创建'}
                 </>
               )}
             </PrimaryButton>
@@ -973,7 +973,7 @@ export default function EntityFormPage() {
                 }}
                 onClick={handleDelete}
               >
-                <i className="bi bi-trash me-2"></i>{t(`${entityConfig.transactionKeyPrefix}.delete`)}
+                <i className="bi bi-trash me-2"></i>删除
               </PrimaryButton>
             )}
           </div>
@@ -1007,10 +1007,10 @@ export default function EntityFormPage() {
           >
             <div className="spinner-border" role="status" aria-hidden="true" style={{ width: '2.2rem', height: '2.2rem', color: '#736B92' }}></div>
             <div style={{ marginTop: '0.9rem', fontWeight: 700, color: '#1f2937', fontSize: '1rem' }}>
-              {t(`${entityConfig.transactionKeyPrefix}.processing`)}
+              处理中...
             </div>
             <div style={{ marginTop: '0.45rem', color: '#4b5563', fontSize: '0.9rem', lineHeight: 1.5 }}>
-              {t(`${entityConfig.transactionKeyPrefix}.processing_tip`)}
+              {entityType === 'persona' ? '自设正在处理中，请稍候。' : '场景正在处理中，请稍候。'}
             </div>
           </div>
         </div>,

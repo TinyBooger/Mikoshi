@@ -148,23 +148,6 @@
     "personas_tab": "Personas",
     "users_tab": "Users"
   },
-  "character_form": {
-    "advanced_help": {
-      "model": "Select the language model. Use deepseek-v4-pro for general roleplay, or deepseek-v4-flash when you want faster responses.",
-      "temperature": "Controls randomness. Lower values are more stable and predictable; higher values are more creative and varied.",
-      "top_p": "Nucleus sampling. Lower values narrow token choices and make replies focused; higher values allow broader and more diverse wording. It is generally not recommended to tune Top P and Temperature at the same time.",
-      "max_tokens": "Maximum response length per reply. Default is 4096 tokens (max 8192).",
-      "presence_penalty": "Encourages introducing new topics. Higher values reduce repeating the same ideas.",
-      "frequency_penalty": "Reduces repeated words and phrases. Higher values discourage repetitive wording."
-    },
-    "advanced_token_tiers": {
-      "short_sentence": "Short sentence",
-      "paragraph": "Paragraph",
-      "long": "Long",
-      "very_long": "Very long",
-      "maximum": "Maximum"
-    }
-  },
   "character_assistant": {
     "title": "AI Assistant",
     "subtitle": "Chat to create your character",
@@ -179,105 +162,6 @@
     "applied_success": "Character applied to form!",
     "error": "Failed to generate character. Please try again.",
     "tooltip": "✨ AI Assistant - Click to create your character!"
-  },
-  "persona_form": {
-    "edit_title": "Edit Persona",
-    "create_title": "Create New Persona",
-    "create_description": "A persona helps the AI understand your identity, speaking style, and preferences during chat.",
-    "name": "Name",
-    "required_marker": "*",
-    "description": "Description",
-    "intro": "Intro",
-    "tags": "Tags",
-    "picture": "Profile Picture",
-    "no_picture": "No picture",
-    "save": "Save",
-    "create": "Create",
-    "delete": "Delete"
-    ,
-    "missing_id": "Missing persona ID",
-    "not_logged_in": "You need to be logged in.",
-    "not_authorized_edit": "You can only edit your own content.",
-    "name_required": "Name is required.",
-    "updated": "Persona updated!",
-    "created": "Persona created!",
-    "appeal_submitted": "Content saved and appeal submitted.",
-    "deleted": "Persona deleted",
-    "processing": "Processing...",
-    "processing_tip": "Your persona is being processed. This may take a moment.",
-    "error": "An error occurred.",
-    "tags_required": "Please add at least one tag.",
-    "notes": {
-      "description": "Describe traits, role, and voice (long).",
-      "intro": "First-person intro (one sentence).",
-      "tags": "The first tag appears on the cover."
-    },
-    "placeholders": {
-      "name": "e.g., \"Rogue Scholar\"",
-      "description": "e.g., A curious academic who solves mysteries with wit.",
-      "intro": "e.g., \"I keep the city’s forgotten stories in my notebooks—care to add a page?\"",
-      "tags": "e.g., detective, scholar, witty"
-    },
-    "tags_input_hint": "Type a tag, then tap Add (or press Enter)",
-    "visibility_settings": "Visibility & Access",
-    "public": "Public",
-    "private": "Private",
-    "public_desc": "Visible to everyone",
-    "private_desc": "Only visible to you",
-    "level_lock_notice": "This function will be available at level {{level}}"
-  },
-  "scene_form": {
-    "edit_title": "Edit Scene",
-    "create_title": "Create New Scene",
-    "create_description": "A scene sets the background, atmosphere, and environment for the conversation.",
-    "name": "Name",
-    "description": "Description",
-    "greeting": "Greeting",
-    "intro": "Intro",
-    "tags": "Tags",
-    "picture": "Scene Picture",
-    "no_picture": "No picture",
-    "save": "Save",
-    "create": "Create",
-    "delete": "Delete",
-    "required_marker": "*"
-    ,
-    "missing_id": "Missing scene ID",
-    "not_logged_in": "You need to be logged in.",
-    "not_authorized_edit": "You can only edit your own content.",
-    "name_required": "Name and description are required.",
-    "description_required": "Description is required.",
-    "greeting_required": "Please enter a greeting, or enable improvise greeting.",
-    "updated": "Scene updated!",
-    "created": "Scene created!",
-    "appeal_submitted": "Content saved and appeal submitted.",
-    "deleted": "Scene deleted",
-    "processing": "Processing...",
-    "processing_tip": "Your scene is being processed. This may take a moment.",
-    "error": "An error occurred.",
-    "tags_required": "Please add at least one tag.",
-    "notes": {
-      "description": "Sets the premise and atmosphere.",
-      "greeting": "The first line used when the scene opens.",
-      "intro": "Opening flavor text (one sentence).",
-      "tags": "The first tag appears on the cover."
-    },
-    "placeholders": {
-      "name": "e.g., \"Neon Alley\"",
-      "description": "e.g., A rain-soaked cyberpunk backstreet lit by flickering signs.",
-      "greeting": "e.g., \"The night air hums with neon and distant engines.\"",
-      "intro": "e.g., \"Rain hisses on neon-lit pavement as footsteps echo between shuttered stalls.\"",
-      "tags": "e.g., cyberpunk, night, rain"
-    },
-    "improvise_greeting": "Improvise greeting",
-    "greeting_improvising_placeholder": "A dynamic opening line will be generated.",
-    "tags_input_hint": "Type a tag, then tap Add (or press Enter)",
-    "visibility_settings": "Visibility & Access",
-    "public": "Public",
-    "private": "Private",
-    "public_desc": "Visible to everyone",
-    "private_desc": "Only visible to you",
-    "level_lock_notice": "This function will be available at level {{level}}"
   },
   "common": {
     "confirm": "Confirm",
