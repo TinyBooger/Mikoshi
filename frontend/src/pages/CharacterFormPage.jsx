@@ -91,6 +91,7 @@ export default function CharacterFormPage() {
     presence_penalty: 0,
     frequency_penalty: 0,
     context_window_tier: DEFAULT_CONTEXT_WINDOW_TIER,
+    interface_preference: 'bubbles',
   };
   const WALLPAPER_OPTIONS = [
     { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
@@ -192,6 +193,7 @@ export default function CharacterFormPage() {
     presence_penalty: DEFAULT_CHAT_CONFIG.presence_penalty,
     frequency_penalty: DEFAULT_CHAT_CONFIG.frequency_penalty,
     context_window_tier: null,
+    interface_preference: DEFAULT_CHAT_CONFIG.interface_preference,
     background: JSON.stringify({ type: 'preset', preset_id: 'none' }),
   });
   const [picture, setPicture] = useState(null);
@@ -406,6 +408,7 @@ export default function CharacterFormPage() {
               presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
               frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
               context_window_tier: normalizeContextWindowTier(data.context_window_tier, loadedModel),
+              interface_preference: data.interface_preference === 'clean' ? 'clean' : 'bubbles',
               background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
           } else {
@@ -433,6 +436,7 @@ export default function CharacterFormPage() {
               presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
               frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
               context_window_tier: normalizeContextWindowTier(data.context_window_tier, loadedModel),
+              interface_preference: data.interface_preference === 'clean' ? 'clean' : 'bubbles',
               background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
           }
@@ -565,6 +569,7 @@ export default function CharacterFormPage() {
   formData.append("max_tokens", String(canUseAdvancedConfig ? safeMaxTokens : DEFAULT_CHAT_CONFIG.max_tokens));
     formData.append("presence_penalty", String(canUseAdvancedConfig ? (charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty) : DEFAULT_CHAT_CONFIG.presence_penalty));
     formData.append("frequency_penalty", String(canUseAdvancedConfig ? (charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty) : DEFAULT_CHAT_CONFIG.frequency_penalty));
+    formData.append("interface_preference", String(charData.interface_preference === 'clean' ? 'clean' : 'bubbles'));
     formData.append("is_public", String(!!charData.is_public));
     formData.append("is_forkable", String(!!charData.is_forkable));
     if (picture) formData.append("picture", picture);
@@ -1321,6 +1326,22 @@ export default function CharacterFormPage() {
                     </select>
                   );
                 })()}
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontSize: '0.9rem' }}>
+                  界面偏好
+                  <InfoHint text={'选择消息展示方式。气泡模式使用消息气泡；简洁模式为类似 GPT 的纯文本排版。'} />
+                </label>
+                <select
+                  className="form-select"
+                  value={charData.interface_preference === 'clean' ? 'clean' : 'bubbles'}
+                  onChange={e => handleChange('interface_preference', e.target.value)}
+                  style={{ borderRadius: 12 }}
+                >
+                  <option value="bubbles">气泡模式</option>
+                  <option value="clean">简洁模式</option>
+                </select>
               </div>
             </div>
           </div>

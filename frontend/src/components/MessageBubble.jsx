@@ -43,6 +43,7 @@ const MessageBubble = React.memo(function MessageBubble({
   message,
   index,
   isMobile,
+  cleanMode,
   selectedCharacter,
   selectedPersona,
   userData,
@@ -64,6 +65,14 @@ const MessageBubble = React.memo(function MessageBubble({
   onEditTextChange,
 }) {
   const m = message;
+  const isCleanAssistant = cleanMode && m.role === 'assistant';
+  const isCleanUser = cleanMode && m.role === 'user';
+  const isClean = isCleanAssistant || isCleanUser;
+  const isEditingUser = editingMessageId === m.message_id && m.role === 'user';
+  const editorWidth = isMobile ? '100%' : 'min(70vw, 760px)';
+  const bubbleWidth = isEditingUser ? editorWidth : 'auto';
+  const bubbleMaxWidth = isEditingUser ? editorWidth : '100%';
+  const cleanContentWidth = 'min(80%, 800px)';
 
   return (
     <div
@@ -71,8 +80,8 @@ const MessageBubble = React.memo(function MessageBubble({
       id={m.message_id ? `message-${m.message_id}` : undefined}
       style={{
         display: 'flex',
-        marginBottom: '1.2rem',
-        justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
+        marginBottom: cleanMode ? '2.75rem' : '1.5rem',
+        justifyContent: isClean ? 'center' : (m.role === 'user' ? 'flex-end' : 'flex-start'),
       }}
     >
       {/* Main row: avatar + content column */}
@@ -81,15 +90,16 @@ const MessageBubble = React.memo(function MessageBubble({
         flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
         gap: '0.64rem',
         alignItems: 'flex-start',
-        maxWidth: editingMessageId === m.message_id && m.role === 'user'
+        maxWidth: isEditingUser
           ? (isMobile ? '96%' : '92%')
-          : '100%',
+          : isClean ? cleanContentWidth : '100%',
+        width: isClean ? '100%' : undefined,
       }}
       onMouseEnter={() => onHoverMessage(m.message_id)}
       onMouseLeave={() => onHoverMessage(null)}
       >
         {/* Avatar */}
-        {(() => {
+        {!cleanMode && (() => {
           const messageAvatarSize = isMobile ? 'clamp(40px, 12vw, 48px)' : 77;
 
           return (
@@ -115,20 +125,22 @@ const MessageBubble = React.memo(function MessageBubble({
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+          alignItems: isCleanAssistant ? 'center' : (m.role === 'user' ? 'flex-end' : 'flex-start'),
           minWidth: 0,
           flex: 1,
         }}>
           {/* Name header */}
-          <div style={{ fontWeight: 600, fontSize: isMobile ? '0.85rem' : '0.76rem', opacity: 0.7, marginBottom: 6 }}>
-            {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
-            {m.is_pinned && (
-              <span style={{ marginLeft: 8, fontSize: '0.72rem', color: '#334155' }}>
-                <i className="bi bi-pin-angle-fill" style={{ marginRight: 4 }}></i>
-                {t('chat.pinned_memory') || 'Pinned'}
-              </span>
-            )}
-          </div>
+          {!cleanMode && (
+            <div style={{ fontWeight: 600, fontSize: isMobile ? '0.85rem' : '0.76rem', opacity: 0.7, marginBottom: 6 }}>
+              {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
+              {m.is_pinned && (
+                <span style={{ marginLeft: 8, fontSize: '0.72rem', color: '#334155' }}>
+                  <i className="bi bi-pin-angle-fill" style={{ marginRight: 4 }}></i>
+                  {t('chat.pinned_memory') || 'Pinned'}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Bubble + 3dots button row */}
           <div style={{
@@ -136,22 +148,26 @@ const MessageBubble = React.memo(function MessageBubble({
             flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
             alignItems: 'flex-start',
             gap: '0.4rem',
+            width: isClean ? '100%' : 'auto',
+            justifyContent: isClean ? (m.role === 'user' ? 'flex-start' : 'center') : undefined,
           }}>
             {/* Bubble */}
-            <div style={{
-              background: '#f5f6fa',
-              color: '#232323',
-              borderRadius: '0.88rem',
-              padding: '0.68rem 0.96rem',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              fontSize: isMobile ? '1.06rem' : '1rem',
-              minWidth: 0,
-              wordBreak: 'break-word',
-              maxWidth: '100%',
-              width: editingMessageId === m.message_id && m.role === 'user'
-                ? (isMobile ? '100%' : 'min(70vw, 760px)')
-                : 'auto',
-            }}>
+            <div
+              className={isCleanAssistant ? 'chat-bubble-clean' : undefined}
+              style={{
+                background: isCleanAssistant ? 'transparent' : '#f5f6fa',
+                color: '#232323',
+                borderRadius: isCleanAssistant ? 0 : '0.88rem',
+                padding: isCleanAssistant ? 0 : '14px 18px',
+                boxShadow: isCleanAssistant ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+                fontSize: '16px',
+                lineHeight: isCleanAssistant ? 1.75 : 1.65,
+                minWidth: 0,
+                wordBreak: 'break-word',
+                maxWidth: bubbleMaxWidth,
+                width: bubbleWidth,
+              }}
+            >
               {editingMessageId === m.message_id && m.role === 'user' ? (
                 <textarea
                   value={editingMessageText}

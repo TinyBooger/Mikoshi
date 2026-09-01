@@ -32,9 +32,11 @@ CONFIG_KEYS = [
     "presence_penalty",
     "frequency_penalty",
     "context_window_tier",
+    "interface_preference",
 ]
 
 ALLOWED_CONTEXT_WINDOW_TIERS = {"8k", "32k", "128k", "256k", "512k", "1m"}
+ALLOWED_INTERFACE_PREFERENCES = {"bubbles", "clean"}
 
 
 def _get_character_defaults(character: Character) -> dict:
@@ -47,6 +49,7 @@ def _get_character_defaults(character: Character) -> dict:
         "presence_penalty": float(character.presence_penalty),
         "frequency_penalty": float(character.frequency_penalty),
         "context_window_tier": character.context_window_tier,
+        "interface_preference": character.interface_preference,
     }
 
 
@@ -120,6 +123,11 @@ def _validate_and_normalize_config(raw: dict, is_pro: bool, defaults: dict) -> d
     tier = raw.get("context_window_tier")
     if isinstance(tier, str) and tier.lower() in ALLOWED_CONTEXT_WINDOW_TIERS:
         config["context_window_tier"] = tier.lower()
+
+    # interface_preference (non-pro-gated, like model)
+    pref = raw.get("interface_preference")
+    if isinstance(pref, str) and pref in ALLOWED_INTERFACE_PREFERENCES:
+        config["interface_preference"] = pref
 
     return config
 

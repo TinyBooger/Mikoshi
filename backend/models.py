@@ -30,6 +30,7 @@ class Character(Base):
     presence_penalty = Column(Float, nullable=False, default=0)
     frequency_penalty = Column(Float, nullable=False, default=0)
     context_window_tier = Column(String(20), nullable=False, default="8k")
+    interface_preference = Column(String(20), nullable=False, default="bubbles")
 
     created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     creator_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)

@@ -25,10 +25,19 @@
 
 /* Paragraphs: flush horizontal, modest vertical spacing */
 .chat-markdown p {
-  margin: 0 0 0.4em 0;
+  margin: 0 0 0.7em 0;
 }
 
 .chat-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+/* Clean mode (GPT-like assistant messages): wider paragraph spacing */
+.chat-bubble-clean .chat-markdown p {
+  margin: 0 0 0.85em 0;
+}
+
+.chat-bubble-clean .chat-markdown p:last-child {
   margin-bottom: 0;
 }
 

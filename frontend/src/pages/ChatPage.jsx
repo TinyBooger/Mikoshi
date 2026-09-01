@@ -133,6 +133,7 @@ export default function ChatPage() {
     presence_penalty: 0,
     frequency_penalty: 0,
     context_window_tier: DEFAULT_CONTEXT_WINDOW_TIER,
+    interface_preference: 'bubbles',
   };
   const normalizeChatModel = (modelName) => (ALLOWED_MODEL_SET.has(modelName) ? modelName : DEFAULT_ADVANCED_CHAT_CONFIG.model);
   
@@ -171,6 +172,7 @@ export default function ChatPage() {
       max_tokens: canUseAdvancedChatConfig ? normalizeTokenTierValue(model, clamp(character.max_tokens, tokenLimits.min, tokenLimits.max, tokenLimits.defaultValue)) : tokenLimits.defaultValue,
       presence_penalty: canUseAdvancedChatConfig ? clamp(character.presence_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty) : DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty,
       frequency_penalty: canUseAdvancedChatConfig ? clamp(character.frequency_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty) : DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty,
+      interface_preference: character.interface_preference === 'clean' ? 'clean' : 'bubbles',
     };
   };
   const [advancedChatConfig, setAdvancedChatConfig] = useState(DEFAULT_ADVANCED_CHAT_CONFIG);
@@ -1821,6 +1823,7 @@ export default function ChatPage() {
                       message={m}
                       index={i}
                       isMobile={isMobile}
+                      cleanMode={advancedChatConfig?.interface_preference === 'clean'}
                       selectedCharacter={selectedCharacter}
                       selectedPersona={selectedPersona}
                       userData={userData}

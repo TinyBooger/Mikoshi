@@ -1071,6 +1071,20 @@ export default function CharacterSidebar({
                   ))}
                 </select>
 
+                <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
+                  界面偏好
+                  <InfoHint text="选择消息展示方式。气泡模式使用消息气泡；简洁模式为类似 GPT 的纯文本排版。" />
+                </label>
+                <select
+                  className="form-select form-select-sm"
+                  value={advancedChatConfig?.interface_preference || 'bubbles'}
+                  onChange={(e) => setAdvancedChatConfig((prev) => ({ ...prev, interface_preference: e.target.value }))}
+                  style={{ marginBottom: 8, borderRadius: 8 }}
+                >
+                  <option value="bubbles">气泡模式</option>
+                  <option value="clean">简洁模式</option>
+                </select>
+
                 <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4 }}>
                   更长的上下文长度可以保留更多的历史消息，但是会加速token消耗
                 </div>

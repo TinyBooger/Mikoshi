@@ -34,6 +34,7 @@ def normalize_context_label(value: Optional[str]) -> str:
 
 
 ALLOWED_CONTEXT_WINDOW_TIERS = {"8k", "32k", "128k", "256k", "512k", "1m"}
+ALLOWED_INTERFACE_PREFERENCES = {"bubbles", "clean"}
 
 def parse_character_chat_config(
     model: str,
@@ -43,6 +44,7 @@ def parse_character_chat_config(
     presence_penalty: float,
     frequency_penalty: float,
     context_window_tier: str = "8k",
+    interface_preference: str = "bubbles",
 ):
     safe_model = model if model in ALLOWED_MODEL_IDS else "deepseek-v4-flash"
     safe_temperature = max(0.0, min(2.0, float(temperature)))
@@ -50,6 +52,7 @@ def parse_character_chat_config(
     safe_presence_penalty = max(-2.0, min(2.0, float(presence_penalty)))
     safe_frequency_penalty = max(-2.0, min(2.0, float(frequency_penalty)))
     safe_context_window_tier = context_window_tier if context_window_tier.lower() in ALLOWED_CONTEXT_WINDOW_TIERS else "8k"
+    safe_interface_preference = interface_preference if interface_preference in ALLOWED_INTERFACE_PREFERENCES else "bubbles"
     return {
         "model": safe_model,
         "temperature": safe_temperature,
@@ -58,6 +61,7 @@ def parse_character_chat_config(
         "presence_penalty": safe_presence_penalty,
         "frequency_penalty": safe_frequency_penalty,
         "context_window_tier": safe_context_window_tier,
+        "interface_preference": safe_interface_preference,
     }
 
 
@@ -70,6 +74,7 @@ def default_character_chat_config():
         "presence_penalty": 0.0,
         "frequency_penalty": 0.0,
         "context_window_tier": "8k",
+        "interface_preference": "bubbles",
     }
 
 ALLOWED_BACKGROUND_TYPES = {"none", "preset", "upload", "character_picture"}
@@ -143,6 +148,7 @@ async def create_character(
     presence_penalty: float = Form(0),
     frequency_penalty: float = Form(0),
     context_window_tier: str = Form("8k"),
+    interface_preference: str = Form("bubbles"),
     is_public: bool = Form(False),
     is_forkable: bool = Form(False),
     forked_from_id: Optional[int] = Form(None),
@@ -225,6 +231,7 @@ async def create_character(
         presence_penalty=presence_penalty,
         frequency_penalty=frequency_penalty,
         context_window_tier=context_window_tier,
+        interface_preference=interface_preference,
     )
     # Model and context_window_tier are always accepted from the user.
     # Sampling params (temperature, top_p, max_tokens, penalties) are gated for Pro users.
@@ -254,6 +261,7 @@ async def create_character(
         presence_penalty=chat_config["presence_penalty"],
         frequency_penalty=chat_config["frequency_penalty"],
         context_window_tier=chat_config["context_window_tier"],
+        interface_preference=chat_config["interface_preference"],
         creator_id=current_user.id,
         creator_name=current_user.name,
         is_public=False if shadow else is_public,
@@ -386,6 +394,7 @@ async def update_character(
     presence_penalty: Optional[float] = Form(None),
     frequency_penalty: Optional[float] = Form(None),
     context_window_tier: Optional[str] = Form(None),
+    interface_preference: Optional[str] = Form(None),
     is_public: Optional[bool] = Form(None),
     is_forkable: Optional[bool] = Form(None),
     picture: UploadFile = File(None),
@@ -470,6 +479,7 @@ async def update_character(
         presence_penalty=presence_penalty if presence_penalty is not None else char.presence_penalty,
         frequency_penalty=frequency_penalty if frequency_penalty is not None else char.frequency_penalty,
         context_window_tier=context_window_tier if context_window_tier is not None else char.context_window_tier,
+        interface_preference=interface_preference if interface_preference is not None else char.interface_preference,
     )
     # Model and context_window_tier are always accepted from the user.
     # Sampling params (temperature, top_p, max_tokens, penalties) are gated for Pro users.
@@ -487,6 +497,7 @@ async def update_character(
     char.presence_penalty = chat_config["presence_penalty"]
     char.frequency_penalty = chat_config["frequency_penalty"]
     char.context_window_tier = chat_config["context_window_tier"]
+    char.interface_preference = chat_config["interface_preference"]
 
     if is_public is not None:
         char.is_public = False if shadow else is_public
