@@ -7,7 +7,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 
 from models import User, UserCreditUsageLedger
-from utils.credit_cap import can_consume_credits, get_free_daily_usage_date, is_user_pro_active
+from utils.credit_cap import (
+    can_consume_credits,
+    get_free_daily_usage_date,
+    should_record_to_free_daily,
+)
 from utils.credit_wallet import consume_wallet_credits
 from utils.usage_utils import normalize_usage
 
@@ -135,7 +139,7 @@ def apply_fixed_credit_usage_with_wallet(
         db_session,
         user_id=user.id,
         credit_amount=credit_amount,
-        use_free_daily_reset=not is_user_pro_active(user),
+        use_free_daily_reset=should_record_to_free_daily(credit_check.get("limit") or {}),
     )
     return {"success": True, "credit_amount": credit_amount, "consumed_from_wallet": False}
 
@@ -203,7 +207,7 @@ def apply_credit_usage_with_wallet(
         db_session,
         user_id=user.id,
         usage=normalized,
-        use_free_daily_reset=not is_user_pro_active(user),
+        use_free_daily_reset=should_record_to_free_daily(credit_check.get("limit") or {}),
         credit_amount=credit_amount,
     )
     return {

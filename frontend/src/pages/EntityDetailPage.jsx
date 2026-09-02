@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../components/AuthProvider';
@@ -15,8 +15,9 @@ export default function EntityDetailPage() {
   const { t } = useTranslation();
   const { type, id } = useParams();
   const navigate = useNavigate();
-  const { sessionToken, userData } = useContext(AuthContext);
+  const { sessionToken, userData, loading: authLoading } = useContext(AuthContext);
   const toast = useToast();
+  const gateTriggeredRef = useRef(false);
   const isProUser = !!userData?.is_pro;
   
   const [entity, setEntity] = useState(null);
@@ -83,6 +84,17 @@ export default function EntityDetailPage() {
         navigate('/');
       });
   }, [type, id, sessionToken, navigate]);
+
+  // Gate: the detail page is only available for your own content or forkable/open-source content.
+  // If reached directly (e.g., via URL), go back with a toast explaining why.
+  useEffect(() => {
+    if (!entity || authLoading || gateTriggeredRef.current) return;
+    const isOwn = Boolean(userData?.id && entity.creator_id && String(userData.id) === String(entity.creator_id));
+    if (isOwn || entity.is_forkable) return;
+    gateTriggeredRef.current = true;
+    toast.show('此角色为不允许二创角色，无法查看详情', { type: 'error' });
+    navigate(-1);
+  }, [entity, userData, authLoading, navigate, toast]);
 
   // Check if user has liked this entity
   useEffect(() => {

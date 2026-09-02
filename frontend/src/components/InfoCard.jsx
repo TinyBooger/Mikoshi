@@ -64,6 +64,18 @@ export default function InfoCard({
   React.useEffect(() => {
     setLikeCount(initialLikeCount);
   }, [initialLikeCount, entity.id]);
+  // Local hover state for the name link to EntityDetailPage
+  const [nameHover, setNameHover] = React.useState(false);
+  // Navigate to EntityDetailPage (:type/:id route), same as DiscoverMasonryCard's 查看详情 button.
+  // Only clickable for your own characters and forkable/open-source characters; otherwise it's
+  // unclickable here, and EntityDetailPage itself enforces the same gate for direct/ungated access.
+  const hasEntity = Boolean(entityType && entity.id);
+  const isOwn = Boolean(userData?.id && entity.creator_id && String(userData.id) === String(entity.creator_id));
+  const canOpenDetail = hasEntity && (isOwn || !!entity.is_forkable);
+  const handleOpenDetail = () => {
+    if (!canOpenDetail) return;
+    navigate(`/${entityType}/${entity.id}`);
+  };
 
   return (
     <>
@@ -71,11 +83,19 @@ export default function InfoCard({
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <img
             src={resolvedAvatar ? `${window.API_BASE_URL.replace(/\/$/, '')}/${resolvedAvatar.replace(/^\//, '')}` : defaultPic}
-            alt="Avatar"
-            style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%', border: '2.4px solid #e9ecef', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginRight: 14 }}
+            alt={resolvedName || 'Avatar'}
+            title={canOpenDetail ? resolvedName : undefined}
+            onClick={canOpenDetail ? handleOpenDetail : undefined}
+            style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%', border: '2.4px solid #e9ecef', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginRight: 14, cursor: canOpenDetail ? 'pointer' : 'default' }}
           />
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%' }}>
-            <div style={{ fontWeight: 700, color: '#18191a', fontSize: '1.02rem', letterSpacing: '0.2px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2, width: '100%' }}>
+            <div
+              onClick={canOpenDetail ? handleOpenDetail : undefined}
+              onMouseEnter={() => canOpenDetail && setNameHover(true)}
+              onMouseLeave={() => setNameHover(false)}
+              title={canOpenDetail ? resolvedName : undefined}
+              style={{ fontWeight: 700, color: nameHover ? '#5f4f8a' : '#18191a', fontSize: '1.02rem', letterSpacing: '0.2px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2, width: '100%', cursor: canOpenDetail ? 'pointer' : 'default', textDecoration: nameHover ? 'underline' : 'none', transition: 'color 0.16s ease, text-decoration-color 0.16s ease' }}
+            >
               {isPlaceholder ? <span style={{ color: '#bbb', fontStyle: 'italic' }}>{t('info_card.no_selection', { name: resolvedName })}</span> : resolvedName}
             </div>
             <div

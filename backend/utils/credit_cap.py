@@ -130,26 +130,52 @@ def get_user_credit_usage(
 
 
 def get_credit_cap_info(user: User, db: Session) -> dict[str, Any]:
-    """Return credit (点数) cap information for the given user."""
+    """Return credit (点数) cap information for the given user.
+
+    Consumption order (all users):
+      1. Effective plan quota:
+         - free: daily bucket (noon reset)
+         - pro with monthly quota left: monthly bucket (billing cycle)
+         - pro who exhausted the monthly quota ("broke"): falls back to the
+           daily bucket (noon reset), exactly like a free user
+      2. Wallet credits (purchased_credit_balance)
+      3. Blocked — only when every source above is exhausted.
+
+    The returned "effective" fields (`cap_scope`, `credit_cap`, `used_credits`,
+    `remaining_credits`, `cap_reached`, `reset_at`) describe the bucket the user
+    is currently consuming against, so a broke pro sees the daily bucket (with
+    the noon reset) just like a free user. Pro benefits other than the credit
+    quota are untouched: `is_pro` stays true regardless of `broke`.
+    """
     pro_active = _resolve_pro_active(user)
 
     free_daily_credit_cap = _get_float_env("FREE_DAILY_CREDIT_CAP", 10.0)
     pro_monthly_credit_cap = _get_float_env("PRO_MONTHLY_CREDIT_CAP", 10000.0)
 
     now = datetime.now(UTC)
-    month_start = get_pro_cycle_start(user, now) if pro_active else now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    daily_usage_date = now.date() if pro_active else get_free_daily_usage_date(now)
+    month_start = (
+        get_pro_cycle_start(user, now)
+        if pro_active
+        else now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    )
+    # The free daily window (noon-shifted) is the bucket free users are capped
+    # on and broke pros fall back to, so compute it for everyone.
+    free_daily_usage_date = get_free_daily_usage_date(now)
     usage = get_user_credit_usage(
         db,
         user.id,
-        daily_usage_date=daily_usage_date,
+        daily_usage_date=free_daily_usage_date,
         month_start_date=month_start.date(),
     )
+    daily_usage = usage["daily_credit_usage"]
+    monthly_usage = usage["monthly_credit_usage"]
 
+    free_daily_limited = free_daily_credit_cap > 0
+    free_daily_cap_reached = bool(free_daily_limited and daily_usage >= free_daily_credit_cap)
+    next_free_daily_reset_at = get_next_free_daily_reset_at(now).isoformat()
+
+    # Monthly (pro primary) bucket.
     if pro_active:
-        cap_scope = "monthly"
-        cap_value = pro_monthly_credit_cap
-        used_credits = usage["monthly_credit_usage"]
         next_month = month_start.month % 12 + 1
         next_year = month_start.year if month_start.month < 12 else month_start.year + 1
         import calendar as _cal
@@ -159,40 +185,78 @@ def get_credit_cap_info(user: User, db: Session) -> dict[str, Any]:
         pro_expire_date = getattr(user, "pro_expire_date", None)
         if pro_expire_date is not None and pro_expire_date.tzinfo is None:
             pro_expire_date = pro_expire_date.replace(tzinfo=UTC)
-        if pro_expire_date is not None and pro_expire_date < cycle_reset_at:
-            reset_at = pro_expire_date.isoformat()
-        else:
-            reset_at = cycle_reset_at.isoformat()
+        monthly_reset_at = (
+            pro_expire_date.isoformat()
+            if pro_expire_date is not None and pro_expire_date < cycle_reset_at
+            else cycle_reset_at.isoformat()
+        )
+        monthly_limited = pro_monthly_credit_cap > 0
+        monthly_cap_reached = bool(monthly_limited and monthly_usage >= pro_monthly_credit_cap)
     else:
+        monthly_reset_at = None
+        monthly_limited = False
+        monthly_cap_reached = False
+
+    # Derived "broke" flag: pro whose monthly quota is exhausted. While broke,
+    # the credit reset mechanism works exactly like a free user's (daily bucket,
+    # noon reset) — but pro benefits (configs, rate limits, message caps, etc.)
+    # are untouched because nothing gates those on this flag.
+    broke = bool(pro_active and monthly_cap_reached)
+
+    # Effective bucket selection (single source of truth for all callers).
+    if broke or not pro_active:
         cap_scope = "daily"
         cap_value = free_daily_credit_cap
-        used_credits = usage["daily_credit_usage"]
-        reset_at = get_next_free_daily_reset_at(now).isoformat()
+        used_credits = daily_usage
+        reset_at = next_free_daily_reset_at
+        is_limited = free_daily_limited
+        cap_reached = free_daily_cap_reached
+    else:
+        cap_scope = "monthly"
+        cap_value = pro_monthly_credit_cap
+        used_credits = monthly_usage
+        reset_at = monthly_reset_at
+        is_limited = monthly_limited
+        cap_reached = monthly_cap_reached
 
-    is_limited = cap_value > 0
     remaining_credits = max(0.0, cap_value - used_credits) if is_limited else None
-    cap_reached = bool(is_limited and used_credits >= cap_value)
     purchased_credit_balance = float(getattr(user, "purchased_credit_balance", 0.0) or 0.0)
     wallet_available = purchased_credit_balance > 0
 
     return {
         "is_pro": pro_active,
         "plan": "pro" if pro_active else "free",
-        "daily_credit_usage": usage["daily_credit_usage"],
-        "monthly_credit_usage": usage["monthly_credit_usage"],
+        "daily_credit_usage": daily_usage,
+        "monthly_credit_usage": monthly_usage,
         "cap_scope": cap_scope,
         "credit_cap": cap_value if is_limited else None,
+        "used_credits": used_credits,
         "remaining_credits": remaining_credits,
         "is_limited": is_limited,
         "cap_reached": cap_reached,
         "purchased_credit_balance": purchased_credit_balance,
         "wallet_available": wallet_available,
         "wallet_fallback_active": bool(cap_reached and wallet_available),
+        "monthly_cap_reached": monthly_cap_reached,
+        "broke": broke,
+        "free_daily_cap_reached": free_daily_cap_reached,
+        "next_free_daily_reset_at": next_free_daily_reset_at,
         "reset_at": reset_at,
         "checked_at": now.isoformat(),
         "free_daily_credit_cap": free_daily_credit_cap,
         "pro_monthly_credit_cap": pro_monthly_credit_cap,
     }
+
+
+def should_record_to_free_daily(limit_info: dict[str, Any]) -> bool:
+    """Whether new consumption should be recorded against the free-daily (noon-reset) bucket.
+
+    True for free users (primary bucket) and for broke pro users (fallback
+    bucket). False only for pro users still on their monthly quota, whose usage
+    is recorded against the billing cycle. This keeps recording aligned with
+    the effective bucket returned by `get_credit_cap_info()`.
+    """
+    return not bool(limit_info.get("is_pro")) or bool(limit_info.get("broke"))
 
 
 def can_consume_credits(user: User, db: Session) -> dict[str, Any]:
@@ -210,8 +274,15 @@ def can_consume_credits(user: User, db: Session) -> dict[str, Any]:
 def build_credit_cap_reached_payload(limit_info: dict[str, Any]) -> dict[str, Any]:
     plan = str(limit_info.get("plan") or "free")
     cap_scope = str(limit_info.get("cap_scope") or "daily")
+    broke = bool(limit_info.get("broke"))
 
-    if plan == "pro" and cap_scope == "monthly":
+    if plan == "pro" and broke:
+        message = (
+            "You have reached your monthly Pro credit limit and today's free "
+            "credit allowance. Daily free credits reset at 12:00 PM (noon). "
+            "Please top up wallet credits or wait for the daily reset."
+        )
+    elif plan == "pro" and cap_scope == "monthly":
         message = "You have reached your monthly credit limit for Pro. Please wait until next month for reset or top up wallet credits."
     else:
         message = "You have reached your daily credit limit. Upgrade to Pro for a much higher monthly limit or top up wallet credits."

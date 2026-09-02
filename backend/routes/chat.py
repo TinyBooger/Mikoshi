@@ -422,11 +422,12 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     credit_check = can_consume_credits(current_user, db)
     credit_limit_info = credit_check.get("limit") or {}
     logger.info(
-        "💳 Credit check for user=%s | blocked=%s | consume_from_wallet=%s | cap_scope=%s | daily_used=%.2f | monthly_used=%.2f | cap=%.2f",
+        "💳 Credit check for user=%s | blocked=%s | consume_from_wallet=%s | cap_scope=%s | broke=%s | daily_used=%.2f | monthly_used=%.2f | cap=%.2f",
         current_user.id,
         credit_check["blocked"],
         credit_check.get("consume_from_wallet", False),
         credit_limit_info.get("cap_scope", "n/a"),
+        credit_limit_info.get("broke", False),
         float(credit_limit_info.get("daily_credit_usage", 0)),
         float(credit_limit_info.get("monthly_credit_usage", 0)),
         float(credit_limit_info.get("credit_cap", 0)),

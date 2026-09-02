@@ -113,6 +113,10 @@ export default function CharacterFormPage() {
   const [isAppealMode, setIsAppealMode] = useState(false);
   const [hasPendingAppeal, setHasPendingAppeal] = useState(false);
   const MAX_GREETING_LENGTH = 3000;
+  // Hard cap on the number of greetings (the AI-generated greeting occupies
+  // one slot of this limit). Must stay in sync with MAX_GREETINGS_COUNT in
+  // backend/utils/validators.py
+  const MAX_GREETINGS = 20;
   const MAX_SAMPLE_LENGTH = 200;
   const MAX_TAGS = 20;
   // Special prompt stored when a character uses an improvising greeting
@@ -265,6 +269,12 @@ export default function CharacterFormPage() {
   const selectedTokenLimits = getTokenLimits(charData.model || DEFAULT_CHAT_CONFIG.model);
   const selectedTokenTiers = getTokenTiers(charData.model || DEFAULT_CHAT_CONFIG.model);
   const effectiveContextLabel = charData.context_label === 'advanced' ? 'advanced' : 'standard';
+
+  // Greeting capacity: every manual greeting row counts as one slot and the
+  // AI-generated greeting also occupies one slot in the stored greetings list,
+  // so the UI cap always matches the backend limit.
+  const greetingSlotsUsed = charData.greetings.length + (isImprovisingGreeting ? 1 : 0);
+  const greetingSlotsLeft = Math.max(0, MAX_GREETINGS - greetingSlotsUsed);
 
   const formatTokenCapError = (payload) => {
     const tokenPayload = payload?.error === 'CREDIT_CAP_REACHED'
@@ -502,7 +512,7 @@ export default function CharacterFormPage() {
   const handleSubmit = async e => {
     e.preventDefault();
     if (isSubmitting) return;
-  if (!sessionToken) {
+    if (!sessionToken) {
       toast.show('您需要登录才能操作。', { type: 'error' });
       navigate("/");
       return;
@@ -545,7 +555,8 @@ export default function CharacterFormPage() {
       formData.append("forked_from_name", charData.forked_from_name);
     }
     formData.append("name", charData.name.trim());
-    formData.append("persona", charData.persona.trim());
+    const sentPersona = charData.persona.trim();
+    formData.append("persona", sentPersona);
     formData.append("context_label", effectiveContextLabel);
     formData.append("tagline", charData.tagline.trim());
     charData.tags.forEach(tag => formData.append("tags", tag));
@@ -1083,12 +1094,17 @@ export default function CharacterFormPage() {
               <span>
                 开场白
                 <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
+                <small className="text-muted" style={{ marginLeft: 8, fontSize: '0.85rem', fontWeight: 400 }}>
+                  {greetingSlotsUsed}/{MAX_GREETINGS} 条
+                </small>
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400, whiteSpace: 'nowrap' }}>
                 <input
                   id="improviseGreeting"
                   type="checkbox"
                   checked={isImprovisingGreeting}
+                  disabled={!isImprovisingGreeting && charData.greetings.length >= MAX_GREETINGS}
+                  title={!isImprovisingGreeting && charData.greetings.length >= MAX_GREETINGS ? `开场白已达上限（${MAX_GREETINGS} 条），请先删除部分开场白` : undefined}
                   onChange={e => setIsImprovisingGreeting(e.target.checked)}
                 />
                 <label htmlFor="improviseGreeting" style={{ margin: 0, fontSize: '0.95rem', cursor: 'pointer' }}>启用AI生成开场白</label>
@@ -1152,7 +1168,7 @@ export default function CharacterFormPage() {
             ))}
 
             {/* Add greeting button */}
-            {charData.greetings.length < 20 && (
+            {greetingSlotsLeft > 0 ? (
               <button
                 type="button"
                 className="btn btn-outline-secondary btn-sm mt-1"
@@ -1162,6 +1178,11 @@ export default function CharacterFormPage() {
                 <i className="bi bi-plus-lg me-1"></i>
                 添加开场白
               </button>
+            ) : (
+              <div className="text-muted mt-1" style={{ fontSize: '0.85rem' }}>
+                <i className="bi bi-info-circle me-1"></i>
+                开场白数量已达上限（{MAX_GREETINGS} 条，含 AI 生成开场白）。
+              </div>
             )}
 
             {/* Show placeholder when list is empty and improvise is off */}
@@ -1175,7 +1196,7 @@ export default function CharacterFormPage() {
             {isImprovisingGreeting && (
               <div className="mt-2 d-flex align-items-center gap-2" style={{ fontSize: '0.85rem', color: '#7c3aed' }}>
                 <i className="bi bi-magic"></i>
-                <span>AI 生成的开场白将作为一个随机选项。</span>
+                <span>AI 生成的开场白将作为一个随机选项，并占用 {MAX_GREETINGS} 条名额中的 1 条。</span>
               </div>
             )}
           </div>

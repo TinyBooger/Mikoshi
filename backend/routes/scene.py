@@ -10,6 +10,7 @@ from models import Scene, User, UserLikedScene
 from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
+from utils.text_normalization import normalize_line_endings
 from utils.session import get_current_user, get_optional_current_user
 from utils.collaborative_filtering import get_cf_scenes
 from datetime import datetime, UTC
@@ -60,7 +61,9 @@ async def create_scene(
         )
 
     name = name.strip()
-    description = description.strip()
+    description = normalize_line_endings(description).strip()
+    intro = normalize_line_endings(intro).strip() if intro is not None else None
+    greeting = normalize_line_endings(greeting).strip() if greeting is not None else None
 
     if len(description) > MAX_DESCRIPTION_LENGTH:
         raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
@@ -324,9 +327,11 @@ async def update_scene(
             detail=f"Text rejected by content moderation ({blocked_field}: {blocked_label})"
         )
 
-    if description is not None:
-        description = description.strip()
-    
+    name = name.strip() if name is not None else None
+    description = normalize_line_endings(description).strip() if description is not None else None
+    intro = normalize_line_endings(intro).strip() if intro is not None else None
+    greeting = normalize_line_endings(greeting).strip() if greeting is not None else None
+
     # Private scenes are open to all users.
     final_is_public = is_public if is_public is not None else scene.is_public
 

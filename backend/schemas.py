@@ -147,9 +147,14 @@ class UserOut(BaseModel):
     monthly_credit_usage: float = 0.0
     credit_cap_scope: Optional[str] = None
     credit_cap: Optional[float] = None
+    used_credits: float = 0.0
     remaining_credits: Optional[float] = None
     credit_cap_reached: bool = False
     credit_reset_at: Optional[Any] = None
+    monthly_cap_reached: bool = False
+    broke: bool = False
+    free_daily_cap_reached: bool = False
+    next_free_daily_reset_at: Optional[Any] = None
     free_daily_credit_cap: float = 10.0
     pro_monthly_credit_cap: float = 10000.0
     purchased_credit_balance: float = 0.0

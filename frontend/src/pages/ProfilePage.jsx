@@ -1284,8 +1284,11 @@ export default function ProfilePage() {
   const formattedNextTokenResetDate = nextTokenResetDate ? nextTokenResetDate.toLocaleDateString(activeLocale) : null;
   const proExpireDateObj = displayUser?.pro_expire_date ? new Date(displayUser.pro_expire_date) : null;
   const isProDueBeforeNextReset = Boolean(proExpireDateObj && nextTokenResetDate && proExpireDateObj <= nextTokenResetDate);
+  const creditBroke = Boolean(displayUser?.broke);
   const tokenNoticeText = !isActivePro
     ? '点数每日中午12:00重置'
+    : creditBroke
+    ? 'Pro月额度已用尽，已切换至每日免费点数（每日中午12:00重置）。'
     : isProDueBeforeNextReset
     ? `Pro会员将于 ${formattedProExpireDate} 到期，届时将按当前规则重置积分。`
     : `下次积分重置时间：${formattedNextTokenResetDate}`;

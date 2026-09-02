@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router';
-import { formatCompactTokenCount } from '../utils/creditDisplay';
+import { formatCreditCount } from '../utils/creditDisplay';
 
 /**
  * Banner shown when the user has reached their credit limit.
@@ -8,12 +8,16 @@ import { formatCompactTokenCount } from '../utils/creditDisplay';
 export function CreditLockedBanner({ creditLimits }) {
   const navigate = useNavigate();
   const isPro = !!creditLimits?.is_pro;
-  const scopeLabel = isPro ? '本月剩余点数' : '本日剩余点数';
+  const broke = !!creditLimits?.broke;
+  // Broke pros (monthly quota exhausted) fall back to the free daily bucket.
+  const usingDailyScope = !isPro || broke;
+  const scopeLabel = usingDailyScope ? '本日剩余点数' : '本月剩余点数';
   const used =
     Number(
-      creditLimits?.cap_scope === 'monthly'
-        ? creditLimits?.monthly_credit_usage
-        : creditLimits?.daily_credit_usage
+      creditLimits?.used_credits ??
+        (creditLimits?.cap_scope === 'monthly'
+          ? creditLimits?.monthly_credit_usage
+          : creditLimits?.daily_credit_usage)
     ) || 0;
   const cap = Number(creditLimits?.credit_cap || 0);
 
@@ -39,10 +43,19 @@ export function CreditLockedBanner({ creditLimits }) {
           gap: '0.4rem',
         }}
       >
-        <span>
-          {scopeLabel}已达上限：{formatCompactTokenCount(used)} /{' '}
-          {formatCompactTokenCount(cap)}，钱包点数已用尽。可升级Pro或购买点数包继续使用。
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          <span>
+            {scopeLabel}已达上限：{formatCreditCount(used)} /{' '}
+            {formatCreditCount(cap)}
+            {broke ? '，本月Pro点数已用尽，已切换至每日免费点数。' : '，'}钱包点数已用尽。
+            可{isPro ? '购买点数包' : '升级Pro或购买点数包'}继续使用。
+          </span>
+          {usingDailyScope && (
+            <span style={{ fontSize: '0.68rem', fontWeight: 500, opacity: 0.8 }}>
+              点数将于每日中午12:00重置
+            </span>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
           <button
             type="button"

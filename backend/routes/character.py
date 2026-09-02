@@ -18,6 +18,7 @@ from utils.image_moderation import moderate_image_with_decision
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.collaborative_filtering import get_cf_characters
 from utils.validators import validate_character_fields
+from utils.text_normalization import normalize_line_endings
 from utils.text_moderation import moderate_form_payload_with_review
 from schemas import CharacterOut, CharacterListOut
 from utils.content_review_queue import enqueue_character_review
@@ -193,7 +194,9 @@ async def create_character(
         )
 
     name = name.strip()
-    persona = persona.strip()
+    # multipart transport converts LF to CRLF; normalize to LF-only so length
+    # checks and DB storage count the same logical chars as the frontend.
+    persona = normalize_line_endings(persona).strip()
     context_label = normalize_context_label(context_label)
 
     existing = db.query(Character).filter(Character.name == name).first()
@@ -221,7 +224,7 @@ async def create_character(
         else:
             db.add(Tag(name=tag_name, count=1))
 
-    normalized_long_description = long_description.strip()
+    normalized_long_description = normalize_line_endings(long_description).strip()
     can_use_advanced_config = is_pro_user
     chat_config = parse_character_chat_config(
         model=model,
@@ -247,10 +250,10 @@ async def create_character(
     char = Character(
         name=name,
         persona=persona,
-        tagline=tagline.strip(),
+        tagline=normalize_line_endings(tagline).strip(),
         tags=tags,
         greetings=greetings_list,
-        example_messages=sample_dialogue.strip(),
+        example_messages=normalize_line_endings(sample_dialogue).strip(),
         long_description=normalized_long_description,
         long_description_chunks=long_description_chunks,
         context_label=context_label,
@@ -438,7 +441,9 @@ async def update_character(
         )
 
     name = name.strip()
-    persona = persona.strip()
+    # multipart transport converts LF to CRLF; normalize to LF-only so length
+    # checks and DB storage count the same logical chars as the frontend.
+    persona = normalize_line_endings(persona).strip()
     context_label = normalize_context_label(context_label if context_label is not None else char.context_label)
     
     error = validate_character_fields(name, persona, tagline, greetings_list, sample_dialogue, tags, context_label, long_description)
@@ -457,16 +462,16 @@ async def update_character(
 
     final_is_forkable = is_forkable if is_forkable is not None else char.is_forkable
 
-    normalized_long_description = long_description.strip()
+    normalized_long_description = normalize_line_endings(long_description).strip()
 
     long_description_chunks = []
 
     char.name = name
     char.persona = persona
-    char.tagline = tagline.strip()
+    char.tagline = normalize_line_endings(tagline).strip()
     char.tags = tags
     char.greetings = greetings_list
-    char.example_messages = sample_dialogue.strip()
+    char.example_messages = normalize_line_endings(sample_dialogue).strip()
     char.long_description = normalized_long_description
     char.long_description_chunks = long_description_chunks
     char.context_label = context_label
