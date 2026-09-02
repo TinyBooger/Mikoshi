@@ -26,6 +26,7 @@ export default function EntityDetailPage() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
   const [isCreatorHovered, setIsCreatorHovered] = useState(false);
   const [isForkableBadgeHovered, setIsForkableBadgeHovered] = useState(false);
+  const [isForkHovered, setIsForkHovered] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [showProblemReport, setShowProblemReport] = useState(false);
@@ -543,9 +544,45 @@ export default function EntityDetailPage() {
                   </div>
                 )}
               </div>
-              {!entity.is_public && (
-                <span className="badge bg-secondary ms-3 mt-1">私密</span>
-              )}
+              <div
+                className="d-flex align-items-center flex-shrink-0"
+                style={{ gap: '0.1rem', marginLeft: '0.75rem' }}
+              >
+                {!isOwner && sessionToken && (
+                  <button
+                    type="button"
+                    onClick={() => setShowProblemReport(true)}
+                    title={t('topbar.report_problem')}
+                    aria-label={t('topbar.report_problem')}
+                    onMouseEnter={() => setReportIconHovered(true)}
+                    onMouseLeave={() => setReportIconHovered(false)}
+                    onFocus={() => setReportIconHovered(true)}
+                    onBlur={() => setReportIconHovered(false)}
+                    style={{
+                      border: 'none',
+                      background: reportIconHovered ? 'rgba(220,53,69,0.08)' : 'transparent',
+                      color: '#dc3545',
+                      cursor: 'pointer',
+                      fontSize: '1.2rem',
+                      lineHeight: 1,
+                      padding: '0.3rem',
+                      borderRadius: 8,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'background 0.16s',
+                    }}
+                  >
+                    <i
+                      className={`bi ${reportIconHovered ? 'bi-exclamation-triangle-fill' : 'bi-exclamation-triangle'}`}
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  </button>
+                )}
+                {!entity.is_public && (
+                  <span className="badge bg-secondary ms-3 mt-1">私密</span>
+                )}
+              </div>
             </div>
 
             {secondaryInfo && (
@@ -661,66 +698,66 @@ export default function EntityDetailPage() {
                     开始聊天
                   </PrimaryButton>
                 )}
-
-                <div className="d-flex flex-column" style={{ gap: '3px' }}>
-                  <SecondaryButton
-                    onClick={handleFork}
-                    disabled={!entity.is_forkable}
-                    title={!entity.is_forkable ? '该条目不允许二创' : undefined}
-                    style={!entity.is_forkable ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
-                  >
-                    <i className="bi bi-diagram-3-fill me-2"></i>
-                    复制并编辑
-                  </SecondaryButton>
-                  <span className="text-muted" style={{ fontSize: '0.72rem', maxWidth: '260px' }}>
-                    基于此角色创建二次创作版本，自动标注原作者及原角色。
-                  </span>
-                </div>
-
-                {isOwner && (
-                  <SecondaryButton
-                    onClick={handleEdit}
-                    disabled={disableEditForAppealReview}
-                    title={disableEditForAppealReview ? '申诉审核中，暂时无法再次提交编辑申诉' : undefined}
-                    style={disableEditForAppealReview ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
-                  >
-                    <i className="bi bi-pencil me-2"></i>
-                    编辑
-                  </SecondaryButton>
-                )}
-                {!isOwner && sessionToken && (
-                  <button
-                    type="button"
-                    onClick={() => setShowProblemReport(true)}
-                    title={t('topbar.report_problem')}
-                    aria-label={t('topbar.report_problem')}
-                    onMouseEnter={() => setReportIconHovered(true)}
-                    onMouseLeave={() => setReportIconHovered(false)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      padding: '0.4rem 0.75rem',
-                      borderRadius: '999px',
-                      border: '1.5px solid rgba(220,53,69,0.3)',
-                      background: reportIconHovered ? 'rgba(220,53,69,0.08)' : 'transparent',
-                      color: '#dc3545',
-                      cursor: 'pointer',
-                      fontSize: '0.82rem',
-                      fontWeight: 500,
-                      transition: 'background 0.15s, border-color 0.15s',
-                    }}
-                  >
-                    <i
-                      className={`bi ${reportIconHovered ? 'bi-exclamation-triangle-fill' : 'bi-exclamation-triangle'}`}
-                      style={{ fontSize: '0.9rem' }}
-                    />
-                    {t('problem_report.report_button', 'Report')}
-                  </button>
-                )}
               </div>
             </div>
 
+          </div>
+        </div>
+
+        {/* Fork & Edit — right-aligned row above the 设定/描述 section */}
+        <div className="d-flex justify-content-end" style={{ marginBottom: '1rem' }}>
+          <div className="d-flex flex-wrap align-items-center" style={{ gap: '8px' }}>
+            <div
+              style={{ position: 'relative', display: 'inline-flex' }}
+              onMouseEnter={() => setIsForkHovered(true)}
+              onMouseLeave={() => setIsForkHovered(false)}
+            >
+              <SecondaryButton
+                onClick={handleFork}
+                disabled={!entity.is_forkable}
+                aria-label={!entity.is_forkable ? '该条目不允许二创' : '基于此角色创建二次创作版本，自动标注原作者及原角色。'}
+                style={!entity.is_forkable ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+              >
+                <span style={{ marginRight: '0.5rem', fontSize: '0.95em', lineHeight: 1 }}>⧉</span>
+                复制并编辑
+              </SecondaryButton>
+              {isForkHovered && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '6px',
+                    background: 'rgba(17, 24, 39, 0.94)',
+                    color: '#fff',
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: 500,
+                    lineHeight: 1.45,
+                    maxWidth: '260px',
+                    whiteSpace: 'normal',
+                    textAlign: 'left',
+                    zIndex: 10,
+                    pointerEvents: 'none',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                  }}
+                >
+                  {!entity.is_forkable ? '该条目不允许二创' : '基于此角色创建二次创作版本，自动标注原作者及原角色。'}
+                </span>
+              )}
+            </div>
+            {isOwner && (
+              <SecondaryButton
+                onClick={handleEdit}
+                disabled={disableEditForAppealReview}
+                title={disableEditForAppealReview ? '申诉审核中，暂时无法再次提交编辑申诉' : undefined}
+                style={disableEditForAppealReview ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+              >
+                <i className="bi bi-pencil me-2"></i>
+                编辑
+              </SecondaryButton>
+            )}
           </div>
         </div>
 
