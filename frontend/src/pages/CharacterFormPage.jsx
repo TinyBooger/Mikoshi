@@ -11,7 +11,6 @@ import UgcPolicyModal from '../components/UgcPolicyModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
-import { formatCompactTokenCount, getTokenQuotaLabel } from '../utils/creditDisplay';
 
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import { DEFAULT_CONTEXT_WINDOW_TIER, getFilteredContextWindowTierOptions, normalizeContextWindowTier } from '../utils/contextWindow';
@@ -275,25 +274,6 @@ export default function CharacterFormPage() {
   // so the UI cap always matches the backend limit.
   const greetingSlotsUsed = charData.greetings.length + (isImprovisingGreeting ? 1 : 0);
   const greetingSlotsLeft = Math.max(0, MAX_GREETINGS - greetingSlotsUsed);
-
-  const formatTokenCapError = (payload) => {
-    const tokenPayload = payload?.error === 'CREDIT_CAP_REACHED'
-      ? payload
-      : (payload?.detail?.error === 'CREDIT_CAP_REACHED' ? payload.detail : null);
-
-    if (!tokenPayload) return null;
-
-    const limits = tokenPayload?.credit_limits || {};
-    const scopeLabel = getTokenQuotaLabel(limits?.cap_scope);
-    const cap = Number(limits?.credit_cap || 0);
-    const remaining = Number(limits?.remaining_credits || 0);
-
-    if (cap > 0) {
-      return `${tokenPayload.message || '已达到点数额度上限。'} (${scopeLabel}: 剩余 ${formatCompactTokenCount(remaining)} / ${formatCompactTokenCount(cap)})`;
-    }
-
-    return tokenPayload.message || '已达到点数额度上限。';
-  };
 
   // ── Debounced draft auto-save ─────────────────────────────────
   useEffect(() => {
@@ -622,12 +602,7 @@ export default function CharacterFormPage() {
           navigate(mode === 'edit' ? "/profile" : "/profile");
         }
       } else {
-        const tokenCapMessage = formatTokenCapError(data);
-        if (tokenCapMessage) {
-          toast.show(tokenCapMessage, { type: 'error' });
-        } else {
-          toast.show(getApiErrorMessage(data, '发生错误。', t), { type: 'error' });
-        }
+        toast.show(getApiErrorMessage(data, '发生错误。', t), { type: 'error' });
       }
     } catch (error) {
       toast.show('发生错误。', { type: 'error' });

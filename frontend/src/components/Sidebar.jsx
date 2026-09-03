@@ -1061,36 +1061,38 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         {userData && (
           <div className="rounded-4 mb-2" style={{ background: '#fff', border: '1px solid #eef0f3', padding: '0.45rem 0.65rem' }}>
             {(() => {
-              const tokenScope = userData?.credit_cap_scope;
-              const tokenUsed = Number(tokenScope === 'monthly'
+              const creditScope = userData?.credit_cap_scope;
+              const creditUsedRaw = Number(creditScope === 'monthly'
                 ? (userData?.monthly_credit_usage)
                 : (userData?.daily_credit_usage)) || 0;
-              const tokenCap = Number((userData?.credit_cap) || 0);
-              const tokenUsageValue = tokenCap > 0
-                ? `${formatCompactTokenCount(tokenUsed)} / ${formatCompactTokenCount(tokenCap)}`
-                : formatCompactTokenCount(tokenUsed);
-              const tokenProgressPercent = tokenCap > 0
-                ? Math.min(100, Math.max(0, (tokenUsed / tokenCap) * 100))
+              // Keep displayed credit usage to at most 2 decimals (round float noise).
+              const creditUsed = Math.round(creditUsedRaw * 100) / 100;
+              const creditCap = Number((userData?.credit_cap) || 0);
+              const creditUsageValue = creditCap > 0
+                ? `${formatCompactTokenCount(creditUsed)} / ${formatCompactTokenCount(creditCap)}`
+                : formatCompactTokenCount(creditUsed);
+              const creditProgressPercent = creditCap > 0
+                ? Math.min(100, Math.max(0, (creditUsed / creditCap) * 100))
                 : 0;
-              const tokenProgressLabel = `${tokenProgressPercent.toFixed(1)}%`;
+              const creditProgressLabel = `${creditProgressPercent.toFixed(1)}%`;
               const activeLocale = i18n?.resolvedLanguage || i18n?.language;
-              const nextTokenResetDate = userData?.credit_reset_at
+              const nextCreditResetDate = userData?.credit_reset_at
                 ? new Date(userData.credit_reset_at)
                 : null;
-              const formattedNextTokenResetDate = nextTokenResetDate ? nextTokenResetDate.toLocaleDateString(activeLocale) : null;
+              const formattedNextCreditResetDate = nextCreditResetDate ? nextCreditResetDate.toLocaleDateString(activeLocale) : null;
               const proExpireDateObj = userData?.pro_expire_date ? new Date(userData.pro_expire_date) : null;
-              const isProDueBeforeNextReset = Boolean(proExpireDateObj && nextTokenResetDate && proExpireDateObj < nextTokenResetDate);
+              const isProDueBeforeNextReset = Boolean(proExpireDateObj && nextCreditResetDate && proExpireDateObj < nextCreditResetDate);
               return (
                 <>
                   <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 4 }}>
                     <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#5b2f9b' }}>
-                      {tokenProgressLabel}
+                      {creditProgressLabel}
                     </span>
                   </div>
                   <div style={{ height: 6, borderRadius: 999, background: 'rgba(167, 139, 250, 0.16)', overflow: 'hidden' }}>
                     <div
                       style={{
-                        width: `${tokenProgressPercent}%`,
+                        width: `${creditProgressPercent}%`,
                         height: '100%',
                         borderRadius: 999,
                         background: 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%)',

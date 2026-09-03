@@ -211,7 +211,6 @@ async def create_character(
     can_create_private = True
 
     # Advanced character context_label is now open to all users (free & pro).
-    # Credit check happens later when processing long_description.
 
     # Private character creation is open to all users.
     if not is_public and not can_create_private:

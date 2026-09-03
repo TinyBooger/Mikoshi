@@ -20,7 +20,10 @@ export const formatCompactTokenCount = (value) => {
     return `${sign}${trimTrailingZeros(abs / 10_000, digits)}万`;
   }
 
-  return `${sign}${abs}`;
+  // Credit usage values are small floats (e.g. 0.05 credits per message) that
+  // accumulate binary floating-point noise, so round to at most 2 decimals —
+  // otherwise a full quota renders as "9.999999999 / 10" instead of "10 / 10".
+  return `${sign}${trimTrailingZeros(abs, 2)}`;
 };
 
 /** Format credit (点数) values — credits are small floats, show 2 decimal places */
