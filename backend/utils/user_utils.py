@@ -325,17 +325,24 @@ def upgrade_to_pro(user: User, db: Session, duration_months: int = 1, duration_d
     return user
 
 
-def downgrade_from_pro(user: User, db: Session) -> User:
+def downgrade_from_pro(user: User, db: Session, end_now: bool = False) -> User:
     """Downgrade a user from Pro status.
     
     Args:
         user: User object to downgrade
         db: Database session
+        end_now: If True, also expire the subscription immediately by setting
+                 pro_expire_date to now. Since Pro activity is derived from
+                 pro_expire_date, this actually ends access right away.
+                 Defaults to False, which keeps the dates for record keeping
+                 (legacy refund behavior).
     
     Returns:
         Updated User object
     """
     user.is_pro = False
+    if end_now:
+        user.pro_expire_date = datetime.now(UTC)
     # Keep the dates for record keeping
     
     db.commit()

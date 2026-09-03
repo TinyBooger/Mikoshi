@@ -2,7 +2,7 @@ import React, { useEffect, useState, useContext } from "react";
 import { useLocation } from "react-router";
 import { AuthContext } from "../../components/AuthProvider";
 import Table from "../components/Table";
-import EditModal from "../components/EditModal";
+import UserEditModal from "../components/UserEditModal";
 import PaginationBar from "../../components/PaginationBar";
 import { ViolationHistoryModal } from "./ModerationPage";
 import "./UsersPage.css";
@@ -49,21 +49,6 @@ export default function UsersPage() {
     if (uid) setSearchQuery(uid);
   }, [location.state?.highlightUserId]);
 
-  const toDateTimeLocalValue = (dateValue) => {
-    if (!dateValue) return '';
-    const date = new Date(dateValue);
-    if (Number.isNaN(date.getTime())) return '';
-    const offsetMs = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
-  };
-
-  const toIsoOrNull = (dateValue) => {
-    if (!dateValue) return null;
-    const date = new Date(dateValue);
-    if (Number.isNaN(date.getTime())) return null;
-    return date.toISOString();
-  };
-
   const fetchUsers = () => {
     setLoading(true);
     fetch(`${window.API_BASE_URL}/api/admin/users`, {
@@ -87,12 +72,12 @@ export default function UsersPage() {
     fetchUsers();
   }, [sessionToken]);
 
+  const updateUserInList = (updatedUser) => {
+    setUsers(prev => prev.map(u => (u.id === updatedUser.id ? { ...u, ...updatedUser } : u)));
+  };
+
   const handleEdit = (user) => {
-    setEditingUser({
-      ...user,
-      pro_start_date: toDateTimeLocalValue(user.pro_start_date),
-      pro_expire_date: toDateTimeLocalValue(user.pro_expire_date),
-    });
+    setEditingUser(user);
   };
 
   const handleDelete = async (user) => {
@@ -118,39 +103,6 @@ export default function UsersPage() {
     } catch (err) {
       console.error('Error deleting user:', err);
       alert('Failed to delete user');
-    }
-  };
-
-  const handleSave = async (userData) => {
-    try {
-      const response = await fetch(`${window.API_BASE_URL}/api/admin/users/${editingUser.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': sessionToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: userData.name,
-          phone_number: userData.phone_number,
-          bio: userData.bio,
-          is_admin: userData.is_admin,
-          is_pro: userData.is_pro,
-          pro_start_date: toIsoOrNull(userData.pro_start_date),
-          pro_expire_date: toIsoOrNull(userData.pro_expire_date)
-        })
-      });
-
-      if (response.ok) {
-        alert('User updated successfully');
-        setEditingUser(null);
-        fetchUsers();
-      } else {
-        const error = await response.json();
-        alert(`Error: ${error.detail || 'Failed to update user'}`);
-      }
-    } catch (err) {
-      console.error('Error updating user:', err);
-      alert('Failed to update user');
     }
   };
 
@@ -254,17 +206,6 @@ export default function UsersPage() {
     }
   };
 
-  const userFields = [
-    { name: 'phone_number', label: 'Phone Number', type: 'tel' },
-    { name: 'name', label: 'Name', type: 'text', required: true },
-    { name: 'bio', label: 'Bio', type: 'textarea', rows: 3 },
-    { name: 'is_admin', label: 'Admin Status', type: 'checkbox', helperText: 'Grant admin privileges' },
-    { name: 'is_pro', label: 'Pro Status', type: 'checkbox', helperText: 'Mark as premium user' },
-    { name: 'pro_start_date', label: 'Pro Start Date', type: 'datetime-local', helperText: 'Optional: when Pro membership started' },
-    { name: 'pro_expire_date', label: 'Pro Expire Date', type: 'datetime-local', helperText: 'Optional: when Pro membership expires' }
-  ];
-
-
   // Filter and search users
   const filteredUsers = users.filter(user => {
     const q = searchQuery.toLowerCase();
@@ -276,8 +217,9 @@ export default function UsersPage() {
     
     const matchesFilter = 
       filterPro === 'all' || 
-      (filterPro === 'pro' && user.is_pro) ||
-      (filterPro === 'free' && !user.is_pro);
+      (filterPro === 'pro' && user.pro_status === 'active') ||
+      (filterPro === 'expired' && user.pro_status === 'expired') ||
+      (filterPro === 'free' && user.pro_status === 'free');
     
     return matchesSearch && matchesFilter;
   });
@@ -296,17 +238,32 @@ export default function UsersPage() {
       </div>
     ),
     'Status': (
-      <div style={{ fontSize: '0.85rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-        {user.is_admin && (
-          <span className="badge bg-warning text-dark">Admin</span>
+      <div style={{ fontSize: '0.85rem' }}>
+        <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.15rem' }}>
+          {user.is_admin && (
+            <span className="badge bg-warning text-dark">Admin</span>
+          )}
+          {user.pro_status === 'active' && (
+            <span className="badge bg-success">Pro</span>
+          )}
+          {user.pro_status === 'expired' && (
+            <span className="badge bg-secondary">Pro Expired</span>
+          )}
+          {user.ban_type && BAN_TYPE_LABELS[user.ban_type] && (
+            <span className={`badge ${BAN_TYPE_LABELS[user.ban_type].cls}`}>
+              {BAN_TYPE_LABELS[user.ban_type].label}
+            </span>
+          )}
+        </div>
+        {user.pro_status === 'active' && user.pro_expire_date && (
+          <div className="text-muted" style={{ fontSize: '0.78rem' }}>
+            until {new Date(user.pro_expire_date).toLocaleDateString()} · {user.pro_days_remaining}d left
+          </div>
         )}
-        {user.is_pro && (
-          <span className="badge bg-success">Pro</span>
-        )}
-        {user.ban_type && BAN_TYPE_LABELS[user.ban_type] && (
-          <span className={`badge ${BAN_TYPE_LABELS[user.ban_type].cls}`}>
-            {BAN_TYPE_LABELS[user.ban_type].label}
-          </span>
+        {user.ban_type && user.ban_until && (
+          <div className="text-muted" style={{ fontSize: '0.78rem' }}>
+            ban until {new Date(user.ban_until).toLocaleDateString()}
+          </div>
         )}
       </div>
     ),
@@ -338,6 +295,20 @@ export default function UsersPage() {
             {total}
           </div>
         </div>
+        <button
+          className="btn btn-outline-secondary me-2"
+          onClick={fetchUsers}
+          disabled={loading}
+          title="Refresh user list"
+          style={{ whiteSpace: 'nowrap' }}
+        >
+          {loading ? (
+            <span className="spinner-border spinner-border-sm me-2" />
+          ) : (
+            <i className="bi bi-arrow-clockwise me-2" />
+          )}
+          Refresh
+        </button>
         <button
           className="btn btn-success"
           onClick={() => setCreateDialog(true)}
@@ -377,6 +348,7 @@ export default function UsersPage() {
             >
               <option value="all">All Users</option>
               <option value="pro">Pro Users Only</option>
+              <option value="expired">Expired Pro Only</option>
               <option value="free">Free Users Only</option>
             </select>
           </div>
@@ -444,11 +416,9 @@ export default function UsersPage() {
       />
 
       {editingUser && (
-        <EditModal
-          title={`Edit User: ${editingUser.name}`}
-          fields={userFields}
-          initialData={editingUser}
-          onSave={handleSave}
+        <UserEditModal
+          user={editingUser}
+          onUserUpdated={updateUserInList}
           onClose={() => setEditingUser(null)}
         />
       )}
