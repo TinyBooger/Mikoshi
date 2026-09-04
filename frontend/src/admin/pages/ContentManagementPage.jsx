@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { AuthContext } from '../../components/AuthProvider';
 import Table from '../components/Table';
-import EditModal from '../components/EditModal';
+import ContentEditModal from '../components/ContentEditModal';
 import PaginationBar from '../../components/PaginationBar';
+import './ContentManagementPage.css';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -122,370 +123,199 @@ function ContentModerationModal({ item, contentType, onClose, onDone, sessionTok
   );
 }
 
-// ─── Characters Sub-tab ───────────────────────────────────────────────────────
+// ─── Status helpers / filters ────────────────────────────────────────────────
 
-function CharactersTab() {
-  const { sessionToken } = useContext(AuthContext);
-  const [items, setItems] = useState([]);
-  const [editing, setEditing] = useState(null);
-  const [modTarget, setModTarget] = useState(null);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
-  const pageSize = 20;
+const CONTENT_STATUS_FILTERS = [
+  { value: 'all', label: 'All Statuses' },
+  { value: 'public', label: 'Public' },
+  { value: 'private', label: 'Private' },
+  { value: 'restricted', label: 'Restricted' },
+  { value: 'takedown', label: 'Takedown' },
+];
 
-  const fetchItems = () => {
-    setLoading(true);
-    fetch(`${window.API_BASE_URL}/api/admin/characters`, {
-      headers: { Authorization: sessionToken },
-    })
-      .then((r) => r.json())
-      .then((data) => { setItems(data); setTotal(data.length); setLoading(false); })
-      .catch(() => setLoading(false));
-  };
-
-  useEffect(() => { fetchItems(); }, [sessionToken]);
-
-  const handleDelete = async (item) => {
-    if (!confirm(`Delete character "${item.name}"?`)) return;
-    const res = await fetch(`${window.API_BASE_URL}/api/admin/characters/${item.id}`, {
-      method: 'DELETE',
-      headers: { Authorization: sessionToken },
-    });
-    if (res.ok) { fetchItems(); } else { const e = await res.json(); alert(e.detail || 'Delete failed'); }
-  };
-
-  const handleSave = async (data) => {
-    const res = await fetch(`${window.API_BASE_URL}/api/admin/characters/${editing.id}`, {
-      method: 'PATCH',
-      headers: { Authorization: sessionToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: data.name, tagline: data.tagline, persona: data.persona,
-        greetings: data.greetings, example_messages: data.example_messages,
-        tags: data.tags, is_public: data.is_public, is_forkable: data.is_forkable,
-      }),
-    });
-    if (res.ok) { setEditing(null); fetchItems(); }
-    else { const e = await res.json(); alert(e.detail || 'Update failed'); }
-  };
-
-  const fields = [
-    { name: 'name', label: 'Name', type: 'text', required: true },
-    { name: 'tagline', label: 'Tagline', type: 'text' },
-    { name: 'is_public', label: 'Public', type: 'checkbox' },
-    { name: 'is_forkable', label: '允许二创', type: 'checkbox' },
-    { name: 'persona', label: 'Persona', type: 'textarea', rows: 5, required: true },
-    { name: 'greetings', label: 'Greetings (JSON array)', type: 'textarea', rows: 3 },
-    { name: 'example_messages', label: 'Example Messages', type: 'textarea', rows: 4 },
-    { name: 'tags', label: 'Tags', type: 'tags' },
-  ];
-
-  const filtered = items.filter((i) =>
-    i.name.toLowerCase().includes(search.toLowerCase()) ||
-    (i.creator_name && i.creator_name.toLowerCase().includes(search.toLowerCase()))
-  );
-  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
-
-  const displayRows = paged.map((i) => ({
-    ...i,
-    'Status': (
-      <div className="d-flex gap-1 flex-wrap" style={{ fontSize: '0.82rem' }}>
-        {i.is_public ? <span className="badge bg-success">Public</span> : <span className="badge bg-secondary">Private</span>}
-        {i.moderation_status && MODERATION_STATUS_BADGES[i.moderation_status] && (
-          <span className={`badge ${MODERATION_STATUS_BADGES[i.moderation_status].cls}`}>
-            {MODERATION_STATUS_BADGES[i.moderation_status].label}
-          </span>
-        )}
-      </div>
-    ),
-  }));
-
+function ContentStatusBadges({ item }) {
   return (
-    <div>
-      <div className="d-flex gap-3 mb-3 align-items-center">
-        <input
-          type="text"
-          className="form-control"
-          placeholder="Search by name or creator..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          style={{ maxWidth: 360 }}
-        />
-        <small className="text-muted">{filtered.length} characters</small>
-      </div>
-
-      <div className="table-responsive">
-        <Table
-          columns={['id', 'name', 'creator_name', 'Status', 'views', 'likes']}
-          data={displayRows}
-          onEdit={(row) => setEditing(paged.find((i) => i.id === row.id))}
-          onDelete={(row) => handleDelete(paged.find((i) => i.id === row.id))}
-          customActions={[{
-            icon: 'bi-shield-exclamation',
-            text: 'Moderate',
-            className: 'btn-outline-warning',
-            onClick: (row) => setModTarget(paged.find((i) => i.id === row.id)),
-          }]}
-        />
-      </div>
-
-      <PaginationBar page={page} total={filtered.length} pageSize={pageSize} loading={loading} onPageChange={setPage} />
-
-      {editing && (
-        <EditModal title={`Edit Character: ${editing.name}`} fields={fields} initialData={editing} onSave={handleSave} onClose={() => setEditing(null)} />
+    <div className="d-flex gap-1 flex-wrap" style={{ fontSize: '0.82rem' }}>
+      {item.is_public
+        ? <span className="badge bg-success">Public</span>
+        : <span className="badge bg-secondary">Private</span>}
+      {item.moderation_status && MODERATION_STATUS_BADGES[item.moderation_status] && (
+        <span className={`badge ${MODERATION_STATUS_BADGES[item.moderation_status].cls}`}>
+          {MODERATION_STATUS_BADGES[item.moderation_status].label}
+        </span>
       )}
-      {modTarget && (
-        <ContentModerationModal
-          item={modTarget}
-          contentType="character"
-          sessionToken={sessionToken}
-          onClose={() => setModTarget(null)}
-          onDone={() => { setModTarget(null); fetchItems(); }}
-        />
+      {item.appeal_under_review && (
+        <span className="badge bg-info text-dark">Appeal</span>
       )}
     </div>
   );
 }
 
-// ─── Scenes Sub-tab ───────────────────────────────────────────────────────────
-
-function ScenesTab() {
-  const { sessionToken } = useContext(AuthContext);
-  const [items, setItems] = useState([]);
-  const [editing, setEditing] = useState(null);
-  const [modTarget, setModTarget] = useState(null);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
-  const pageSize = 20;
-
-  const fetchItems = () => {
-    setLoading(true);
-    fetch(`${window.API_BASE_URL}/api/admin/scenes`, {
-      headers: { Authorization: sessionToken },
-    })
-      .then((r) => r.json())
-      .then((data) => { setItems(data); setTotal(data.length); setLoading(false); })
-      .catch(() => setLoading(false));
-  };
-
-  useEffect(() => { fetchItems(); }, [sessionToken]);
-
-  const handleDelete = async (item) => {
-    if (!confirm(`Delete scene "${item.name}"?`)) return;
-    const res = await fetch(`${window.API_BASE_URL}/api/admin/scenes/${item.id}`, {
-      method: 'DELETE',
-      headers: { Authorization: sessionToken },
-    });
-    if (res.ok) { fetchItems(); } else { const e = await res.json(); alert(e.detail || 'Delete failed'); }
-  };
-
-  const handleSave = async (data) => {
-    const res = await fetch(`${window.API_BASE_URL}/api/admin/scenes/${editing.id}`, {
-      method: 'PATCH',
-      headers: { Authorization: sessionToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: data.name, description: data.description, intro: data.intro,
-        greeting: data.greeting, tags: data.tags, is_public: data.is_public, is_forkable: data.is_forkable,
-      }),
-    });
-    if (res.ok) { setEditing(null); fetchItems(); }
-    else { const e = await res.json(); alert(e.detail || 'Update failed'); }
-  };
-
-  const fields = [
-    { name: 'name', label: 'Name', type: 'text', required: true },
-    { name: 'intro', label: 'Intro', type: 'text' },
-    { name: 'is_public', label: 'Public', type: 'checkbox' },
-    { name: 'is_forkable', label: '允许二创', type: 'checkbox' },
-    { name: 'description', label: 'Description', type: 'textarea', rows: 5, required: true },
-    { name: 'greeting', label: 'Greeting', type: 'textarea', rows: 3 },
-    { name: 'tags', label: 'Tags', type: 'tags' },
-  ];
-
-  const filtered = items.filter((i) =>
-    i.name.toLowerCase().includes(search.toLowerCase()) ||
-    (i.creator_name && i.creator_name.toLowerCase().includes(search.toLowerCase()))
-  );
-  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
-
-  const displayRows = paged.map((i) => ({
-    ...i,
-    'Status': (
-      <div className="d-flex gap-1 flex-wrap" style={{ fontSize: '0.82rem' }}>
-        {i.is_public ? <span className="badge bg-success">Public</span> : <span className="badge bg-secondary">Private</span>}
-        {i.moderation_status && MODERATION_STATUS_BADGES[i.moderation_status] && (
-          <span className={`badge ${MODERATION_STATUS_BADGES[i.moderation_status].cls}`}>
-            {MODERATION_STATUS_BADGES[i.moderation_status].label}
-          </span>
-        )}
-      </div>
-    ),
-  }));
-
-  return (
-    <div>
-      <div className="d-flex gap-3 mb-3 align-items-center">
-        <input
-          type="text"
-          className="form-control"
-          placeholder="Search by name or creator..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          style={{ maxWidth: 360 }}
-        />
-        <small className="text-muted">{filtered.length} scenes</small>
-      </div>
-
-      <div className="table-responsive">
-        <Table
-          columns={['id', 'name', 'creator_name', 'Status', 'views', 'likes']}
-          data={displayRows}
-          onEdit={(row) => setEditing(paged.find((i) => i.id === row.id))}
-          onDelete={(row) => handleDelete(paged.find((i) => i.id === row.id))}
-          customActions={[{
-            icon: 'bi-shield-exclamation',
-            text: 'Moderate',
-            className: 'btn-outline-warning',
-            onClick: (row) => setModTarget(paged.find((i) => i.id === row.id)),
-          }]}
-        />
-      </div>
-
-      <PaginationBar page={page} total={filtered.length} pageSize={pageSize} loading={loading} onPageChange={setPage} />
-
-      {editing && (
-        <EditModal title={`Edit Scene: ${editing.name}`} fields={fields} initialData={editing} onSave={handleSave} onClose={() => setEditing(null)} />
-      )}
-      {modTarget && (
-        <ContentModerationModal
-          item={modTarget}
-          contentType="scene"
-          sessionToken={sessionToken}
-          onClose={() => setModTarget(null)}
-          onDone={() => { setModTarget(null); fetchItems(); }}
-        />
-      )}
-    </div>
-  );
+function matchesStatusFilter(item, filter) {
+  if (filter === 'all') return true;
+  if (filter === 'public') return !!item.is_public;
+  if (filter === 'private') return !item.is_public;
+  return item.moderation_status === filter;
 }
 
-// ─── Personas Sub-tab ─────────────────────────────────────────────────────────
+// ─── Generic content panel (characters / scenes / personas) ──────────────────
 
-function PersonasTab() {
+const CONTENT_TABLE_COLUMNS = ['ID', 'Name', 'Creator', 'Status', 'Views', 'Likes'];
+
+function ContentTypePanel({ config }) {
   const { sessionToken } = useContext(AuthContext);
   const [items, setItems] = useState([]);
-  const [editing, setEditing] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
   const [modTarget, setModTarget] = useState(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const pageSize = 20;
 
   const fetchItems = () => {
     setLoading(true);
-    fetch(`${window.API_BASE_URL}/api/admin/personas`, {
+    fetch(`${window.API_BASE_URL}/api/admin/${config.endpoint}`, {
       headers: { Authorization: sessionToken },
     })
       .then((r) => r.json())
-      .then((data) => { setItems(data); setTotal(data.length); setLoading(false); })
+      .then((data) => {
+        if (!Array.isArray(data)) { setLoading(false); return; }
+        setItems(data);
+        setTotal(data.length);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   };
 
   useEffect(() => { fetchItems(); }, [sessionToken]);
 
+  // Patch a single row in place after the edit modal saves (avoids a full reload).
+  const handleItemUpdated = (updated) => {
+    setItems((prev) => prev.map((i) => (i.id === updated.id ? { ...i, ...updated } : i)));
+  };
+
   const handleDelete = async (item) => {
-    if (!confirm(`Delete persona "${item.name}"?`)) return;
-    const res = await fetch(`${window.API_BASE_URL}/api/admin/personas/${item.id}`, {
-      method: 'DELETE',
-      headers: { Authorization: sessionToken },
-    });
-    if (res.ok) { fetchItems(); } else { const e = await res.json(); alert(e.detail || 'Delete failed'); }
+    if (!confirm(`Delete ${config.itemType} "${item.name}"?`)) return;
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/admin/${config.endpoint}/${item.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: sessionToken },
+      });
+      if (res.ok) { fetchItems(); }
+      else { const e = await res.json(); alert(e.detail || 'Delete failed'); }
+    } catch (err) {
+      console.error(err);
+      alert('Delete failed');
+    }
   };
 
-  const handleSave = async (data) => {
-    const res = await fetch(`${window.API_BASE_URL}/api/admin/personas/${editing.id}`, {
-      method: 'PATCH',
-      headers: { Authorization: sessionToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: data.name, description: data.description, intro: data.intro,
-        tags: data.tags, is_public: data.is_public, is_forkable: data.is_forkable,
-      }),
-    });
-    if (res.ok) { setEditing(null); fetchItems(); }
-    else { const e = await res.json(); alert(e.detail || 'Update failed'); }
-  };
-
-  const fields = [
-    { name: 'name', label: 'Name', type: 'text', required: true },
-    { name: 'intro', label: 'Intro', type: 'text' },
-    { name: 'is_public', label: 'Public', type: 'checkbox' },
-    { name: 'is_forkable', label: '允许二创', type: 'checkbox' },
-    { name: 'description', label: 'Description', type: 'textarea', rows: 5 },
-    { name: 'tags', label: 'Tags', type: 'tags' },
-  ];
-
-  const filtered = items.filter((i) =>
-    i.name.toLowerCase().includes(search.toLowerCase()) ||
-    (i.creator_name && i.creator_name.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = items.filter((i) => {
+    const q = search.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      (i.name && i.name.toLowerCase().includes(q)) ||
+      (i.creator_name && i.creator_name.toLowerCase().includes(q));
+    return matchesSearch && matchesStatusFilter(i, statusFilter);
+  });
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const displayRows = paged.map((i) => ({
-    ...i,
-    'Status': (
-      <div className="d-flex gap-1 flex-wrap" style={{ fontSize: '0.82rem' }}>
-        {i.is_public ? <span className="badge bg-success">Public</span> : <span className="badge bg-secondary">Private</span>}
-        {i.moderation_status && MODERATION_STATUS_BADGES[i.moderation_status] && (
-          <span className={`badge ${MODERATION_STATUS_BADGES[i.moderation_status].cls}`}>
-            {MODERATION_STATUS_BADGES[i.moderation_status].label}
-          </span>
-        )}
-      </div>
-    ),
+    ID: i.id,
+    Name: i.name,
+    Creator: i.creator_name || '—',
+    Status: <ContentStatusBadges item={i} />,
+    Views: i.views ?? 0,
+    Likes: i.likes ?? 0,
   }));
 
   return (
     <div>
-      <div className="d-flex gap-3 mb-3 align-items-center">
-        <input
-          type="text"
-          className="form-control"
-          placeholder="Search by name or creator..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          style={{ maxWidth: 360 }}
-        />
-        <small className="text-muted">{filtered.length} personas</small>
+      {/* Toolbar: search + status filter + total + refresh */}
+      <div className="content-filters mb-4">
+        <div className="row g-3 align-items-center">
+          <div className="col-lg-5 col-md-6">
+            <input
+              type="text"
+              className="form-control form-control-lg"
+              placeholder={`Search ${config.label.toLowerCase()} by name or creator...`}
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              style={{ borderRadius: '0.5rem' }}
+            />
+          </div>
+          <div className="col-lg-3 col-md-4">
+            <select
+              className="form-select form-select-lg"
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+              style={{ borderRadius: '0.5rem' }}
+            >
+              {CONTENT_STATUS_FILTERS.map((f) => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-lg-4 col-md-2">
+            <div className="d-flex align-items-center justify-content-md-end gap-3 flex-wrap">
+              <div className="content-stat-card">
+                <div className="content-stat-label">Total {config.label}</div>
+                <div className="content-stat-value">{total}</div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={fetchItems}
+                disabled={loading}
+                title="Refresh list"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {loading
+                  ? <span className="spinner-border spinner-border-sm me-2" />
+                  : <i className="bi bi-arrow-clockwise me-2" />}
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+        <small style={{ color: '#999', marginTop: '0.5rem', display: 'block' }}>
+          Found {filtered.length} {filtered.length === 1 ? config.label.toLowerCase().slice(0, -1) : config.label.toLowerCase()}
+        </small>
       </div>
 
-      <div className="table-responsive">
-        <Table
-          columns={['id', 'name', 'creator_name', 'Status', 'views', 'likes']}
-          data={displayRows}
-          onEdit={(row) => setEditing(paged.find((i) => i.id === row.id))}
-          onDelete={(row) => handleDelete(paged.find((i) => i.id === row.id))}
-          customActions={[{
-            icon: 'bi-shield-exclamation',
-            text: 'Moderate',
-            className: 'btn-outline-warning',
-            onClick: (row) => setModTarget(paged.find((i) => i.id === row.id)),
-          }]}
-        />
+      {/* Table */}
+      <div className="content-table-section mb-4">
+        <div className="table-responsive">
+          <Table
+            columns={CONTENT_TABLE_COLUMNS}
+            data={displayRows}
+            onEdit={(row) => setEditingItem(paged.find((i) => i.id === row.ID))}
+            onDelete={(row) => handleDelete(paged.find((i) => i.id === row.ID))}
+            customActions={[{
+              icon: 'bi-shield-exclamation',
+              text: 'Moderate',
+              className: 'btn-outline-warning',
+              onClick: (row) => setModTarget(paged.find((i) => i.id === row.ID)),
+            }]}
+          />
+        </div>
       </div>
 
       <PaginationBar page={page} total={filtered.length} pageSize={pageSize} loading={loading} onPageChange={setPage} />
 
-      {editing && (
-        <EditModal title={`Edit Persona: ${editing.name}`} fields={fields} initialData={editing} onSave={handleSave} onClose={() => setEditing(null)} />
+      {editingItem && (
+        <ContentEditModal
+          contentType={config.itemType}
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onContentUpdated={handleItemUpdated}
+        />
       )}
       {modTarget && (
         <ContentModerationModal
           item={modTarget}
-          contentType="persona"
+          contentType={config.itemType}
           sessionToken={sessionToken}
           onClose={() => setModTarget(null)}
           onDone={() => { setModTarget(null); fetchItems(); }}
@@ -498,22 +328,26 @@ function PersonasTab() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: 'characters', label: 'Characters', icon: 'bi-person-badge' },
-  { key: 'scenes', label: 'Scenes', icon: 'bi-map' },
-  { key: 'personas', label: 'Personas', icon: 'bi-person-bounding-box' },
+  { key: 'characters', label: 'Characters', icon: 'bi-person-badge', itemType: 'character', endpoint: 'characters' },
+  { key: 'scenes', label: 'Scenes', icon: 'bi-map', itemType: 'scene', endpoint: 'scenes' },
+  { key: 'personas', label: 'Personas', icon: 'bi-person-bounding-box', itemType: 'persona', endpoint: 'personas' },
 ];
 
 export default function ContentManagementPage() {
   const [activeTab, setActiveTab] = useState('characters');
+  const activeConfig = TABS.find((t) => t.key === activeTab);
 
   return (
-    <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2>Content Management</h2>
+    <div className="content-page-container">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h2>
+          <i className="bi bi-collection me-2" />
+          Content Management
+        </h2>
         <small className="text-muted">Manage characters, scenes, and personas</small>
       </div>
 
-      <ul className="nav nav-tabs mb-4">
+      <ul className="nav content-tabs mb-4">
         {TABS.map(({ key, label, icon }) => (
           <li className="nav-item" key={key}>
             <button
@@ -528,9 +362,7 @@ export default function ContentManagementPage() {
         ))}
       </ul>
 
-      {activeTab === 'characters' && <CharactersTab />}
-      {activeTab === 'scenes' && <ScenesTab />}
-      {activeTab === 'personas' && <PersonasTab />}
+      <ContentTypePanel key={activeConfig.key} config={activeConfig} />
     </div>
   );
 }

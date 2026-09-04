@@ -135,7 +135,6 @@ const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'users', element: <UsersPage /> },
       { path: 'content', element: <ContentManagementPage /> },
-      { path: 'characters', element: <ContentManagementPage /> },
       { path: 'tags', element: <TagsPage /> },
       { path: 'search-terms', element: <SearchTermsPage /> },
       { path: 'problem-reports', element: <ProblemReportsPage /> },

@@ -11,7 +11,6 @@ export default function AdminSidebar({ mobileOpen = false }) {
         <li><Link className="nav-link text-white" to="/admin">Dashboard</Link></li>
         <li><Link className="nav-link text-white" to="/admin/user-stats">User Statistics</Link></li>
         <li><Link className="nav-link text-white" to="/admin/users">Users</Link></li>
-        <li><Link className="nav-link text-white" to="/admin/invitations">Invitation Codes</Link></li>
         <li><Link className="nav-link text-white" to="/admin/content">Content Management</Link></li>
         <li><Link className="nav-link text-white" to="/admin/tags">Tags</Link></li>
         <li><Link className="nav-link text-white" to="/admin/search-terms">Search Keywords</Link></li>

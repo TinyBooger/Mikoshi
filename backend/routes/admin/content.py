@@ -64,11 +64,14 @@ def get_all_characters(
             "id": char.id,
             "name": char.name,
             "tagline": char.tagline,
+            "creator_id": char.creator_id,
             "creator_name": char.creator_name,
             "is_public": char.is_public,
             "is_forkable": char.is_forkable,
             "views": char.views,
             "likes": char.likes,
+            "moderation_status": char.moderation_status,
+            "appeal_under_review": char.appeal_under_review,
             "created_time": char.created_time,
             "tags": char.tags
         }
@@ -88,12 +91,14 @@ def get_all_scenes(
             "id": s.id,
             "name": s.name,
             "intro": s.intro,
+            "creator_id": s.creator_id,
             "creator_name": s.creator_name,
             "is_public": s.is_public,
             "is_forkable": s.is_forkable,
             "views": s.views,
             "likes": s.likes,
             "moderation_status": s.moderation_status,
+            "appeal_under_review": s.appeal_under_review,
             "created_time": s.created_time,
             "tags": s.tags,
         }
@@ -113,17 +118,150 @@ def get_all_personas(
             "id": p.id,
             "name": p.name,
             "intro": p.intro,
+            "creator_id": p.creator_id,
             "creator_name": p.creator_name,
             "is_public": p.is_public,
             "is_forkable": p.is_forkable,
             "views": p.views,
             "likes": p.likes,
             "moderation_status": p.moderation_status,
+            "appeal_under_review": p.appeal_under_review,
             "created_time": p.created_time,
             "tags": p.tags,
         }
         for p in personas
     ]
+
+
+def _get_creator_profile_pic(db: Session, creator_id):
+    """Resolve a creator's profile picture path (if any) for display."""
+    if not creator_id:
+        return None
+    row = db.query(User.profile_pic).filter(User.id == creator_id).first()
+    return row[0] if row else None
+
+
+def _serialize_character_detail(char, creator_profile_pic=None):
+    return {
+        "id": char.id,
+        "name": char.name,
+        "tagline": char.tagline,
+        "persona": char.persona,
+        "example_messages": char.example_messages,
+        "tags": char.tags or [],
+        "picture": char.picture,
+        "avatar_picture": char.avatar_picture,
+        "greetings": char.greetings or [],
+        "is_public": char.is_public,
+        "is_forkable": char.is_forkable,
+        "views": char.views,
+        "likes": char.likes,
+        "moderation_status": char.moderation_status,
+        "appeal_under_review": char.appeal_under_review,
+        "created_time": char.created_time,
+        "creator_id": char.creator_id,
+        "creator_name": char.creator_name,
+        "creator_profile_pic": creator_profile_pic,
+        "forked_from_id": char.forked_from_id,
+        "forked_from_name": char.forked_from_name,
+    }
+
+
+def _serialize_scene_detail(scene, creator_profile_pic=None):
+    return {
+        "id": scene.id,
+        "name": scene.name,
+        "description": scene.description,
+        "intro": scene.intro,
+        "greeting": scene.greeting,
+        "tags": scene.tags or [],
+        "picture": scene.picture,
+        "is_public": scene.is_public,
+        "is_forkable": scene.is_forkable,
+        "views": scene.views,
+        "likes": scene.likes,
+        "moderation_status": scene.moderation_status,
+        "appeal_under_review": scene.appeal_under_review,
+        "created_time": scene.created_time,
+        "creator_id": scene.creator_id,
+        "creator_name": scene.creator_name,
+        "creator_profile_pic": creator_profile_pic,
+        "forked_from_id": scene.forked_from_id,
+        "forked_from_name": scene.forked_from_name,
+    }
+
+
+def _serialize_persona_detail(persona, creator_profile_pic=None):
+    return {
+        "id": persona.id,
+        "name": persona.name,
+        "description": persona.description,
+        "intro": persona.intro,
+        "tags": persona.tags or [],
+        "picture": persona.picture,
+        "avatar_picture": persona.avatar_picture,
+        "is_public": persona.is_public,
+        "is_forkable": persona.is_forkable,
+        "views": persona.views,
+        "likes": persona.likes,
+        "moderation_status": persona.moderation_status,
+        "appeal_under_review": persona.appeal_under_review,
+        "created_time": persona.created_time,
+        "creator_id": persona.creator_id,
+        "creator_name": persona.creator_name,
+        "creator_profile_pic": creator_profile_pic,
+        "forked_from_id": persona.forked_from_id,
+        "forked_from_name": persona.forked_from_name,
+    }
+
+
+@router.get("/characters/{character_id}")
+def get_admin_character_detail(
+    character_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Get a single character's live detail (incl. editable content) - Admin only.
+
+    Unlike the list rows, this always returns the current full record so the
+    edit modal can be populated with fresh content instead of stale list data.
+    """
+    character = db.query(Character).filter(Character.id == character_id).first()
+    if not character:
+        raise HTTPException(status_code=404, detail="Character not found")
+    return _serialize_character_detail(
+        character, _get_creator_profile_pic(db, character.creator_id)
+    )
+
+
+@router.get("/scenes/{scene_id}")
+def get_admin_scene_detail(
+    scene_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Get a single scene's live detail (incl. editable content) - Admin only."""
+    scene = db.query(Scene).filter(Scene.id == scene_id).first()
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    return _serialize_scene_detail(
+        scene, _get_creator_profile_pic(db, scene.creator_id)
+    )
+
+
+@router.get("/personas/{persona_id}")
+def get_admin_persona_detail(
+    persona_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Get a single persona's live detail (incl. editable content) - Admin only."""
+    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    return _serialize_persona_detail(
+        persona, _get_creator_profile_pic(db, persona.creator_id)
+    )
 
 
 @router.get("/tags")
