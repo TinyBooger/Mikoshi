@@ -473,7 +473,7 @@ export default function CharacterSidebar({
                 }
               }}
             >
-              {高级}
+              高级
             </button>
           </div>
 

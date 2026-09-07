@@ -180,8 +180,13 @@ export default function ChatPage() {
   const [advancedChatConfirm, setAdvancedChatConfirm] = useState(false);
   const pendingAdvancedChatStartRef = useRef(null);
 
-  // Loading state for initial data fetch
-  const [initLoading, setInitLoading] = useState(false);
+  // Loading state for initial data fetch. Starts as true when the page opens
+  // directly into a character/scene route, so the first paint shows a plain
+  // spinner instead of a half-loaded chat (no name, fallback avatar) before
+  // the entry handler below kicks off its fetches.
+  const [initLoading, setInitLoading] = useState(() =>
+    Boolean(searchParams.get('character') || searchParams.get('scene')),
+  );
 
   // Mobile detection state
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -1648,6 +1653,24 @@ export default function ChatPage() {
     marginRight: 'auto',
     boxSizing: 'border-box',
   };
+
+  // Initialization gate: until the entry data (character/scene/persona) for
+  // this chat has been fetched, show a standard centered spinner instead of a
+  // partially-loaded chat UI.
+  if (initLoading) {
+    return (
+      <PageWrapper>
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{ height: '100%', width: '100%', background: '#fff' }}
+        >
+          <div className="spinner-border text-primary" role="status" style={{ width: 40, height: 40 }}>
+            <span className="visually-hidden">加载中...</span>
+          </div>
+        </div>
+      </PageWrapper>
+    );
+  }
 
   return (
     <PageWrapper>
