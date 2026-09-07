@@ -1,6 +1,5 @@
 import { useContext } from 'react';
 import { useToast } from '../components/ToastProvider';
-import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../components/AuthProvider';
 import { normalizeChatEntry, updateChatEntryBranchMessages, MAX_PINNED_MEMORIES } from '../utils/chatHelpers';
 
@@ -24,7 +23,6 @@ export function usePinnedMemories({
   sessionToken,
 }) {
   const toast = useToast();
-  const { t } = useTranslation();
 
   const syncPinnedStateInUserHistory = (chatId, messageId, isPinned) => {
     if (!chatId || !messageId) return;
@@ -85,7 +83,7 @@ export function usePinnedMemories({
     if (!targetMessage) return;
 
     if (!selectedChat?.chat_id) {
-      toast.show(t('chat.pin_requires_saved_chat') || 'Send a message first to save and pin memories.', { type: 'warning' });
+      toast.show('请先发送一条消息保存对话，再固定记忆。', { type: 'warning' });
       return;
     }
 
@@ -93,7 +91,7 @@ export function usePinnedMemories({
       const currentPinnedCount = messages.filter((m) => m?.role !== 'system' && m?.is_pinned).length;
       if (currentPinnedCount >= MAX_PINNED_MEMORIES) {
         toast.show(
-          t('chat.memory_pin_limit_reached', { max: MAX_PINNED_MEMORIES }) || `You can pin up to ${MAX_PINNED_MEMORIES} memories.`,
+          `每个对话最多可固定 ${MAX_PINNED_MEMORIES} 条记忆。`,
           { type: 'warning' }
         );
         return;
@@ -128,8 +126,8 @@ export function usePinnedMemories({
       await persistPinnedMessage(targetMessage, nextPinnedState);
       toast.show(
         nextPinnedState
-          ? (t('chat.memory_pinned_success') || 'Memory pinned.')
-          : (t('chat.memory_unpinned_success') || 'Memory unpinned.'),
+          ? '记忆已固定，将始终保留在上下文中。'
+          : '已从固定记忆中移除。',
         { type: 'success' }
       );
     } catch (error) {
@@ -154,7 +152,7 @@ export function usePinnedMemories({
         );
       });
       syncPinnedStateInUserHistory(selectedChat?.chat_id, messageId, !nextPinnedState);
-      toast.show(error.message || (t('chat.memory_pin_failed') || 'Failed to update memory pin.'), { type: 'error' });
+      toast.show(error.message || '更新固定记忆失败。', { type: 'error' });
     }
   };
 

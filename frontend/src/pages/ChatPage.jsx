@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useContext, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, useOutletContext } from 'react-router';
-import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { buildSystemMessage } from '../utils/systemTemplate';
@@ -17,7 +16,6 @@ import MessageBubble from '../components/MessageBubble';
 import ContextWindowIndicator from '../components/ContextWindowIndicator';
 import { CreditLockedBanner, BanBanner } from '../components/ChatBanners';
 import ChatWelcomeCard from '../components/ChatWelcomeCard';
-import MessageContextMenu from '../components/MessageContextMenu';
 import { useToast } from '../components/ToastProvider';
 import {
   DEFAULT_CONTEXT_WINDOW_TIER,
@@ -41,10 +39,10 @@ import { cancelVoiceRecording, startVoiceRecording, stopVoiceRecording } from '.
 import { NAV_WIDTH, SIDEBAR_WIDTH, CHAT_CONTENT_PADDING } from '../constants/layout';
 
 const WALLPAPER_OPTIONS = [
-  { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
-  { id: 'aurora', labelKey: 'chat.wallpaper_aurora', url: '/wallpapers/aurora.svg' },
-  { id: 'sunrise', labelKey: 'chat.wallpaper_sunrise', url: '/wallpapers/sunrise.svg' },
-  { id: 'waves', labelKey: 'chat.wallpaper_waves', url: '/wallpapers/waves.svg' },
+  { id: 'none', url: null },
+  { id: 'aurora', url: '/wallpapers/aurora.svg' },
+  { id: 'sunrise', url: '/wallpapers/sunrise.svg' },
+  { id: 'waves', url: '/wallpapers/waves.svg' },
 ];
 
 const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
@@ -71,7 +69,6 @@ const normalizeTokenTierValue = (modelName, rawValue) => {
 };
 
 export default function ChatPage() {
-  const { t } = useTranslation();
   // Sentinel used to indicate a character should have an improvising greeting
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
   const SUMMARY_PREFIX = 'Summary of previous conversation:';
@@ -107,14 +104,12 @@ export default function ChatPage() {
   const [branchSelectionPending, setBranchSelectionPending] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
-  const [messageMenu, setMessageMenu] = useState({ open: false, messageId: null, x: 0, y: 0 });
   const [hoveredMessageId, setHoveredMessageId] = useState(null);
 
   // Ref for textarea auto-resize
   const textareaRef = useRef(null);
   // Ref for messages container to enable auto-scrolling
   const messagesEndRef = useRef(null);
-  const messageMenuRef = useRef(null);
   // Monotonic counter used to invalidate superseded chat turns so a stale
   // stream can never clobber state from a newer request.
   const chatGenerationIdRef = useRef(0);
@@ -220,23 +215,6 @@ export default function ChatPage() {
       }
     };
   }, [abortController]);
-
-  useEffect(() => {
-    const handlePointerDown = (event) => {
-      if (!messageMenu.open) return;
-      if (messageMenuRef.current && messageMenuRef.current.contains(event.target)) {
-        return;
-      }
-      setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('touchstart', handlePointerDown);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('touchstart', handlePointerDown);
-    };
-  }, [messageMenu.open]);
 
   const [characterId, setCharacterId] = useState(searchParams.get('character'));
   const [sceneId, setSceneId] = useState(searchParams.get('scene'));
@@ -475,18 +453,6 @@ export default function ChatPage() {
     sessionToken,
   });
 
-  const openMessageMenu = (event, messageId) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const rect = event.currentTarget.getBoundingClientRect();
-    setMessageMenu({
-      open: true,
-      messageId,
-      x: rect.left,
-      y: rect.bottom,
-    });
-  };
-
   const jumpToMessage = (messageId) => {
     if (!messageId) return;
     const target = document.getElementById(`message-${messageId}`);
@@ -581,7 +547,6 @@ export default function ChatPage() {
       setMessages([]);
       setEditingMessageId(null);
       setEditingMessageText('');
-      setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
       setServerContextWindowUsage(null);
       isNewChat.current = true;
       setInitModal(false);
@@ -1455,7 +1420,6 @@ export default function ChatPage() {
     if (!message?.message_id || message.role !== 'user' || sending) return;
     setEditingMessageId(message.message_id);
     setEditingMessageText(message.content || '');
-    setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
   };
 
   const handleCancelEditingMessage = () => {
@@ -1494,13 +1458,12 @@ export default function ChatPage() {
     const forkData = buildForkedMessagesFromUserMessage(message.message_id);
     if (!forkData) return;
 
-    setMessageMenu({ open: false, messageId: null, x: 0, y: 0 });
     await sendChatTurn({
       nextMessages: forkData.forkedMessages,
       forkFromMessageId: message.message_id,
       sourceBranchId: selectedChat?.active_branch_id || null,
       restoreMessagesOnError: forkData.originalMessages,
-      errorMessage: 'Failed to resend from this message.',
+      errorMessage: '从这条消息重新发送失败，请重试。',
     });
   };
 
@@ -1524,6 +1487,29 @@ export default function ChatPage() {
       restoreMessagesOnError: forkData.originalMessages,
       errorMessage: '从该消息创建分支失败。',
     });
+  };
+
+  const handleCopyMessage = async (message) => {
+    const content = message?.content;
+    if (typeof content !== 'string' || !content.trim()) return;
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(content);
+      } else {
+        const input = document.createElement('textarea');
+        input.value = content;
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+      toast.show('已复制到剪贴板。', { type: 'success' });
+    } catch (error) {
+      console.error('Failed to copy message:', error);
+      toast.show('复制失败，请手动复制。', { type: 'error' });
+    }
   };
 
   const handleRename = async (chatId, currentTitle) => {
@@ -1642,9 +1628,6 @@ export default function ChatPage() {
     }));
   const activeChatBranches = normalizeChatEntry(selectedChat)?.branches || [];
   const forkNavMap = computeForkNav(activeChatBranches, selectedChat?.active_branch_id);
-  const activeMessageForMenu = messageMenu.messageId
-    ? messages.find((m) => m?.message_id === messageMenu.messageId)
-    : null;
   const contextUsageRatio = Math.min(1, contextWindowUsage.currentTokens / Math.max(1, contextWindowUsage.softLimit));
   const contextUsagePercent = Math.round(contextUsageRatio * 100);
   const pieRadius = 7;
@@ -1838,10 +1821,10 @@ export default function ChatPage() {
                       forkNavMap={forkNavMap}
                       branchSelectionPending={branchSelectionPending}
                       sending={sending}
-                      t={t}
                       renderMessageContent={renderMessageContent}
                       onHoverMessage={setHoveredMessageId}
-                      onOpenMessageMenu={openMessageMenu}
+                      onTogglePin={handleTogglePin}
+                      onCopyMessage={handleCopyMessage}
                       onCancelEditing={handleCancelEditingMessage}
                       onSaveEditedMessage={handleSaveEditedMessage}
                       onResendMessage={handleResendMessage}
@@ -1858,14 +1841,6 @@ export default function ChatPage() {
           })()}
           </div>
         </div>
-
-        <MessageContextMenu
-          menuState={messageMenu}
-          activeMessage={activeMessageForMenu}
-          menuRef={messageMenuRef}
-          onTogglePin={handleTogglePin}
-          onClose={() => setMessageMenu({ open: false, messageId: null, x: 0, y: 0 })}
-        />
 
         {/* Input Area (no form) */}
         <form

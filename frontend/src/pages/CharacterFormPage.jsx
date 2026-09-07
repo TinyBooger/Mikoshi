@@ -93,10 +93,10 @@ export default function CharacterFormPage() {
     interface_preference: 'bubbles',
   };
   const WALLPAPER_OPTIONS = [
-    { id: 'none', labelKey: 'chat.wallpaper_default', url: null },
-    { id: 'aurora', labelKey: 'chat.wallpaper_aurora', url: '/wallpapers/aurora.svg' },
-    { id: 'sunrise', labelKey: 'chat.wallpaper_sunrise', url: '/wallpapers/sunrise.svg' },
-    { id: 'waves', labelKey: 'chat.wallpaper_waves', url: '/wallpapers/waves.svg' },
+    { id: 'none', url: null },
+    { id: 'aurora', url: '/wallpapers/aurora.svg' },
+    { id: 'sunrise', url: '/wallpapers/sunrise.svg' },
+    { id: 'waves', url: '/wallpapers/waves.svg' },
   ];
   const MAX_NAME_LENGTH = 50;
   const MAX_PERSONA_LENGTH = 400;

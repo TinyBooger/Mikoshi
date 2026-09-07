@@ -53,10 +53,10 @@ const MessageBubble = React.memo(function MessageBubble({
   forkNavMap,
   branchSelectionPending,
   sending,
-  t,
   renderMessageContent,
   onHoverMessage,
-  onOpenMessageMenu,
+  onTogglePin,
+  onCopyMessage,
   onCancelEditing,
   onSaveEditedMessage,
   onResendMessage,
@@ -73,6 +73,59 @@ const MessageBubble = React.memo(function MessageBubble({
   const bubbleWidth = isEditingUser ? editorWidth : 'auto';
   const bubbleMaxWidth = isEditingUser ? editorWidth : '100%';
   const cleanContentWidth = 'min(80%, 800px)';
+
+  // Below-bubble actions (revealed on hover). Ordering:
+  //   user messages: retry → pin → edit → copy
+  //   bot messages : copy → pin
+  const showEditingControls = m.role === 'user' && editingMessageId === m.message_id;
+  const busyDisabled = !!editingMessageId || sending;
+  const messageHasText = typeof m.content === 'string' && !!m.content.trim();
+  const belowBubbleActions = (() => {
+    if (m.role !== 'user' && m.role !== 'assistant') return [];
+    const actions = [];
+    if (m.role === 'user') {
+      actions.push({
+        key: 'retry',
+        icon: 'bi bi-arrow-clockwise',
+        label: '从这条消息重新生成',
+        disabled: busyDisabled,
+        onClick: () => onResendMessage(m),
+      });
+    }
+    if (m.role === 'assistant') {
+      actions.push({
+        key: 'copy',
+        icon: 'bi bi-copy',
+        label: '复制',
+        disabled: !messageHasText,
+        onClick: () => onCopyMessage(m),
+      });
+    }
+    actions.push({
+      key: 'pin',
+      icon: m.is_pinned ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle',
+      label: m.is_pinned ? '取消固定' : '固定为记忆',
+      disabled: false,
+      onClick: () => onTogglePin(m.message_id, !m.is_pinned),
+    });
+    if (m.role === 'user') {
+      actions.push({
+        key: 'edit',
+        icon: 'bi bi-pencil',
+        label: '编辑并新建分支',
+        disabled: busyDisabled,
+        onClick: () => onStartEditing(m),
+      });
+      actions.push({
+        key: 'copy',
+        icon: 'bi bi-copy',
+        label: '复制',
+        disabled: false,
+        onClick: () => onCopyMessage(m),
+      });
+    }
+    return actions;
+  })();
 
   return (
     <div
@@ -115,13 +168,13 @@ const MessageBubble = React.memo(function MessageBubble({
                   ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(selectedCharacter.avatar_picture || selectedCharacter.picture).replace(/^\//, '')}`
                   : defaultPic)
           }
-          alt={m.role === 'user' ? (selectedPersona?.name || t('chat.you')) : selectedCharacter?.name}
+          alt={m.role === 'user' ? (selectedPersona?.name || '你') : selectedCharacter?.name}
           style={{ width: messageAvatarSize, height: messageAvatarSize, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef', flexShrink: 0 }}
         />
           );
         })()}
 
-        {/* Content column: name, bubble+button row, controls */}
+        {/* Content column: name, bubble, below-bubble controls */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -132,17 +185,17 @@ const MessageBubble = React.memo(function MessageBubble({
           {/* Name header */}
           {!cleanMode && (
             <div style={{ fontWeight: 600, fontSize: isMobile ? '0.85rem' : '0.76rem', opacity: 0.7, marginBottom: 6 }}>
-              {m.role === 'user' ? t('chat.you') : selectedCharacter?.name}
+              {m.role === 'user' ? '你' : selectedCharacter?.name}
               {m.is_pinned && (
                 <span style={{ marginLeft: 8, fontSize: '0.72rem', color: '#334155' }}>
                   <i className="bi bi-pin-angle-fill" style={{ marginRight: 4 }}></i>
-                  {t('chat.pinned_memory') || 'Pinned'}
+                  已固定
                 </span>
               )}
             </div>
           )}
 
-          {/* Bubble + 3dots button row */}
+          {/* Bubble row */}
           <div style={{
             display: 'flex',
             flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
@@ -193,44 +246,13 @@ const MessageBubble = React.memo(function MessageBubble({
                 <div>{renderMessageContent(m.content, m.role)}</div>
               )}
             </div>
-
-            {/* 3-dots button beside bubble with opacity transition */}
-            {m?.message_id && (
-              <button
-                type="button"
-                onClick={(event) => {
-                  onOpenMessageMenu(event, m.message_id);
-                }}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  color: '#6b7280',
-                  cursor: 'pointer',
-                  width: 22,
-                  height: 22,
-                  borderRadius: 999,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 0,
-                  flexShrink: 0,
-                  opacity: hoveredMessageId === m.message_id ? 1 : 0,
-                  transition: 'opacity 0.15s ease',
-                  marginTop: 2,
-                }}
-                aria-label={t('chat.message_options') || 'Message options'}
-                title={t('chat.message_options') || 'Message options'}
-              >
-                <i className="bi bi-three-dots"></i>
-              </button>
-            )}
           </div>
 
-          {/* Below-bubble controls — only for user messages */}
-          {m.role === 'user' && m?.message_id && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', width: '100%' }}>
-              {/* Edit pencil button / Cancel + Save when editing */}
-              {editingMessageId === m.message_id ? (
+          {/* Below-bubble action row — user: retry · pin · edit · copy / bot: copy · pin */}
+          {m?.message_id && (m.role === 'user' || m.role === 'assistant') && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, justifyContent: cleanMode && m.role === 'assistant' ? 'center' : (m.role === 'user' ? 'flex-end' : 'flex-start'), width: '100%' }}>
+              {/* Editing a user message: replace action buttons with Cancel / Send */}
+              {showEditingControls ? (
                 <>
                   <button
                     type="button"
@@ -250,40 +272,25 @@ const MessageBubble = React.memo(function MessageBubble({
                   </button>
                 </>
               ) : (
-                <>
+                belowBubbleActions.map((action) => (
                   <button
+                    key={action.key}
                     type="button"
-                    onClick={() => onResendMessage(m)}
-                    disabled={!!editingMessageId || sending}
-                    onMouseEnter={(event) => handleMessageActionMouseEnter(event, !!editingMessageId || sending)}
-                    onMouseLeave={(event) => handleMessageActionMouseLeave(event, !!editingMessageId || sending)}
+                    onClick={action.onClick}
+                    disabled={action.disabled}
+                    onMouseEnter={(event) => handleMessageActionMouseEnter(event, action.disabled)}
+                    onMouseLeave={(event) => handleMessageActionMouseLeave(event, action.disabled)}
                     style={{
-                      ...getMessageActionButtonStyle(!!editingMessageId || sending),
+                      ...getMessageActionButtonStyle(action.disabled),
                       opacity: hoveredMessageId === m.message_id ? 1 : 0,
                       transition: 'opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.15s ease',
                     }}
-                    title="Resend from this message"
-                    aria-label="Resend from this message"
+                    title={action.label}
+                    aria-label={action.label}
                   >
-                    <i className="bi bi-arrow-clockwise"></i>
+                    <i className={action.icon}></i>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => onStartEditing(m)}
-                    disabled={!!editingMessageId || sending}
-                    onMouseEnter={(event) => handleMessageActionMouseEnter(event, !!editingMessageId || sending)}
-                    onMouseLeave={(event) => handleMessageActionMouseLeave(event, !!editingMessageId || sending)}
-                    style={{
-                      ...getMessageActionButtonStyle(!!editingMessageId || sending),
-                      opacity: hoveredMessageId === m.message_id ? 1 : 0,
-                      transition: 'opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.15s ease',
-                    }}
-                    title={t('chat.edit_into_branch') || 'Edit into new branch'}
-                    aria-label={t('chat.edit_into_branch') || 'Edit into new branch'}
-                  >
-                    <i className="bi bi-pencil"></i>
-                  </button>
-                </>
+                ))
               )}
               {/* Branch navigator — < X / Y > */}
               {(() => {

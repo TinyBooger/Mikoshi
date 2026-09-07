@@ -1,6 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { useTranslation } from 'react-i18next';
 import { useToast } from '../components/ToastProvider';
 import { buildSystemMessage } from '../utils/systemTemplate';
 import {
@@ -56,7 +55,6 @@ export function useChatInit({
   searchParams,
   prevSearchParamsRef,
 }) {
-  const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -86,7 +84,7 @@ export function useChatInit({
             })
             .catch((err) => {
               console.error('Error fetching character:', err);
-              toast.show(t('chat.error_loading_character') || 'Failed to load character.', { type: 'error' });
+              toast.show('加载角色失败，角色可能已被删除。', { type: 'error' });
               setSelectedCharacter(null);
               return null;
             })
@@ -170,7 +168,7 @@ export function useChatInit({
     });
   }, [
     characterId, sceneId, selectedCharacter, selectedPersona,
-    sessionToken, userData, t, toast,
+    sessionToken, userData, toast,
     normalizeAdvancedChatConfig, applyCharacterBackground,
     setSelectedCharacter, setSelectedScene, setSelectedPersona,
     setAdvancedChatConfig, setLikes, setHasLiked,
@@ -246,7 +244,7 @@ export function useChatInit({
         chatId: null,
         sourceBranchId: null,
         restoreMessagesOnError: [sys],
-        errorMessage: t('chat.error_generating_greeting') || 'Failed to generate greeting.',
+        errorMessage: '生成问候失败，请重试。',
         characterOverride: character,
         sceneOverride: scene,
         personaOverride: persona,
@@ -272,7 +270,7 @@ export function useChatInit({
       };
     }
     setMessages(ensureMessageIds(greet ? [sys, greet] : [sys]));
-  }, [t, sendChatTurn, buildSystemPromptMessage]);
+  }, [sendChatTurn, buildSystemPromptMessage]);
 
   // ---- handleCharacterEntry ----
   const handleCharacterEntry = useCallback(async () => {

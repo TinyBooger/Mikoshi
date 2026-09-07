@@ -438,7 +438,7 @@ export default function CharacterSidebar({
                 }
               }}
             >
-              {t('chat.tab_chat')}
+              聊天
             </button>
             <button
               type="button"
@@ -473,7 +473,7 @@ export default function CharacterSidebar({
                 }
               }}
             >
-              {t('chat.tab_advanced')}
+              {高级}
             </button>
           </div>
 
@@ -489,7 +489,7 @@ export default function CharacterSidebar({
               border: '1px solid rgba(24, 25, 26, 0.08)',
             }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.01em' }}>
-                {t('chat.selected_character')}
+                已选择角色
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <img
@@ -539,7 +539,7 @@ export default function CharacterSidebar({
             }}
             >
               <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.01em' }}>
-                {t('chat.persona')}
+                自设
               </div>
               {selectedPersona ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -560,7 +560,7 @@ export default function CharacterSidebar({
               ) : (
                 <div style={{ fontSize: '0.88rem', color: '#888', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <i className="bi bi-plus-circle" style={{ fontSize: '0.9rem' }}></i>
-                  {t('chat.add_persona')}
+                  添加我的自设
                 </div>
               )}
             </div>
@@ -790,7 +790,7 @@ export default function CharacterSidebar({
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
-            <i className="bi bi-plus-circle me-2"></i> {t('chat.new_chat')}
+            <i className="bi bi-plus-circle me-2"></i> 新对话
           </button>
         </div>
 
@@ -798,7 +798,7 @@ export default function CharacterSidebar({
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#2f2b3d' }}>
-              {t('chat.memory_management')}
+              记忆管理
             </h6>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: '0.76rem', color: '#6b7280' }}>
@@ -809,7 +809,7 @@ export default function CharacterSidebar({
                 isMobile={isMobile}
                 onClick={() => setShowMemoryManagement((prev) => !prev)}
               >
-                {showMemoryManagement ? t('chat.hide') : t('chat.show')}
+                {showMemoryManagement ? '隐藏' : '显示'}
               </SecondaryButton>
             </div>
           </div>
@@ -817,7 +817,7 @@ export default function CharacterSidebar({
             <div style={{ maxHeight: 176, overflowY: 'auto', borderRadius: 12, background: '#f8f7fc', padding: 8, border: '1px solid #ece9f4' }}>
               {!Array.isArray(pinnedMemories) || pinnedMemories.length === 0 ? (
                 <div style={{ fontSize: '0.82rem', color: '#6b7280', padding: '0.35rem 0.5rem', lineHeight: 1.4 }}>
-                  {t('chat.memory_empty_hint')}
+                  还没有固定记忆。悬停消息，点击气泡下方的图钉按钮即可固定。
                 </div>
               ) : (
                 pinnedMemories.map((memory) => (
@@ -833,7 +833,7 @@ export default function CharacterSidebar({
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
                       <span style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 600 }}>
-                        {memory.role === 'user' ? t('chat.you') : (selectedCharacter?.name || t('chat.memory_assistant_label'))}
+                        {memory.role === 'user' ? '你' : (selectedCharacter?.name || '助手')}
                       </span>
                       <button
                         type="button"
@@ -842,7 +842,7 @@ export default function CharacterSidebar({
                         style={{ fontSize: '0.72rem', color: '#b91c1c', textDecoration: 'none' }}
                       >
                         <i className="bi bi-pin-angle me-1"></i>
-                        {t('chat.unpin_memory')}
+                        取消固定
                       </button>
                     </div>
                     <button
@@ -872,13 +872,13 @@ export default function CharacterSidebar({
         {userData?.chat_history?.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#2f2b3d' }}>{t('chat.chat_history')}</h6>
+              <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#2f2b3d' }}>对话历史</h6>
               <SecondaryButton
                 type="button"
                 isMobile={isMobile}
                 onClick={() => setShowChatHistory(!showChatHistory)}
               >
-                {showChatHistory ? t('chat.hide') : t('chat.show')}
+                {showChatHistory ? '隐藏' : '显示'}
               </SecondaryButton>
             </div>
             {showChatHistory && (
@@ -958,7 +958,7 @@ export default function CharacterSidebar({
                         <>
                           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                             <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {chat.title || chat.messages.find(m => m.role === 'user')?.content || t('chat.new_chat_title')}
+                              {chat.title || chat.messages.find(m => m.role === 'user')?.content || '新对话'}
                             </span>
                             {chat.scene_name && (
                               <span style={{ display: 'block', fontSize: '0.75rem', color: '#9d8ec0', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
@@ -1000,7 +1000,7 @@ export default function CharacterSidebar({
                                       setMenuOpenId(null);
                                     }}
                                   >
-                                    <i className="bi bi-pencil me-2"></i> {t('chat.rename')}
+                                    <i className="bi bi-pencil me-2"></i> 重命名
                                   </button>
                                   <button
                                     className="dropdown-item text-danger"
@@ -1010,7 +1010,7 @@ export default function CharacterSidebar({
                                       setMenuOpenId(null);
                                     }}
                                   >
-                                    <i className="bi bi-trash me-2"></i> {t('chat.delete')}
+                                    <i className="bi bi-trash me-2"></i> 删除
                                   </button>
                                 </div>
                               )}
