@@ -1929,7 +1929,6 @@ export default function ChatPage() {
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                required
                 disabled={isCreditLocked(creditLimits)}
                 onFocus={e => {
                   e.target.style.border = '1.2px solid #18191a';

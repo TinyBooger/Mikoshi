@@ -187,11 +187,11 @@ def _build_summary_prompt_input(existing_summary_text: str, old_messages: List[d
     return "\n".join(lines).strip()
 
 
-def _summarize_with_prompt(summary_input: str, *, summary_max_tokens: int) -> tuple[str, dict[str, int]]:
+async def _summarize_with_prompt(summary_input: str, *, summary_max_tokens: int) -> tuple[str, dict[str, int]]:
     if not summary_input:
         return "", normalize_usage(None)
 
-    response = llm_client.chat.completions.create(
+    response = await llm_client.chat.completions.create(
         model=SUMMARY_MODEL,
         messages=[
             {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
@@ -206,7 +206,7 @@ def _summarize_with_prompt(summary_input: str, *, summary_max_tokens: int) -> tu
     return _normalize_text(content), usage
 
 
-def _build_summary_message(
+async def _build_summary_message(
     existing_summary_text: str,
     old_messages: List[dict],
     *,
@@ -219,7 +219,7 @@ def _build_summary_message(
     summary_body = ""
     summary_usage = normalize_usage(None)
     try:
-        summary_body, summary_usage = _summarize_with_prompt(summary_input, summary_max_tokens=summary_max_tokens)
+        summary_body, summary_usage = await _summarize_with_prompt(summary_input, summary_max_tokens=summary_max_tokens)
     except Exception:
         summary_body = ""
         summary_usage = normalize_usage(None)
@@ -237,7 +237,7 @@ def _build_summary_message(
     }, summary_usage
 
 
-def compact_conversation_messages(
+async def compact_conversation_messages(
     messages: List[dict],
     *,
     soft_token_limit: int = DEFAULT_SOFT_TOKEN_LIMIT,
@@ -287,7 +287,7 @@ def compact_conversation_messages(
         existing_summary_text = "\n".join(
             filter(None, (_extract_summary_body(msg) for msg in summary_system_messages))
         )
-        summary_message, summary_usage = _build_summary_message(
+        summary_message, summary_usage = await _build_summary_message(
             existing_summary_text,
             old_messages,
             summary_max_tokens=effective_summary_max_tokens,

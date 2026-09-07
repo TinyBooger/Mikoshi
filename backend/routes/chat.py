@@ -5,7 +5,7 @@ from starlette.requests import ClientDisconnect
 from database import get_db, SessionLocal
 from model_configs import ALLOWED_MODEL_IDS
 from utils.session import get_current_user, verify_session_token
-from utils.llm_client import client, stream_chat_completion_with_config
+from utils.llm_client import stream_chat_completion_with_config
 from utils.asr_utils import ASR_MODEL, ASR_SAMPLE_RATE, DASHSCOPE_API_KEY
 from utils.chat_history_utils import (
     fetch_chat_history_entry,
@@ -385,7 +385,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         is_pro=bool(current_user.is_pro),
         model_id=chat_config.get("model"),
     )
-    stream = data.get("stream", True)  # Default to streaming
 
     if not messages or not isinstance(messages, list):
         return JSONResponse(content={"error": "Invalid or missing messages"}, status_code=400)
@@ -462,14 +461,14 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             headers={"Retry-After": str(max(1, rate_limit_result["reset_seconds"]))},
         )
 
-    prepared_messages, prepared_context_info = compact_conversation_messages(
+    prepared_messages, prepared_context_info = await compact_conversation_messages(
         messages,
         soft_token_limit=context_window_soft_limit,
     )
     if context_messages == messages:
         context_window_info = prepared_context_info
     else:
-        _, context_window_info = compact_conversation_messages(
+        _, context_window_info = await compact_conversation_messages(
             context_messages,
             soft_token_limit=context_window_soft_limit,
         )
@@ -547,121 +546,73 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         if not character:
             raise HTTPException(status_code=404, detail="Character not found")
 
-    if stream:
-        # Return streaming response
-        async def generate():
-            accumulated_reply = ""
-            current_credit_limit_info = credit_limit_info
-            response_usage = {
-                "prompt_tokens": 0,
-                "completion_tokens": 0,
-                "total_tokens": 0,
-            }
+    # Return streaming response
+    async def generate():
+        accumulated_reply = ""
+        current_credit_limit_info = credit_limit_info
+        response_usage = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
 
-            # --- upstream bucket (per-model RPM pacing) ---
-            if not await acquire_upstream(chat_config["model"], is_pro=bool(current_user.is_pro)):
-                yield f"data: {json.dumps({'error': 'UPSTREAM_BUSY', 'message': 'The model provider is currently at capacity. Please try again shortly.'})}\n\n"
-                return
+        # --- upstream bucket (per-model RPM pacing) ---
+        if not await acquire_upstream(chat_config["model"], is_pro=bool(current_user.is_pro)):
+            yield f"data: {json.dumps({'error': 'UPSTREAM_BUSY', 'message': 'The model provider is currently at capacity. Please try again shortly.'})}\n\n"
+            return
 
-            try:
-                for stream_event in stream_chat_completion_with_config(
-                    prepared_messages,
-                    model=chat_config["model"],
-                    max_tokens=chat_config["max_tokens"],
-                    temperature=chat_config["temperature"],
-                    top_p=chat_config["top_p"],
-                    presence_penalty=chat_config["presence_penalty"],
-                    frequency_penalty=chat_config["frequency_penalty"],
-                ):
-                    event_type = (stream_event or {}).get("type")
-                    if event_type == "usage":
-                        response_usage = normalize_usage((stream_event or {}).get("usage"))
-                        continue
+        try:
+            async for stream_event in stream_chat_completion_with_config(
+                prepared_messages,
+                model=chat_config["model"],
+                max_tokens=chat_config["max_tokens"],
+                temperature=chat_config["temperature"],
+                top_p=chat_config["top_p"],
+                presence_penalty=chat_config["presence_penalty"],
+                frequency_penalty=chat_config["frequency_penalty"],
+            ):
+                event_type = (stream_event or {}).get("type")
+                if event_type == "usage":
+                    response_usage = normalize_usage((stream_event or {}).get("usage"))
+                    continue
 
-                    chunk = (stream_event or {}).get("content")
-                    if not isinstance(chunk, str) or not chunk:
-                        continue
+                chunk = (stream_event or {}).get("content")
+                if not isinstance(chunk, str) or not chunk:
+                    continue
 
-                    accumulated_reply += chunk
-                    # Send each chunk as SSE
-                    yield f"data: {json.dumps({'chunk': chunk})}\n\n"
-                
-                # After streaming completes, save to database
-                stream_credit_amount = usage_to_credits(response_usage, chat_config["model"])
-                logger.info(
-                    "💬 Stream credit | user=%s | chat=%s | model=%s | prompt_tokens=%d | completion_tokens=%d | total_tokens=%d | credit=%.4f | has_character=%s",
-                    current_user.id,
-                    chat_id or "none",
-                    chat_config["model"],
-                    response_usage["prompt_tokens"],
-                    response_usage["completion_tokens"],
-                    response_usage["total_tokens"],
-                    stream_credit_amount,
-                    bool(character_id),
-                )
-                if character_id:
-                    # Create new DB session for generator context
-                    from database import SessionLocal
-                    db_session = SessionLocal()
-                    try:
-                        stream_user = db_session.query(User).filter(User.id == current_user.id).first()
-                        if not stream_user:
-                            raise HTTPException(status_code=404, detail="User not found")
-                        limit_info = increment_user_message_count(
-                            stream_user,
-                            db_session,
-                            limit_check["is_user_request"],
-                        ) or (limit_check.get("limit") or {})
-                        usage_result = apply_credit_usage_with_wallet(
-                            db_session,
-                            user=stream_user,
-                            usage=response_usage,
-                            source="chat_stream",
-                            source_order_no=chat_id,
-                            metadata={"stream": True, "character_id": character_id},
-                            credit_amount=stream_credit_amount,
-                        )
-                        if not usage_result.get("success"):
-                            db_session.rollback()
-                            yield f"data: {json.dumps({'error': 'CREDIT_CAP_REACHED', 'credit_limits': usage_result.get('limit') or {}})}\n\n"
-                            return
-                        logger.info(
-                            "✅ Stream credit applied (w/ character) | user=%s | chat=%s | consumed_from_wallet=%s | wallet_balance_after=%.2f",
-                            current_user.id,
-                            chat_id,
-                            usage_result.get("consumed_from_wallet", False),
-                            float(usage_result.get("wallet_balance_after", 0)),
-                        )
-                        entry = _persist_chat_history_turn(
-                            db_session,
-                            current_user_id=current_user.id,
-                            chat_id=chat_id,
-                            existing_entry=existing_entry,
-                            character_id=character_id,
-                            scene_id=scene_id,
-                            persona_id=persona_id,
-                            full_messages=full_messages,
-                            reply=accumulated_reply,
-                            response_usage=response_usage,
-                            context_window_soft_limit=context_window_soft_limit,
-                            requested_branch_id=branch_id,
-                            fork_from_message_id=fork_from_message_id,
-                            base_message_count=base_message_count,
-                        )
-                        serialized_entry = serialize_chat_history_entry(entry)
-                        current_credit_limit_info = get_credit_cap_info(stream_user, db_session)
-                        db_session.commit()
-                    finally:
-                        db_session.close()
-                else:
+                accumulated_reply += chunk
+                # Send each chunk as SSE
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+
+            # After streaming completes, save to database
+            stream_credit_amount = usage_to_credits(response_usage, chat_config["model"])
+            logger.info(
+                "💬 Stream credit | user=%s | chat=%s | model=%s | prompt_tokens=%d | completion_tokens=%d | total_tokens=%d | credit=%.4f | has_character=%s",
+                current_user.id,
+                chat_id or "none",
+                chat_config["model"],
+                response_usage["prompt_tokens"],
+                response_usage["completion_tokens"],
+                response_usage["total_tokens"],
+                stream_credit_amount,
+                bool(character_id),
+            )
+            if character_id:
+                # Create new DB session for generator context
+                from database import SessionLocal
+                db_session = SessionLocal()
+                try:
+                    stream_user = db_session.query(User).filter(User.id == current_user.id).first()
+                    if not stream_user:
+                        raise HTTPException(status_code=404, detail="User not found")
                     limit_info = increment_user_message_count(
-                        current_user,
-                        db,
+                        stream_user,
+                        db_session,
                         limit_check["is_user_request"],
                     ) or (limit_check.get("limit") or {})
                     usage_result = apply_credit_usage_with_wallet(
-                        db,
-                        user=current_user,
+                        db_session,
+                        user=stream_user,
                         usage=response_usage,
                         source="chat_stream",
                         source_order_no=chat_id,
@@ -669,172 +620,107 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         credit_amount=stream_credit_amount,
                     )
                     if not usage_result.get("success"):
-                        db.rollback()
+                        db_session.rollback()
                         yield f"data: {json.dumps({'error': 'CREDIT_CAP_REACHED', 'credit_limits': usage_result.get('limit') or {}})}\n\n"
                         return
-                    db.commit()
-                    current_credit_limit_info = get_credit_cap_info(current_user, db)
                     logger.info(
-                        "✅ Stream credit applied (wo/ character) | user=%s | chat=%s | consumed_from_wallet=%s | wallet_balance_after=%.2f",
+                        "✅ Stream credit applied (w/ character) | user=%s | chat=%s | consumed_from_wallet=%s | wallet_balance_after=%.2f",
                         current_user.id,
                         chat_id,
                         usage_result.get("consumed_from_wallet", False),
                         float(usage_result.get("wallet_balance_after", 0)),
                     )
-
-                # Send final metadata
-                # Use actual prompt_tokens from the LLM response when available; the
-                # pre-call estimate in context_window_info is based only on the input
-                # messages and is especially inaccurate for the improvised-greeting
-                # turn where there are no prior messages to derive real usage from.
-                actual_prompt_tokens = response_usage.get("prompt_tokens", 0)
-                effective_context_window_info = (
-                    {**context_window_info, "input_tokens": actual_prompt_tokens}
-                    if actual_prompt_tokens > 0
-                    else context_window_info
+                    entry = _persist_chat_history_turn(
+                        db_session,
+                        current_user_id=current_user.id,
+                        chat_id=chat_id,
+                        existing_entry=existing_entry,
+                        character_id=character_id,
+                        scene_id=scene_id,
+                        persona_id=persona_id,
+                        full_messages=full_messages,
+                        reply=accumulated_reply,
+                        response_usage=response_usage,
+                        context_window_soft_limit=context_window_soft_limit,
+                        requested_branch_id=branch_id,
+                        fork_from_message_id=fork_from_message_id,
+                        base_message_count=base_message_count,
+                    )
+                    serialized_entry = serialize_chat_history_entry(entry)
+                    current_credit_limit_info = get_credit_cap_info(stream_user, db_session)
+                    db_session.commit()
+                finally:
+                    db_session.close()
+            else:
+                limit_info = increment_user_message_count(
+                    current_user,
+                    db,
+                    limit_check["is_user_request"],
+                ) or (limit_check.get("limit") or {})
+                usage_result = apply_credit_usage_with_wallet(
+                    db,
+                    user=current_user,
+                    usage=response_usage,
+                    source="chat_stream",
+                    source_order_no=chat_id,
+                    metadata={"stream": True, "character_id": character_id},
+                    credit_amount=stream_credit_amount,
                 )
-                done_payload = {
-                    'done': True,
-                    'chat_id': chat_id,
-                    'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
-                    'limits': limit_info,
-                    'credit_limits': current_credit_limit_info,
-                    'context_window': {**effective_context_window_info, 'message_count': len(context_messages), 'selected_tier': context_window_tier},
-                }
-                if character_id:
-                    done_payload['chat_entry'] = serialized_entry
-                    done_payload['branch_id'] = serialized_entry.get('active_branch_id')
-                yield f"data: {json.dumps(done_payload)}\n\n"
-            
-            except ClientDisconnect:
-                return
-            except Exception as e:
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                if not usage_result.get("success"):
+                    db.rollback()
+                    yield f"data: {json.dumps({'error': 'CREDIT_CAP_REACHED', 'credit_limits': usage_result.get('limit') or {}})}\n\n"
+                    return
+                db.commit()
+                current_credit_limit_info = get_credit_cap_info(current_user, db)
+                logger.info(
+                    "✅ Stream credit applied (wo/ character) | user=%s | chat=%s | consumed_from_wallet=%s | wallet_balance_after=%.2f",
+                    current_user.id,
+                    chat_id,
+                    usage_result.get("consumed_from_wallet", False),
+                    float(usage_result.get("wallet_balance_after", 0)),
+                )
 
-        return StreamingResponse(
-            generate(),
-            media_type="text/event-stream",
-            headers={
-                "X-RateLimit-Limit-Minute": str(rate_limit_result["limit"]),
-                "X-RateLimit-Remaining-Minute": str(rate_limit_result["remaining"]),
-            },
-        )
-    
-    else:
-        # Non-streaming fallback (original logic)
-
-        # --- upstream bucket (per-model RPM pacing) ---
-        if not await acquire_upstream(chat_config["model"], is_pro=bool(current_user.is_pro)):
-            return JSONResponse(
-                content={
-                    "error": "UPSTREAM_BUSY",
-                    "message": "The model provider is currently at capacity. Please try again shortly.",
-                },
-                status_code=503,
+            # Send final metadata
+            # Use actual prompt_tokens from the LLM response when available; the
+            # pre-call estimate in context_window_info is based only on the input
+            # messages and is especially inaccurate for the improvised-greeting
+            # turn where there are no prior messages to derive real usage from.
+            actual_prompt_tokens = response_usage.get("prompt_tokens", 0)
+            effective_context_window_info = (
+                {**context_window_info, "input_tokens": actual_prompt_tokens}
+                if actual_prompt_tokens > 0
+                else context_window_info
             )
-
-        try:
-            response = client.chat.completions.create(
-                model=chat_config["model"],
-                messages=prepared_messages,
-                max_tokens=chat_config["max_tokens"],
-                temperature=chat_config["temperature"],
-                top_p=chat_config["top_p"],
-                presence_penalty=chat_config["presence_penalty"],
-                frequency_penalty=chat_config["frequency_penalty"],
-            )
-            reply = response.choices[0].message.content.strip()
-            response_usage = normalize_usage(getattr(response, "usage", None))
-        except Exception:
-            return JSONResponse(content={"error": "Server busy, please try again later."}, status_code=503)
-
-        limit_info = increment_user_message_count(
-            current_user,
-            db,
-            limit_check["is_user_request"],
-        ) or (limit_check.get("limit") or {})
-        non_stream_credit_amount = usage_to_credits(response_usage, chat_config["model"])
-        logger.info(
-            "💬 Non-stream credit | user=%s | chat=%s | model=%s | prompt_tokens=%d | completion_tokens=%d | total_tokens=%d | credit=%.4f",
-            current_user.id,
-            chat_id or "none",
-            chat_config["model"],
-            response_usage["prompt_tokens"],
-            response_usage["completion_tokens"],
-            response_usage["total_tokens"],
-            non_stream_credit_amount,
-        )
-        usage_result = apply_credit_usage_with_wallet(
-            db,
-            user=current_user,
-            usage=response_usage,
-            source="chat_non_stream",
-            source_order_no=chat_id,
-            metadata={"stream": False, "character_id": character_id},
-            credit_amount=non_stream_credit_amount,
-        )
-        if not usage_result.get("success"):
-            db.rollback()
-            return JSONResponse(
-                content=build_credit_cap_reached_payload(usage_result.get("limit") or credit_limit_info),
-                status_code=429,
-            )
-        db.commit()
-        credit_limit_info = get_credit_cap_info(current_user, db)
-        logger.info(
-            "✅ Non-stream credit applied | user=%s | consumed_from_wallet=%s | wallet_balance_after=%.2f",
-            current_user.id,
-            usage_result.get("consumed_from_wallet", False),
-            float(usage_result.get("wallet_balance_after", 0)),
-        )
-
-        serialized_entry = None
-
-        # Update chat history
-        if character_id:
-            entry = _persist_chat_history_turn(
-                db,
-                current_user_id=current_user.id,
-                chat_id=chat_id,
-                existing_entry=existing_entry,
-                character_id=character_id,
-                scene_id=scene_id,
-                persona_id=persona_id,
-                full_messages=full_messages,
-                reply=reply,
-                response_usage=response_usage,
-                context_window_soft_limit=context_window_soft_limit,
-                requested_branch_id=branch_id,
-                fork_from_message_id=fork_from_message_id,
-                base_message_count=base_message_count,
-            )
-            serialized_entry = serialize_chat_history_entry(entry)
-
-            return {
-                "response": reply,
-                "chat_id": entry.chat_id,
-                "chat_title": entry.title,
-                "branch_id": serialized_entry.get("active_branch_id"),
-                "chat_entry": serialized_entry,
-                "limits": limit_info,
-                "credit_limits": credit_limit_info,
-                "context_window": {
-                    **context_window_info,
-                    "message_count": len(context_messages),
-                    "selected_tier": context_window_tier,
-                },
+            done_payload = {
+                'done': True,
+                'chat_id': chat_id,
+                'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
+                'limits': limit_info,
+                'credit_limits': current_credit_limit_info,
+                'context_window': {**effective_context_window_info, 'message_count': len(context_messages), 'selected_tier': context_window_tier},
             }
+            if character_id:
+                done_payload['chat_entry'] = serialized_entry
+                done_payload['branch_id'] = serialized_entry.get('active_branch_id')
+            yield f"data: {json.dumps(done_payload)}\n\n"
 
-        return {
-            "response": reply,
-            "limits": limit_info,
-            "credit_limits": credit_limit_info,
-            "context_window": {
-                **context_window_info,
-                "message_count": len(context_messages),
-                "selected_tier": context_window_tier,
-            },
-        }
+        except ClientDisconnect:
+            return
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "X-RateLimit-Limit-Minute": str(rate_limit_result["limit"]),
+            "X-RateLimit-Remaining-Minute": str(rate_limit_result["remaining"]),
+            # Tell nginx to forward each SSE chunk as it arrives instead of
+            # buffering the whole response (which made long generations look
+            # idle and hit nginx's proxy_read_timeout).
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 @router.post("/api/chat/rename")
 async def rename_chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

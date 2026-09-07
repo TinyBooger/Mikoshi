@@ -1,8 +1,15 @@
-from openai import OpenAI
+from openai import AsyncOpenAI
 import os
 
+# Hard ceiling (seconds) on every socket operation against the model
+# providers. The SDK raises openai.APITimeoutError if a request stalls past
+# this instead of letting the caller block forever. Applied once, at client
+# construction, so both providers inherit it.
+CLIENT_TIMEOUT_SECONDS = 90.0
+
+
 def _build_client(api_key, base_url):
-    return OpenAI(api_key=api_key, base_url=base_url)
+    return AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=CLIENT_TIMEOUT_SECONDS)
 
 
 # DeepSeek client
@@ -25,7 +32,7 @@ def _get_client_for_model(model):
     return qwen_client
 
 
-def stream_chat_completion_with_config(
+async def stream_chat_completion_with_config(
     messages,
     model="deepseek-v4-flash",
     max_tokens=4000,
@@ -35,7 +42,7 @@ def stream_chat_completion_with_config(
     frequency_penalty=0,
 ):
     selected_client = _get_client_for_model(model)
-    stream = selected_client.chat.completions.create(
+    stream = await selected_client.chat.completions.create(
         model=model,
         messages=messages,
         max_tokens=max_tokens,
@@ -47,7 +54,7 @@ def stream_chat_completion_with_config(
         stream_options={"include_usage": True},
     )
 
-    for chunk in stream:
+    async for chunk in stream:
         chunk_usage = getattr(chunk, "usage", None)
         if chunk_usage is not None:
             yield {"type": "usage", "usage": chunk_usage}
