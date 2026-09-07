@@ -1183,7 +1183,7 @@ export default function CharacterFormPage() {
               <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
               <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>第一个标签会显示在封面上</small>
             </label>
-            <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} placeholder="输入完一个标签后按Enter键确认" hint="输入标签后点按Enter确认" />
+            <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} placeholder="输入后按Enter添加" hint="输入标签后点按Enter确认" />
             <small className="text-muted" style={{ top: 0, right: 0 }}>
               {charData.tags.length}/{MAX_TAGS} 个标签
             </small>

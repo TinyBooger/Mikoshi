@@ -811,7 +811,7 @@ export default function EntityFormPage() {
               tags={entityData.tags}
               setTags={tags => handleChange('tags', tags)}
               maxTags={MAX_TAGS}
-              placeholder="输入完一个标签后按Enter键确认"
+              placeholder="输入后按Enter添加"
               hint="输入标签后按Enter确认"
             />
           </div>

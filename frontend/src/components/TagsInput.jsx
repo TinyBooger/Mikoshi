@@ -4,13 +4,15 @@ import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../components/AuthProvider';
 import TextButton from './TextButton';
 
+// Both half-width "," and full-width "，" (Chinese) commas separate tags.
+const TAG_SEPARATOR = /[,，]/;
+
 export default function TagsInput({ tags, setTags, maxTags, placeholder, hint }) {
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const { sessionToken } = useContext(AuthContext);
   const { t } = useTranslation();
-  const trimmedInput = input.trim();
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -42,18 +44,73 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
     }
   }, [input, sessionToken]);
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && trimmedInput) {
-      e.preventDefault();
-      addTag(trimmedInput);
+  const addTags = (tagList) => {
+    const accepted = [];
+    for (const tag of tagList) {
+      if (
+        tags.length + accepted.length < maxTags &&
+        !tags.includes(tag) &&
+        !accepted.includes(tag)
+      ) {
+        accepted.push(tag);
+      }
+    }
+    if (accepted.length > 0) {
+      setTags([...tags, ...accepted]);
     }
   };
 
   const addTag = (tag) => {
-    if (tags.length < maxTags && !tags.includes(tag)) {
-      setTags([...tags, tag]);
-    }
+    addTags([tag]);
     setInput("");
+  };
+
+  const splitTagText = (text) =>
+    text.split(TAG_SEPARATOR).map((part) => part.trim()).filter(Boolean);
+
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    // While an IME composition (e.g. Chinese pinyin) is in progress, keep the raw
+    // text and only split once the composition has been confirmed.
+    if (e.nativeEvent.isComposing) {
+      setInput(value);
+      return;
+    }
+    if (TAG_SEPARATOR.test(value)) {
+      // Commit everything before the last comma right away, and keep the text
+      // after it in the input so the user can keep typing.
+      const segments = value.split(TAG_SEPARATOR);
+      addTags(
+        segments.slice(0, -1).map((part) => part.trim()).filter(Boolean)
+      );
+      setInput(segments[segments.length - 1].replace(/^\s+/, ""));
+    } else {
+      setInput(value);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.nativeEvent.isComposing) return;
+    if (e.key === "Enter" && input.trim()) {
+      e.preventDefault();
+      addTags(splitTagText(input));
+      setInput("");
+    }
+  };
+
+  const commitPendingInput = () => {
+    if (input.trim()) {
+      addTags(splitTagText(input));
+      setInput("");
+    }
+  };
+
+  const handleBlur = () => {
+    // Auto-confirm typed-but-unconfirmed tags when the field loses focus, e.g.
+    // the user clicked the submit button or another field, tabbed away, or
+    // dismissed the mobile keyboard — so pending text is never silently dropped.
+    commitPendingInput();
+    setTimeout(() => setShowSuggestions(false), 100);
   };
 
   const removeTag = (index) => {
@@ -94,10 +151,10 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
           type="text"
           className="border-0 flex-grow-1 tags-input-field"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
+          onBlur={handleBlur}
           enterKeyHint="done"
           autoCorrect="off"
           autoCapitalize="none"
