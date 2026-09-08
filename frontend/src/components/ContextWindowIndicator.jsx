@@ -123,11 +123,21 @@ export default function ContextWindowIndicator({
             基于上次请求的上下文使用情况
           </div>
           <div style={{ fontSize: '0.7rem', opacity: 0.9, marginTop: 4 }}>
-            到达 95% 上下文窗口时，系统会开始压缩上下文。
+            接近模型输入上限时，系统会自动整理并压缩旧消息。
           </div>
           {Number(serverContextWindowUsage?.summary_messages_count || 0) > 0 && (
             <div style={{ fontSize: '0.7rem', color: '#86efac', marginTop: 4 }}>
               已自动整理旧消息并保留最近 2 条对话用于请求上下文。
+            </div>
+          )}
+          {Number(serverContextWindowUsage?.emergency_compaction || 0) > 0 && (
+            <div style={{ fontSize: '0.7rem', color: '#86efac', marginTop: 4 }}>
+              对话较长，已自动压缩更多旧消息以继续。
+            </div>
+          )}
+          {Number(serverContextWindowUsage?.max_tokens_clamped || 0) > 0 && (
+            <div style={{ fontSize: '0.7rem', color: '#fbbf24', marginTop: 4 }}>
+              上下文接近上限，本次回复的最大长度已自动调整。
             </div>
           )}
         </div>

@@ -13,7 +13,6 @@ import PrimaryButton from '../components/PrimaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
-import { DEFAULT_CONTEXT_WINDOW_TIER, getFilteredContextWindowTierOptions, normalizeContextWindowTier } from '../utils/contextWindow';
 import ModelSelect from '../components/ModelSelect';
 import BanNotice from '../components/BanNotice';
 
@@ -89,7 +88,6 @@ export default function CharacterFormPage() {
     max_tokens: 4096,
     presence_penalty: 0,
     frequency_penalty: 0,
-    context_window_tier: DEFAULT_CONTEXT_WINDOW_TIER,
     interface_preference: 'bubbles',
   };
   const WALLPAPER_OPTIONS = [
@@ -195,7 +193,6 @@ export default function CharacterFormPage() {
     max_tokens: DEFAULT_CHAT_CONFIG.max_tokens,
     presence_penalty: DEFAULT_CHAT_CONFIG.presence_penalty,
     frequency_penalty: DEFAULT_CHAT_CONFIG.frequency_penalty,
-    context_window_tier: null,
     interface_preference: DEFAULT_CHAT_CONFIG.interface_preference,
     background: JSON.stringify({ type: 'preset', preset_id: 'none' }),
   });
@@ -397,7 +394,6 @@ export default function CharacterFormPage() {
               max_tokens: normalizeTokenTierValue(loadedModel, data.max_tokens),
               presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
               frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
-              context_window_tier: normalizeContextWindowTier(data.context_window_tier, loadedModel),
               interface_preference: data.interface_preference === 'clean' ? 'clean' : 'bubbles',
               background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
@@ -425,7 +421,6 @@ export default function CharacterFormPage() {
               max_tokens: normalizeTokenTierValue(loadedModel, data.max_tokens),
               presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
               frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
-              context_window_tier: normalizeContextWindowTier(data.context_window_tier, loadedModel),
               interface_preference: data.interface_preference === 'clean' ? 'clean' : 'bubbles',
               background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
@@ -476,16 +471,11 @@ export default function CharacterFormPage() {
 
   const handleModelChange = (nextModel) => {
     const nextTokenLimits = getTokenLimits(nextModel);
-    const nextContextTier = normalizeContextWindowTier(
-      charData.context_window_tier,
-      nextModel,
-    );
     setCharData(prev => ({
       ...prev,
       model: nextModel,
       // Reset to model default for predictable UX when switching models.
       max_tokens: normalizeTokenTierValue(nextModel, nextTokenLimits.defaultValue),
-      context_window_tier: nextContextTier,
     }));
   };
 
@@ -554,7 +544,6 @@ export default function CharacterFormPage() {
   const finalTokenLimits = getTokenLimits(finalModel);
   const safeMaxTokens = clampValue(charData.max_tokens, finalTokenLimits.min, finalTokenLimits.max, finalTokenLimits.defaultValue);
   formData.append("model", finalModel);
-    formData.append("context_window_tier", String(normalizeContextWindowTier(charData.context_window_tier, finalModel)));
     formData.append("temperature", String(canUseAdvancedConfig ? (charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature) : DEFAULT_CHAT_CONFIG.temperature));
     formData.append("top_p", String(canUseAdvancedConfig ? (charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p) : DEFAULT_CHAT_CONFIG.top_p));
   formData.append("max_tokens", String(canUseAdvancedConfig ? safeMaxTokens : DEFAULT_CHAT_CONFIG.max_tokens));
@@ -1297,42 +1286,6 @@ export default function CharacterFormPage() {
                   onChange={handleModelChange}
                   style={{ borderRadius: 12 }}
                 />
-              </div>
-
-              <div>
-                <label className="form-label" style={{ fontSize: '0.9rem' }}>
-                  上下文长度
-                  <InfoHint text={'更长的上下文长度可以保留更多的历史消息，但是会加速token消耗'} />
-                </label>
-                {(() => {
-                  const ctxOptions = getFilteredContextWindowTierOptions(
-                    charData.model || DEFAULT_CHAT_CONFIG.model,
-                  );
-                  const selectedCtx = normalizeContextWindowTier(
-                    charData.context_window_tier,
-                    charData.model || DEFAULT_CHAT_CONFIG.model,
-                  );
-                  return (
-                    <select
-                      className="form-select"
-                      value={selectedCtx}
-                      onChange={e => {
-                        const normalized = normalizeContextWindowTier(
-                          e.target.value,
-                          charData.model || DEFAULT_CHAT_CONFIG.model,
-                        );
-                        handleChange('context_window_tier', normalized);
-                      }}
-                      style={{ borderRadius: 12 }}
-                    >
-                      {ctxOptions.map(tier => (
-                        <option key={tier.key} value={tier.key}>
-                          {`${tier.tokens / 1000}k tokens`}
-                        </option>
-                      ))}
-                    </select>
-                  );
-                })()}
               </div>
 
               <div>

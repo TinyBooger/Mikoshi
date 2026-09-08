@@ -17,11 +17,6 @@ import ContextWindowIndicator from '../components/ContextWindowIndicator';
 import { CreditLockedBanner, BanBanner } from '../components/ChatBanners';
 import ChatWelcomeCard from '../components/ChatWelcomeCard';
 import { useToast } from '../components/ToastProvider';
-import {
-  DEFAULT_CONTEXT_WINDOW_TIER,
-  getContextWindowTokenLimit,
-  normalizeContextWindowTier,
-} from '../utils/contextWindow';
 import { getModelConfig, AVAILABLE_MODEL_IDS, ALLOWED_MODEL_SET } from '../utils/modelConfigs';
 import { isCreditLocked } from '../utils/creditCheck';
 import {
@@ -127,7 +122,6 @@ export default function ChatPage() {
     model: 'qwen-plus-character',
     presence_penalty: 0,
     frequency_penalty: 0,
-    context_window_tier: DEFAULT_CONTEXT_WINDOW_TIER,
     interface_preference: 'bubbles',
   };
   const normalizeChatModel = (modelName) => (ALLOWED_MODEL_SET.has(modelName) ? modelName : DEFAULT_ADVANCED_CHAT_CONFIG.model);
@@ -158,10 +152,8 @@ export default function ChatPage() {
     if (!character) return DEFAULT_ADVANCED_CHAT_CONFIG;
     const model = normalizeChatModel(character.model);
     const tokenLimits = getTokenLimits(model);
-    const normalizedContextWindowTier = normalizeContextWindowTier(character.context_window_tier, model);
     return {
       model,
-      context_window_tier: normalizedContextWindowTier,
       temperature: canUseAdvancedChatConfig ? clamp(character.temperature, 0, 2, DEFAULT_ADVANCED_CHAT_CONFIG.temperature) : DEFAULT_ADVANCED_CHAT_CONFIG.temperature,
       top_p: canUseAdvancedChatConfig ? clamp(character.top_p, 0, 1, DEFAULT_ADVANCED_CHAT_CONFIG.top_p) : DEFAULT_ADVANCED_CHAT_CONFIG.top_p,
       max_tokens: canUseAdvancedChatConfig ? normalizeTokenTierValue(model, clamp(character.max_tokens, tokenLimits.min, tokenLimits.max, tokenLimits.defaultValue)) : tokenLimits.defaultValue,
@@ -405,7 +397,17 @@ export default function ChatPage() {
   };
 
   const getContextWindowUsage = (allMessages) => {
-    const effectiveSoftTokenLimit = getContextWindowTokenLimit(advancedChatConfig?.context_window_tier);
+    // The context window is model-driven: it equals the selected model's
+    // config, not a user-picked tier. Budget from the REAL per-request input
+    // cap — some providers advertise a huge context window but cap input far
+    // below it (qwen3.7-flash: 1M context / 32k maxInputTokens, mirrored from
+    // backend max_input_tokens). Using contextLength alone would show ~3%
+    // when the conversation is actually ~90% of the usable window.
+    const modelCfg = getModelConfig(advancedChatConfig?.model || 'deepseek-v4-flash');
+    const effectiveSoftTokenLimit = Math.min(
+      modelCfg?.contextLength ?? 0,
+      modelCfg?.maxInputTokens ?? modelCfg?.contextLength ?? 0,
+    );
 
     if (!Array.isArray(allMessages)) {
       return {
@@ -415,10 +417,11 @@ export default function ChatPage() {
     }
 
     if (serverContextWindowUsage) {
+      const serverTotalTokens = Number(serverContextWindowUsage.total_tokens || 0);
       const serverInputTokens = Number(serverContextWindowUsage.input_tokens || 0);
 
       return {
-        currentTokens: serverInputTokens,
+        currentTokens: serverTotalTokens || serverInputTokens,
         softLimit: effectiveSoftTokenLimit,
       };
     }
@@ -433,9 +436,12 @@ export default function ChatPage() {
         continue;
       }
 
+      // The raw usage.total_tokens field (same name for every model) is the
+      // actual context consumed by the last request.
+      const usageTotalTokens = Number(message.usage.total_tokens || 0);
       const usageInputTokens = Number(message.usage.prompt_tokens || 0);
       return {
-        currentTokens: usageInputTokens,
+        currentTokens: usageTotalTokens || usageInputTokens,
         softLimit: effectiveSoftTokenLimit,
       };
     }
@@ -648,6 +654,8 @@ export default function ChatPage() {
                 headers: { 'Authorization': sessionToken }
               }).then(res => res.ok ? res.json() : null).then(configData => {
                 const delta = configData?.config || {};
+                // Drop the retired context_window_tier key from historical deltas.
+                delete delta.context_window_tier;
                 if (Object.keys(delta).length > 0) {
                   setAdvancedChatConfig(prev => {
                     const merged = { ...prev };
@@ -1317,6 +1325,8 @@ export default function ChatPage() {
         }).then(res => res.ok ? res.json() : null).then(data => {
           const defaults = normalizeAdvancedChatConfig(character);
           const delta = data?.config || {};
+          // Drop the retired context_window_tier key from historical deltas.
+          delete delta.context_window_tier;
           const merged = { ...defaults };
           for (const [key, value] of Object.entries(delta)) {
             if (value !== undefined && value !== null) merged[key] = value;

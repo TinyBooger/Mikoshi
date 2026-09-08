@@ -775,6 +775,13 @@ def upsert_chat_history_entry(
         "last_updated": payload.get("last_updated", now),
     }
 
+    # Rolling-summary state (context compression cursor), merged branch-wise so
+    # concurrent turns on other branches never wipe each other's state.
+    if "context_summary" in payload and payload.get("context_summary") is not None:
+        existing_summary = dict(getattr(entry, "context_summary", None) or {})
+        existing_summary.update(payload.get("context_summary") or {})
+        fields["context_summary"] = existing_summary or None
+
     created_at = payload.get("created_at") or now
 
     if entry:

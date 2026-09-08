@@ -22,7 +22,7 @@ router = APIRouter()
 
 # ---------------------------------------------------------------------------
 # Character-default keys we track as overridable.
-# Must match the fields on the Character model + context_window_tier.
+# Must match the fields on the Character model.
 # ---------------------------------------------------------------------------
 CONFIG_KEYS = [
     "model",
@@ -31,11 +31,9 @@ CONFIG_KEYS = [
     "max_tokens",
     "presence_penalty",
     "frequency_penalty",
-    "context_window_tier",
     "interface_preference",
 ]
 
-ALLOWED_CONTEXT_WINDOW_TIERS = {"8k", "32k", "128k", "256k", "512k", "1m"}
 ALLOWED_INTERFACE_PREFERENCES = {"bubbles", "clean"}
 
 
@@ -48,7 +46,6 @@ def _get_character_defaults(character: Character) -> dict:
         "max_tokens": int(character.max_tokens),
         "presence_penalty": float(character.presence_penalty),
         "frequency_penalty": float(character.frequency_penalty),
-        "context_window_tier": character.context_window_tier,
         "interface_preference": character.interface_preference,
     }
 
@@ -118,11 +115,6 @@ def _validate_and_normalize_config(raw: dict, is_pro: bool, defaults: dict) -> d
     except (TypeError, ValueError):
         val = defaults["frequency_penalty"]
     config["frequency_penalty"] = max(-2.0, min(2.0, val)) if is_pro else defaults["frequency_penalty"]
-
-    # context_window_tier
-    tier = raw.get("context_window_tier")
-    if isinstance(tier, str) and tier.lower() in ALLOWED_CONTEXT_WINDOW_TIERS:
-        config["context_window_tier"] = tier.lower()
 
     # interface_preference (non-pro-gated, like model)
     pref = raw.get("interface_preference")

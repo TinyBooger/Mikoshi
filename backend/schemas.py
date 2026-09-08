@@ -73,7 +73,6 @@ class CharacterOut(BaseModel):
     max_tokens: int = 4000
     presence_penalty: float = 0.0
     frequency_penalty: float = 0.0
-    context_window_tier: str = "8k"
     interface_preference: str = "bubbles"
     created_time: Any
     creator_id: str
@@ -111,7 +110,6 @@ class UserCharacterConfigIn(BaseModel):
     max_tokens: Optional[int] = None
     presence_penalty: Optional[float] = None
     frequency_penalty: Optional[float] = None
-    context_window_tier: Optional[str] = None
     interface_preference: Optional[str] = None
 
 

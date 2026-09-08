@@ -378,5 +378,4 @@ const DEFAULT_ADVANCED_CHAT_CONFIG = {
   model: 'deepseek-v4-flash',
   presence_penalty: 0,
   frequency_penalty: 0,
-  context_window_tier: 'default',
 };

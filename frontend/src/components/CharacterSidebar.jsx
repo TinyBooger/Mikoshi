@@ -5,10 +5,6 @@ import SecondaryButton from './SecondaryButton';
 import InfoCard from './InfoCard';
 import ProblemReportModal from './ProblemReportModal';
 import { useTranslation } from 'react-i18next';
-import {
-  getFilteredContextWindowTierOptions,
-  normalizeContextWindowTier,
-} from '../utils/contextWindow';
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import ModelSelect from './ModelSelect';
 import { useToast } from '../components/ToastProvider';
@@ -122,8 +118,6 @@ export default function CharacterSidebar({
   const selectedTokenLimits = getTokenLimits(advancedChatConfig?.model || 'deepseek-v4-flash');
   const selectedTokenTiers = getTokenTiers(advancedChatConfig?.model || 'deepseek-v4-flash');
 
-  const contextWindowTierOptions = getFilteredContextWindowTierOptions(advancedChatConfig?.model);
-  const selectedContextWindowTier = normalizeContextWindowTier(advancedChatConfig?.context_window_tier, advancedChatConfig?.model);
   const updateConfig = (key, value, min, max, fallback) => {
     const parsed = Number(value);
     const nextValue = Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
@@ -131,15 +125,10 @@ export default function CharacterSidebar({
   };
   const handleModelChange = (nextModel) => {
     const nextTokenLimits = getTokenLimits(nextModel);
-    const nextContextTier = normalizeContextWindowTier(
-      advancedChatConfig?.context_window_tier,
-      nextModel,
-    );
     setAdvancedChatConfig((prev) => ({
       ...prev,
       model: nextModel,
       max_tokens: normalizeTokenTierValue(nextModel, nextTokenLimits.defaultValue),
-      context_window_tier: nextContextTier,
     }));
   };
   const InfoHint = ({ text }) => {
@@ -1053,25 +1042,6 @@ export default function CharacterSidebar({
                 />
 
                 <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
-                  上下文长度
-                </label>
-                <select
-                  className="form-select form-select-sm"
-                  value={selectedContextWindowTier}
-                  onChange={(e) => {
-                    const normalizedTier = normalizeContextWindowTier(e.target.value, advancedChatConfig?.model);
-                    setAdvancedChatConfig((prev) => ({ ...prev, context_window_tier: normalizedTier }));
-                  }}
-                  style={{ marginBottom: 8, borderRadius: 8 }}
-                >
-                  {contextWindowTierOptions.map((tier) => (
-                    <option key={tier.key} value={tier.key}>
-                      {`${tier.tokens / 1000}k tokens`}
-                    </option>
-                  ))}
-                </select>
-
-                <label style={{ fontSize: '0.76rem', color: '#666', display: 'block', marginBottom: 4 }}>
                   界面偏好
                   <InfoHint text="选择消息展示方式。气泡模式使用消息气泡；简洁模式为类似 GPT 的纯文本排版。" />
                 </label>
@@ -1084,10 +1054,6 @@ export default function CharacterSidebar({
                   <option value="bubbles">气泡模式</option>
                   <option value="clean">简洁模式</option>
                 </select>
-
-                <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4 }}>
-                  更长的上下文长度可以保留更多的历史消息，但是会加速token消耗
-                </div>
               </div>
             </div>
 

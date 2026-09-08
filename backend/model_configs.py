@@ -329,6 +329,45 @@ def get_model(model_id: str) -> Optional[ModelConfig]:
     return _MODEL_BY_ID.get(model_id)
 
 
+def derive_per_turn_context_budget(
+    model_config: ModelConfig, *, requested_max_tokens: int
+) -> Dict[str, int]:
+    """Derive the real per-turn input budget for a request to *model_config*.
+
+    The provider counts prompt + completion against the context window, so
+    output room is reserved first. Models may additionally advertise a larger
+    context window than their real input cap (e.g. qwen3.7-flash: 1M context
+    but 32k ``max_input_tokens``) — the input budget must never be derived
+    from the raw ``context_length`` alone, or the compaction trigger would sit
+    past the provider's real cap and never fire.
+
+    Returns:
+        ``soft_token_limit`` — per-turn input budget the compaction trigger
+            scales against: ``min(context_length - reserved output,
+            max_input_tokens)``.
+        ``provider_input_cap`` — the provider's hard input ceiling; the
+            fail-closed guard in routes/chat.py refuses requests at/above it.
+        ``clamped_max_tokens`` — ``requested_max_tokens`` clamped down to the
+            model's ``max_output_tokens`` (what the route should actually send).
+    """
+    model_context_length = int(model_config.context_length)
+    model_max_output = int(model_config.max_output_tokens)
+    clamped_max_tokens = max(1, min(max(1, int(requested_max_tokens)), model_max_output))
+    soft_token_limit = max(1, model_context_length - clamped_max_tokens)
+    if model_config.max_input_tokens is not None:
+        soft_token_limit = min(soft_token_limit, int(model_config.max_input_tokens))
+    provider_input_cap = (
+        int(model_config.max_input_tokens)
+        if model_config.max_input_tokens is not None
+        else model_context_length
+    )
+    return {
+        "soft_token_limit": soft_token_limit,
+        "provider_input_cap": provider_input_cap,
+        "clamped_max_tokens": clamped_max_tokens,
+    }
+
+
 def is_allowed_model(model_id: str) -> bool:
     """``True`` when *model_id* is a known model in the registry."""
     return model_id in _MODEL_BY_ID

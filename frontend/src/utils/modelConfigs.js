@@ -2,9 +2,15 @@
  * Frontend mirror of backend/model_configs.py.
  *
  * Only the fields needed for UI filtering are included:
- *  - maxOutputTokens  → caps the "max_tokens" reply-length picker
- *  - contextLength    → caps the context-window tier picker
- *  - multiplier       → cost multiplier relative to qwen-plus-character (1x)
+ *  - maxOutputTokens   → caps the "max_tokens" reply-length picker
+ *  - contextLength     → advertised context window
+ *  - maxInputTokens    → mirrors backend max_input_tokens (real per-request
+ *                        input cap, only set when it binds tighter than
+ *                        contextLength, e.g. qwen3.7-flash). UI gauges must
+ *                        budget from min(contextLength, maxInputTokens ??
+ *                        contextLength) or they will lie (3% full when the
+ *                        real budget is nearly exhausted).
+ *  - multiplier        → cost multiplier relative to qwen-plus-character (1x)
  */
 
 const MODEL_CONFIGS = [
@@ -18,7 +24,7 @@ const MODEL_CONFIGS = [
 
   // Qwen
   { id: "qwen3.7-plus",        maxOutputTokens: 64_000, contextLength: 1_000_000, multiplier: 2.5, description: "表现全面" },
-  { id: "qwen3.7-flash",       maxOutputTokens: 128_000, contextLength: 1_000_000, multiplier: 0.25, description: "便宜" },
+  { id: "qwen3.7-flash",       maxOutputTokens: 128_000, contextLength: 1_000_000, maxInputTokens: 32_000, multiplier: 0.25, description: "便宜" },
 
 ];
 
