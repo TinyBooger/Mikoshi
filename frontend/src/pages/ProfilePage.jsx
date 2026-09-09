@@ -12,7 +12,7 @@ import CardSection from '../components/CardSection';
 import PaginationBar from '../components/PaginationBar';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
-import ProblemReportModal from '../components/ProblemReportModal';
+import ContentReportModal from '../components/ContentReportModal';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { formatCompactTokenCount, formatCreditCount } from '../utils/creditDisplay';
 
@@ -2574,7 +2574,7 @@ export default function ProfilePage() {
         </ModalPortal>
       )}
 
-      <ProblemReportModal
+      <ContentReportModal
         show={showReportUser}
         onClose={() => setShowReportUser(false)}
         targetType="user"

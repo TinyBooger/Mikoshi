@@ -1,18 +1,61 @@
-
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { AuthContext } from './AuthProvider';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 
-const REASONS = [
-  { key: 'bug', label: 'Bug / 技术问题', icon: 'bi-bug' },
-  { key: 'ux_issue', label: '界面 / 设计问题', icon: 'bi-layout-text-window' },
-  { key: 'inappropriate_content', label: '不当内容', icon: 'bi-slash-circle' },
-  { key: 'other', label: '其他', icon: 'bi-three-dots' },
-];
+// Content-moderation reason sets by target type (character/scene/persona/user).
+const REASON_CATEGORIES = {
+  character: ['inappropriate_content', 'spam', 'harassment', 'copyright', 'other'],
+  scene:     ['inappropriate_content', 'spam', 'harassment', 'copyright', 'other'],
+  persona:   ['inappropriate_content', 'spam', 'harassment', 'copyright', 'other'],
+  user:      ['harassment', 'spam', 'impersonation', 'offensive_profile', 'other'],
+};
 
-export default function ProblemReportModal({ show, onClose }) {
+const TARGET_LABELS = {
+  character: '角色',
+  scene: '场景',
+  persona: '自设',
+  user: '用户',
+};
+
+const REASON_LABELS = {
+  inappropriate_content: '不当内容',
+  spam: '垃圾信息 / 广告',
+  harassment: '骚扰 / 有害内容',
+  copyright: '版权侵犯',
+  impersonation: '冒充他人',
+  offensive_profile: '不当个人资料',
+  other: '其他',
+};
+
+const DESCRIPTION_PLACEHOLDERS = {
+  character: '请描述哪些内容不当或存在问题...',
+  scene: '请描述哪些内容不当或存在问题...',
+  persona: '请进一步描述问题...',
+  user: '请描述该用户的行为或言论...',
+};
+
+const REASON_ICONS = {
+  inappropriate_content: 'bi-slash-circle',
+  spam:                  'bi-megaphone',
+  harassment:            'bi-exclamation-octagon',
+  copyright:             'bi-c-circle',
+  impersonation:         'bi-person-x',
+  offensive_profile:     'bi-person-slash',
+  bug:                   'bi-bug',
+  ux_issue:              'bi-layout-text-window',
+  other:                 'bi-three-dots',
+};
+
+export default function ContentReportModal({
+  show,
+  onClose,
+  targetType = null,
+  targetId = null,
+  targetName = null,
+  targetStringId = null,
+}) {
   const { sessionToken } = useContext(AuthContext);
   const [reason, setReason] = useState('');
   const [description, setDescription] = useState('');
@@ -20,11 +63,22 @@ export default function ProblemReportModal({ show, onClose }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  const categories = REASON_CATEGORIES[targetType] || REASON_CATEGORIES.character;
+
+  const targetSummary = useMemo(() => {
+    if (!targetType) return null;
+    return {
+      label: TARGET_LABELS[targetType] || targetType,
+      id: targetId || targetStringId,
+      name: targetName || '',
+    };
+  }, [targetType, targetId, targetStringId, targetName]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!reason) {
-      setError('请选择问题类型');
+      setError('请选择举报原因');
       return;
     }
 
@@ -35,6 +89,10 @@ export default function ProblemReportModal({ show, onClose }) {
       const formData = new FormData();
       formData.append('reason', reason);
       if (description.trim()) formData.append('description', description.trim());
+      if (targetType) formData.append('target_type', targetType);
+      if (targetId != null) formData.append('target_id', String(targetId));
+      if (targetName) formData.append('target_name', targetName);
+      if (targetStringId) formData.append('target_string_id', targetStringId);
 
       const response = await fetch(`${window.API_BASE_URL}/api/problem-reports`, {
         method: 'POST',
@@ -110,11 +168,11 @@ export default function ProblemReportModal({ show, onClose }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
             <i
-              className="bi bi-bug-fill"
-              style={{ color: '#9068d0', fontSize: '1.15rem' }}
+              className="bi bi-exclamation-triangle-fill"
+              style={{ color: '#e67e22', fontSize: '1.15rem' }}
             />
             <h5 style={{ margin: 0, fontWeight: 700, fontSize: '1.05rem', color: '#1a1a2e' }}>
-              问题报告
+              举报
             </h5>
           </div>
           <button
@@ -139,6 +197,36 @@ export default function ProblemReportModal({ show, onClose }) {
 
         {/* Body */}
         <div style={{ padding: '1.2rem 1.4rem 1.4rem' }}>
+          {/* Target context */}
+          {targetSummary && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.55rem 0.8rem',
+                borderRadius: '10px',
+                background: '#f8f6ff',
+                border: '1px solid #e9e4f8',
+                marginBottom: '1.1rem',
+              }}
+            >
+              <i
+                className="bi bi-exclamation-triangle"
+                style={{ color: '#9068d0', fontSize: '0.95rem', flexShrink: 0 }}
+              />
+              <div>
+                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#6f42c1' }}>
+                  举报对象
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#555' }}>
+                  {targetSummary.label}
+                  {targetSummary.name ? `: ${targetSummary.name}` : ''}
+                </div>
+              </div>
+            </div>
+          )}
+
           {success ? (
             <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#22863a' }}>
               <i
@@ -146,7 +234,7 @@ export default function ProblemReportModal({ show, onClose }) {
                 style={{ fontSize: '2.5rem', display: 'block', marginBottom: '0.8rem' }}
               />
               <div style={{ fontWeight: 600, fontSize: '1rem' }}>
-                您的问题报告已提交。
+                感谢！您的举报已成功提交。
               </div>
             </div>
           ) : (
@@ -162,17 +250,17 @@ export default function ProblemReportModal({ show, onClose }) {
                     marginBottom: '0.55rem',
                   }}
                 >
-                  问题类型{' '}
+                  举报原因{' '}
                   <span style={{ color: '#dc3545' }}>*</span>
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                  {REASONS.map(({ key, label, icon }) => {
-                    const selected = reason === key;
+                  {categories.map((cat) => {
+                    const selected = reason === cat;
                     return (
                       <button
-                        key={key}
+                        key={cat}
                         type="button"
-                        onClick={() => { setReason(key); setError(''); }}
+                        onClick={() => { setReason(cat); setError(''); }}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -196,10 +284,10 @@ export default function ProblemReportModal({ show, onClose }) {
                         }}
                       >
                         <i
-                          className={`bi ${selected ? 'bi-check-circle-fill' : icon}`}
+                          className={`bi ${selected ? 'bi-check-circle-fill' : (REASON_ICONS[cat] || 'bi-circle')}`}
                           style={{ fontSize: '1rem', flexShrink: 0, color: selected ? '#a590dc' : '#aaa' }}
                         />
-                        {label}
+                        {REASON_LABELS[cat] || cat}
                       </button>
                     );
                   })}
@@ -225,7 +313,7 @@ export default function ProblemReportModal({ show, onClose }) {
                 <textarea
                   className="form-control"
                   rows="3"
-                  placeholder="请进一步描述问题..."
+                  placeholder={DESCRIPTION_PLACEHOLDERS[targetType] || DESCRIPTION_PLACEHOLDERS.character}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={loading}
@@ -260,7 +348,7 @@ export default function ProblemReportModal({ show, onClose }) {
                       提交中...
                     </>
                   ) : (
-                    '提交'
+                    '提交举报'
                   )}
                 </PrimaryButton>
               </div>

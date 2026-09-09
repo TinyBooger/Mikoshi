@@ -7,15 +7,24 @@ import PrimaryButton from './PrimaryButton';
 export default function UpdateNotificationModal({ show, onClose }) {
   const navigate = useNavigate();
   const [visible, setVisible] = useState(show);
-  const [notification, setNotification] = useState(null);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setVisible(show);
     if (show) {
-      fetchActiveNotification();
+      fetchActiveNotifications();
     }
   }, [show]);
+
+  // When the last open card is dismissed, close the whole tray
+  useEffect(() => {
+    if (visible && !loading && notifications.length === 0) {
+      setVisible(false);
+      onClose();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, loading, notifications]);
 
   // Check if onboarding tour is active
   const [isOnboardingActive, setIsOnboardingActive] = useState(false);
@@ -35,44 +44,57 @@ export default function UpdateNotificationModal({ show, onClose }) {
     return () => clearInterval(interval);
   }, [visible]);
 
-  const fetchActiveNotification = async () => {
+  const fetchActiveNotifications = async () => {
     try {
       const response = await fetch(`${window.API_BASE_URL}/api/notification/active`);
       const data = await response.json();
-      setNotification(data);
+      // Backend returns an array of all active announcements
+      const list = Array.isArray(data) ? data : (data ? [data] : []);
+      setNotifications(list);
     } catch (error) {
-      console.error('Error fetching notification:', error);
-      setNotification(null);
+      console.error('Error fetching notifications:', error);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClose = () => {
+  const closeAll = () => {
     setVisible(false);
     onClose();
+  };
+
+  // X / "知道了！" on a card: dismiss just that announcement.
+  // Remaining cards stay visible and shift up to fill the gap; when none are
+  // left the tray closes (see effect above).
+  const handleDismiss = (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   // CTA convention: admins embed [label](/path) in the message text (no DB field needed).
   // e.g. "邀请好友得 100 点数！[去复制邀请码](/profile?tab=invite)"
   // eslint-disable-next-line no-useless-escape
-  const LINK_RE = /\[([^\]]+)\]\(([^)]+)\)/;
-  const parsedLink = (() => {
-    if (!notification?.message) return null;
-    const m = notification.message.match(LINK_RE);
-    if (!m) return null;
-    return {
-      label: m[1],
-      target: m[2],
-      cleanedMessage: notification.message.replace(m[0], '').trim(),
-    };
-  })();
+  const LINK_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const parseMessage = (message) => {
+    if (!message) return { cleanedMessage: '', links: [] };
+    const parsedLinks = [];
+    let m;
+    LINK_RE.lastIndex = 0;
+    while ((m = LINK_RE.exec(message)) !== null) {
+      parsedLinks.push({ label: m[1], target: m[2] });
+    }
+    const cleaned = message
+      .replace(LINK_RE, '')
+      .split('\n')
+      .map(line => line.replace(/[ \t]+$/, ''))
+      .join('\n')
+      .replace(/^\n+|\n+$/g, '');
+    return { cleanedMessage: cleaned, links: parsedLinks };
+  };
 
-  const handleNavigate = () => {
-    if (!parsedLink) return;
-    const target = parsedLink.target;
-    setVisible(false);
-    onClose();
+  const handleNavigate = (target) => {
+    if (!target) return;
+    closeAll();
     if (/^https?:\/\//i.test(target)) {
       window.open(target, '_blank', 'noopener,noreferrer');
     } else {
@@ -81,10 +103,10 @@ export default function UpdateNotificationModal({ show, onClose }) {
   };
 
   if (!visible || loading) return null;
-  
-  // If no active notification, don't show anything
-  if (!notification) return null;
-  
+
+  // If no active announcements, don't show anything
+  if (!notifications.length) return null;
+
   // Don't show notification if onboarding is active
   if (isOnboardingActive) return null;
 
@@ -92,112 +114,129 @@ export default function UpdateNotificationModal({ show, onClose }) {
   const isMobile = window.innerWidth <= 768;
 
   const modalContent = (
-    <div 
+    <div
       className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-start justify-content-end"
-      style={{ 
-        zIndex: 1300, 
+      style={{
+        zIndex: 1300,
         pointerEvents: 'none',
         padding: isMobile ? '0.5rem' : '1rem'
       }}
     >
-      <div 
-        className="card shadow-lg"
+      {/* Stack of ALL active announcements — first item shows on top, others below */}
+      <div
+        className="d-flex flex-column"
         style={{
           width: isMobile ? '280px' : '360px',
           maxWidth: isMobile ? '85vw' : '90vw',
-          maxHeight: isMobile ? '70vh' : '85vh',
+          maxHeight: isMobile ? 'calc(100vh - 70px)' : 'calc(100vh - 90px)',
+          marginTop: isMobile ? '52px' : '72px',
+          gap: isMobile ? 8 : 12,
           overflowY: 'auto',
-          marginTop: isMobile ? '60px' : '80px',
           pointerEvents: 'all',
-          background: 'rgba(255,255,255,0.98)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          border: '1.5px solid rgba(115,107,146,0.2)',
-          borderRadius: isMobile ? '12px' : '16px',
-          animation: 'slideInRight 0.3s ease-out',
         }}
       >
-        <div className="card-body" style={{ padding: isMobile ? '0.75rem' : '1.5rem' }}>
-          <div className="d-flex justify-content-between align-items-start" style={{ marginBottom: isMobile ? '0.5rem' : '0.75rem' }}>
-            <div className="d-flex align-items-center gap-2">
-              <div 
-                style={{
-                  width: isMobile ? '24px' : '32px',
-                  height: isMobile ? '24px' : '32px',
-                  borderRadius: isMobile ? '6px' : '8px',
-                  background: 'linear-gradient(135deg, #736B92 0%, #9B8FC6 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontSize: isMobile ? '0.85rem' : '1.1rem'
-                }}
-              >
-                <i className="bi bi-megaphone-fill"></i>
-              </div>
-              <h5 className="mb-0 fw-bold" style={{ color: '#232323', fontSize: isMobile ? '0.9rem' : '1.25rem' }}>
-                {notification.title}
-              </h5>
-            </div>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={handleClose}
-              aria-label="Close"
-              style={{ fontSize: isMobile ? '0.65rem' : '0.8rem' }}
-            ></button>
-          </div>
-          <div style={{ color: '#555', fontSize: isMobile ? '0.8rem' : '0.95rem', lineHeight: '1.6' }}>
-            <p style={{ marginBottom: isMobile ? '0.5rem' : '0.75rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {parsedLink ? parsedLink.cleanedMessage : notification.message}
-            </p>
-            {notification.features && notification.features.length > 0 && (
-              <div style={{ marginBottom: isMobile ? '0.5rem' : '0.75rem' }}>
-                <strong style={{ fontSize: isMobile ? '0.75rem' : '0.9rem' }}>
-                  活动详情：
-                </strong>
-                <ul className="mt-2 mb-0" style={{ paddingLeft: isMobile ? '1rem' : '1.2rem', fontSize: isMobile ? '0.75rem' : '0.9rem' }}>
-                  {notification.features.map((feature, idx) => (
-                    <li key={idx} style={{ marginBottom: isMobile ? '0.25rem' : '0.25rem' }}>{feature}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-          <div style={{ marginTop: isMobile ? '0.75rem' : '1rem' }}>
-            {parsedLink && (
-              <button
-                onClick={handleNavigate}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '4px',
-                  width: '100%',
-                  marginBottom: '0.5rem',
-                  padding: isMobile ? '0.4rem' : '0.6rem',
-                  border: '1px solid #c4b8e8',
-                  borderRadius: isMobile ? 6 : 8,
-                  background: '#f5f3ff',
-                  color: '#5b4fa8',
-                  fontSize: isMobile ? '0.8rem' : '0.95rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                <i className="bi bi-box-arrow-up-right" style={{ fontSize: isMobile ? '0.7rem' : '0.85rem' }}></i>
-                {parsedLink.label}
-              </button>
-            )}
-            <PrimaryButton
-              className="w-100"
-              onClick={handleClose}
-              style={{ borderRadius: isMobile ? 6 : 8, padding: isMobile ? '0.4rem' : '0.6rem', fontWeight: 600, fontSize: isMobile ? '0.8rem' : '0.95rem' }}
+        {notifications.map((notification) => {
+          const { cleanedMessage, links } = parseMessage(notification.message);
+          return (
+            <div
+              key={notification.id}
+              className="card shadow-lg"
+              style={{
+                flexShrink: 0,
+                background: 'rgba(255,255,255,0.98)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                border: '1.5px solid rgba(115,107,146,0.2)',
+                borderRadius: isMobile ? '12px' : '16px',
+                animation: 'slideInRight 0.3s ease-out',
+              }}
             >
-              知道了！
-            </PrimaryButton>
-          </div>
-        </div>
+              <div className="card-body" style={{ padding: isMobile ? '0.75rem' : '1.5rem' }}>
+                <div className="d-flex justify-content-between align-items-start" style={{ marginBottom: isMobile ? '0.5rem' : '0.75rem' }}>
+                  <div className="d-flex align-items-center gap-2">
+                    <div
+                      style={{
+                        width: isMobile ? '24px' : '32px',
+                        height: isMobile ? '24px' : '32px',
+                        borderRadius: isMobile ? '6px' : '8px',
+                        background: 'linear-gradient(135deg, #736B92 0%, #9B8FC6 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        fontSize: isMobile ? '0.85rem' : '1.1rem',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <i className="bi bi-megaphone-fill"></i>
+                    </div>
+                    <h5 className="mb-0 fw-bold" style={{ color: '#232323', fontSize: isMobile ? '0.9rem' : '1.25rem' }}>
+                      {notification.title}
+                    </h5>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => handleDismiss(notification.id)}
+                    aria-label="Close"
+                    style={{ fontSize: isMobile ? '0.65rem' : '0.8rem' }}
+                  ></button>
+                </div>
+                <div style={{ color: '#555', fontSize: isMobile ? '0.8rem' : '0.95rem', lineHeight: '1.6' }}>
+                  <p style={{ marginBottom: isMobile ? '0.5rem' : '0.75rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {cleanedMessage}
+                  </p>
+                  {notification.features && notification.features.length > 0 && (
+                    <div style={{ marginBottom: isMobile ? '0.5rem' : '0.75rem' }}>
+                      <strong style={{ fontSize: isMobile ? '0.75rem' : '0.9rem' }}>
+                        活动详情：
+                      </strong>
+                      <ul className="mt-2 mb-0" style={{ paddingLeft: isMobile ? '1rem' : '1.2rem', fontSize: isMobile ? '0.75rem' : '0.9rem' }}>
+                        {notification.features.map((feature, idx) => (
+                          <li key={idx} style={{ marginBottom: '0.25rem' }}>{feature}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                <div style={{ marginTop: isMobile ? '0.75rem' : '1rem' }}>
+                  {links.map((link, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleNavigate(link.target)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        width: '100%',
+                        marginBottom: '0.5rem',
+                        padding: isMobile ? '0.4rem' : '0.6rem',
+                        border: '1px solid #c4b8e8',
+                        borderRadius: isMobile ? 6 : 8,
+                        background: '#f5f3ff',
+                        color: '#5b4fa8',
+                        fontSize: isMobile ? '0.8rem' : '0.95rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <i className="bi bi-box-arrow-up-right" style={{ fontSize: isMobile ? '0.7rem' : '0.85rem' }}></i>
+                      {link.label}
+                    </button>
+                  ))}
+                  <PrimaryButton
+                    className="w-100"
+                    onClick={() => handleDismiss(notification.id)}
+                    style={{ borderRadius: isMobile ? 6 : 8, padding: isMobile ? '0.4rem' : '0.6rem', fontWeight: 600, fontSize: isMobile ? '0.8rem' : '0.95rem' }}
+                  >
+                    知道了！
+                  </PrimaryButton>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
       <style>
         {`

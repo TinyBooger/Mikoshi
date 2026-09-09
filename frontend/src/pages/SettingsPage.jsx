@@ -5,6 +5,7 @@ import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
 import ConfirmModal from '../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 import ProblemReportModal from '../components/ProblemReportModal';
 
 function HelpFaqItem({ question, answer }) {
@@ -45,7 +46,15 @@ export default function SettingsPage() {
   const toast = useToast();
   const { t, i18n } = useTranslation();
 
-  const [activeSection, setActiveSection] = useState('account');
+  // Deep-link support (mirrors ProfilePage's ?tab= convention):
+  // /settings?tab=help&report=1 opens the Help section and auto-opens the problem report modal
+  const [searchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const openReportFromUrl = searchParams.get('report') === '1';
+  const validSections = ['account', 'orderHistory', 'language', 'help'];
+  const initialSection = validSections.includes(urlTab) ? urlTab : (openReportFromUrl ? 'help' : 'account');
+
+  const [activeSection, setActiveSection] = useState(initialSection);
   const [activeTab, setActiveTab] = useState('account');
 
   const [changingPassword, setChangingPassword] = useState(false);
@@ -73,7 +82,7 @@ export default function SettingsPage() {
 
   const [confirmDelete, setConfirmDelete] = useState({ show: false });
   const [lang, setLang] = useState('zh');
-  const [showProblemReport, setShowProblemReport] = useState(false);
+  const [showProblemReport, setShowProblemReport] = useState(openReportFromUrl);
   const [isCompact, setIsCompact] = useState(window.innerWidth < 992);
 
   const baseButtonStyle = {
@@ -765,7 +774,7 @@ export default function SettingsPage() {
                     遇到其他问题？请向我们提交详细描述，方便我们更快地帮助您。
                   </p>
                   <AppButton onClick={() => setShowProblemReport(true)}>
-                    <i className="bi bi-send me-2"></i>提交问题报告
+                    <i className="bi bi-bug me-2"></i>问题报告 / Bug反馈
                   </AppButton>
                 </section>
               </>

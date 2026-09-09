@@ -36,23 +36,23 @@ class NotificationResponse(BaseModel):
 
 
 @router.get("/api/notification/active")
-async def get_active_notification(db: Session = Depends(get_db)):
-    """Get the active notification (public endpoint)"""
-    notification = db.query(SystemNotification).filter(
+async def get_active_notifications(db: Session = Depends(get_db)):
+    """Get all active notifications (public endpoint)"""
+    notifications = db.query(SystemNotification).filter(
         SystemNotification.is_active == True
-    ).first()
-    
-    if not notification:
-        return None
-    
-    return {
-        "id": notification.id,
-        "title": notification.title,
-        "message": notification.message,
-        "features": notification.features,
-        "created_at": notification.created_at.isoformat(),
-        "updated_at": notification.updated_at.isoformat()
-    }
+    ).order_by(SystemNotification.created_at.asc(), SystemNotification.id.asc()).all()
+
+    return [
+        {
+            "id": n.id,
+            "title": n.title,
+            "message": n.message,
+            "features": n.features,
+            "created_at": n.created_at.isoformat(),
+            "updated_at": n.updated_at.isoformat()
+        }
+        for n in notifications
+    ]
 
 
 @router.get("/api/admin/notifications")
@@ -133,9 +133,7 @@ async def update_notification(
     if not db_notification:
         raise HTTPException(status_code=404, detail="Notification not found")
     
-    # If activating this notification, deactivate all others
-    if notification.is_active is True:
-        db.query(SystemNotification).update({"is_active": False})
+    # Multiple announcements may be active at the same time — no deactivation of others
     
     # Update fields
     if notification.title is not None:

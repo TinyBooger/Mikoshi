@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import SecondaryButton from './SecondaryButton';
 
 import InfoCard from './InfoCard';
-import ProblemReportModal from './ProblemReportModal';
+import ContentReportModal from './ContentReportModal';
 import { useTranslation } from 'react-i18next';
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import ModelSelect from './ModelSelect';
@@ -312,8 +312,8 @@ export default function CharacterSidebar({
                 <button
                   type="button"
                   onClick={() => setShowProblemReport(true)}
-                  title={t('topbar.report_problem')}
-                  aria-label={t('topbar.report_problem')}
+                  title="举报"
+                  aria-label="举报"
                   style={{
                     border: 'none',
                     background: 'none',
@@ -1231,8 +1231,8 @@ export default function CharacterSidebar({
           <div style={desktopSidebarInnerStyle}>{sidebarBody}</div>
         </div>
       )}
-      {/* Problem Report Modal via portal */}
-      <ProblemReportModal
+      {/* Content Report Modal via portal */}
+      <ContentReportModal
         show={showProblemReport}
         onClose={() => setShowProblemReport(false)}
         targetType={isCharacterMode ? 'character' : isSceneMode ? 'scene' : null}

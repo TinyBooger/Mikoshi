@@ -6,7 +6,7 @@ import PageWrapper from '../components/PageWrapper';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
-import ProblemReportModal from '../components/ProblemReportModal';
+import ContentReportModal from '../components/ContentReportModal';
 import ConfirmModal from '../components/ConfirmModal';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
@@ -552,8 +552,8 @@ export default function EntityDetailPage() {
                   <button
                     type="button"
                     onClick={() => setShowProblemReport(true)}
-                    title={t('topbar.report_problem')}
-                    aria-label={t('topbar.report_problem')}
+                    title="举报"
+                    aria-label="举报"
                     onMouseEnter={() => setReportIconHovered(true)}
                     onMouseLeave={() => setReportIconHovered(false)}
                     onFocus={() => setReportIconHovered(true)}
@@ -921,7 +921,7 @@ export default function EntityDetailPage() {
           )}
         </div>
       )}
-      <ProblemReportModal
+      <ContentReportModal
         show={showProblemReport}
         onClose={() => setShowProblemReport(false)}
         targetType={type}

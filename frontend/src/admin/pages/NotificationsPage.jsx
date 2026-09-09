@@ -108,7 +108,7 @@ export default function NotificationsPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this notification?')) return;
+    if (!confirm('Are you sure you want to delete this announcement?')) return;
     
     try {
       const response = await fetch(`${window.API_BASE_URL}/api/admin/notifications/${id}`, {
@@ -170,8 +170,8 @@ export default function NotificationsPage() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1>System Notifications</h1>
-          <p className="text-muted">Manage update notifications shown to users</p>
+          <h1>System Announcements</h1>
+          <p className="text-muted">Manage update announcements shown to users</p>
         </div>
         <button 
           className="btn btn-primary"
@@ -182,7 +182,7 @@ export default function NotificationsPage() {
           }}
         >
           <i className="bi bi-plus-circle me-2"></i>
-          Create New Notification
+          Create New Announcement
         </button>
       </div>
 
@@ -190,7 +190,7 @@ export default function NotificationsPage() {
         <div className="card mb-4">
           <div className="card-header bg-primary text-white">
             <h5 className="mb-0">
-              {editingId ? 'Edit Notification' : 'Create New Notification'}
+              {editingId ? 'Edit Announcement' : 'Create New Announcement'}
             </h5>
           </div>
           <div className="card-body">
@@ -278,13 +278,13 @@ export default function NotificationsPage() {
 
       <div className="card">
         <div className="card-header">
-          <h5 className="mb-0">All Notifications (Total: {notifications.length})</h5>
+          <h5 className="mb-0">All Announcements (Total: {notifications.length})</h5>
         </div>
         <div className="card-body">
           {notifications.length === 0 ? (
             <div className="text-center text-muted py-4">
               <i className="bi bi-inbox display-1"></i>
-              <p className="mt-3">No notifications created yet</p>
+              <p className="mt-3">No announcements created yet</p>
             </div>
           ) : (
             <>
@@ -326,7 +326,7 @@ export default function NotificationsPage() {
                         <button
                           className="btn btn-sm btn-success"
                           onClick={() => handleActivate(notification.id)}
-                          title="Activate this notification"
+                          title="Activate this announcement"
                         >
                           <i className="bi bi-check-circle"></i> Activate
                         </button>
@@ -334,7 +334,7 @@ export default function NotificationsPage() {
                         <button
                           className="btn btn-sm btn-warning"
                           onClick={() => handleDeactivate(notification.id)}
-                          title="Deactivate this notification"
+                          title="Deactivate this announcement"
                         >
                           <i className="bi bi-pause-circle"></i> Deactivate
                         </button>
@@ -371,7 +371,7 @@ export default function NotificationsPage() {
 
       <div className="alert alert-info mt-4">
         <i className="bi bi-info-circle me-2"></i>
-        <strong>Note:</strong> Only one notification can be active at a time. Activating a notification will automatically deactivate all others. Users will see the active notification once per session.
+        <strong>Note:</strong> Multiple announcements can be active at the same time. Users will see each active announcement in turn (oldest first) when visiting the site. Deactivate an announcement to stop showing it to users.
       </div>
     </div>
   );
