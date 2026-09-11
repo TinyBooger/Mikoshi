@@ -362,7 +362,7 @@ def delete_scene(
         metadata=deleted_snapshot,
     )
 
-    return {"message": "Scene deleted successfully"}
+    return {"message": "场景已删除"}
 
 
 @router.delete("/personas/{persona_id}")
@@ -395,7 +395,7 @@ def delete_persona(
         metadata=deleted_snapshot,
     )
 
-    return {"message": "Persona deleted successfully"}
+    return {"message": "自设已删除"}
 
 
 @router.delete("/tags/{tag_id}")

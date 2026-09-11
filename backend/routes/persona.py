@@ -220,7 +220,7 @@ async def create_persona(
 
     return JSONResponse(content={
         "id": persona.id,
-        "message": "Persona created"
+        "message": "自设已创建"
     })
 
 
@@ -353,7 +353,7 @@ async def update_persona(
     db.refresh(persona)
     return JSONResponse(content={
         "id": persona.id,
-        "message": "Persona updated"
+        "message": "自设已更新"
     })
 
 # Delete Persona
@@ -383,7 +383,7 @@ def delete_persona(persona_id: int, request: Request, db: Session = Depends(get_
         metadata=deleted_snapshot,
     )
 
-    return JSONResponse(content={"id": persona_id, "message": "Persona deleted"})
+    return JSONResponse(content={"id": persona_id, "message": "自设已删除"})
 
 # Set persona as default
 @router.post("/api/personas/{persona_id}/set-default", response_model=None)
@@ -403,7 +403,7 @@ def set_persona_as_default(
     user = db.query(User).filter(User.id == current_user.id).first()
     user.default_persona_id = persona_id
     db.commit()
-    return JSONResponse(content={"id": persona_id, "message": "Persona set as default"})
+    return JSONResponse(content={"id": persona_id, "message": "已设为默认自设"})
 
 # Unset default persona
 @router.post("/api/personas/unset-default", response_model=None)
@@ -414,7 +414,7 @@ def unset_default_persona(
     user = db.query(User).filter(User.id == current_user.id).first()
     user.default_persona_id = None
     db.commit()
-    return JSONResponse(content={"message": "Default persona unset"})
+    return JSONResponse(content={"message": "已取消默认自设"})
 
 # ------------------- ADDITIONAL ROUTES -------------------
 # Get personas created by a specific user (for profile page)

@@ -109,7 +109,7 @@ async def create_scene(
 
     return JSONResponse(content={
         "id": scene.id,
-        "message": "Scene created"
+        "message": "场景已创建"
     })
 
 
@@ -365,7 +365,7 @@ async def update_scene(
     db.refresh(scene)
     return JSONResponse(content={
         "id": scene.id,
-        "message": "Scene updated"
+        "message": "场景已更新"
     })
 
 # Delete Scene
@@ -393,7 +393,7 @@ def delete_scene(scene_id: int, request: Request, db: Session = Depends(get_db),
         metadata=deleted_snapshot,
     )
 
-    return JSONResponse(content={"id": scene_id, "message": "Scene deleted"})
+    return JSONResponse(content={"id": scene_id, "message": "场景已删除"})
 
 # ----------------------- END SCENE CRUD ROUTES -------------------
 
