@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database import get_db
 from models import UserMessage, User, BanAppeal
+from utils.audit_logger import audit_request
 from utils.session import get_current_user, get_current_admin_user
 from pydantic import BaseModel
 from typing import Optional, List
@@ -112,6 +113,7 @@ class BanAppealRequest(BaseModel):
 
 @router.post("/api/me/ban-appeal")
 def submit_ban_appeal(
+    request: Request,
     payload: BanAppealRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -140,6 +142,14 @@ def submit_ban_appeal(
     db.add(appeal)
     db.commit()
     db.refresh(appeal)
+
+    audit_request(
+        request,
+        action="submit_ban_appeal",
+        user_id=current_user.id,
+        metadata={"appeal_id": appeal.id, "ban_type": current_user.ban_type},
+    )
+
     return {"id": appeal.id, "status": appeal.status, "ok": True}
 
 
@@ -176,6 +186,7 @@ def _appeal_out(appeal: BanAppeal) -> dict:
 
 @router.post("/api/admin/messages/send")
 def admin_send_message(
+    request: Request,
     payload: AdminSendMessageRequest,
     current_admin: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
@@ -199,6 +210,19 @@ def admin_send_message(
     db.add(msg)
     db.commit()
     db.refresh(msg)
+
+    audit_request(
+        request,
+        action="admin_send_message",
+        user_id=current_admin.id,
+        metadata={
+            "target_user_id": payload.user_id,
+            "msg_type": payload.msg_type,
+            "message_id": msg.id,
+            "title": payload.title,
+        },
+    )
+
     return {"id": msg.id, "ok": True}
 
 

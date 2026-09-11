@@ -260,11 +260,14 @@ def _record_order_result(
     status: str = "success",
     error_message: Optional[str] = None,
 ):
-    action = f"wechat_{order_type}:{out_trade_no}"
+    # Keep `action` stable (e.g. "wechat_credit_topup") so the admin audit log
+    # Action filter is usable; the per-order identifiers live in metadata.
+    action = f"wechat_{order_type}"
     audit_entry = AuditLog(
         user_id=user_id,
         action=action,
         meta={
+            "out_trade_no": out_trade_no,
             "trade_no": trade_no,
             "total_amount": total_amount,
             "source": source,
@@ -911,12 +914,50 @@ async def refund_order(
                 raise HTTPException(status_code=500, detail=f"退款失�? {str(e)}")
             raise
 
+        record_audit(
+            user_id=authed_user_id,
+            action="payment_refund",
+            metadata={
+                "provider": "wechat",
+                "out_trade_no": request.out_trade_no,
+                "order_type": payment_order.order_type,
+                "refund_amount": request.refund_amount,
+                "refund_reason": request.refund_reason,
+                "refund_status": payment_order.refund_status,
+                "wallet_refund_reversal": refund_reversal,
+            },
+            status="success" if payment_order.refund_status == "success" else "failure",
+        )
+
         return {"success": True, "data": result, "wallet_refund_reversal": refund_reversal}
 
-    except HTTPException:
+    except HTTPException as exc:
+        record_audit(
+            user_id=authed_user_id,
+            action="payment_refund",
+            metadata={
+                "provider": "wechat",
+                "out_trade_no": request.out_trade_no,
+                "refund_amount": request.refund_amount,
+                "refund_reason": request.refund_reason,
+            },
+            status="failure",
+            error_message=str(exc.detail),
+        )
         raise
     except Exception as e:
         logger.error(f"微信退款失�? {e}")
+        record_audit(
+            user_id=authed_user_id,
+            action="payment_refund",
+            metadata={
+                "provider": "wechat",
+                "out_trade_no": request.out_trade_no,
+                "refund_amount": request.refund_amount,
+            },
+            status="error",
+            error_message=str(e),
+        )
         raise HTTPException(status_code=500, detail=f"退款失�? {str(e)}")
 
 

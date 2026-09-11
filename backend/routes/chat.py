@@ -41,6 +41,7 @@ from utils.credit_cap import can_consume_credits, get_credit_cap_info, build_cre
 from utils.model_rate_limiter import rate_limiter
 from utils.upstream_bucket import acquire_upstream
 from utils.user_utils import is_chat_banned
+from utils.audit_logger import audit_request
 
 logger = logging.getLogger(__name__)
 
@@ -957,9 +958,18 @@ async def rename_chat(request: Request, current_user: User = Depends(get_current
     if not entry:
         return JSONResponse(content={"error": "Chat not found"}, status_code=404)
 
+    old_title = entry.title
     entry.title = new_title
     entry.last_updated = datetime.now(UTC)
     db.commit()
+
+    audit_request(
+        request,
+        action="rename_chat",
+        user_id=current_user.id,
+        metadata={"chat_id": chat_id, "old_title": old_title, "new_title": new_title},
+    )
+
     return {"status": "success"}
 
 @router.post("/api/chat/delete")
@@ -977,8 +987,23 @@ async def delete_chat(request: Request, current_user: User = Depends(get_current
     if not entry:
         return JSONResponse(content={"error": "Chat not found"}, status_code=404)
 
+    deleted_snapshot = {
+        "chat_id": chat_id,
+        "title": entry.title,
+        "character_id": entry.character_id,
+        "character_name": entry.character_name,
+    }
+
     db.delete(entry)
     db.commit()
+
+    audit_request(
+        request,
+        action="delete_chat",
+        user_id=current_user.id,
+        metadata=deleted_snapshot,
+    )
+
     return {"status": "success"}
 
 
@@ -1195,15 +1220,36 @@ async def delete_chat_history_by_character(
         str(character_id) if character_id is not None else None,
         character_name=character_name,
     )
+
+    audit_request(
+        request,
+        action="delete_chats_by_character",
+        user_id=current_user.id,
+        metadata={
+            "character_id": character_id,
+            "character_name": character_name,
+            "deleted_count": deleted_count,
+        },
+    )
+
     return {"status": "success", "deleted": deleted_count}
 
 
 @router.post("/api/chat/delete-unavailable")
 async def delete_unavailable_chat_histories(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     deleted_count = delete_unavailable_chat_history(db, current_user.id)
+
+    audit_request(
+        request,
+        action="delete_unavailable_chats",
+        user_id=current_user.id,
+        metadata={"deleted_count": deleted_count},
+    )
+
     return {"status": "success", "deleted": deleted_count}
 
 

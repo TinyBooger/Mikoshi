@@ -8,6 +8,8 @@
 - Bulk management, filtering, and real-time statistics.
 
 ## Audit Log System
-- Tracks user actions in the audit_logs table.
-- Used by authentication and admin routes.
-- Viewable in the admin portal.
+- Tracks security- and business-relevant user/admin actions in the `audit_logs` table.
+- Covers authentication, account security, payments, admin user management, moderation, content deletion and content/system administration.
+- Written via `audit_request(request, action, user_id, metadata)` or `record_audit(...)` from `backend/utils/audit_logger.py`.
+- Read API: `GET /api/audit-logs`; UI: `/admin/audit-logs`.
+- The full action taxonomy lives in [backend/utils/AUDIT_LOGGING.md](../backend/utils/AUDIT_LOGGING.md).

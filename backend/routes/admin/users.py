@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timedelta, UTC
 from typing import Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func, desc, and_, or_
 from sqlalchemy.orm import Session
@@ -21,9 +21,9 @@ from models import (
     ContentModerationLog,
 )
 from schemas import UserMessageOut
-from utils.audit_logger import AuditLog
+from utils.audit_logger import AuditLog, audit_request
 from utils.session import get_current_admin_user
-from utils.user_utils import enrich_user_with_character_count, build_user_response
+from utils.user_utils import enrich_user_with_character_count, build_user_response, get_pro_state
 from .common import _pwd_context, _log_user_moderation
 
 router = APIRouter(tags=["admin"])
@@ -374,14 +374,212 @@ def get_single_user_credit_usage(
     }
 
 
+@router.get("/user-stats/user-usage")
+def get_user_usage_ranking(
+    days: int = Query(30, ge=1, le=365),
+    sort_by: str = Query("total_tokens"),
+    sort_dir: str = Query("desc", pattern="^(asc|desc)$"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user),
+):
+    """Rank users by token/credit usage and chat activity - Admin only.
+
+    Token/credit totals come from the daily usage ledger over the trailing
+    ``days`` window, while chat and message counts are lifetime totals. Users
+    with no usage are included (sorted last by default) so the table doubles as
+    a complete user activity roster.
+    """
+    now = datetime.now(UTC)
+    today_date = now.date()
+    start_date = today_date - timedelta(days=days - 1)
+
+    usage_sq = (
+        db.query(
+            UserCreditUsageLedger.user_id.label("user_id"),
+            func.coalesce(func.sum(UserCreditUsageLedger.total_tokens), 0).label("total_tokens"),
+            func.coalesce(func.sum(UserCreditUsageLedger.credit_amount), 0.0).label("credit_amount"),
+        )
+        .filter(UserCreditUsageLedger.usage_date >= start_date)
+        .group_by(UserCreditUsageLedger.user_id)
+        .subquery()
+    )
+
+    chat_sq = (
+        db.query(
+            ChatHistory.user_id.label("user_id"),
+            func.count(ChatHistory.id).label("chat_count"),
+            func.max(ChatHistory.last_updated).label("last_active_at"),
+        )
+        .group_by(ChatHistory.user_id)
+        .subquery()
+    )
+
+    message_sq = (
+        db.query(
+            ChatHistory.user_id.label("user_id"),
+            func.count(ChatHistoryMessage.id).label("message_count"),
+        )
+        .join(ChatHistoryMessage, ChatHistoryMessage.chat_id == ChatHistory.chat_id)
+        .group_by(ChatHistory.user_id)
+        .subquery()
+    )
+
+    total_tokens_col = func.coalesce(usage_sq.c.total_tokens, 0)
+    credit_col = func.coalesce(usage_sq.c.credit_amount, 0.0)
+    chat_col = func.coalesce(chat_sq.c.chat_count, 0)
+    message_col = func.coalesce(message_sq.c.message_count, 0)
+
+    query = (
+        db.query(
+            User,
+            total_tokens_col.label("total_tokens"),
+            credit_col.label("credit_amount"),
+            chat_col.label("chat_count"),
+            message_col.label("message_count"),
+            chat_sq.c.last_active_at.label("last_active_at"),
+        )
+        .outerjoin(usage_sq, usage_sq.c.user_id == User.id)
+        .outerjoin(chat_sq, chat_sq.c.user_id == User.id)
+        .outerjoin(message_sq, message_sq.c.user_id == User.id)
+    )
+
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                User.name.ilike(term),
+                User.email.ilike(term),
+                User.phone_number.ilike(term),
+                User.id.ilike(term),
+            )
+        )
+
+    total = query.count()
+
+    sort_columns = {
+        "total_tokens": total_tokens_col,
+        "credit_amount": credit_col,
+        "chat_count": chat_col,
+        "message_count": message_col,
+        "last_active_at": chat_sq.c.last_active_at,
+        "created_at": User.created_at,
+        "name": User.name,
+    }
+    sort_column = sort_columns.get(sort_by, total_tokens_col)
+    # `User.created_at` is not a total order (a large block of legacy accounts
+    # share the same placeholder value), so `User.id` is required to keep
+    # LIMIT/OFFSET paging deterministic and to stop pages overlapping.
+    if sort_dir == "asc":
+        query = query.order_by(
+            sort_column.asc().nulls_last(), User.created_at.desc(), User.id.asc()
+        )
+    else:
+        query = query.order_by(
+            sort_column.desc().nulls_last(), User.created_at.desc(), User.id.asc()
+        )
+
+    rows = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    items = []
+    for user, total_tokens, credit_amount, chat_count, message_count, last_active_at in rows:
+        pro_state = get_pro_state(user)
+        items.append(
+            {
+                "user_id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "phone_number": user.phone_number,
+                "profile_pic": user.profile_pic,
+                "is_admin": bool(user.is_admin),
+                "pro_status": pro_state["status"],
+                "created_at": getattr(user, "created_at", None),
+                "total_tokens": int(total_tokens or 0),
+                "credit_amount": round(float(credit_amount or 0), 4),
+                "chat_count": int(chat_count or 0),
+                "message_count": int(message_count or 0),
+                "last_active_at": last_active_at,
+            }
+        )
+
+    return {
+        "window_days": days,
+        "start_date": start_date.isoformat(),
+        "end_date": today_date.isoformat(),
+        "sort_by": sort_by,
+        "sort_dir": sort_dir,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "items": items,
+        "notes": {
+            "usage": "Token/credit totals are summed from the daily usage ledger within the selected window; chat and message counts are lifetime totals.",
+        },
+    }
+
+
 @router.get("/users")
 def get_all_users(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: Optional[str] = None,
+    pro_status: str = Query("all", pattern="^(all|pro|expired|free)$"),
+    sort_by: str = Query("created_at", pattern="^(created_at|name|email|id)$"),
+    sort_dir: str = Query("desc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_current_admin_user)
+    current_admin: User = Depends(get_current_admin_user),
 ):
-    """Get all users - Admin only"""
-    users = db.query(User).all()
-    return [enrich_user_with_character_count(user, db) for user in users]
+    """Paginated, searchable, sortable user list - Admin only.
+
+    Returns ``{ items, total, page, page_size, sort_by, sort_dir }`` so the
+    admin UI can page through large user bases without loading every row.
+    """
+    now = datetime.now(UTC)
+
+    query = db.query(User)
+
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                User.name.ilike(term),
+                User.email.ilike(term),
+                User.phone_number.ilike(term),
+                User.id.ilike(term),
+            )
+        )
+
+    if pro_status == "pro":
+        query = query.filter(User.pro_expire_date.isnot(None), User.pro_expire_date > now)
+    elif pro_status == "expired":
+        query = query.filter(User.pro_expire_date.isnot(None), User.pro_expire_date <= now)
+    elif pro_status == "free":
+        query = query.filter(User.pro_expire_date.is_(None))
+
+    total = query.count()
+
+    sort_columns = {
+        "created_at": User.created_at,
+        "name": User.name,
+        "email": User.email,
+        "id": User.id,
+    }
+    sort_column = sort_columns[sort_by]
+    order = sort_column.asc() if sort_dir == "asc" else sort_column.desc()
+    query = query.order_by(order, User.id.asc())
+
+    users = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    return {
+        "items": [enrich_user_with_character_count(user, db) for user in users],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "sort_by": sort_by,
+        "sort_dir": sort_dir,
+    }
 
 
 @router.get("/users/{user_id}")
@@ -413,6 +611,7 @@ def get_admin_user_detail(
 def grant_pro_duration(
     user_id: str,
     payload: AdminProGrantRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -433,6 +632,13 @@ def grant_pro_duration(
 
     upgrade_to_pro(user, db, duration_months=payload.months)
 
+    audit_request(
+        request,
+        action="admin_grant_pro",
+        user_id=user_id,
+        metadata={"months": payload.months, "admin_id": current_admin.id},
+    )
+
     return {
         "message": f"Pro granted for {payload.months} month(s)",
         "user": enrich_user_with_character_count(user, db),
@@ -442,6 +648,7 @@ def grant_pro_duration(
 @router.post("/users/{user_id}/revoke-pro")
 def revoke_pro_membership(
     user_id: str,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -457,6 +664,13 @@ def revoke_pro_membership(
     from utils.user_utils import downgrade_from_pro
 
     downgrade_from_pro(user, db, end_now=True)
+
+    audit_request(
+        request,
+        action="admin_revoke_pro",
+        user_id=user_id,
+        metadata={"admin_id": current_admin.id},
+    )
 
     return {
         "message": "Pro membership revoked",
@@ -511,6 +725,7 @@ def get_linked_accounts(
 @router.post("/users", status_code=201)
 def admin_create_user(
     payload: AdminCreateUserRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
 ):
@@ -553,6 +768,20 @@ def admin_create_user(
     db.commit()
     db.refresh(user)
 
+    # Admin-created accounts must appear in registration analytics too.
+    audit_request(
+        request,
+        action="register",
+        user_id=user.id,
+        metadata={
+            "signup_method": "admin",
+            "email": user.email,
+            "name": user.name,
+            "is_admin": bool(user.is_admin),
+            "created_by": current_admin.id,
+        },
+    )
+
     return {
         "id": user.id,
         "email": user.email,
@@ -565,6 +794,7 @@ def admin_create_user(
 @router.delete("/users/{user_id}")
 def delete_user(
     user_id: str,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -577,14 +807,25 @@ def delete_user(
     if user.id == current_admin.id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
 
+    deleted_snapshot = {
+        "deleted_email": user.email,
+        "deleted_name": user.name,
+        "deleted_phone_number": user.phone_number,
+        "admin_id": current_admin.id,
+    }
+
     db.delete(user)
     db.commit()
+
+    audit_request(request, action="admin_delete_user", user_id=user_id, metadata=deleted_snapshot)
+
     return {"message": "User deleted successfully"}
 
 
 @router.patch("/users/{user_id}/toggle-admin")
 def toggle_admin_status(
     user_id: str,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -600,6 +841,17 @@ def toggle_admin_status(
     user.is_admin = not user.is_admin
     db.commit()
 
+    audit_request(
+        request,
+        action="admin_toggle_admin",
+        user_id=user_id,
+        metadata={
+            "is_admin": bool(user.is_admin),
+            "admin_id": current_admin.id,
+            "target_email": user.email,
+        },
+    )
+
     return {
         "message": f"User {'granted' if user.is_admin else 'revoked'} admin privileges",
         "is_admin": user.is_admin
@@ -610,6 +862,7 @@ def toggle_admin_status(
 def moderate_user_directly(
     user_id: str,
     payload: DirectModerationRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
 ):
@@ -663,6 +916,20 @@ def moderate_user_directly(
     )
 
     db.commit()
+
+    audit_request(
+        request,
+        action="admin_moderate_user",
+        user_id=user_id,
+        metadata={
+            "moderation_action": action,
+            "ban_type": target.ban_type,
+            "ban_reason": payload.ban_reason,
+            "ban_until": payload.ban_until.isoformat() if payload.ban_until else None,
+            "admin_id": current_admin.id,
+        },
+    )
+
     return {
         "message": f"Action '{action}' applied to user {user_id}",
         "ban_type": target.ban_type,
@@ -733,6 +1000,7 @@ def get_user_violation_history(
 def update_user(
     user_id: str,
     update_data: UserUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -742,6 +1010,15 @@ def update_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     provided_fields = update_data.model_fields_set
+
+    # Snapshot the fields we track so the audit row records what actually changed
+    before = {
+        "name": user.name,
+        "phone_number": user.phone_number,
+        "bio": user.bio,
+        "is_admin": bool(user.is_admin),
+        "pro_expire_date": user.pro_expire_date.isoformat() if user.pro_expire_date else None,
+    }
 
     # Update only provided fields
     if update_data.name is not None:
@@ -779,6 +1056,26 @@ def update_user(
 
     db.commit()
     db.refresh(user)
+
+    after = {
+        "name": user.name,
+        "phone_number": user.phone_number,
+        "bio": user.bio,
+        "is_admin": bool(user.is_admin),
+        "pro_expire_date": user.pro_expire_date.isoformat() if user.pro_expire_date else None,
+    }
+    changed = {k: {"from": before[k], "to": after[k]} for k in before if before[k] != after[k]}
+
+    audit_request(
+        request,
+        action="admin_update_user",
+        user_id=user_id,
+        metadata={
+            "admin_id": current_admin.id,
+            "fields_provided": sorted(provided_fields),
+            "changes": changed,
+        },
+    )
 
     return {
         "message": "User updated successfully",

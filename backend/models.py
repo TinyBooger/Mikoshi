@@ -58,7 +58,10 @@ class User(Base):
     bio = Column(Text, nullable=True)  # Short bio, optional
     hashed_password = Column(String, nullable=False)  # Store password hash
     is_admin = Column(Boolean, default=False, nullable=False)  # Admin role flag
-    
+
+    # Registration time (used for admin analytics / sorting)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+
     # Pro user (paid subscription)
     is_pro = Column(Boolean, default=False, nullable=False)  # Pro user status
     pro_start_date = Column(DateTime(timezone=True), nullable=True)  # When Pro subscription started

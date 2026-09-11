@@ -103,6 +103,7 @@ def enrich_user_with_character_count(user: User, db: Session, current_user: Opti
         "views": user.views or 0,
         "likes": user.likes or 0,
         "characters_created": db.query(func.count(Character.id)).filter(Character.creator_id == user.id).scalar() or 0,
+        "created_at": getattr(user, "created_at", None),
         "recent_characters": [
             {
                 "id": character.id,

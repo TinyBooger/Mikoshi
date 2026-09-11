@@ -1,8 +1,12 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { AuthContext } from '../../components/AuthProvider';
+import Table from '../components/Table';
+import PaginationBar from '../../components/PaginationBar';
 
 export default function UserStatsPage() {
   const { sessionToken } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [data, setData] = useState(null);
@@ -10,6 +14,17 @@ export default function UserStatsPage() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [lookupResult, setLookupResult] = useState(null);
+
+  // ── User usage ranking (tokens + chats) ────────────────────────────────────
+  const [usageData, setUsageData] = useState(null);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState('');
+  const [usageWindow, setUsageWindow] = useState(30);
+  const [usageSort, setUsageSort] = useState({ key: 'total_tokens', dir: 'desc' });
+  const [usagePage, setUsagePage] = useState(1);
+  const [usageSearchInput, setUsageSearchInput] = useState('');
+  const [usageSearch, setUsageSearch] = useState('');
+  const usagePageSize = 20;
 
   const fetchStats = async () => {
     setLoading(true);
@@ -72,6 +87,58 @@ export default function UserStatsPage() {
     } finally {
       setLookupLoading(false);
     }
+  };
+
+  // Debounce the usage search box
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setUsageSearch(usageSearchInput.trim());
+      setUsagePage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [usageSearchInput]);
+
+  const fetchUsage = useCallback(async () => {
+    if (!sessionToken) return;
+    setUsageLoading(true);
+    setUsageError('');
+    try {
+      const params = new URLSearchParams({
+        days: String(usageWindow),
+        sort_by: usageSort.key,
+        sort_dir: usageSort.dir,
+        page: String(usagePage),
+        page_size: String(usagePageSize),
+      });
+      if (usageSearch) params.set('search', usageSearch);
+
+      const response = await fetch(`${window.API_BASE_URL}/api/admin/user-stats/user-usage?${params.toString()}`, {
+        headers: { Authorization: sessionToken },
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.detail || 'Failed to load user usage');
+      }
+      setUsageData(await response.json());
+    } catch (err) {
+      setUsageError(err.message || 'Failed to load user usage');
+      setUsageData(null);
+    } finally {
+      setUsageLoading(false);
+    }
+  }, [sessionToken, usageWindow, usageSort, usagePage, usageSearch]);
+
+  useEffect(() => {
+    fetchUsage();
+  }, [fetchUsage]);
+
+  const handleUsageSort = (key) => {
+    setUsagePage(1);
+    setUsageSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: key === 'name' ? 'asc' : 'desc' }
+    );
   };
 
   const metrics = data?.metrics || {};
@@ -145,6 +212,38 @@ export default function UserStatsPage() {
       icon: 'bi-coin',
     },
   ];
+
+  const usageColumns = [
+    { key: 'user', label: 'User' },
+    { key: 'total_tokens', label: 'Tokens', sortable: true, align: 'end' },
+    { key: 'credit_amount', label: 'Credits', sortable: true, align: 'end' },
+    { key: 'chat_count', label: 'Chats', sortable: true, align: 'end' },
+    { key: 'message_count', label: 'Messages', sortable: true, align: 'end' },
+    { key: 'last_active_at', label: 'Last Active', sortable: true },
+  ];
+
+  const usageRows = (usageData?.items || []).map((row) => ({
+    ...row,
+    id: row.user_id,
+    user: (
+      <div>
+        <button
+          type="button"
+          className="btn btn-link p-0 text-start fw-semibold text-decoration-none"
+          onClick={() => navigate('/admin/users', { state: { highlightUserId: row.user_id } })}
+          title="View in Users tab"
+        >
+          {row.name || row.user_id}
+        </button>
+        <div className="text-muted small">{row.email || row.phone_number || row.user_id}</div>
+      </div>
+    ),
+    total_tokens: Number(row.total_tokens || 0).toLocaleString(),
+    credit_amount: Number(row.credit_amount || 0).toFixed(2),
+    chat_count: Number(row.chat_count || 0).toLocaleString(),
+    message_count: Number(row.message_count || 0).toLocaleString(),
+    last_active_at: row.last_active_at ? new Date(row.last_active_at).toLocaleString() : '—',
+  }));
 
   return (
     <div className="container-fluid py-3">
@@ -259,74 +358,63 @@ export default function UserStatsPage() {
               </div>
             </div>
 
-            <div className="col-md-6">
-              <div className="card h-100">
-                <div className="card-header">
-                  <strong>Single User Daily Token Usage (Top 10)</strong>
+            <div className="col-12">
+              <div className="card">
+                <div className="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                  <strong>Active Users by Usage</strong>
+                  <div className="d-flex gap-2 flex-wrap">
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      style={{ maxWidth: 260 }}
+                      placeholder="🔍 Search name, email, or ID..."
+                      value={usageSearchInput}
+                      onChange={(e) => setUsageSearchInput(e.target.value)}
+                    />
+                    <select
+                      className="form-select form-select-sm"
+                      style={{ maxWidth: 150 }}
+                      value={usageWindow}
+                      onChange={(e) => {
+                        setUsageWindow(Number(e.target.value));
+                        setUsagePage(1);
+                      }}
+                    >
+                      <option value={1}>Today</option>
+                      <option value={7}>Last 7 days</option>
+                      <option value={30}>Last 30 days</option>
+                      <option value={90}>Last 90 days</option>
+                      <option value={365}>Last 365 days</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="card-body p-0">
+                  {usageError && (
+                    <div className="alert alert-danger m-3 mb-0" role="alert">{usageError}</div>
+                  )}
+                  <div className="px-3 pt-2 pb-1 text-muted small">
+                    Token/credit totals cover the selected window; chats and messages are lifetime totals.
+                    Click a name to open that user in the Users tab.
+                  </div>
                   <div className="table-responsive">
-                    <table className="table table-sm table-striped mb-0">
-                      <thead>
-                        <tr>
-                          <th>User ID</th>
-                          <th className="text-end">Token Count</th>
-                          <th className="text-end">Credits</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(data?.single_user_daily_credit_usage || []).length === 0 ? (
-                          <tr>
-                            <td colSpan="3" className="text-center py-3 text-muted">No usage data today</td>
-                          </tr>
-                        ) : (
-                          data.single_user_daily_credit_usage.map((row) => (
-                            <tr key={row.user_id}>
-                              <td style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.user_id}</td>
-                              <td className="text-end">{Number(row.total_tokens || 0).toLocaleString()}</td>
-                              <td className="text-end">{Number(row.credit_amount || 0).toFixed(2)}</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                    <Table
+                      columns={usageColumns}
+                      data={usageRows}
+                      actions={false}
+                      sort={usageSort}
+                      onSort={handleUsageSort}
+                      emptyMessage={usageLoading ? 'Loading…' : 'No users found'}
+                    />
                   </div>
                 </div>
               </div>
-            </div>
-
-            <div className="col-md-6">
-              <div className="card h-100">
-                <div className="card-header">
-                  <strong>Top Daily Message Users (Top 10)</strong>
-                </div>
-                <div className="card-body p-0">
-                  <div className="table-responsive">
-                    <table className="table table-sm table-striped mb-0">
-                      <thead>
-                        <tr>
-                          <th>User ID</th>
-                          <th className="text-end">Daily Messages</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(data?.top_daily_message_users || []).length === 0 ? (
-                          <tr>
-                            <td colSpan="2" className="text-center py-3 text-muted">No message data today</td>
-                          </tr>
-                        ) : (
-                          data.top_daily_message_users.map((row) => (
-                            <tr key={row.user_id}>
-                              <td style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.user_id}</td>
-                              <td className="text-end">{row.daily_messages}</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+              <PaginationBar
+                page={usagePage}
+                total={usageData?.total ?? 0}
+                pageSize={usagePageSize}
+                loading={usageLoading}
+                onPageChange={setUsagePage}
+              />
             </div>
           </div>
 

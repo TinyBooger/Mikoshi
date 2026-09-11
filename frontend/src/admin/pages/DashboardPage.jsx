@@ -36,7 +36,7 @@ export default function DashboardPage() {
         ]);
 
         setStats({
-          totalUsers: users.length,
+          totalUsers: Array.isArray(users) ? users.length : (users?.total ?? 0),
           totalCharacters: chars.length,
           totalTags: tags.length,
           totalSearchTerms: terms.length

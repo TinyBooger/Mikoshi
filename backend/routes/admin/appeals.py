@@ -2,7 +2,7 @@
 
 from datetime import datetime, UTC
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -16,6 +16,7 @@ from models import (
     BanAppeal,
     ContentBanAppeal,
 )
+from utils.audit_logger import audit_request
 from utils.session import get_current_admin_user
 
 router = APIRouter(tags=["admin"])
@@ -67,6 +68,7 @@ def get_appeals(
 @router.post("/moderation/appeals/{appeal_id}/action")
 def resolve_appeal(
     appeal_id: int,
+    request: Request,
     payload: AppealActionRequest,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
@@ -110,6 +112,19 @@ def resolve_appeal(
         )
 
     db.commit()
+
+    audit_request(
+        request,
+        action="admin_resolve_ban_appeal",
+        user_id=current_admin.id,
+        metadata={
+            "appeal_id": appeal_id,
+            "target_user_id": appeal.user_id,
+            "decision": action,
+            "ban_type": appeal.ban_type,
+        },
+    )
+
     return {"message": f"Appeal #{appeal_id} {appeal.status}", "ok": True}
 
 
@@ -165,6 +180,7 @@ def get_content_appeals(
 @router.post("/moderation/content-appeals/{appeal_id}/action")
 def resolve_content_appeal(
     appeal_id: int,
+    request: Request,
     payload: AppealActionRequest,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user),
@@ -213,4 +229,19 @@ def resolve_content_appeal(
         )
 
     db.commit()
+
+    audit_request(
+        request,
+        action="admin_resolve_content_appeal",
+        user_id=current_admin.id,
+        metadata={
+            "appeal_id": appeal_id,
+            "entity_type": appeal.entity_type,
+            "entity_id": appeal.entity_id,
+            "entity_name": entity_name,
+            "creator_id": appeal.creator_id,
+            "decision": action,
+        },
+    )
+
     return {"message": f"Content appeal #{appeal_id} {appeal.status}", "ok": True}

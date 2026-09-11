@@ -4,7 +4,7 @@ Admin-only read access.
 """
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime, UTC
@@ -55,9 +55,11 @@ def get_audit_logs(
     query = db.query(AuditLog)
 
     if user_id:
-        query = query.filter(AuditLog.user_id == user_id)
+        query = query.filter(AuditLog.user_id == user_id.strip())
     if action:
-        query = query.filter(AuditLog.action == action)
+        # Partial, case-insensitive so "login" also finds "login_failed" and
+        # "admin_delete" finds every admin delete action.
+        query = query.filter(AuditLog.action.ilike(f"%{action.strip()}%"))
     if status:
         query = query.filter(AuditLog.status == status)
 
@@ -80,9 +82,38 @@ def get_audit_logs(
             pass
 
     total = query.count()
-    logs = query.order_by(desc(AuditLog.timestamp)).limit(limit).offset(offset).all()
+
+    # `timestamp` alone is NOT a total order. Many audit rows legitimately share
+    # a timestamp (same-second logins, bulk writes, backfills), and with ties
+    # Postgres may return the SAME rows for different OFFSETs - so page 2 would
+    # look identical to page 1. `id` makes the ordering total and stable.
+    logs = (
+        query.order_by(desc(AuditLog.timestamp), desc(AuditLog.id))
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
 
     return {
         "total": total,
-        "audit_logs": [AuditLogResponse.from_orm(log).dict() for log in logs],
+        "limit": limit,
+        "offset": offset,
+        "audit_logs": [AuditLogResponse.model_validate(log).model_dump() for log in logs],
+    }
+
+
+@router.get("/actions")
+def list_audit_actions(
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Distinct action names actually present in the table, for filter UIs."""
+    rows = (
+        db.query(AuditLog.action, func.count(AuditLog.id).label("count"))
+        .group_by(AuditLog.action)
+        .order_by(func.count(AuditLog.id).desc())
+        .all()
+    )
+    return {
+        "actions": [{"action": a, "count": c} for a, c in rows],
     }

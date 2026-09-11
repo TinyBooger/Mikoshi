@@ -14,6 +14,7 @@ from utils.validators import validate_account_fields
 from utils.sms_utils import send_verification_code, verify_code, create_verified_phone_token, verify_phone_token, get_dev_sms_bypass_info
 from utils.captcha_utils import verify_captcha_param
 from utils.request_utils import get_client_ip, get_device_fingerprint, update_tracking_array
+from utils.audit_logger import audit_request
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 from utils.invitation_utils import generate_invitation_code, process_invitation_code, track_invitation
@@ -260,7 +261,22 @@ def register_with_phone(
     # 创建session token
     token = create_session_token(user)
     user_response = build_user_response(user, db)
-    
+
+    # Phone registration is the primary signup path, so this is the audit row
+    # that admin analytics (daily user increase, retention cohorts) rely on.
+    audit_request(
+        request,
+        action="register",
+        user_id=user.id,
+        metadata={
+            "signup_method": "phone",
+            "name": name,
+            "phone_number": phone_number,
+            "email": user.email,
+            "invitation_code": invitation_code.strip().upper() if invitation_code and invitation_code.strip() else None,
+        },
+    )
+
     return {
         "message": "Registration successful",
         "token": token,

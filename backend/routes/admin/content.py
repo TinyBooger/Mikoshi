@@ -4,13 +4,14 @@ terms) - listing, editing and deletion.
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User, Character, Scene, Persona, Tag, SearchTerm
+from utils.audit_logger import audit_request
 from utils.session import get_current_admin_user
 from utils.local_storage_utils import delete_stored_image
 
@@ -302,6 +303,7 @@ def get_search_terms(
 @router.delete("/characters/{character_id}")
 def delete_character(
     character_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -312,16 +314,30 @@ def delete_character(
 
     picture_path = character.picture
     avatar_path = character.avatar_picture
+    deleted_snapshot = {
+        "character_id": character_id,
+        "name": character.name,
+        "creator_id": character.creator_id,
+    }
     db.delete(character)
     db.commit()
     delete_stored_image(picture_path)
     delete_stored_image(avatar_path)
+
+    audit_request(
+        request,
+        action="admin_delete_character",
+        user_id=current_admin.id,
+        metadata=deleted_snapshot,
+    )
+
     return {"message": "角色已删除"}
 
 
 @router.delete("/scenes/{scene_id}")
 def delete_scene(
     scene_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -330,15 +346,29 @@ def delete_scene(
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
     picture_path = scene.picture
+    deleted_snapshot = {
+        "scene_id": scene_id,
+        "name": scene.name,
+        "creator_id": scene.creator_id,
+    }
     db.delete(scene)
     db.commit()
     delete_stored_image(picture_path)
+
+    audit_request(
+        request,
+        action="admin_delete_scene",
+        user_id=current_admin.id,
+        metadata=deleted_snapshot,
+    )
+
     return {"message": "Scene deleted successfully"}
 
 
 @router.delete("/personas/{persona_id}")
 def delete_persona(
     persona_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -348,16 +378,30 @@ def delete_persona(
         raise HTTPException(status_code=404, detail="Persona not found")
     picture_path = persona.picture
     avatar_path = persona.avatar_picture
+    deleted_snapshot = {
+        "persona_id": persona_id,
+        "name": persona.name,
+        "creator_id": persona.creator_id,
+    }
     db.delete(persona)
     db.commit()
     delete_stored_image(picture_path)
     delete_stored_image(avatar_path)
+
+    audit_request(
+        request,
+        action="admin_delete_persona",
+        user_id=current_admin.id,
+        metadata=deleted_snapshot,
+    )
+
     return {"message": "Persona deleted successfully"}
 
 
 @router.delete("/tags/{tag_id}")
 def delete_tag(
     tag_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -366,8 +410,18 @@ def delete_tag(
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
 
+    tag_snapshot = {"tag_id": tag_id, "name": tag.name}
+
     db.delete(tag)
     db.commit()
+
+    audit_request(
+        request,
+        action="admin_delete_tag",
+        user_id=current_admin.id,
+        metadata=tag_snapshot,
+    )
+
     return {"message": "Tag deleted successfully"}
 
 
@@ -513,6 +567,7 @@ def update_persona(
 def update_tag(
     tag_id: int,
     update_data: TagUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -520,6 +575,8 @@ def update_tag(
     tag = db.query(Tag).filter(Tag.id == tag_id).first()
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
+
+    old_name = tag.name
 
     if update_data.name is not None:
         # Check if name already exists
@@ -533,6 +590,13 @@ def update_tag(
 
     db.commit()
     db.refresh(tag)
+
+    audit_request(
+        request,
+        action="admin_update_tag",
+        user_id=current_admin.id,
+        metadata={"tag_id": tag_id, "old_name": old_name, "new_name": tag.name},
+    )
 
     return {
         "message": "Tag updated successfully",
@@ -548,6 +612,7 @@ def update_tag(
 @router.post("/tags")
 def create_tag(
     update_data: TagUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -565,6 +630,13 @@ def create_tag(
     db.commit()
     db.refresh(new_tag)
 
+    audit_request(
+        request,
+        action="admin_create_tag",
+        user_id=current_admin.id,
+        metadata={"tag_id": new_tag.id, "name": new_tag.name},
+    )
+
     return {
         "message": "Tag created successfully",
         "tag": {
@@ -579,6 +651,7 @@ def create_tag(
 @router.delete("/search-terms/{keyword}")
 def delete_search_term(
     keyword: str,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -589,4 +662,12 @@ def delete_search_term(
 
     db.delete(term)
     db.commit()
+
+    audit_request(
+        request,
+        action="admin_delete_search_term",
+        user_id=current_admin.id,
+        metadata={"keyword": keyword},
+    )
+
     return {"message": "Search term deleted successfully"}

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from database import get_db
 from models import ProblemReport, User
 from schemas import ProblemReportCreate, ProblemReportOut
+from utils.audit_logger import audit_request
 from utils.session import get_current_user, get_current_admin_user
 from utils.content_review_queue import enqueue_character_review
 from typing import List, Optional
@@ -16,6 +17,7 @@ router = APIRouter(prefix="/api/problem-reports", tags=["problem_reports"])
 
 @router.post("", response_model=ProblemReportOut)
 def create_problem_report(
+    request: Request,
     description: Optional[str] = Form(None),
     screenshot: Optional[str] = Form(None),
     target_type: Optional[str] = Form(None),
@@ -56,7 +58,21 @@ def create_problem_report(
             triggered_by_report_id=problem_report.id,
         )
         db.commit()
-    
+
+    audit_request(
+        request,
+        action="create_problem_report",
+        user_id=current_user.id,
+        metadata={
+            "report_id": problem_report.id,
+            "target_type": target_type,
+            "target_id": target_id,
+            "target_name": target_name,
+            "reason": reason,
+            "has_screenshot": bool(screenshot),
+        },
+    )
+
     return problem_report
 
 
@@ -81,6 +97,7 @@ def get_problem_reports(
 @router.patch("/{report_id}/status", response_model=ProblemReportOut)
 def update_problem_report_status(
     report_id: int,
+    request: Request,
     status: str = Form(...),
     admin_notes: Optional[str] = Form(None),
     db: Session = Depends(get_db),
@@ -102,13 +119,26 @@ def update_problem_report_status(
     
     db.commit()
     db.refresh(report)
-    
+
+    audit_request(
+        request,
+        action="admin_update_problem_report",
+        user_id=current_admin.id,
+        metadata={
+            "report_id": report_id,
+            "reporter_id": report.user_id,
+            "status": status,
+            "admin_notes": admin_notes,
+        },
+    )
+
     return report
 
 
 @router.delete("/{report_id}")
 def delete_problem_report(
     report_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -117,8 +147,24 @@ def delete_problem_report(
     
     if not report:
         raise HTTPException(status_code=404, detail="Problem report not found")
-    
+
+    report_snapshot = {
+        "report_id": report.id,
+        "reporter_id": report.user_id,
+        "target_type": report.target_type,
+        "target_id": report.target_id,
+        "reason": report.reason,
+        "status": report.status,
+    }
+
     db.delete(report)
     db.commit()
+
+    audit_request(
+        request,
+        action="admin_delete_problem_report",
+        user_id=current_admin.id,
+        metadata=report_snapshot,
+    )
     
     return {"message": "Problem report deleted successfully"}

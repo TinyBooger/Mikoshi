@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User
 from utils.credit_wallet import get_credit_topup_packages
+from utils.audit_logger import audit_request
 from utils.security_middleware import get_rate_limit_status
 from utils.session import get_current_admin_user
 from utils.sms_utils import (
@@ -118,6 +119,7 @@ def get_dev_sms_bypass(
 
 @router.post("/dev-sms-bypass")
 def toggle_dev_sms_bypass(
+    request: Request,
     payload: DevSmsBypassToggle,
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -126,4 +128,12 @@ def toggle_dev_sms_bypass(
         raise HTTPException(status_code=404, detail="Dev SMS bypass is not available in production")
     set_dev_sms_bypass_enabled(payload.enabled)
     info = get_dev_sms_bypass_info()
+
+    audit_request(
+        request,
+        action="admin_toggle_dev_sms_bypass",
+        user_id=current_admin.id,
+        metadata={"enabled": info['enabled']},
+    )
+
     return {"available": True, "enabled": info['enabled'], "code": info['code']}

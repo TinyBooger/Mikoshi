@@ -86,6 +86,45 @@ def record_audit(
         db.close()
 
 
+def audit_request(
+    request: Any,
+    action: str,
+    user_id: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    status: str = "success",
+    error_message: Optional[str] = None
+) -> bool:
+    """
+    Convenience wrapper around record_audit() for FastAPI route handlers.
+
+    Pulls the client IP, user agent and request context (endpoint, method,
+    query params, referer) straight off the incoming Request, so route code
+    only needs to supply the action and any action-specific metadata.
+
+    Args:
+        request: The FastAPI Request for the current call
+        action: Stable action name (e.g. "register", "change_email", "admin_delete_user")
+        user_id: The user the action applies to (None for anonymous actions)
+        metadata: Action-specific context (e.g. {"old_email": ..., "new_email": ...})
+        status: Status of the operation ("success", "failure", "error")
+        error_message: Error message if status is not success
+
+    Returns:
+        bool: True if logged successfully, False otherwise
+    """
+    from utils.request_utils import get_client_ip, get_user_agent, get_request_metadata
+
+    return record_audit(
+        user_id=user_id,
+        action=action,
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request),
+        metadata=get_request_metadata(request, metadata),
+        status=status,
+        error_message=error_message,
+    )
+
+
 def get_audit_logs(
     user_id: Optional[str] = None,
     action: Optional[str] = None,

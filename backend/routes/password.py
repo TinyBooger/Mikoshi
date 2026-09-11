@@ -9,7 +9,7 @@ from database import get_db
 from models import User
 from utils.session import verify_session_token
 from utils.sms_utils import send_verification_code, verify_code
-from utils.audit_logger import record_audit
+from utils.audit_logger import record_audit, audit_request
 from utils.request_utils import get_client_ip, get_user_agent, get_request_metadata
 
 router = APIRouter()
@@ -100,6 +100,7 @@ reset_tokens = {}
 
 @router.post("/api/send-reset-code-phone")
 async def send_reset_code_phone(
+    request: Request,
     phone_number: str = Form(...),
     db: Session = Depends(get_db)
 ):
@@ -107,6 +108,13 @@ async def send_reset_code_phone(
     # 检查手机号是否已绑定账号
     user = db.query(User).filter(User.phone_number == phone_number).first()
     if not user:
+        audit_request(
+            request,
+            action="reset_code_requested",
+            status="failure",
+            error_message="Phone not bound to any account",
+            metadata={"channel": "phone", "phone_last4": phone_number[-4:]},
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="该手机号未绑定任何账号，请使用其他方式找回或联系管理员"
@@ -114,11 +122,18 @@ async def send_reset_code_phone(
     
     # 发送验证码
     result = await send_verification_code(phone_number)
+    audit_request(
+        request,
+        action="reset_code_requested",
+        user_id=user.id,
+        metadata={"channel": "phone", "phone_last4": phone_number[-4:]},
+    )
     return result
 
 
 @router.post("/api/verify-reset-code-phone")
 def verify_reset_code_phone(
+    request: Request,
     phone_number: str = Form(...),
     code: str = Form(...),
     db: Session = Depends(get_db)
@@ -126,6 +141,13 @@ def verify_reset_code_phone(
     """验证手机号密码重置验证码"""
     # 验证验证码
     if not verify_code(phone_number, code):
+        audit_request(
+            request,
+            action="reset_code_verify_failed",
+            status="failure",
+            error_message="Invalid or expired code",
+            metadata={"channel": "phone", "phone_last4": phone_number[-4:]},
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="验证码错误或已过期"
@@ -134,6 +156,13 @@ def verify_reset_code_phone(
     # 检查用户是否存在
     user = db.query(User).filter(User.phone_number == phone_number).first()
     if not user:
+        audit_request(
+            request,
+            action="reset_code_verify_failed",
+            status="failure",
+            error_message="Phone not bound to any account",
+            metadata={"channel": "phone", "phone_last4": phone_number[-4:]},
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="该手机号未绑定任何账号"
@@ -148,6 +177,13 @@ def verify_reset_code_phone(
         'expires_at': datetime.now() + timedelta(minutes=10)
     }
     
+    audit_request(
+        request,
+        action="reset_code_verified",
+        user_id=user.id,
+        metadata={"channel": "phone"},
+    )
+    
     return {
         "success": True,
         "reset_token": reset_token
@@ -156,6 +192,7 @@ def verify_reset_code_phone(
 
 @router.post("/api/send-reset-code-email")
 def send_reset_code_email(
+    request: Request,
     email: str = Form(...),
     db: Session = Depends(get_db)
 ):
@@ -163,6 +200,13 @@ def send_reset_code_email(
     # 检查邮箱是否已绑定账号
     user = db.query(User).filter(User.email == email).first()
     if not user:
+        audit_request(
+            request,
+            action="reset_code_requested",
+            status="failure",
+            error_message="Email not bound to any account",
+            metadata={"channel": "email", "email": email},
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="该邮箱未绑定任何账号，请使用其他方式找回或联系管理员"
@@ -177,6 +221,14 @@ def send_reset_code_email(
     if email in reset_verification_codes:
         last_send = reset_verification_codes[email].get('sent_at')
         if last_send and (datetime.now() - last_send).total_seconds() < 60:
+            audit_request(
+                request,
+                action="reset_code_requested",
+                user_id=user.id,
+                status="failure",
+                error_message="Rate limited (60s cooldown)",
+                metadata={"channel": "email", "email": email},
+            )
             return {
                 "success": False,
                 "message": "请求过于频繁，请60秒后再试"
@@ -192,6 +244,13 @@ def send_reset_code_email(
     # 开发环境直接返回验证码
     print(f"邮箱验证码: {code}")
     
+    audit_request(
+        request,
+        action="reset_code_requested",
+        user_id=user.id,
+        metadata={"channel": "email", "email": email},
+    )
+    
     return {
         "success": True,
         "message": "验证码已发送到邮箱",
@@ -201,6 +260,7 @@ def send_reset_code_email(
 
 @router.post("/api/verify-reset-code-email")
 def verify_reset_code_email(
+    request: Request,
     email: str = Form(...),
     code: str = Form(...),
     db: Session = Depends(get_db)
@@ -210,6 +270,13 @@ def verify_reset_code_email(
     
     # 验证验证码
     if email not in reset_verification_codes:
+        audit_request(
+            request,
+            action="reset_code_verify_failed",
+            status="failure",
+            error_message="No code requested",
+            metadata={"channel": "email", "email": email},
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请先获取验证码"
@@ -218,12 +285,26 @@ def verify_reset_code_email(
     stored = reset_verification_codes[email]
     if datetime.now() > stored['expires_at']:
         del reset_verification_codes[email]
+        audit_request(
+            request,
+            action="reset_code_verify_failed",
+            status="failure",
+            error_message="Code expired",
+            metadata={"channel": "email", "email": email},
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="验证码已过期"
         )
     
     if stored['code'] != code:
+        audit_request(
+            request,
+            action="reset_code_verify_failed",
+            status="failure",
+            error_message="Invalid code",
+            metadata={"channel": "email", "email": email},
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="验证码错误"
@@ -232,6 +313,13 @@ def verify_reset_code_email(
     # 检查用户是否存在
     user = db.query(User).filter(User.email == email).first()
     if not user:
+        audit_request(
+            request,
+            action="reset_code_verify_failed",
+            status="failure",
+            error_message="Email not bound to any account",
+            metadata={"channel": "email", "email": email},
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="该邮箱未绑定任何账号"
@@ -249,6 +337,13 @@ def verify_reset_code_email(
     # 删除已使用的验证码
     del reset_verification_codes[email]
     
+    audit_request(
+        request,
+        action="reset_code_verified",
+        user_id=user.id,
+        metadata={"channel": "email"},
+    )
+    
     return {
         "success": True,
         "reset_token": reset_token
@@ -257,6 +352,7 @@ def verify_reset_code_email(
 
 @router.post("/api/reset-password-with-token")
 def reset_password_with_token(
+    request: Request,
     reset_token: str = Form(...),
     new_password: str = Form(...),
     db: Session = Depends(get_db)
@@ -266,6 +362,13 @@ def reset_password_with_token(
     
     # 验证token
     if reset_token not in reset_tokens:
+        audit_request(
+            request,
+            action="reset_password_failed",
+            status="failure",
+            error_message="Invalid reset token",
+            metadata={"reset_method": "token"},
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="无效的重置令牌"
@@ -274,6 +377,14 @@ def reset_password_with_token(
     token_data = reset_tokens[reset_token]
     if datetime.now() > token_data['expires_at']:
         del reset_tokens[reset_token]
+        audit_request(
+            request,
+            action="reset_password_failed",
+            user_id=token_data.get('user_id'),
+            status="failure",
+            error_message="Expired reset token",
+            metadata={"reset_method": "token"},
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="重置令牌已过期，请重新验证"
@@ -282,6 +393,14 @@ def reset_password_with_token(
     # 获取用户
     user = db.query(User).filter(User.id == token_data['user_id']).first()
     if not user:
+        audit_request(
+            request,
+            action="reset_password_failed",
+            user_id=token_data.get('user_id'),
+            status="failure",
+            error_message="User not found",
+            metadata={"reset_method": "token"},
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="用户不存在"
@@ -294,6 +413,13 @@ def reset_password_with_token(
     
     # 删除已使用的token
     del reset_tokens[reset_token]
+
+    audit_request(
+        request,
+        action="reset_password",
+        user_id=user.id,
+        metadata={"reset_method": "token"},
+    )
     
     return {
         "success": True,

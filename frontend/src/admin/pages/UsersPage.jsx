@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useCallback, useEffect, useState, useContext } from "react";
 import { useLocation } from "react-router";
 import { AuthContext } from "../../components/AuthProvider";
 import Table from "../components/Table";
@@ -37,8 +37,10 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPro, setFilterPro] = useState("all");
+  const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' });
   const pageSize = 20;
   const { sessionToken } = useContext(AuthContext);
   const location = useLocation();
@@ -46,31 +48,62 @@ export default function UsersPage() {
   // Pre-fill search when navigated here with a specific user ID
   useEffect(() => {
     const uid = location.state?.highlightUserId;
-    if (uid) setSearchQuery(uid);
+    if (uid) setSearchInput(uid);
   }, [location.state?.highlightUserId]);
 
-  const fetchUsers = () => {
+  // Debounce the search box before hitting the API
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const fetchUsers = useCallback(() => {
+    if (!sessionToken) return;
     setLoading(true);
-    fetch(`${window.API_BASE_URL}/api/admin/users`, {
+
+    const params = new URLSearchParams({
+      page: String(page),
+      page_size: String(pageSize),
+      sort_by: sort.key,
+      sort_dir: sort.dir,
+    });
+    if (searchQuery) params.set('search', searchQuery);
+    if (filterPro !== 'all') params.set('pro_status', filterPro);
+
+    fetch(`${window.API_BASE_URL}/api/admin/users?${params.toString()}`, {
       headers: {
         'Authorization': sessionToken
       }
     })
       .then(res => res.json())
       .then(data => {
-        setTotal(data.length);
-        setUsers(data);
+        setUsers(data.items || []);
+        setTotal(data.total ?? 0);
         setLoading(false);
       })
       .catch(err => {
         console.error('Error fetching users:', err);
+        setUsers([]);
+        setTotal(0);
         setLoading(false);
       });
-  };
+  }, [sessionToken, page, pageSize, sort, searchQuery, filterPro]);
 
   useEffect(() => {
     fetchUsers();
-  }, [sessionToken]);
+  }, [fetchUsers]);
+
+  const handleSort = (key) => {
+    setPage(1);
+    setSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: key === 'name' ? 'asc' : 'desc' }
+    );
+  };
 
   const updateUserInList = (updatedUser) => {
     setUsers(prev => prev.map(u => (u.id === updatedUser.id ? { ...u, ...updatedUser } : u)));
@@ -206,31 +239,10 @@ export default function UsersPage() {
     }
   };
 
-  // Filter and search users
-  const filteredUsers = users.filter(user => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch = 
-      (user.name && user.name.toLowerCase().includes(q)) ||
-      (user.email && user.email.toLowerCase().includes(q)) ||
-      (user.phone_number && user.phone_number.toLowerCase().includes(q)) ||
-      (user.id && user.id.toLowerCase().includes(q));
-    
-    const matchesFilter = 
-      filterPro === 'all' || 
-      (filterPro === 'pro' && user.pro_status === 'active') ||
-      (filterPro === 'expired' && user.pro_status === 'expired') ||
-      (filterPro === 'free' && user.pro_status === 'free');
-    
-    return matchesSearch && matchesFilter;
-  });
-
-  const startIdx = (page - 1) * pageSize;
-  const endIdx = startIdx + pageSize;
-  const paginatedUsers = filteredUsers.slice(startIdx, endIdx);
-
-  // Transform user data for display
-  const displayUsers = paginatedUsers.map(user => ({
+  // Transform the current server page for display
+  const displayUsers = users.map(user => ({
     ...user,
+    name: user.name || '—',
     'Email/Phone': (
       <div style={{ fontSize: '0.9rem' }}>
         <div><strong>{user.email}</strong></div>
@@ -264,6 +276,20 @@ export default function UsersPage() {
           <div className="text-muted" style={{ fontSize: '0.78rem' }}>
             ban until {new Date(user.ban_until).toLocaleDateString()}
           </div>
+        )}
+      </div>
+    ),
+    created_at: (
+      <div style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+        {user.created_at ? (
+          <>
+            <div>{new Date(user.created_at).toLocaleDateString()}</div>
+            <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+              {new Date(user.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </>
+        ) : (
+          <span className="text-muted">—</span>
         )}
       </div>
     ),
@@ -328,11 +354,8 @@ export default function UsersPage() {
               type="text"
               className="form-control form-control-lg"
               placeholder="🔍 Search by name, email, or phone..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setPage(1);
-              }}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               style={{ borderRadius: '0.5rem' }}
             />
           </div>
@@ -354,7 +377,7 @@ export default function UsersPage() {
           </div>
         </div>
         <small style={{ color: '#999', marginTop: '0.5rem', display: 'block' }}>
-          Found {filteredUsers.length} users
+          Found {total} user{total === 1 ? '' : 's'}
         </small>
       </div>
 
@@ -368,8 +391,16 @@ export default function UsersPage() {
         }}>
           <div className="table-responsive">
             <Table 
-              columns={["id", "name", "Email/Phone", "Status", "User ID"]} 
+              columns={[
+                { key: 'name', label: 'Name', sortable: true },
+                { key: 'Email/Phone', label: 'Email/Phone' },
+                { key: 'Status', label: 'Status' },
+                { key: 'created_at', label: 'Registered', sortable: true },
+                { key: 'User ID', label: 'User ID' },
+              ]}
               data={displayUsers}
+              sort={sort}
+              onSort={handleSort}
               onEdit={handleEdit}
               onDelete={handleDelete}
               customActions={[
@@ -378,7 +409,7 @@ export default function UsersPage() {
                   text: 'Moderate',
                   className: 'btn-outline-warning',
                   onClick: (row) => {
-                    const user = paginatedUsers.find(u => u.id === row.id);
+                    const user = users.find(u => u.id === row.id);
                     setModForm({ action: 'warn', ban_reason: '', ban_note: '', days: '' });
                     setModDialog({ user });
                   },
@@ -388,7 +419,7 @@ export default function UsersPage() {
                   text: 'History',
                   className: 'btn-outline-secondary',
                   onClick: (row) => {
-                    const user = paginatedUsers.find(u => u.id === row.id);
+                    const user = users.find(u => u.id === row.id);
                     openHistory(user);
                   },
                 },
@@ -397,7 +428,7 @@ export default function UsersPage() {
                   text: 'Linked',
                   className: 'btn-outline-info',
                   onClick: (row) => {
-                    const user = paginatedUsers.find(u => u.id === row.id);
+                    const user = users.find(u => u.id === row.id);
                     openLinkedAccounts(user);
                   },
                 },
@@ -409,7 +440,7 @@ export default function UsersPage() {
 
       <PaginationBar
         page={page}
-        total={filteredUsers.length}
+        total={total}
         pageSize={pageSize}
         loading={loading}
         onPageChange={setPage}

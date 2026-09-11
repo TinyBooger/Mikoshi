@@ -5,7 +5,7 @@ batch actions and direct content moderation.
 from datetime import datetime, UTC
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
@@ -22,6 +22,7 @@ from models import (
     ContentModerationLog,
 )
 from routes.user_messages import create_moderation_message, create_content_moderation_message
+from utils.audit_logger import audit_request
 from utils.local_storage_utils import delete_stored_image
 from utils.session import get_current_admin_user
 from .common import _log_user_moderation, _log_content_moderation
@@ -105,6 +106,7 @@ def get_content_review_queue(
 @router.patch("/review-queue/{queue_id}")
 def resolve_content_review_queue_item(
     queue_id: int,
+    request: Request,
     payload: ContentReviewResolveRequest,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
@@ -151,6 +153,20 @@ def resolve_content_review_queue_item(
 
     db.commit()
     db.refresh(item)
+
+    audit_request(
+        request,
+        action="admin_resolve_review_queue",
+        user_id=current_admin.id,
+        metadata={
+            "queue_id": queue_id,
+            "character_id": item.character_id,
+            "character_name": item.character_name,
+            "creator_id": character.creator_id if character else None,
+            "decision": action,
+            "notes": payload.notes,
+        },
+    )
 
     return {
         "message": f"Review queue item resolved with action: {action}",
@@ -283,6 +299,7 @@ def get_moderation_reports(
 @router.post("/moderation/reports/{report_id}/action")
 def take_moderation_action(
     report_id: int,
+    request: Request,
     payload: UserModerationActionRequest,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
@@ -442,6 +459,22 @@ def take_moderation_action(
             ban_reason=payload.ban_reason,
         )
 
+    audit_request(
+        request,
+        action="admin_moderate_report",
+        user_id=current_admin.id,
+        metadata={
+            "report_id": report_id,
+            "target_type": report.target_type,
+            "target_id": report.target_id,
+            "target_user_id": report.target_string_id,
+            "decision": action,
+            "ban_reason": payload.ban_reason,
+            "ban_until": payload.ban_until.isoformat() if payload.ban_until else None,
+            "notes": payload.notes,
+        },
+    )
+
     db.commit()
 
     return {"message": f"Action '{action}' applied to report #{report_id}"}
@@ -449,6 +482,7 @@ def take_moderation_action(
 
 @router.post("/moderation/batch-action")
 def take_batch_moderation_action(
+    request: Request,
     payload: BatchModerationActionRequest,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
@@ -566,6 +600,21 @@ def take_batch_moderation_action(
         applied += 1
 
     db.commit()
+
+    audit_request(
+        request,
+        action="admin_batch_moderate_reports",
+        user_id=current_admin.id,
+        metadata={
+            "report_ids": payload.report_ids,
+            "decision": action,
+            "applied_count": applied,
+            "ban_reason": payload.ban_reason,
+            "ban_until": payload.ban_until.isoformat() if payload.ban_until else None,
+            "notes": payload.notes,
+        },
+    )
+
     return {"message": f"Action '{action}' applied to {applied} reports", "count": applied}
 
 
@@ -573,6 +622,7 @@ def take_batch_moderation_action(
 def moderate_content_item(
     content_type: str,
     item_id: int,
+    request: Request,
     payload: ContentModerationRequest,
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
@@ -623,6 +673,21 @@ def moderate_content_item(
         # Clean up stored images after the DB commit
         delete_stored_image(picture_path)
         delete_stored_image(avatar_path)
+
+        audit_request(
+            request,
+            action="admin_moderate_content",
+            user_id=current_admin.id,
+            metadata={
+                "content_type": content_type,
+                "item_id": item_id,
+                "entity_name": entity_name,
+                "creator_id": creator_id,
+                "decision": action,
+                "notes": payload.notes,
+            },
+        )
+
         return {"message": f"{content_type.capitalize()} deleted successfully"}
 
     if action in {"restrict", "takedown"} and entity.creator_id:
@@ -638,4 +703,19 @@ def moderate_content_item(
         )
 
     db.commit()
+
+    audit_request(
+        request,
+        action="admin_moderate_content",
+        user_id=current_admin.id,
+        metadata={
+            "content_type": content_type,
+            "item_id": item_id,
+            "entity_name": entity.name,
+            "creator_id": entity.creator_id,
+            "decision": action,
+            "notes": payload.notes,
+        },
+    )
+
     return {"message": f"Action '{action}' applied to {content_type} #{item_id}"}

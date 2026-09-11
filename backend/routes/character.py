@@ -14,6 +14,7 @@ from model_configs import ALLOWED_MODEL_IDS
 
 from utils.session import get_current_user, get_optional_current_user
 from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
+from utils.audit_logger import audit_request
 from utils.image_moderation import moderate_image_with_decision
 from utils.chat_history_utils import fetch_user_chat_history
 from utils.collaborative_filtering import get_cf_characters
@@ -626,6 +627,7 @@ def get_character(character_id: int, current_user: User = Depends(get_current_us
 @router.delete("/api/character/{character_id}/delete")
 async def delete_character(
     character_id: int,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
     ):
@@ -640,10 +642,23 @@ async def delete_character(
 
     picture_path = char.picture
     avatar_path = char.avatar_picture
+    deleted_snapshot = {
+        "character_id": character_id,
+        "name": char.name,
+        "string_id": getattr(char, "string_id", None),
+    }
     db.delete(char)
     db.commit()
     delete_stored_image(picture_path)
     delete_stored_image(avatar_path)
+
+    audit_request(
+        request,
+        action="delete_character",
+        user_id=current_user.id,
+        metadata=deleted_snapshot,
+    )
+
     return {"message": "角色已删除"}
 
 @router.get("/api/characters/popular", response_model=CharacterListOut)

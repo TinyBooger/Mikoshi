@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from database import get_db
 from models import SystemNotification, User
 from pydantic import BaseModel
 from typing import List, Optional
+from utils.audit_logger import audit_request
 from utils.session import get_current_user
 
 router = APIRouter()
@@ -85,6 +86,7 @@ async def get_all_notifications(
 @router.post("/api/admin/notifications")
 async def create_notification(
     notification: NotificationCreate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -103,6 +105,17 @@ async def create_notification(
     db.add(new_notification)
     db.commit()
     db.refresh(new_notification)
+
+    audit_request(
+        request,
+        action="admin_create_notification",
+        user_id=current_user.id,
+        metadata={
+            "notification_id": new_notification.id,
+            "title": new_notification.title,
+            "is_active": new_notification.is_active,
+        },
+    )
     
     return {
         "id": new_notification.id,
@@ -119,6 +132,7 @@ async def create_notification(
 async def update_notification(
     notification_id: int,
     notification: NotificationUpdate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -147,6 +161,18 @@ async def update_notification(
     
     db.commit()
     db.refresh(db_notification)
+
+    audit_request(
+        request,
+        action="admin_update_notification",
+        user_id=current_user.id,
+        metadata={
+            "notification_id": notification_id,
+            "title": db_notification.title,
+            "is_active": db_notification.is_active,
+            "changed_fields": sorted(notification.model_fields_set),
+        },
+    )
     
     return {
         "id": db_notification.id,
@@ -162,6 +188,7 @@ async def update_notification(
 @router.delete("/api/admin/notifications/{notification_id}")
 async def delete_notification(
     notification_id: int,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -175,8 +202,21 @@ async def delete_notification(
     
     if not db_notification:
         raise HTTPException(status_code=404, detail="Notification not found")
+
+    notification_snapshot = {
+        "notification_id": notification_id,
+        "title": db_notification.title,
+        "is_active": db_notification.is_active,
+    }
     
     db.delete(db_notification)
     db.commit()
+
+    audit_request(
+        request,
+        action="admin_delete_notification",
+        user_id=current_user.id,
+        metadata=notification_snapshot,
+    )
     
     return {"message": "Notification deleted successfully"}

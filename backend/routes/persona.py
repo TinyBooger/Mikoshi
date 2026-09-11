@@ -8,6 +8,7 @@ from database import get_db
 from models import Persona, User, Tag, UserLikedPersona
 from schemas import PersonaOut, PersonaListOut
 from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
+from utils.audit_logger import audit_request
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 from utils.text_normalization import normalize_line_endings
@@ -357,7 +358,7 @@ async def update_persona(
 
 # Delete Persona
 @router.delete("/api/personas/{persona_id}", response_model=None)
-def delete_persona(persona_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_persona(persona_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(status_code=404, detail="Persona not found")
@@ -365,10 +366,23 @@ def delete_persona(persona_id: int, db: Session = Depends(get_db), current_user:
         raise HTTPException(status_code=403, detail="Not authorized")
     picture_path = persona.picture
     avatar_path = persona.avatar_picture
+    deleted_snapshot = {
+        "persona_id": persona_id,
+        "name": persona.name,
+        "string_id": getattr(persona, "string_id", None),
+    }
     db.delete(persona)
     db.commit()
     delete_stored_image(picture_path)
     delete_stored_image(avatar_path)
+
+    audit_request(
+        request,
+        action="delete_persona",
+        user_id=current_user.id,
+        metadata=deleted_snapshot,
+    )
+
     return JSONResponse(content={"id": persona_id, "message": "Persona deleted"})
 
 # Set persona as default

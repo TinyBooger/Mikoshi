@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Body, Request
 from schemas import UserOut, UserListOut, CharacterOut, SceneOut, PersonaOut
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona, UserCreditWalletLedger, UserFollow
 from utils.session import get_current_user, get_optional_current_user
+from utils.audit_logger import audit_request
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
@@ -310,6 +311,7 @@ def get_user_by_id_alias(user_id: str, db: Session = Depends(get_db)):
 
 @router.post("/api/update-profile")
 async def update_profile(
+    request: Request,
     name: str = Form(...),
     bio: str = Form(None),
     profile_pic: UploadFile = File(None),
@@ -348,6 +350,14 @@ async def update_profile(
 
     db.commit()
     db.refresh(current_user)
+
+    audit_request(
+        request,
+        action="update_profile",
+        user_id=current_user.id,
+        metadata={"name": current_user.name, "avatar_changed": bool(profile_pic)},
+    )
+
     return {"message": "个人资料已更新"}
 
 # -------------------------- Like/Unlike Endpoints --------------------------
@@ -539,7 +549,7 @@ def increment_views_multi(
 
 
 @router.post('/api/change-email')
-def request_change_email(payload: dict = Body(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def request_change_email(request: Request, payload: dict = Body(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # payload expected: { newEmail: '...' }
     new_email = None
     if payload:
@@ -551,8 +561,17 @@ def request_change_email(payload: dict = Body(...), current_user: User = Depends
     if exists:
         raise HTTPException(status_code=400, detail='Email already in use')
     # Directly replace user's email (no confirmation)
+    old_email = current_user.email
     current_user.email = new_email
     db.commit()
+
+    audit_request(
+        request,
+        action="change_email",
+        user_id=current_user.id,
+        metadata={"old_email": old_email, "new_email": new_email},
+    )
+
     return {"message": "Email updated"}
 
 
@@ -638,6 +657,7 @@ async def send_code_to_new_phone(
 
 @router.post('/api/change-phone/confirm')
 async def confirm_phone_change(
+    request: Request,
     payload: dict = Body(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -668,7 +688,14 @@ async def confirm_phone_change(
     old_phone = current_user.phone_number
     current_user.phone_number = new_phone
     db.commit()
-    
+
+    audit_request(
+        request,
+        action="change_phone",
+        user_id=current_user.id,
+        metadata={"old_phone_hint": old_phone[-4:] if old_phone else None, "new_phone_hint": new_phone[-4:]},
+    )
+
     return {
         "message": "手机号更换成功",
         "old_phone_hint": old_phone[-4:] if old_phone else "",
@@ -677,11 +704,20 @@ async def confirm_phone_change(
 
 
 @router.post('/api/delete-account')
-def delete_account(payload: dict = Body(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_account(request: Request, payload: dict = Body(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # payload must include { confirm: true }
     confirm = payload.get('confirm') is True
     if not confirm:
         raise HTTPException(status_code=400, detail='Missing confirmation')
+
+    # Snapshot identity before the row is gone - audit_logs.user_id has no FK
+    # so the entry survives the deletion.
+    deleted_snapshot = {
+        "email": current_user.email,
+        "name": current_user.name,
+        "phone_number": current_user.phone_number,
+    }
+
     # Attempt to delete user's profile image from local storage
     try:
         from utils.local_storage_utils import delete_image
@@ -693,6 +729,13 @@ def delete_account(payload: dict = Body(...), current_user: User = Depends(get_c
     except Exception:
         # utils may not be available; continue
         pass
+
+    audit_request(
+        request,
+        action="delete_account",
+        user_id=current_user.id,
+        metadata=deleted_snapshot,
+    )
 
     # Hard delete the user row (this should cascade deletes for related junction tables)
     db.delete(current_user)

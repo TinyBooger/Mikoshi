@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ import logging
 from database import get_db
 from models import Scene, User, UserLikedScene
 from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
+from utils.audit_logger import audit_request
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 from utils.text_normalization import normalize_line_endings
@@ -369,16 +370,29 @@ async def update_scene(
 
 # Delete Scene
 @router.delete("/api/scenes/{scene_id}", response_model=None)
-def delete_scene(scene_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_scene(scene_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
     if scene.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
     picture_path = scene.picture
+    deleted_snapshot = {
+        "scene_id": scene_id,
+        "name": scene.name,
+        "string_id": getattr(scene, "string_id", None),
+    }
     db.delete(scene)
     db.commit()
     delete_stored_image(picture_path)
+
+    audit_request(
+        request,
+        action="delete_scene",
+        user_id=current_user.id,
+        metadata=deleted_snapshot,
+    )
+
     return JSONResponse(content={"id": scene_id, "message": "Scene deleted"})
 
 # ----------------------- END SCENE CRUD ROUTES -------------------
