@@ -35,18 +35,63 @@ export default function ProfilePage() {
     RECENT: 'recent',
     POPULAR: 'popular',
   };
+  // URL slugs for the active tab/subtab (?tab=<slug>&sub=<slug>).
+  const TAB_SLUGS = {
+    [TAB_TYPES.CREATED]: 'created',
+    [TAB_TYPES.LIKED]: 'liked',
+    [TAB_TYPES.MY_PERSONAS]: 'personas',
+    [TAB_TYPES.CHAT_HISTORY]: 'chatHistory',
+    [TAB_TYPES.INVITE_CODE]: 'invite',
+  };
+  const SLUG_TO_TAB = {
+    created: TAB_TYPES.CREATED,
+    liked: TAB_TYPES.LIKED,
+    personas: TAB_TYPES.MY_PERSONAS,
+    chatHistory: TAB_TYPES.CHAT_HISTORY,
+    invite: TAB_TYPES.INVITE_CODE,
+  };
+  // Tabs that only exist on your own profile.
+  const OWN_ONLY_TABS = [TAB_TYPES.MY_PERSONAS, TAB_TYPES.CHAT_HISTORY, TAB_TYPES.INVITE_CODE];
+  // Subtabs offered per tab (also used to validate ?sub=).
+  const SUBTABS_FOR_TAB = {
+    [TAB_TYPES.CREATED]: [SUBTAB_TYPES.CHARACTERS, SUBTAB_TYPES.SCENES, SUBTAB_TYPES.PERSONAS],
+    [TAB_TYPES.LIKED]: [SUBTAB_TYPES.CHARACTERS, SUBTAB_TYPES.SCENES],
+  };
+  // Maps a tab/subtab pair to the paginated list it renders.
+  const listKeyFor = (tab, sub) => {
+    if (tab === TAB_TYPES.CHAT_HISTORY) return 'chatHistory';
+    if (tab === TAB_TYPES.CREATED) {
+      if (sub === SUBTAB_TYPES.SCENES) return 'createdScenes';
+      if (sub === SUBTAB_TYPES.PERSONAS) return 'createdPersonas';
+      return 'createdCharacters';
+    }
+    if (tab === TAB_TYPES.LIKED) {
+      if (sub === SUBTAB_TYPES.SCENES) return 'likedScenes';
+      if (sub === SUBTAB_TYPES.PERSONAS) return 'likedPersonas';
+      return 'likedCharacters';
+    }
+    return null;
+  };
 
   const { userId: profileUserId } = useParams(); // get userId from route params
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { userData, sessionToken, refreshUserData } = useContext(AuthContext);
   const toast = useToast();
 
   // Determine if this is the current user's own profile
   const isOwnProfile = !profileUserId || (userData && String(userData.id) === String(profileUserId));
-  // Deep-link support: /profile?tab=invite opens the invitation-code tab (own profile only)
-  const initialTab = (!profileUserId && searchParams.get('tab') === 'invite')
-    ? TAB_TYPES.INVITE_CODE
-    : TAB_TYPES.CREATED;
+  // Active tab/subtab are encoded in the URL (?tab=<slug>&sub=<slug>) so deep links,
+  // refreshes and shared links reproduce the exact view. Own-only tabs are ignored on
+  // public profiles (/profile/:userId).
+  const requestedTab = SLUG_TO_TAB[searchParams.get('tab')] || TAB_TYPES.CREATED;
+  const initialTab = (profileUserId && OWN_ONLY_TABS.includes(requestedTab))
+    ? TAB_TYPES.CREATED
+    : requestedTab;
+  const allowedInitialSubtabs = SUBTABS_FOR_TAB[initialTab] || [];
+  const requestedSubtab = searchParams.get('sub');
+  const initialSubtab = allowedInitialSubtabs.includes(requestedSubtab)
+    ? requestedSubtab
+    : SUBTAB_TYPES.CHARACTERS;
   // If public view, fetch userData for the profile being viewed
   const [publicUserData, setPublicUserData] = useState(null);
   const [createdCharacters, setCreatedCharacters] = useState([]);
@@ -54,9 +99,11 @@ export default function ProfilePage() {
   const [personas, setPersonas] = useState([]);
   const [likedPersonas, setLikedPersonas] = useState([]);
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [activeSubtab, setActiveSubtab] = useState(SUBTAB_TYPES.CHARACTERS);
-  const [createdExpanded, setCreatedExpanded] = useState(true);
-  const [likedExpanded, setLikedExpanded] = useState(false);
+  const [activeSubtab, setActiveSubtab] = useState(initialSubtab);
+  const [createdExpanded, setCreatedExpanded] = useState(
+    initialTab === TAB_TYPES.CREATED || initialTab === TAB_TYPES.LIKED
+  );
+  const [likedExpanded, setLikedExpanded] = useState(initialTab === TAB_TYPES.LIKED);
   const [characterSort, setCharacterSort] = useState(ENTITY_SORTS.RECENT);
   const [sceneSort, setSceneSort] = useState(ENTITY_SORTS.RECENT);
   const [personaSort, setPersonaSort] = useState(ENTITY_SORTS.RECENT);
@@ -66,30 +113,36 @@ export default function ProfilePage() {
   const [inviteData, setInviteData] = useState(null);
   const [inviteCopied, setInviteCopied] = useState(false);
 
+  // Restore the initially active list's page from the URL (?page=N) so refresh keeps position
+  const initialPageFromUrl = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
+  const initialListKey = listKeyFor(initialTab, initialSubtab);
+  const pageInit = (key) => (key === initialListKey ? initialPageFromUrl : 1);
+
   // Pagination state for each entity type
-  const [createdCharactersPage, setCreatedCharactersPage] = useState(1);
+  const [createdCharactersPage, setCreatedCharactersPage] = useState(pageInit('createdCharacters'));
   const [createdCharactersTotal, setCreatedCharactersTotal] = useState(0);
-  const [likedCharactersPage, setLikedCharactersPage] = useState(1);
+  const [likedCharactersPage, setLikedCharactersPage] = useState(pageInit('likedCharacters'));
   const [likedCharactersTotal, setLikedCharactersTotal] = useState(0);
-  const [scenesPage, setScenesPage] = useState(1);
+  const [scenesPage, setScenesPage] = useState(pageInit('createdScenes'));
   const [scenesTotal, setScenesTotal] = useState(0);
-  const [likedScenesPage, setLikedScenesPage] = useState(1);
+  const [likedScenesPage, setLikedScenesPage] = useState(pageInit('likedScenes'));
   const [likedScenesTotal, setLikedScenesTotal] = useState(0);
-  const [personasPage, setPersonasPage] = useState(1);
+  const [personasPage, setPersonasPage] = useState(pageInit('createdPersonas'));
   const [personasTotal, setPersonasTotal] = useState(0);
-  const [likedPersonasPage, setLikedPersonasPage] = useState(1);
+  const [likedPersonasPage, setLikedPersonasPage] = useState(pageInit('likedPersonas'));
   const [likedPersonasTotal, setLikedPersonasTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const pendingEntityRequestsRef = useRef(0);
+  const contentTopRef = useRef(null);
+  const skipUrlWriteRef = useRef(false);
 
   // Chat history tab state (own profile only)
   const [chatHistoryItems, setChatHistoryItems] = useState([]);
-  const [chatHistoryPage, setChatHistoryPage] = useState(1);
+  const [chatHistoryPage, setChatHistoryPage] = useState(pageInit('chatHistory'));
   const [chatHistoryTotal, setChatHistoryTotal] = useState(0);
   const [chatHistoryLoading, setChatHistoryLoading] = useState(false);
   const [deletingChatId, setDeletingChatId] = useState(null);
   const [clearingUnavailable, setClearingUnavailable] = useState(false);
-  const pageSize = 20;
 
   // Total stats for all created characters
   const [totalChats, setTotalChats] = useState(0);
@@ -144,6 +197,13 @@ export default function ProfilePage() {
 
   const [showProBenefits, setShowProBenefits] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  // Card grid geometry. This page's media query switches CardSection to a 2-column grid at
+  // ≤767px (matching isMobile); on desktop it's a flex-wrap row of six ~11.25rem cards.
+  // Each page holds whole rows so the last row of a page is never left half empty.
+  const pageSize = isMobile ? 12 : 18; // 2 cols x 6 rows / 6 cols x 3 rows
+  const chatHistoryPageSize = 20; // chat history is a list, not a card grid
+
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [showReportUser, setShowReportUser] = useState(false);
@@ -301,7 +361,7 @@ export default function ProfilePage() {
         pendingEntityRequestsRef.current = Math.max(0, pendingEntityRequestsRef.current - 1);
         if (pendingEntityRequestsRef.current === 0) setLoading(false);
       });
-  }, [profileUserId, sessionToken, characterSort, createdCharactersPage]);
+  }, [profileUserId, sessionToken, characterSort, createdCharactersPage, pageSize]);
 
   // Fetch created scenes
   useEffect(() => {
@@ -334,7 +394,7 @@ export default function ProfilePage() {
         pendingEntityRequestsRef.current = Math.max(0, pendingEntityRequestsRef.current - 1);
         if (pendingEntityRequestsRef.current === 0) setLoading(false);
       });
-  }, [profileUserId, sessionToken, sceneSort, scenesPage]);
+  }, [profileUserId, sessionToken, sceneSort, scenesPage, pageSize]);
 
   // Fetch created personas
   useEffect(() => {
@@ -367,7 +427,7 @@ export default function ProfilePage() {
         pendingEntityRequestsRef.current = Math.max(0, pendingEntityRequestsRef.current - 1);
         if (pendingEntityRequestsRef.current === 0) setLoading(false);
       });
-  }, [profileUserId, sessionToken, personaSort, personasPage]);
+  }, [profileUserId, sessionToken, personaSort, personasPage, pageSize]);
 
   // Fetch liked characters (own profile only)
   useEffect(() => {
@@ -404,7 +464,7 @@ export default function ProfilePage() {
         pendingEntityRequestsRef.current = Math.max(0, pendingEntityRequestsRef.current - 1);
         if (pendingEntityRequestsRef.current === 0) setLoading(false);
       });
-  }, [isOwnProfile, sessionToken, characterSort, likedCharactersPage]);
+  }, [isOwnProfile, sessionToken, characterSort, likedCharactersPage, pageSize]);
 
   // Fetch liked scenes (own profile only)
   useEffect(() => {
@@ -441,7 +501,7 @@ export default function ProfilePage() {
         pendingEntityRequestsRef.current = Math.max(0, pendingEntityRequestsRef.current - 1);
         if (pendingEntityRequestsRef.current === 0) setLoading(false);
       });
-  }, [isOwnProfile, sessionToken, sceneSort, likedScenesPage]);
+  }, [isOwnProfile, sessionToken, sceneSort, likedScenesPage, pageSize]);
 
   // Fetch liked personas (own profile only)
   useEffect(() => {
@@ -478,7 +538,7 @@ export default function ProfilePage() {
         pendingEntityRequestsRef.current = Math.max(0, pendingEntityRequestsRef.current - 1);
         if (pendingEntityRequestsRef.current === 0) setLoading(false);
       });
-  }, [isOwnProfile, sessionToken, personaSort, likedPersonasPage]);
+  }, [isOwnProfile, sessionToken, personaSort, likedPersonasPage, pageSize]);
 
   useEffect(() => {
     setCreatedCharactersPage(1);
@@ -495,6 +555,20 @@ export default function ProfilePage() {
     setLikedPersonasPage(1);
   }, [personaSort]);
 
+  // When the grid geometry changes the meaning of "page N" changes, so go back to page 1.
+  // Skipped on mount so a deep-linked ?page= is preserved.
+  const pageSizeRef = useRef(pageSize);
+  useEffect(() => {
+    if (pageSizeRef.current === pageSize) return;
+    pageSizeRef.current = pageSize;
+    setCreatedCharactersPage(1);
+    setLikedCharactersPage(1);
+    setScenesPage(1);
+    setLikedScenesPage(1);
+    setPersonasPage(1);
+    setLikedPersonasPage(1);
+  }, [pageSize]);
+
   // Fetch invitation code stats
   useEffect(() => {
     if (!isOwnProfile || !sessionToken) return;
@@ -510,7 +584,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!isOwnProfile || activeTab !== TAB_TYPES.CHAT_HISTORY || !sessionToken) return;
     setChatHistoryLoading(true);
-    fetch(`${window.API_BASE_URL}/api/chat/history-by-character?page=${chatHistoryPage}&page_size=20`, {
+    fetch(`${window.API_BASE_URL}/api/chat/history-by-character?page=${chatHistoryPage}&page_size=${chatHistoryPageSize}`, {
       headers: { Authorization: sessionToken },
     })
       .then(res => res.ok ? res.json() : null)
@@ -832,13 +906,18 @@ export default function ProfilePage() {
             </>
           )}
         </CardSection>
-        <PaginationBar
-          page={page}
-          total={total}
-          pageSize={pageSize}
-          loading={loading}
-          onPageChange={onPageChange}
-        />
+        {total > pageSize && (
+          <PaginationBar
+            page={page}
+            total={total}
+            pageSize={pageSize}
+            loading={loading}
+            onPageChange={(nextPage) => {
+              onPageChange(nextPage);
+              contentTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          />
+        )}
       </>
     );
 
@@ -1095,13 +1174,16 @@ export default function ProfilePage() {
               </div>
             );
           })()}
-          {chatHistoryTotal > 20 && (
+          {chatHistoryTotal > chatHistoryPageSize && (
             <PaginationBar
               page={chatHistoryPage}
               total={chatHistoryTotal}
-              pageSize={20}
+              pageSize={chatHistoryPageSize}
               loading={chatHistoryLoading}
-              onPageChange={setChatHistoryPage}
+              onPageChange={(nextPage) => {
+                setChatHistoryPage(nextPage);
+                contentTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
             />
           )}
         </div>
@@ -1316,6 +1398,85 @@ export default function ProfilePage() {
   };
 
   const sortToggleTranslatePercent = activeSort === ENTITY_SORTS.RECENT ? 0 : 100;
+
+  // ── Active paginated list (the one whose page drives ?page=) ──
+  const LIST_PAGE_KEYS = {
+    createdCharacters: [createdCharactersPage, createdCharactersTotal, setCreatedCharactersPage],
+    likedCharacters: [likedCharactersPage, likedCharactersTotal, setLikedCharactersPage],
+    createdScenes: [scenesPage, scenesTotal, setScenesPage],
+    likedScenes: [likedScenesPage, likedScenesTotal, setLikedScenesPage],
+    createdPersonas: [personasPage, personasTotal, setPersonasPage],
+    likedPersonas: [likedPersonasPage, likedPersonasTotal, setLikedPersonasPage],
+    chatHistory: [chatHistoryPage, chatHistoryTotal, setChatHistoryPage],
+  };
+  const activePageKey = listKeyFor(activeTab, activeSubtab);
+  const [activePage, activeTotal, activePageSetter] = activePageKey
+    ? LIST_PAGE_KEYS[activePageKey]
+    : [1, 0, null];
+
+  const urlTabSlug = searchParams.get('tab');
+  const urlSubSlug = searchParams.get('sub');
+  const urlPage = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
+  const urlKey = searchParams.toString();
+
+  // URL → state: adopt deep links, back/forward, and in-app links.
+  useEffect(() => {
+    const requested = SLUG_TO_TAB[urlTabSlug] || TAB_TYPES.CREATED;
+    const nextTab = (profileUserId && OWN_ONLY_TABS.includes(requested)) ? TAB_TYPES.CREATED : requested;
+    const allowedSubtabs = SUBTABS_FOR_TAB[nextTab] || [];
+    const nextSubtab = allowedSubtabs.includes(urlSubSlug) ? urlSubSlug : SUBTAB_TYPES.CHARACTERS;
+
+    let changed = false;
+    if (nextTab !== activeTab) {
+      setActiveTab(nextTab);
+      // Mirror the sidebar expansion you'd get by clicking that tab.
+      setCreatedExpanded(nextTab === TAB_TYPES.CREATED || nextTab === TAB_TYPES.LIKED);
+      setLikedExpanded(nextTab === TAB_TYPES.LIKED);
+      changed = true;
+    }
+    if (nextSubtab !== activeSubtab) {
+      setActiveSubtab(nextSubtab);
+      changed = true;
+    }
+    const target = LIST_PAGE_KEYS[listKeyFor(nextTab, nextSubtab)];
+    if (target && target[0] !== urlPage) {
+      target[2](urlPage);
+      changed = true;
+    }
+    // Let the write-back effect below skip one cycle so it can't undo an adopted URL.
+    if (changed) skipUrlWriteRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlKey, profileUserId, activeTab, activeSubtab]);
+
+  // state → URL: mirror the active view so refresh and shared links reproduce it.
+  useEffect(() => {
+    if (skipUrlWriteRef.current) {
+      skipUrlWriteRef.current = false;
+      return;
+    }
+    const next = new URLSearchParams(searchParams);
+    const tabSlug = TAB_SLUGS[activeTab];
+    if (tabSlug && tabSlug !== 'created') next.set('tab', tabSlug);
+    else next.delete('tab');
+
+    const supportsSubtabs = (SUBTABS_FOR_TAB[activeTab] || []).length > 0;
+    if (supportsSubtabs && activeSubtab !== SUBTAB_TYPES.CHARACTERS) next.set('sub', activeSubtab);
+    else next.delete('sub');
+
+    if (activePageKey && activePage > 1) next.set('page', String(activePage));
+    else next.delete('page');
+
+    if (next.toString() === searchParams.toString()) return;
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, activeTab, activeSubtab, activePageKey, activePage]);
+
+  // Clamp the active list's page when the item count shrinks below it.
+  useEffect(() => {
+    if (!activePageKey || !activePageSetter || activeTotal === 0) return;
+    const size = activePageKey === 'chatHistory' ? chatHistoryPageSize : pageSize;
+    const lastPage = Math.max(1, Math.ceil(activeTotal / size));
+    if (activePage > lastPage) activePageSetter(lastPage);
+  }, [activePageKey, activePage, activeTotal, activePageSetter, pageSize]);
 
   if (userLoading) {
     return (
@@ -2273,7 +2434,7 @@ export default function ProfilePage() {
           )}
 
           {/* Content area */}
-          <div style={{ flex: 1, minWidth: 0, width: isMobile ? '100%' : undefined }}>
+          <div ref={contentTopRef} style={{ flex: 1, minWidth: 0, width: isMobile ? '100%' : undefined }}>
             {renderTabContent()}
           </div>
         </div>
