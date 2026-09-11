@@ -2071,6 +2071,18 @@ export default function ChatPage() {
               )}
             </div>
           </div>
+          <div
+            style={{
+              width: '100%',
+              marginTop: '0.35rem',
+              textAlign: 'center',
+              fontSize: '0.75rem',
+              lineHeight: 1.4,
+              color: '#9aa0a6',
+            }}
+          >
+            内容由AI生成，仅供参考，不构成专业建议。
+          </div>
           </div>
         </form>
       </div>
