@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
 import TagsInput from '../components/TagsInput';
+import TagRecommendations from '../components/TagRecommendations';
 import ImageCropModal from '../components/ImageCropModal';
 import { createPortal } from 'react-dom';
 import { AuthContext } from '../components/AuthProvider';
@@ -812,7 +813,12 @@ export default function EntityFormPage() {
               setTags={tags => handleChange('tags', tags)}
               maxTags={MAX_TAGS}
               placeholder="输入后按Enter添加"
-              hint="输入标签后按Enter确认"
+            />
+            <TagRecommendations
+              currentTags={entityData.tags}
+              onAddTag={tag => handleChange('tags', [...entityData.tags, tag])}
+              sourceText={[entityData.name, entityData.description, entityData.intro, entityData.greeting]}
+              maxTags={MAX_TAGS}
             />
           </div>
 

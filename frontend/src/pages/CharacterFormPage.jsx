@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
 import TagsInput from '../components/TagsInput';
+import TagRecommendations from '../components/TagRecommendations';
 import ImageCropModal from '../components/ImageCropModal';
 import { createPortal } from 'react-dom';
 import { AuthContext } from '../components/AuthProvider';
@@ -1172,10 +1173,16 @@ export default function CharacterFormPage() {
               <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
               <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>第一个标签会显示在封面上</small>
             </label>
-            <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} placeholder="输入后按Enter添加" hint="输入标签后点按Enter确认" />
+            <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} placeholder="输入后按Enter添加" />
             <small className="text-muted" style={{ top: 0, right: 0 }}>
               {charData.tags.length}/{MAX_TAGS} 个标签
             </small>
+            <TagRecommendations
+              currentTags={charData.tags}
+              onAddTag={tag => handleChange('tags', [...charData.tags, tag])}
+              sourceText={[charData.name, charData.tagline, charData.persona, charData.sample, charData.long_description]}
+              maxTags={MAX_TAGS}
+            />
           </div>
 
           {/* Sample Dialogue */}

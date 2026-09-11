@@ -1,48 +1,12 @@
 
-import React, { useState, useEffect, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
-import { AuthContext } from '../components/AuthProvider';
+import React, { useState } from 'react';
 import TextButton from './TextButton';
 
 // Both half-width "," and full-width "，" (Chinese) commas separate tags.
 const TAG_SEPARATOR = /[,，]/;
 
-export default function TagsInput({ tags, setTags, maxTags, placeholder, hint }) {
+export default function TagsInput({ tags, setTags, maxTags, placeholder }) {
   const [input, setInput] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const { sessionToken } = useContext(AuthContext);
-  const { t } = useTranslation();
-
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-      try {
-        const url = input.trim() === "" 
-          ? `${window.API_BASE_URL}/api/tag-suggestions` 
-          : `${window.API_BASE_URL}/api/tag-suggestions?q=${encodeURIComponent(input.trim())}`;
-        
-        const response = await fetch(url, {
-          headers: {
-            'Authorization': sessionToken
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setSuggestions(data);
-        } else {
-          setSuggestions([]);
-        }
-      } catch (error) {
-        console.error('Error fetching tag suggestions:', error);
-        setSuggestions([]);
-      }
-    };
-
-    if (sessionToken) {
-      fetchSuggestions();
-    }
-  }, [input, sessionToken]);
 
   const addTags = (tagList) => {
     const accepted = [];
@@ -58,11 +22,6 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
     if (accepted.length > 0) {
       setTags([...tags, ...accepted]);
     }
-  };
-
-  const addTag = (tag) => {
-    addTags([tag]);
-    setInput("");
   };
 
   const splitTagText = (text) =>
@@ -110,7 +69,6 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
     // the user clicked the submit button or another field, tabbed away, or
     // dismissed the mobile keyboard — so pending text is never silently dropped.
     commitPendingInput();
-    setTimeout(() => setShowSuggestions(false), 100);
   };
 
   const removeTag = (index) => {
@@ -126,7 +84,7 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
         }
       `}</style>
       <div
-        className="d-flex flex-wrap gap-2 position-relative"
+        className="d-flex flex-wrap gap-2"
         style={{
           background: '#f5f6fa',
           border: '1.5px solid #e9ecef',
@@ -153,7 +111,6 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
           value={input}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => setShowSuggestions(true)}
           onBlur={handleBlur}
           enterKeyHint="done"
           autoCorrect="off"
@@ -169,45 +126,6 @@ export default function TagsInput({ tags, setTags, maxTags, placeholder, hint })
             fontSize: '1.08rem',
           }}
         />
-        {showSuggestions && suggestions.length > 0 && (
-          <div
-            className="position-absolute p-2 d-flex flex-wrap gap-2"
-            style={{
-              background: '#f5f6fa',
-              border: '1.5px solid #e9ecef',
-              borderRadius: 14,
-              boxShadow: '0 8px 20px rgba(15, 23, 42, 0.08)',
-              top: 'calc(100% + 8px)',
-              left: 0,
-              right: 0,
-              zIndex: 20,
-              maxHeight: 220,
-              overflowY: 'auto',
-            }}
-          >
-            {suggestions.map((s, i) => (
-              <div
-                key={i}
-                className="d-inline-flex align-items-center"
-                style={{
-                  cursor: 'pointer',
-                  background: '#ffffff',
-                  color: '#374151',
-                  border: '1px solid #dbe2ea',
-                  borderRadius: 999,
-                  padding: '0.35rem 0.65rem',
-                  fontSize: '0.86rem',
-                  lineHeight: 1.2,
-                  minHeight: 32,
-                }}
-                onMouseDown={() => addTag(s.name)} // use onMouseDown to avoid blur before click
-              >
-                {s.name}
-                <i className="bi bi-plus ms-1"></i>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </>
   );
