@@ -11,6 +11,7 @@ import UpdateNotificationModal from '../components/UpdateNotificationModal';
 import MessageCenter from '../components/MessageCenter';
 import BanNotice from '../components/BanNotice';
 import AppealModal from '../components/AppealModal';
+import { isOnboardingCompleted } from '../utils/onboarding';
 import logo from '../assets/images/logo.png';
 import textLogo from '../assets/images/logo_text.png';
 
@@ -128,16 +129,24 @@ function BrowsePage() {
 
   useEffect(() => {
     let timer;
-    if (userData && (!userData.chat_history || userData.chat_history.length === 0)) {
-      const onboardingCompleted = localStorage.getItem('onboarding_completed');
-      if (!onboardingCompleted) {
-        timer = setTimeout(() => setShowOnboarding(true), 500);
-      }
+    const isNewUser = userData && (!userData.chat_history || userData.chat_history.length === 0);
+    // Completion is tracked per user id, so a new account on a browser that has
+    // used the app before still gets the tour.
+    const onboardingCompleted = isOnboardingCompleted(userData?.id);
+    // The tour's first step targets a rendered feed card, so wait until the
+    // feed has actually finished loading instead of racing a fixed delay.
+    const feedReady =
+      !isLoading &&
+      activeTopTab === 'recommended' &&
+      activeMainTab !== 'users' &&
+      entities.length > 0;
+    if (isNewUser && !onboardingCompleted && feedReady) {
+      timer = setTimeout(() => setShowOnboarding(true), 300);
     }
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [userData]);
+  }, [userData, isLoading, entities.length, activeMainTab, activeTopTab]);
 
   useEffect(() => {
     if (sessionToken) {

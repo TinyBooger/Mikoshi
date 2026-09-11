@@ -1,14 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
+import { AuthContext } from './AuthProvider';
+import { markOnboardingCompleted } from '../utils/onboarding';
+
+// Step targets (cards, sidebar create button) may not be in the DOM yet when the
+// tour opens — the feed is still loading or the sidebar is still animating in.
+// Poll briefly for the target instead of rendering nothing.
+const TARGET_RETRY_INTERVAL_MS = 250;
+const MAX_TARGET_RETRIES = 40;
 
 const OnboardingTour = ({ isOpen, onClose, startStep = 0, sidebarVisible, setSidebarVisible }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { userData } = useContext(AuthContext) || {};
+  const userId = userData?.id;
   const [currentStep, setCurrentStep] = useState(startStep);
   const [highlightPosition, setHighlightPosition] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const retryTimeoutRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
@@ -47,6 +58,7 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0, sidebarVisible, setSid
         window.removeEventListener('resize', updateHighlightPosition);
         window.removeEventListener('scroll', updateHighlightPosition);
         window.removeEventListener('keydown', handleKeyDown);
+        if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
       };
     }
   }, [isOpen, currentStep, mounted, setSidebarVisible]);
@@ -68,32 +80,50 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0, sidebarVisible, setSid
     }
   ];
 
-  const updateHighlightPosition = () => {
+  const updateHighlightPosition = (attempt = 0) => {
+    // Also invoked as a resize/scroll listener, where the first arg is an Event.
+    const retries = typeof attempt === 'number' ? attempt : 0;
     const step = steps[currentStep];
     if (!step) return;
 
     const element = document.querySelector(step.target);
-    if (element) {
-      // First scroll element into view smoothly
-      element.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'center',
-        inline: 'center'
-      });
 
-      // Wait for scroll to complete, then update position
-      setTimeout(() => {
-        const rect = element.getBoundingClientRect();
-        const padding = step.highlightPadding || 8;
-        setHighlightPosition({
-          top: rect.top + window.scrollY - padding,
-          left: rect.left + window.scrollX - padding,
-          width: rect.width + padding * 2,
-          height: rect.height + padding * 2,
-          position: step.position
-        });
-      }, 500); // Increased timeout to ensure scroll completes
+    if (!element) {
+      if (retries < MAX_TARGET_RETRIES) {
+        // Target not mounted yet — keep polling until it shows up.
+        retryTimeoutRef.current = setTimeout(
+          () => updateHighlightPosition(retries + 1),
+          TARGET_RETRY_INTERVAL_MS
+        );
+      } else if (currentStep < steps.length - 1) {
+        // Never appeared; move on rather than leaving the tour invisible.
+        setCurrentStep(currentStep + 1);
+      } else {
+        onClose();
+      }
+      return;
     }
+
+    // First scroll element into view smoothly
+    element.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+      inline: 'center'
+    });
+
+    // Wait for scroll to complete, then update position
+    retryTimeoutRef.current = setTimeout(() => {
+      const rect = element.getBoundingClientRect();
+      const padding = step.highlightPadding || 8;
+      setHighlightPosition({
+        step: currentStep,
+        top: rect.top + window.scrollY - padding,
+        left: rect.left + window.scrollX - padding,
+        width: rect.width + padding * 2,
+        height: rect.height + padding * 2,
+        position: step.position
+      });
+    }, 500); // Increased timeout to ensure scroll completes
   };
 
   const handleNext = () => {
@@ -111,7 +141,7 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0, sidebarVisible, setSid
   };
 
   const handleComplete = () => {
-    localStorage.setItem('onboarding_completed', 'true');
+    markOnboardingCompleted(userId);
     // Close sidebar on mobile when finishing onboarding
     if (setSidebarVisible && window.innerWidth < 768) {
       setSidebarVisible(false);
@@ -120,7 +150,7 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0, sidebarVisible, setSid
   };
 
   const handleSkip = () => {
-    localStorage.setItem('onboarding_completed', 'true');
+    markOnboardingCompleted(userId);
     // Close sidebar on mobile when skipping onboarding
     if (setSidebarVisible && window.innerWidth < 768) {
       setSidebarVisible(false);
@@ -131,7 +161,8 @@ const OnboardingTour = ({ isOpen, onClose, startStep = 0, sidebarVisible, setSid
   if (!isOpen || !mounted) return null;
 
   const currentStepData = steps[currentStep];
-  if (!highlightPosition) return null;
+  // Don't render using a highlight measured for a different (e.g. previous) step.
+  if (!highlightPosition || highlightPosition.step !== currentStep) return null;
 
   // Calculate tooltip position based on highlight and preferred position
   const getTooltipPosition = () => {
