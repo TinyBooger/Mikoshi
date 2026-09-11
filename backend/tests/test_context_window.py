@@ -211,6 +211,110 @@ class FullyPinnedHistoryTest(unittest.TestCase):
         self.assertEqual(sent_ids, {"p4", "p5"})
 
 
+class SystemPromptBudgetTest(unittest.TestCase):
+    """The character card is not a fold candidate.
+
+    It is subtracted from the per-turn budget instead of counting towards the
+    trigger. Counting it (the old ``naive_shape_estimate``) made the trigger a
+    constant: once system prompt + summary + recent turns crossed the
+    threshold, every subsequent request satisfied it.
+    """
+
+    def test_foldable_budget_excludes_the_system_prompt(self):
+        messages = [
+            _msg("system", _long_text(50)),
+            _msg("user", "hello there", message_id="u0"),
+            _msg("assistant", "hi", message_id="a0"),
+        ]
+        _compacted, info, state_update = _run(
+            compact_conversation_messages(messages, soft_token_limit=1000)
+        )
+        self.assertGreater(info["system_prompt_tokens"], 0)
+        self.assertEqual(
+            info["foldable_token_budget"], 1000 - info["system_prompt_tokens"]
+        )
+        self.assertIsNone(state_update)
+
+    @mock.patch("utils.context_window._summarize_with_prompt", side_effect=_fake_summarize)
+    def test_oversized_system_prompt_alone_cannot_fold_a_tiny_conversation(self, _fake):
+        # The card is bigger than the whole budget, but it can never be folded
+        # away, so the (tiny) foldable tail must not be summarized.
+        messages = [
+            _msg("system", _long_text(400)),
+            _msg("user", _long_text(50), message_id="u0"),
+            _msg("assistant", _long_text(50), message_id="a0"),
+            _msg("user", _long_text(50), message_id="u1"),
+        ]
+        compacted, info, state_update = _run(
+            compact_conversation_messages(messages, soft_token_limit=400)
+        )
+        self.assertGreater(info["system_prompt_tokens"], 400)
+        self.assertEqual(info["fold_skipped_reason"], "too_few_messages")
+        self.assertEqual(_fake.call_count, 0)
+        self.assertIsNone(state_update)
+        self.assertEqual(len(compacted), len(messages))
+
+
+class FoldAmortizationTest(unittest.TestCase):
+    """A fold must amortize several turns instead of running every request."""
+
+    CURSOR_STATE = {"branch_main": {"text": "old memory", "through_message_id": "m1"}}
+
+    def _history(self, extra_turns):
+        # Cursor sits on m1; everything after it is still raw.
+        messages = [
+            _msg("user", _long_text(50), message_id="m0"),
+            _msg(
+                "assistant",
+                _long_text(50),
+                message_id="m1",
+                usage=_usage(prompt_tokens=200),
+            ),
+        ]
+        for i in range(extra_turns):
+            role = "user" if i % 2 == 0 else "assistant"
+            messages.append(_msg(role, _long_text(50), message_id=f"x{i}"))
+        return messages
+
+    def _compact(self, extra_turns, **kwargs):
+        return _run(
+            compact_conversation_messages(
+                self._history(extra_turns),
+                soft_token_limit=200,
+                summary_state=self.CURSOR_STATE,
+                branch_id="branch_main",
+                **kwargs,
+            )
+        )
+
+    @mock.patch("utils.context_window._summarize_with_prompt", side_effect=_fake_summarize)
+    def test_single_aged_out_message_is_not_folded(self, _fake):
+        # Steady state: the cursor sits one message behind, so the fold window
+        # holds exactly one message. Folding it charged a full summarizer call
+        # to buy back a single turn — and then repeated on the next request.
+        _compacted, info, state_update = self._compact(3)
+        self.assertEqual(info["fold_skipped_reason"], "too_few_messages")
+        self.assertEqual(_fake.call_count, 0)
+        self.assertIsNone(state_update)
+
+    @mock.patch("utils.context_window._summarize_with_prompt", side_effect=_fake_summarize)
+    def test_fold_waits_until_enough_messages_accumulate(self, _fake):
+        compacted, info, state_update = self._compact(6)
+        self.assertEqual(_fake.call_count, 1)
+        self.assertEqual(state_update["through_message_id"], "x3")
+        self.assertGreater(info["fold_saving_tokens"], 0)
+        sent_ids = {m.get("message_id") for m in compacted if m.get("message_id")}
+        self.assertEqual(sent_ids, {"x4", "x5"})
+
+    @mock.patch("utils.context_window._summarize_with_prompt", side_effect=_fake_summarize)
+    def test_emergency_pass_ignores_the_minimum_fold_size(self, _fake):
+        # Same single-candidate window as above, but the fail-closed rung must
+        # still shed messages: the gates only apply to normal compaction.
+        _compacted, _info, state_update = self._compact(3, force_compact=True)
+        self.assertIsNotNone(state_update)
+        self.assertEqual(state_update["through_message_id"], "x0")
+
+
 class EstimateGuardInputTest(unittest.TestCase):
     """The folded-vs-not-folded guard detection the route depends on."""
 

@@ -22,12 +22,28 @@ SUMMARY_SYSTEM_PROMPT = (
 DEFAULT_SOFT_TOKEN_LIMIT = 8000
 DEFAULT_RECENT_MESSAGE_COUNT = 2
 DEFAULT_SUMMARY_MAX_TOKENS = 300
-# Compaction fires when the estimated request size reaches this fraction of
-# the per-turn INPUT budget (not the raw context window — see routes/chat.py,
-# which derives the budget and reserves output room there). The ratio exists
-# to absorb token-estimator error; 0.95 left far too little margin, and it
-# was applied against the wrong (context_length) denominator.
+# Compaction fires when the estimated size of the FOLDABLE request (summary +
+# conversation) reaches this fraction of the per-turn INPUT budget left after
+# the character card / system prompt is paid for (not the raw context window —
+# see routes/chat.py, which derives the budget and reserves output room there).
+# The ratio exists to absorb token-estimator error; 0.95 left far too little
+# margin, and it was applied against the wrong (context_length) denominator.
+#
+# The system prompt must NOT be part of the numerator: it is never a fold
+# candidate, so counting it made the trigger a constant once
+# ``system prompt + summary + recent turns`` crossed the threshold — see
+# compact_conversation_messages for how the budget is split.
 DEFAULT_COMPACTION_TRIGGER_RATIO = 0.85
+
+# A fold costs one non-streaming summarizer round-trip plus a rewrite of the
+# stored summary, so it has to be worth doing. In steady state the fold window
+# ("everything after the cursor minus the recent tail") is exactly ONE message
+# once the cursor is current: folding it bought back a single turn while
+# charging an LLM call, so the summarizer ran on every request. Requiring a
+# minimum number of messages — and a minimum reclaimed size — makes a fold
+# amortize several turns of history instead.
+DEFAULT_MIN_FOLD_MESSAGES = 4
+DEFAULT_MIN_FOLD_SAVING_TOKENS = 64
 
 # Fail-closed guard cushions (see estimate_guard_input). These are placeholders
 # invented to absorb estimator error, NOT derived from real error data: the
@@ -246,6 +262,8 @@ async def compact_conversation_messages(
     branch_id: Optional[str] = None,
     measure_only: bool = False,
     force_compact: bool = False,
+    min_fold_messages: int = DEFAULT_MIN_FOLD_MESSAGES,
+    min_fold_saving_tokens: int = DEFAULT_MIN_FOLD_SAVING_TOKENS,
 ) -> Tuple[List[dict], Dict[str, object], Optional[dict]]:
     sanitized = _sanitize_messages(messages)
     empty_info = {
@@ -263,6 +281,12 @@ async def compact_conversation_messages(
         "sent_estimate_tokens": 0,
         "estimated_new_tokens": 0,
         "trigger_input_tokens": 0,
+        "compaction_trigger_tokens": 0,
+        "system_prompt_tokens": 0,
+        "foldable_token_budget": 0,
+        "fold_candidate_tokens": 0,
+        "fold_saving_tokens": 0,
+        "fold_skipped_reason": None,
     }
     if not sanitized:
         return [], empty_info, None
@@ -270,7 +294,8 @@ async def compact_conversation_messages(
     effective_soft_token_limit = max(1, int(soft_token_limit or DEFAULT_SOFT_TOKEN_LIMIT))
     effective_recent_message_count = max(1, int(recent_message_count))
     effective_summary_max_tokens = max(64, int(summary_max_tokens))
-    compaction_trigger_tokens = max(1, int(effective_soft_token_limit * DEFAULT_COMPACTION_TRIGGER_RATIO))
+    effective_min_fold_messages = max(1, int(min_fold_messages))
+    effective_min_fold_saving_tokens = max(0, int(min_fold_saving_tokens))
 
     latest_usage = _latest_assistant_usage(sanitized)
     usage_input_tokens = latest_usage["prompt_tokens"]
@@ -328,6 +353,13 @@ async def compact_conversation_messages(
     # measurement). The naive estimator is deliberately just a pre-first-request
     # fallback and a floor against edits/pinning, never the primary signal once
     # real usage exists.
+    #
+    # Everything below is measured over the FOLDABLE portion only (summary +
+    # conversation). The character card / system prompt is a fixed cost that no
+    # amount of folding can reclaim, so it is subtracted from the budget rather
+    # than counted towards the trigger — counting it made the trigger
+    # permanently true once system prompt + summary + recent turns crossed the
+    # threshold, which is what made the summarizer fire on every request.
     pinned_indexes = {i for i, m in enumerate(conversation_messages) if id(m) in pinned_ids}
 
     def _message_in_request(index: int) -> bool:
@@ -338,11 +370,17 @@ async def compact_conversation_messages(
             return index in pinned_indexes or index > (cursor_index if cursor_index is not None else -1)
         return True
 
-    # Floor / fallback: naive estimate of the un-compacted request.
-    naive_shape_estimate = _estimate_messages(system_messages)
-    if summary_text:
-        naive_shape_estimate += _estimate_tokens(summary_text)
-    naive_shape_estimate += _estimate_messages(
+    # Budget split: the system prompt is paid for first, and only what is left
+    # can be spent on the summary + conversation the fold can actually shrink.
+    system_prompt_tokens = _estimate_messages(system_messages)
+    foldable_token_budget = max(1, effective_soft_token_limit - system_prompt_tokens)
+    compaction_trigger_tokens = max(1, int(foldable_token_budget * DEFAULT_COMPACTION_TRIGGER_RATIO))
+
+    # Floor / fallback: naive estimate of the foldable part of the request —
+    # what would actually be sent when compaction does NOT run. The system
+    # prompt is excluded (see the budget split above).
+    naive_foldable_estimate = _estimate_tokens(summary_text) if summary_text else 0
+    naive_foldable_estimate += _estimate_messages(
         m for i, m in enumerate(conversation_messages) if _message_in_request(i)
     )
 
@@ -363,16 +401,26 @@ async def compact_conversation_messages(
             for i, m in enumerate(conversation_messages)
             if i > measured_anchor_index and _message_in_request(i)
         )
-        trigger_estimate = max(measured_anchor_tokens + estimated_new_tokens, naive_shape_estimate)
+        # The measured prompt_tokens covers the whole request of that turn, so
+        # strip the system prompt to keep both sides of the comparison on the
+        # foldable portion only (`estimated_new_tokens` is already messages-only).
+        measured_foldable_anchor = max(0, measured_anchor_tokens - system_prompt_tokens)
+        trigger_estimate = max(
+            measured_foldable_anchor + estimated_new_tokens,
+            naive_foldable_estimate,
+        )
     else:
         # No measured request yet (first turn / legacy history): the naive
         # estimate is the only signal, and the whole shape is unmeasured.
-        estimated_new_tokens = naive_shape_estimate
-        trigger_estimate = naive_shape_estimate
+        estimated_new_tokens = naive_foldable_estimate
+        trigger_estimate = naive_foldable_estimate
 
     should_compact = trigger_estimate >= compaction_trigger_tokens
 
     summary_state_update: Optional[dict] = None
+    fold_candidate_tokens = 0
+    fold_saving_tokens = 0
+    fold_skipped_reason: Optional[str] = None
     if not measure_only and conversation_messages and (should_compact or force_compact):
         if force_compact:
             # Emergency pass (routes/chat.py fail-closed rung): fold everything
@@ -396,8 +444,24 @@ async def compact_conversation_messages(
             old_messages = unpinned_messages[:-effective_recent_message_count]
         recent_raw_ids = {id(m) for m in recent_raw}
         old_messages = [m for m in old_messages if id(m) not in recent_raw_ids]
+        fold_candidate_tokens = _estimate_messages(old_messages)
 
-        if old_messages:
+        # --- Is this fold worth an extra summarizer round-trip? -------------
+        # Folding a single aged-out message charges a full non-streaming LLM
+        # call to buy back one turn, and because the cursor then sits one
+        # message behind again it repeats on the very next request. Require a
+        # minimum number of candidates (and a minimum reclaimable size) so a
+        # fold amortizes several turns instead. Neither gate applies to the
+        # emergency force pass: its whole purpose is to shed messages now.
+        if not old_messages:
+            fold_skipped_reason = "nothing_to_fold"
+        elif not force_compact:
+            if len(old_messages) < effective_min_fold_messages:
+                fold_skipped_reason = "too_few_messages"
+            elif fold_candidate_tokens <= effective_min_fold_saving_tokens:
+                fold_skipped_reason = "not_worth_it"
+
+        if old_messages and fold_skipped_reason is None:
             previous_text = summary_text
             summary_message, summary_usage = await _build_summary_message(
                 previous_text,
@@ -410,6 +474,16 @@ async def compact_conversation_messages(
             folded_ok = summary_message is not None and (
                 summary_usage["total_tokens"] > 0 or not previous_text
             )
+            # ...and only when the fold genuinely reclaims context. A summary
+            # as large as the messages it replaces would drop them from the
+            # request without shrinking it, so the raw messages are cheaper.
+            if folded_ok:
+                fold_saving_tokens = fold_candidate_tokens - _estimate_tokens(
+                    _extract_summary_body(summary_message)
+                )
+                if not force_compact and fold_saving_tokens < effective_min_fold_saving_tokens:
+                    folded_ok = False
+                    fold_skipped_reason = "no_saving"
             if folded_ok:
                 last_message_id = str(old_messages[-1].get("message_id") or "").strip()
                 resolved_index = _find_message_index(conversation_messages, last_message_id)
@@ -467,4 +541,9 @@ async def compact_conversation_messages(
         "sent_estimate_tokens": estimated_input_tokens,
         "estimated_new_tokens": estimated_new_tokens,
         "trigger_input_tokens": trigger_estimate,
+        "system_prompt_tokens": system_prompt_tokens,
+        "foldable_token_budget": foldable_token_budget,
+        "fold_candidate_tokens": fold_candidate_tokens,
+        "fold_saving_tokens": fold_saving_tokens,
+        "fold_skipped_reason": fold_skipped_reason,
     }, summary_state_update
