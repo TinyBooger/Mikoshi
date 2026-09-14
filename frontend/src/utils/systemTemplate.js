@@ -1,3 +1,5 @@
+import { MARKDOWN_GUIDE } from './markdownGuide';
+
 export function buildSystemMessage(
   characterName,
   characterPersona,
@@ -56,6 +58,9 @@ export function buildSystemMessage(
     { role: 'system', content: longDescriptionText, identifier: 'longDescription' },
     { role: 'system', content: exampleDialoguesText, identifier: 'exampleDialogues' },
     { role: 'system', content: contextInfo, identifier: 'contextInfo' },
+    // Placed last-but-one so the formatting rules sit next to the completion
+    // prompt, where they are most likely to be followed.
+    { role: 'system', content: MARKDOWN_GUIDE, identifier: 'markdownGuide' },
     { role: 'system', content: completionPrompt, identifier: 'completionPrompt' },
   ];
 
