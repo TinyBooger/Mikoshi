@@ -5,6 +5,9 @@ import App from './App.jsx';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import 'bootstrap-icons/font/bootstrap-icons.css';
+// KaTeX ships its own font metrics/faces; without this stylesheet math renders
+// as unstyled overlapping glyphs.
+import 'katex/dist/katex.min.css';
 import { AuthProvider } from './components/AuthProvider';
 import ToastProvider from './components/ToastProvider';
 import { errorLogger } from './utils/errorLogger';

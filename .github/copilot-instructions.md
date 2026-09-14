@@ -6,6 +6,11 @@
 - Do not run terminal commands to check backend Python syntax unless the user explicitly requests it.
 - Continue to run focused tests or other validation explicitly requested by the user.
 
+## Dependency installs
+
+- Package installs are handled manually by the user. Never run `npm install`, `pip install`, or similar commands.
+- When new dependencies are needed, list the exact packages and the command the user should run, then stop.
+
 ## File deletion policy
 
 - Never delete or rename files via terminal commands (`Remove-Item`, `rm`, `mv`, etc.).

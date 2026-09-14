@@ -3,22 +3,29 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, useOutletContext } from 'react-router';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeHighlight from 'rehype-highlight';
 import { buildSystemMessage } from '../utils/systemTemplate';
 import '../styles/ChatBubble.css';
 import { AuthContext } from '../components/AuthProvider';
 import CharacterModal from '../components/CharacterModal';
 import CharacterSidebar from '../components/CharacterSidebar';
+import CodeBlock from '../components/CodeBlock';
 import PersonaModal from '../components/PersonaModal';
 import SceneCharacterSelectModal from '../components/SceneCharacterSelectModal';
 import ConfirmModal from '../components/ConfirmModal';
 import PageWrapper from '../components/PageWrapper';
 import MessageBubble from '../components/MessageBubble';
 import ContextWindowIndicator from '../components/ContextWindowIndicator';
+import MarkdownLink from '../components/MarkdownLink';
 import { CreditLockedBanner, BanBanner } from '../components/ChatBanners';
 import ChatWelcomeCard from '../components/ChatWelcomeCard';
 import { useToast } from '../components/ToastProvider';
 import { getModelConfig, AVAILABLE_MODEL_IDS, ALLOWED_MODEL_SET } from '../utils/modelConfigs';
 import { isCreditLocked } from '../utils/creditCheck';
+import { copyTextToClipboard } from '../utils/clipboard';
+import { HIGHLIGHT_ALIASES, HIGHLIGHT_LANGUAGES } from '../utils/highlightLanguages';
 import {
   normalizeChatEntry,
   computeForkNav,
@@ -39,6 +46,56 @@ const WALLPAPER_OPTIONS = [
   { id: 'sunrise', url: '/wallpapers/sunrise.svg' },
   { id: 'waves', url: '/wallpapers/waves.svg' },
 ];
+
+// Markdown pipeline for message bubbles.
+//
+// Remark (markdown -> mdast): GFM for tables/strikethrough/task lists/footnotes,
+// plus math so `$inline$` and `$$display$$` are parsed as math instead of text.
+const REMARK_PLUGINS = [remarkGfm, remarkMath];
+
+// Rehype (hast -> hast) runs in array order, so KaTeX must come first: it
+// rewrites the math `code` nodes into KaTeX spans before the highlighter scans
+// for `pre > code`. Otherwise a display block would look like a code block whose
+// language is `math`.
+const REHYPE_PLUGINS = [
+  [
+    rehypeKatex,
+    {
+      // rehype-katex always renders with `throwOnError` first and falls back to
+      // a `<span class="katex-error">` on failure, so a malformed formula shows
+      // as an inline error instead of blanking the message.
+      errorColor: '#e0574d',
+      // Silence KaTeX's non-standard-input warnings (unicode, etc.) that models
+      // trigger constantly. Genuine parse errors still surface as above.
+      strict: false,
+    },
+  ],
+  [
+    rehypeHighlight,
+    {
+      // Only highlight fences that declare a language: guessing on plain text
+      // produces more wrong colors than useful ones. Unregistered languages
+      // (```mermaid, ```output) are skipped with a vfile message by the plugin
+      // itself, so they degrade to plain text instead of failing.
+      detect: false,
+      // Replaces lowlight's `common` default (37 grammars) rather than extending
+      // it — see utils/highlightLanguages.js for the set and the reasoning.
+      // `subset` is not used here: it only narrows what `detect` may guess.
+      languages: HIGHLIGHT_LANGUAGES,
+      aliases: HIGHLIGHT_ALIASES,
+    },
+  ],
+];
+
+// Renderer overrides for the markdown pipeline.
+//
+// Kept at module scope so the object identity is stable across renders — an
+// inline object literal would be a new value every render, which defeats the
+// React.memo on MessageBubble during streaming.
+const MARKDOWN_COMPONENTS = {
+  pre: CodeBlock,
+  a: MarkdownLink,
+};
 
 const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
 const SHARED_TOKEN_TIERS = [1024, 2048, 4096, 6144, 8192];
@@ -1507,22 +1564,10 @@ export default function ChatPage() {
   const handleCopyMessage = async (message) => {
     const content = message?.content;
     if (typeof content !== 'string' || !content.trim()) return;
-    try {
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(content);
-      } else {
-        const input = document.createElement('textarea');
-        input.value = content;
-        input.style.position = 'fixed';
-        input.style.opacity = '0';
-        document.body.appendChild(input);
-        input.select();
-        document.execCommand('copy');
-        document.body.removeChild(input);
-      }
+    const copied = await copyTextToClipboard(content);
+    if (copied) {
       toast.show('已复制到剪贴板。', { type: 'success' });
-    } catch (error) {
-      console.error('Failed to copy message:', error);
+    } else {
       toast.show('复制失败，请手动复制。', { type: 'error' });
     }
   };
@@ -1614,7 +1659,8 @@ export default function ChatPage() {
     }
   };
 
-  // Parse message content as standard Markdown via react-markdown + GFM.
+  // Parse message content as standard Markdown via react-markdown + GFM,
+  // LaTeX math ($inline$ / $$display$$) and syntax-highlighted code fences.
   // Italic (*text*), bold (**text**), lists, code blocks, line breaks, etc.
   // are all handled natively.
   const renderMessageContent = (text, role) => {
@@ -1625,7 +1671,11 @@ export default function ChatPage() {
     const content = role === 'user' ? text.replace(/([^\n])\n(?!\n)/g, '$1  \n') : text;
     return (
       <div className="chat-markdown">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        <ReactMarkdown
+          remarkPlugins={REMARK_PLUGINS}
+          rehypePlugins={REHYPE_PLUGINS}
+          components={MARKDOWN_COMPONENTS}
+        >
           {content}
         </ReactMarkdown>
       </div>

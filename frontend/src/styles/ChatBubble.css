@@ -97,6 +97,24 @@
   margin-bottom: 0;
 }
 
+/* GFM task lists.
+   mdast-util-to-hast tags the `<li>` with `task-list-item` and prepends a
+   disabled `<input type="checkbox">` to its paragraph, but leaves the parent
+   `<ul>`/`<ol>` unmarked. The bullet is therefore suppressed on the item
+   itself, and the list's marker gutter is reclaimed with a negative margin
+   rather than by a parent selector. */
+.chat-markdown li.task-list-item {
+  list-style: none;
+  /* Cancels most of the parent list's 1.4em marker gutter */
+  margin-left: -1.15em;
+}
+
+/* Top-align the box with the text instead of the baseline */
+.chat-markdown li.task-list-item input[type="checkbox"] {
+  margin: 0 0.4em 0 0;
+  vertical-align: -0.1em;
+}
+
 /* Blockquotes */
 .chat-markdown blockquote {
   margin: 0.3em 0;
@@ -117,6 +135,17 @@
   color: inherit;
   text-decoration: underline;
   opacity: 0.9;
+}
+
+/* Images.
+   Without an intrinsic cap a single wide image pushes the bubble past the
+   message column and gives the whole thread a horizontal scrollbar. */
+.chat-markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  /* Removes the descender gap underneath inline images */
+  vertical-align: middle;
 }
 
 /* Tables (GFM) */
@@ -156,3 +185,297 @@
 .chat-markdown h4 { font-size: 0.96em; }
 .chat-markdown h5 { font-size: 0.9em; }
 .chat-markdown h6 { font-size: 0.84em; }
+
+/* ---------------------------------------------------------------------------
+ * Footnotes (GFM)
+ * mdast-util-to-hast emits an inline `<sup><a data-footnote-ref>` per call and
+ * collects the definitions into a trailing `<section data-footnotes>` whose
+ * list items carry the back-reference links.
+ * ------------------------------------------------------------------------- */
+
+.chat-markdown .footnotes {
+  margin-top: 0.9em;
+  padding-top: 0.5em;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 0.88em;
+  opacity: 0.85;
+}
+
+.chat-markdown .footnotes ol {
+  margin: 0;
+}
+
+/* The section is titled, but the title is meant to be screen-reader-only.
+   mdast-util-to-hast labels it with GitHub's `.sr-only`, which Bootstrap 5
+   renamed to `.visually-hidden` — so without this the heading renders as a
+   visible "Footnotes" title above the list. */
+.chat-markdown .footnotes .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Inline reference number: not a real link, so no underline */
+.chat-markdown a[data-footnote-ref] {
+  text-decoration: none;
+  padding: 0 0.15em;
+  font-weight: 600;
+}
+
+/* The ↩ link from a definition back to its reference */
+.chat-markdown a[data-footnote-backref] {
+  text-decoration: none;
+  margin-left: 0.3em;
+  opacity: 0.6;
+}
+
+.chat-markdown a[data-footnote-backref]:hover {
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------------------
+ * Math (KaTeX)
+ * KaTeX's own stylesheet (katex/dist/katex.min.css) supplies font metrics and
+ * glyph faces; the rules below only adapt it to the chat bubble.
+ * ------------------------------------------------------------------------- */
+
+/* Slightly smaller than KaTeX's 1.21em default, which is oversized in a bubble */
+.chat-markdown .katex {
+  font-size: 1.05em;
+}
+
+/* Display math ($$...$$) arrives from remark-math wrapped in a `<pre>`
+   (mdast-util-math sets `hName: 'pre'`), but rehype-katex replaces that whole
+   `<pre>` with its KaTeX output — so by render time there is no `<pre>` left and
+   no code-block chrome to strip. Only the KaTeX wrappers need styling. */
+
+/* Wide equations scroll horizontally instead of overflowing the bubble.
+   Vertical padding keeps tall fractions/radicals from being clipped. */
+.chat-markdown .katex-display {
+  margin: 0.6em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+
+.chat-markdown .katex-display:last-child {
+  margin-bottom: 0;
+}
+
+/* Malformed LaTeX is rendered by rehype-katex as a `<span class="katex-error">`
+   (it retries with throwOnError disabled and generates this markup itself)
+   rather than blanking the message. `errorColor` sets the inline color. */
+.chat-markdown .katex-error {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+/* ---------------------------------------------------------------------------
+ * Syntax highlighting (rehype-highlight / highlight.js token classes)
+ * Palette is GitHub-light-like and tuned to sit on the bubble's translucent
+ * code background rather than a solid one.
+ * ------------------------------------------------------------------------- */
+
+.chat-markdown pre code.hljs {
+  display: block;
+  background: transparent;
+  color: #24292e;
+}
+
+/* Comments and quotes */
+.chat-markdown .hljs-comment,
+.chat-markdown .hljs-quote {
+  color: #6a737d;
+  font-style: italic;
+}
+
+/* Keywords, tags, literals */
+.chat-markdown .hljs-keyword,
+.chat-markdown .hljs-selector-tag,
+.chat-markdown .hljs-literal,
+.chat-markdown .hljs-doctag,
+.chat-markdown .hljs-name {
+  color: #d73a49;
+}
+
+/* Function and class names */
+.chat-markdown .hljs-function .hljs-title,
+.chat-markdown .hljs-title.function_,
+.chat-markdown .hljs-title.class_,
+.chat-markdown .hljs-attribute,
+.chat-markdown .hljs-selector-id,
+.chat-markdown .hljs-selector-class {
+  color: #6f42c1;
+}
+
+/* Numbers, built-ins, types */
+.chat-markdown .hljs-number,
+.chat-markdown .hljs-built_in,
+.chat-markdown .hljs-type,
+.chat-markdown .hljs-params {
+  color: #005cc5;
+}
+
+/* Strings and regexes */
+.chat-markdown .hljs-string,
+.chat-markdown .hljs-attr,
+.chat-markdown .hljs-regexp,
+.chat-markdown .hljs-addition,
+.chat-markdown .hljs-selector-attr,
+.chat-markdown .hljs-selector-pseudo {
+  color: #032f62;
+}
+
+/* Variables, symbols, diff markers */
+.chat-markdown .hljs-variable,
+.chat-markdown .hljs-template-variable,
+.chat-markdown .hljs-symbol,
+.chat-markdown .hljs-bullet,
+.chat-markdown .hljs-meta {
+  color: #e36209;
+}
+
+/* Tags and section headings */
+.chat-markdown .hljs-section,
+.chat-markdown .hljs-title {
+  color: #22863a;
+  font-weight: 600;
+}
+
+/* Diff / patch blocks */
+.chat-markdown .hljs-deletion {
+  color: #b31d28;
+  background: rgba(215, 58, 73, 0.08);
+}
+
+.chat-markdown .hljs-addition {
+  background: rgba(34, 134, 58, 0.08);
+}
+
+/* Emphasis inside comments */
+.chat-markdown .hljs-emphasis {
+  font-style: italic;
+}
+
+.chat-markdown .hljs-strong {
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------
+ * Code block chrome (CodeBlock.jsx)
+ * The `<pre>` is replaced by a wrapper carrying the language label and a
+ * per-block copy button. The wrapper owns the background and radius so the
+ * header and the code read as one surface; the inner `<pre>` goes transparent.
+ * ------------------------------------------------------------------------- */
+
+.chat-markdown .code-block {
+  margin: 0.5em 0;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.05);
+  /* Clips the header's square corners to the rounded wrapper */
+  overflow: hidden;
+}
+
+.chat-markdown .code-block:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown .code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.15em 0.4em 0.15em 0.8em;
+  font-size: 0.75em;
+  line-height: 1.7;
+  color: rgba(0, 0, 0, 0.45);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Empty when the fence declares no language — the copy button stays right */
+.chat-markdown .code-block-language {
+  user-select: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-markdown .code-block-copy {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 0.95rem;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.chat-markdown .code-block-copy:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.chat-markdown .code-block-copy:focus-visible {
+  outline: 2px solid #0066cc;
+  outline-offset: 1px;
+}
+
+/* Inner <pre> drops its own chrome; the wrapper provides background + radius.
+   Horizontal scrolling still happens here so the wrapper's overflow:hidden
+   can't clip wide code. */
+.chat-markdown .code-block pre {
+  background: none;
+  border-radius: 0;
+  margin: 0;
+  padding: 0.6em 0.8em;
+}
+
+/* ---------------------------------------------------------------------------
+ * Mermaid diagrams (MermaidDiagram.jsx)
+ * mermaid's own theme paints light node fills on a transparent canvas, so the
+ * container supplies a near-white surface to keep the diagram legible against
+ * the tinted bubble background.
+ * ------------------------------------------------------------------------- */
+
+.chat-markdown .mermaid-diagram {
+  margin: 0.5em 0;
+  padding: 0.6em;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.7);
+  /* Last-resort guard: `useMaxWidth` normally makes the SVG fit already */
+  overflow-x: auto;
+}
+
+.chat-markdown .mermaid-diagram:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown .mermaid-diagram svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+/* Shown while mermaid is loading or the diagram is being (re)parsed */
+.chat-markdown .mermaid-diagram-pending {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.5em;
+  font-size: 0.85em;
+  color: rgba(0, 0, 0, 0.4);
+}
