@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { copyTextToClipboard } from '../utils/clipboard';
-import MermaidDiagram from './MermaidDiagram';
 
 /**
  * Flatten a rendered React children tree back to plain text.
@@ -60,7 +59,7 @@ const CodeBlock = ({ node, children, ...props }) => {
 
   const language = LANGUAGE_RE.exec(className)?.[1] || '';
 
-  const codeBlock = (
+  return (
     <div className="code-block">
       <div className="code-block-header">
         <span className="code-block-language">{language}</span>
@@ -77,16 +76,6 @@ const CodeBlock = ({ node, children, ...props }) => {
       <pre {...props}>{children}</pre>
     </div>
   );
-
-  // ```mermaid fences become real diagrams. rehype-highlight leaves the source
-  // as plain text because `mermaid` isn't a registered grammar, so `code` is the
-  // raw diagram definition. MermaidDiagram hands `codeBlock` back whenever the
-  // diagram can't be drawn, so the source is never lost.
-  if (language === 'mermaid') {
-    return <MermaidDiagram code={code.trim()} fallback={codeBlock} />;
-  }
-
-  return codeBlock;
 };
 
 export default CodeBlock;

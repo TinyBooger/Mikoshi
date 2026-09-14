@@ -51,7 +51,7 @@ export const REHYPE_PLUGINS = [
       // Only highlight fences that declare a language: guessing on plain text
       // produces more wrong colors than useful ones. Unregistered languages
       // (```mermaid, ```output) are skipped with a vfile message by the plugin
-      // itself, so they degrade to plain text instead of failing.
+      // itself, so they degrade to plain code blocks instead of failing.
       detect: false,
       // Replaces lowlight's `common` default (37 grammars) rather than extending
       // it — see utils/highlightLanguages.js for the set and the reasoning.

@@ -169,7 +169,6 @@ Mikoshi-MonoRepo
 │  │  │  ├─ UpdateNotificationModal.jsx
 │  │  │  ├─ UserCard.jsx
 │  │  │  └─ WeChatPayModal.jsx
-│  │  ├─ firebase.js
 │  │  ├─ hooks
 │  │  ├─ i18n.js
 │  │  ├─ locales
