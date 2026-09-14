@@ -41,9 +41,11 @@
   margin-bottom: 0;
 }
 
-/* Italic */
+/* Italic: kept at low opacity because the italic variant of the body face is
+ * near-identical to the roman one, so slant alone doesn't read as emphasis. */
 .chat-markdown em {
   font-style: italic;
+  opacity: 0.65;
 }
 
 /* Bold */
