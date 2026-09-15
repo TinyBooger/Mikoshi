@@ -15,13 +15,13 @@ const aliasesOf = (grammar) => {
 
 // Every fence name the renderer actually understands, derived from the
 // registered grammars instead of hand-written so it cannot drift out of sync
-// with what the highlighter and CodeBlock really support.
+// with what the highlighter and CodeBlock really support. `mermaid` is
+// deliberately absent: CodeBlock renders every fence as a plain code block, so
+// listing it here would advertise a diagram renderer that does not exist.
 const FENCE_LANGUAGES = [...new Set([
   ...Object.keys(HIGHLIGHT_LANGUAGES),
   ...Object.values(HIGHLIGHT_LANGUAGES).flatMap(aliasesOf),
   ...Object.values(HIGHLIGHT_ALIASES).flat(),
-  // Not a highlight.js grammar — CodeBlock routes this fence to MermaidDiagram.
-  'mermaid',
 ])].sort().join(', ');
 
 // Three backticks, kept in a constant so the guide below can use a template
@@ -33,7 +33,8 @@ const FENCE = '```';
  *
  * Mirrors what the pipeline in chatPageConstants.js + ChatBubble.css actually
  * renders, so the model is told about real capabilities and real limits (no raw
- * HTML, math instead of paired dollar signs) rather than generic Markdown lore.
+ * HTML, no mermaid/diagram fences, math instead of paired dollar signs) rather
+ * than generic Markdown lore.
  */
 export const MARKDOWN_GUIDE = `[输出格式]
 回复使用 Markdown 语法，渲染器支持：
@@ -45,7 +46,6 @@ export const MARKDOWN_GUIDE = `[输出格式]
 - 引用：行首加 "> "。分割线：单独一行写 "---"。
 - 行内代码：用单个反引号包裹，例如 \`code\`。
 - 代码块：用三个反引号包裹并在开头注明语言，例如 ${FENCE}python。可高亮的语言：${FENCE_LANGUAGES}
-- 图表：语言名写 mermaid 的代码块会渲染为流程图、时序图、类图、状态图、甘特图等；语法有误时自动回退为普通代码块。
 - 表格：GFM 管道表格，必须有表头分隔行；用 :---、:---:、---: 控制左、中、右对齐。
 - 链接：[文字](https://example.com)。站内相对路径在应用内跳转，外部链接的新标签页打开。
 - 图片：![说明](https://example.com/a.png)。
@@ -53,6 +53,7 @@ export const MARKDOWN_GUIDE = `[输出格式]
 - 脚注：正文写 [^1]，文末写 "[^1]: 说明"。
 - 裸网址会自动变成链接。
 - 不支持原生 HTML，<div> 这类标签会原样显示为文字。
+- 不支持 mermaid，也不支持任何图表语法：${FENCE}mermaid 及类似的代码块不会渲染成图，只会原样显示为普通代码块文字。需要展示结构时请改用列表、表格或纯文本示意。
 
 格式只为可读性服务：对话、动作和心理描写请用自然段落，只有在列举、代码、表格、公式确实必要时才使用结构化语法。
 [/输出格式]`;
