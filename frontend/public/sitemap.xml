@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  语伴岛 sitemap — hand-maintained, no <lastmod> (a wrong lastmod is worse than
+  none; Baidu will re-crawl on its own schedule anyway).
+
+  Only canonical URLs are listed. The alias forms are deliberately excluded
+  because they render byte-identical content and should consolidate:
+    /browse                     -> /
+    /browse/characters          -> /
+    /browse/characters/popular  -> /
+    /browse/<tab>               -> /browse/<tab>/popular   (or /total_rank for users)
+
+  "/browse/*/recommended" is also excluded: it is personalized, so there is no
+  single indexable version of it.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Landing page (characters / popular) -->
+  <url>
+    <loc>https://yubandao.com/</loc>
+  </url>
+
+  <!-- Characters -->
+  <url>
+    <loc>https://yubandao.com/browse/characters/recent</loc>
+  </url>
+
+  <!-- Scenes -->
+  <url>
+    <loc>https://yubandao.com/browse/scenes/popular</loc>
+  </url>
+  <url>
+    <loc>https://yubandao.com/browse/scenes/recent</loc>
+  </url>
+
+  <!-- Personas -->
+  <url>
+    <loc>https://yubandao.com/browse/personas/popular</loc>
+  </url>
+  <url>
+    <loc>https://yubandao.com/browse/personas/recent</loc>
+  </url>
+
+  <!-- Creators -->
+  <url>
+    <loc>https://yubandao.com/browse/users/total_rank</loc>
+  </url>
+  <url>
+    <loc>https://yubandao.com/browse/users/recent_updated</loc>
+  </url>
+
+  <!-- Legal -->
+  <url>
+    <loc>https://yubandao.com/terms-of-service</loc>
+  </url>
+  <url>
+    <loc>https://yubandao.com/privacy-policy</loc>
+  </url>
+</urlset>

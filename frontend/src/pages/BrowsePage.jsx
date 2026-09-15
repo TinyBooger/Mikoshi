@@ -11,6 +11,7 @@ import UpdateNotificationModal from '../components/UpdateNotificationModal';
 import MessageCenter from '../components/MessageCenter';
 import BanNotice from '../components/BanNotice';
 import AppealModal from '../components/AppealModal';
+import IcpFiling from '../components/IcpFiling';
 import { isOnboardingCompleted } from '../utils/onboarding';
 import logo from '../assets/images/logo.png';
 import textLogo from '../assets/images/logo_text.png';
@@ -1265,6 +1266,10 @@ function BrowsePage() {
           {feedHasMore && !isFeedLoading && <div ref={feedLoadMoreRef} style={{ height: 1, width: '100%' }} />}
         </div>
       )}
+
+      {/* ICP filing — required on the homepage. `/` renders this page for
+          anonymous visitors, so it must appear here and not only on /login. */}
+      <IcpFiling variant="inline" />
 
       <button
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}

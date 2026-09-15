@@ -1,0 +1,46 @@
+User-agent: *
+Allow: /
+
+# --- Crawlable public pages -------------------------------------------------
+# Everything below is public and intentionally indexable:
+#   /                       (landing = characters/popular)
+#   /browse/<tab>/<sub>
+#   /terms-of-service, /privacy-policy
+# Nothing else needs an explicit Allow.
+
+# --- API ----------------------------------------------------------------
+# Never crawlable. Keeps JSON responses out of the index and out of the
+# crawl budget, and avoids hitting rate limits on endpoints meant for the app.
+Disallow: /api/
+
+# --- Auth / account pages (thin, no indexable content) ------------------
+Disallow: /login
+Disallow: /sign-up
+Disallow: /reset-password
+
+# --- Authenticated app surfaces -----------------------------------------
+# These render a client-side redirect to /login for anonymous visitors, so a
+# crawler gets an empty shell. Blocking them stops soft-404 pollution.
+Disallow: /chat
+Disallow: /profile
+Disallow: /settings
+Disallow: /search
+Disallow: /test
+
+# --- Order / payment flows ----------------------------------------------
+Disallow: /order/
+Disallow: /pro-upgrade
+Disallow: /credit-topup
+Disallow: /alipay/
+
+# --- Content authoring + detail pages -----------------------------------
+# Detail pages (/:type/:id) are auth-gated by design, so they are not
+# indexable. The prefixes also cover create/edit/fork forms.
+Disallow: /character/
+Disallow: /persona/
+Disallow: /scene/
+
+# --- Admin ---------------------------------------------------------------
+Disallow: /admin
+
+Sitemap: https://yubandao.com/sitemap.xml
