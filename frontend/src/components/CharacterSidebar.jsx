@@ -750,7 +750,12 @@ export default function CharacterSidebar({
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
           <button
             type="button"
-            onClick={onNewChat}
+            onClick={() => {
+              onNewChat();
+              // Mobile: the sidebar is a full-height overlay drawer, so collapse
+              // it once a new conversation starts. Desktop keeps it in place.
+              if (isMobile && characterSidebarVisible) onToggleCharacterSidebar();
+            }}
             className="fw-bold rounded-pill"
             style={{
               background: 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)',
