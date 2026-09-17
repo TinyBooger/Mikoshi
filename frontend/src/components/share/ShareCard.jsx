@@ -4,6 +4,9 @@ import { SHARE_CARD_MIN_HEIGHT, SHARE_CARD_WIDTH } from './shareTemplates';
 // load and therefore guarantee the card never shows an empty avatar slot.
 import fallbackCharacterAvatar from '../../assets/images/default-picture.png';
 import fallbackUserAvatar from '../../assets/images/default-avatar.png';
+// Brand mark for the watermark. Transparent PNG, so it sits on any palette —
+// unlike `/public/icon-*.png`, which has a white square baked in.
+import brandLogo from '../../assets/images/logo.png';
 
 /**
  * The social-share card that gets rasterised into a PNG.
@@ -26,6 +29,9 @@ const AVATAR_SIZE_MESSAGE = 56;
 
 /** Height of the full-portrait hero band that heads the card. */
 const HERO_HEIGHT = 470;
+
+/** Brand mark height in the watermark footer, matching the 27px wordmark. */
+const LOGO_SIZE = 44;
 
 /**
  * Swap a failed image over to a bundled fallback, once.
@@ -380,7 +386,20 @@ const ShareCard = forwardRef(function ShareCard(
           >
             语伴岛 · Yubandao
           </span>
-          <span style={{ fontSize: 23, color: background.mutedColor }}>yubandao.com</span>
+          {/* The logo carries no text and a fixed brand colour, so it needs no
+              per-background tint. `data-share-image` is mandatory: the exporter
+              rewrites it to a data URL before capture. */}
+          <img
+            data-share-image="1"
+            src={brandLogo}
+            alt="语伴岛"
+            style={{
+              height: LOGO_SIZE,
+              width: 'auto',
+              display: 'block',
+              flexShrink: 0,
+            }}
+          />
         </div>
       </div>
     </div>

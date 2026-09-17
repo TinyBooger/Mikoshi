@@ -18,6 +18,12 @@ export const MAX_SHARE_MESSAGES = 8;
 export const MAX_SHARE_MESSAGE_CHARS = 260;
 
 /**
+ * How many recent messages the dialog pre-selects when it opens. Small on
+ * purpose: a card is a teaser, and three exchange-pairs already fill it.
+ */
+export const DEFAULT_SHARE_MESSAGE_COUNT = 3;
+
+/**
  * Turn a stored media path (`/static/images/foo.png`) into a URL the browser
  * (and html2canvas) can load. Absolute URLs and data URIs pass through.
  */

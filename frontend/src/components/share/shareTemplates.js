@@ -6,7 +6,7 @@
  * Adding a new look means adding an entry here, never a new component.
  */
 
-import { GRADIENT_BACKGROUNDS } from '../../utils/backgroundPresets';
+import { GRADIENT_BACKGROUNDS, resolveBackgroundPresetId } from '../../utils/backgroundPresets';
 
 /**
  * Pull a gradient preset in from the shared source so the chat background and
@@ -31,6 +31,33 @@ export const SHARE_TEMPLATES = [
 
 export const DEFAULT_TEMPLATE_ID = 'minimal';
 export const DEFAULT_BACKGROUND_ID = 'lavender';
+
+/**
+ * Chat interface mode -> share template. Mirrors the chat's own rule, which is
+ * strictly `interface_preference === 'clean'` (see `cleanMode` in ChatPage), so
+ * an unknown/not-yet-loaded config must land on 'bubble' — the chat renders
+ * bubbles in that case too, and the card should match what is on screen.
+ */
+export const getDefaultTemplateId = (interfacePreference) =>
+  interfacePreference === 'clean' ? 'minimal' : 'bubble';
+
+/**
+ * Which background the card should start on, given the chat's wallpaper.
+ *
+ * The dialog should open looking like the conversation the user is on, so a
+ * preset maps to its identically-named gradient, a photo maps to the
+ * full-bleed image background, and the character's own artwork has a
+ * dedicated background. 'none' has no card equivalent (the card is never
+ * plain white), so it lands on the default preset.
+ */
+export function resolveShareBackgroundId({ wallpaperId, characterImageUrl, wallpaperUrl }) {
+  if (wallpaperId === 'character_picture' && characterImageUrl) return 'character-art';
+  if (wallpaperUrl) return 'chat-wallpaper';
+  const presetId = resolveBackgroundPresetId(wallpaperId);
+  return SHARE_BACKGROUNDS.some((bg) => bg.kind === 'gradient' && bg.id === presetId)
+    ? presetId
+    : DEFAULT_BACKGROUND_ID;
+}
 
 /**
  * Background presets.

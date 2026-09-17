@@ -7,6 +7,7 @@ import { useToast } from '../ToastProvider';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import {
   buildSharePayload,
+  DEFAULT_SHARE_MESSAGE_COUNT,
   MAX_SHARE_MESSAGES,
   resolveMediaUrl,
 } from '../../utils/shareData';
@@ -19,15 +20,15 @@ import {
   getShareTemplate,
   getShareBackground,
   getAvailableBackgrounds,
+  getDefaultTemplateId,
+  resolveShareBackgroundId,
 } from './shareTemplates';
 import {
   captureShareCard,
   canvasToPngBlob,
   buildShareFilename,
-  downloadBlob,
-  shareImageBlob,
+  saveImageBlob,
   copyImageBlobToClipboard,
-  canShareImageFile,
 } from '../../utils/shareImage';
 // Same-origin fallbacks, mirroring the avatars the card paints.
 import fallbackCharacterAvatar from '../../assets/images/default-picture.png';
@@ -61,6 +62,11 @@ export default function ShareScreenshotDialog({
   persona,
   userData,
   wallpaperUrl,
+  // Raw wallpaper state id (a preset id, 'custom_upload', 'character_picture',
+  // ...). `wallpaperUrl` alone cannot distinguish a gradient from 'none'.
+  wallpaperId,
+  // Advanced chat config's `interface_preference`; decides the starter layout.
+  interfacePreference,
 }) {
   const toast = useToast();
   const isMobile = useIsMobile();
@@ -103,6 +109,19 @@ export default function ShareScreenshotDialog({
     [characterImageUrl, wallpaperUrl],
   );
 
+  // What the dialog should open on, mirroring the live conversation. Both are
+  // re-applied on every open, so switching chats re-seeds instead of keeping
+  // whatever the user picked last time.
+  const chatTemplateId = getDefaultTemplateId(interfacePreference);
+  const chatBackgroundId = useMemo(
+    () => resolveShareBackgroundId({
+      wallpaperId,
+      characterImageUrl,
+      wallpaperUrl: wallpaperUrl || null,
+    }),
+    [wallpaperId, characterImageUrl, wallpaperUrl],
+  );
+
   const template = getShareTemplate(templateId);
 
   // Keep the chosen background usable when the conversation changes (e.g. a
@@ -123,22 +142,21 @@ export default function ShareScreenshotDialog({
   );
 
   const atLimit = selectedIds.length >= MAX_SHARE_MESSAGES;
-  const canShareNatively = useMemo(() => {
-    try {
-      return canShareImageFile(new File([new Blob(['1'])], 'share.png', { type: 'image/png' }));
-    } catch {
-      return false;
-    }
-  }, []);
 
-  // Default selection = the most recent messages. Applied only when the dialog
-  // opens so a mid-stream re-render never clobbers the user's own selection.
+  // Initial state = the current chat: most recent messages selected, plus the
+  // chat's own layout and background. Applied only when the dialog opens so a
+  // mid-stream re-render never clobbers the user's own choices. Read through
+  // refs because the effect deliberately depends on `show` alone.
   const wasOpenRef = useRef(false);
   const linesRef = useRef([]);
   linesRef.current = payload.lines;
+  const openDefaultsRef = useRef({ templateId: DEFAULT_TEMPLATE_ID, backgroundId: DEFAULT_BACKGROUND_ID });
+  openDefaultsRef.current = { templateId: chatTemplateId, backgroundId: chatBackgroundId };
   useEffect(() => {
     if (show && !wasOpenRef.current) {
-      setSelectedIds(linesRef.current.slice(-MAX_SHARE_MESSAGES).map((line) => line.id));
+      setSelectedIds(linesRef.current.slice(-DEFAULT_SHARE_MESSAGE_COUNT).map((line) => line.id));
+      setTemplateId(openDefaultsRef.current.templateId);
+      setBackgroundId(openDefaultsRef.current.backgroundId);
       setBusy(null);
       setZoomed(false);
     }
@@ -224,25 +242,19 @@ export default function ShareScreenshotDialog({
         const blob = await canvasToPngBlob(canvas);
         const filename = buildShareFilename(payload.characterName);
 
-        if (mode === 'download') {
-          downloadBlob(blob, filename);
-          toast.show('截图已保存到本地', { type: 'success' });
-        } else if (mode === 'copy') {
+        if (mode === 'copy') {
           const copied = await copyImageBlobToClipboard(blob);
           if (copied) toast.show('截图已复制到剪贴板', { type: 'success' });
-          else toast.show('当前浏览器不支持复制图片，请改用下载', { type: 'error' });
-        } else {
-          const shared = await shareImageBlob(blob, filename, `${payload.characterName} · 语伴岛`);
-          if (!shared) {
-            downloadBlob(blob, filename);
-            toast.show('截图已保存到本地', { type: 'success' });
-          }
+          else toast.show('当前浏览器不支持复制图片，请改用保存图片', { type: 'error' });
+          return;
         }
+
+        // Saving goes through the OS "save as" dialog where possible.
+        const result = await saveImageBlob(blob, filename);
+        if (result === 'saved') toast.show('截图已保存', { type: 'success' });
+        else if (result === 'downloaded') toast.show('截图已下载到本地', { type: 'success' });
       } catch (error) {
-        // A cancelled OS share sheet is not a failure.
-        if (error?.name !== 'AbortError') {
-          toast.show('生成截图失败，请重试', { type: 'error' });
-        }
+        toast.show('生成截图失败，请重试', { type: 'error' });
       } finally {
         setBusy(null);
       }
@@ -657,21 +669,12 @@ export default function ShareScreenshotDialog({
             >
               {busy === 'copy' ? '处理中…' : '复制图片'}
             </SecondaryButton>
-            {canShareNatively ? (
-              <SecondaryButton
-                isMobile={isMobile}
-                onClick={() => handleExport('share')}
-                disabled={!!busy || selectedLines.length === 0}
-              >
-                {busy === 'share' ? '处理中…' : '分享'}
-              </SecondaryButton>
-            ) : null}
             <PrimaryButton
               isMobile={isMobile}
-              onClick={() => handleExport('download')}
+              onClick={() => handleExport('save')}
               disabled={!!busy || selectedLines.length === 0}
             >
-              {busy === 'download' ? '生成中…' : '保存图片'}
+              {busy === 'save' ? '生成中…' : '保存图片'}
             </PrimaryButton>
           </div>
         </div>

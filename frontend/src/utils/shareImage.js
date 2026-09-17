@@ -43,20 +43,34 @@ export async function captureShareCard(element, { scale = SHARE_EXPORT_SCALE } =
  * A failure is not fatal: the original `src` is kept, and every avatar sits on
  * a same-origin fallback background that still paints.
  */
+const IMAGE_FETCH_TIMEOUT_MS = 8000;
+
 async function inlineImagesAsDataUrls(root) {
   const images = Array.from(root.querySelectorAll('img[data-share-image]'));
   await Promise.all(
     images.map(async (img) => {
       const src = img.getAttribute('src');
       if (!src || src.startsWith('data:')) return;
+      // `fetch` has no timeout of its own, and html2canvas's `imageTimeout` does
+      // not cover this call. Without an abort, one stalled image leaves the
+      // export pending forever — which strands the dialog in its busy state and
+      // leaves every button disabled.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT_MS);
       try {
-        const response = await fetch(src, { mode: 'cors', credentials: 'omit' });
+        const response = await fetch(src, {
+          mode: 'cors',
+          credentials: 'omit',
+          signal: controller.signal,
+        });
         if (!response.ok) return;
         const blob = await response.blob();
         if (!blob || blob.size === 0) return;
         img.src = await blobToDataUrl(blob);
       } catch {
-        // Offline, blocked by CORS, or not an image — leave the element alone.
+        // Offline, blocked by CORS, timed out, or not an image — leave it alone.
+      } finally {
+        clearTimeout(timer);
       }
     }),
   );
@@ -103,29 +117,55 @@ export function downloadBlob(blob, filename) {
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);
-  // Revoke on the next tick so Safari has time to start the download.
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  // Revoke late: `click()` only *queues* the download, and revoking on the next
+  // tick can cancel it before the browser has read the blob back out.
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
-/** True when the Web Share API can hand a PNG file to the OS share sheet. */
-export function canShareImageFile(file) {
-  return typeof navigator !== 'undefined' && typeof navigator.canShare === 'function'
-    ? navigator.canShare({ files: [file] })
-    : false;
-}
-
-export async function shareImageBlob(blob, filename, title) {
-  const file = new File([blob], filename, { type: 'image/png' });
-  if (!canShareImageFile(file)) return false;
-  await navigator.share({ files: [file], title });
-  return true;
+/**
+ * Save a PNG to the user's machine, preferring the real "Save as…" dialog.
+ *
+ * Where the File System Access API exists the file is written to the location
+ * the user picks; everywhere else (Firefox, Safari) this degrades to a plain
+ * browser download.
+ *
+ * Returns `'saved'` when a location was chosen, `'cancelled'` when the user
+ * dismissed the picker, and `'downloaded'` for the fallback path. It never
+ * throws for a cancelled picker — that is a normal outcome, not a failure.
+ */
+export async function saveImageBlob(blob, filename) {
+  if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{ description: 'PNG 图片', accept: { 'image/png': ['.png'] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return 'saved';
+    } catch (error) {
+      if (error?.name === 'AbortError') return 'cancelled';
+      // Anything else — notably a `SecurityError` when rendering the card took
+      // longer than the click's transient activation — falls back to download.
+    }
+  }
+  downloadBlob(blob, filename);
+  return 'downloaded';
 }
 
 export async function copyImageBlobToClipboard(blob) {
   const ClipboardItemCtor = window.ClipboardItem;
   if (!navigator.clipboard?.write || !ClipboardItemCtor) return false;
-  await navigator.clipboard.write([new ClipboardItemCtor({ 'image/png': blob })]);
-  return true;
+  try {
+    await navigator.clipboard.write([new ClipboardItemCtor({ 'image/png': blob })]);
+    return true;
+  } catch {
+    // Insecure context, denied permission, or a browser that refuses a raw
+    // Blob value here (older Safari wants a Promise). Report it as unsupported
+    // rather than letting it surface as "generating the image failed".
+    return false;
+  }
 }
 
 function waitForImages(root) {

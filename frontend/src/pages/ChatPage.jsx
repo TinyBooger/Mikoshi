@@ -761,6 +761,8 @@ export default function ChatPage() {
         persona={selectedPersona}
         userData={userData}
         wallpaperUrl={selectedWallpaper?.url || null}
+        wallpaperId={wallpaper.id}
+        interfacePreference={advancedChatConfig?.interface_preference}
       />
     </PageWrapper>
   );

@@ -65,7 +65,11 @@ const styles = {
     position: 'fixed',
     top: 72,
     right: 16,
-    zIndex: 3000,
+    // Toasts are global, transient feedback — they must outrank every dialog.
+    // The highest tier in the app is the share-screenshot dialog (100000) and
+    // its zoom overlay (100001), so anything lower here gets painted under a
+    // modal's backdrop and silently swallowed. Keep this above that tier.
+    zIndex: 200000,
     display: 'flex',
     flexDirection: 'column',
     gap: 8,
