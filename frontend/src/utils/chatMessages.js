@@ -5,6 +5,7 @@
  */
 
 import { WALLPAPER_OPTIONS } from './chatPageConstants';
+import { resolveBackgroundPresetId } from './backgroundPresets';
 
 export const getChatErrorMessage = (errorPayload) => {
   if (errorPayload?.error === 'ACCOUNT_BANNED') {
@@ -39,13 +40,21 @@ export const compactMessagesForRequest = (allMessages) => {
 
 /**
  * Resolve the raw `{ id, url }` wallpaper selection into the object the UI
- * actually renders. A preset id (without a url) resolves against
- * WALLPAPER_OPTIONS; anything unknown falls back to the first option ('none').
+ * actually renders.
+ *
+ * A selection with no `url` is a preset (or "none"), looked up by id in
+ * WALLPAPER_OPTIONS; ids retired in favour of a gradient are aliased first so
+ * older characters keep a background. Anything unknown falls back to the first
+ * option ('none').
+ *
+ * The returned object always carries a `kind` — 'none' | 'gradient' | 'image' —
+ * which is what the chat surface switches on. Do not test `url` for "is there a
+ * background": gradient presets have none.
  */
 export const getSelectedWallpaper = (wallpaper) => {
   if (wallpaper.id === 'none' || !wallpaper.url) {
-    const preset = WALLPAPER_OPTIONS.find((o) => o.id === wallpaper.id);
+    const preset = WALLPAPER_OPTIONS.find((o) => o.id === resolveBackgroundPresetId(wallpaper.id));
     return preset || WALLPAPER_OPTIONS[0];
   }
-  return { id: wallpaper.id, url: wallpaper.url };
+  return { id: wallpaper.id, kind: 'image', url: wallpaper.url, css: null };
 };

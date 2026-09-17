@@ -17,6 +17,8 @@ import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import ModelSelect from '../components/ModelSelect';
 import BanNotice from '../components/BanNotice';
+import { WALLPAPER_OPTIONS } from '../utils/chatPageConstants';
+import { resolveBackgroundPresetId } from '../utils/backgroundPresets';
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
@@ -92,12 +94,6 @@ export default function CharacterFormPage() {
     frequency_penalty: 0,
     interface_preference: 'bubbles',
   };
-  const WALLPAPER_OPTIONS = [
-    { id: 'none', url: null },
-    { id: 'aurora', url: '/wallpapers/aurora.svg' },
-    { id: 'sunrise', url: '/wallpapers/sunrise.svg' },
-    { id: 'waves', url: '/wallpapers/waves.svg' },
-  ];
   const MAX_NAME_LENGTH = 50;
   const MAX_PERSONA_LENGTH = 400;
   const MAX_TAGLINE_LENGTH = 100;
@@ -1555,54 +1551,14 @@ export default function CharacterFormPage() {
                   <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: 10 }}>
                     选择预设背景
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
-                    {/* Default (no wallpaper) as first option */}
-                    {(() => {
-                      const selected = (() => {
-                        try { return JSON.parse(charData.background).preset_id === 'none'; } catch (_) { return true; }
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+                    {WALLPAPER_OPTIONS.map(wallpaper => {
+                      const presetId = (() => {
+                        try { return JSON.parse(charData.background).preset_id; } catch (_) { return 'none'; }
                       })();
-                      return (
-                        <button
-                          key="none"
-                          type="button"
-                          onClick={() => handleChange('background', JSON.stringify({ type: 'preset', preset_id: 'none' }))}
-                          style={{
-                            border: selected ? '2px solid #7c3aed' : '1px solid #e5e7eb',
-                            borderRadius: 10,
-                            background: '#fff',
-                            padding: 6,
-                            textAlign: 'center',
-                            cursor: 'pointer',
-                            transition: 'border 0.15s',
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: '100%',
-                              height: 60,
-                              borderRadius: 8,
-                              background: 'linear-gradient(135deg,#f8fafc,#e5e7eb)',
-                              border: '1px solid rgba(0,0,0,0.06)',
-                              marginBottom: 6,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: '#9ca3af',
-                              fontSize: '0.7rem',
-                            }}
-                          >
-                            默认
-                          </div>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#111827' }}>
-                            默认
-                          </div>
-                        </button>
-                      );
-                    })()}
-                    {WALLPAPER_OPTIONS.filter(w => w.id !== 'none').map(wallpaper => {
-                      const selected = (() => {
-                        try { return JSON.parse(charData.background).preset_id === wallpaper.id; } catch (_) { return false; }
-                      })();
+                      // Alias-aware so a character still on a retired preset id
+                      // shows the gradient it now resolves to as selected.
+                      const selected = resolveBackgroundPresetId(presetId) === resolveBackgroundPresetId(wallpaper.id);
                       return (
                         <button
                           key={wallpaper.id}
@@ -1623,13 +1579,20 @@ export default function CharacterFormPage() {
                               width: '100%',
                               height: 60,
                               borderRadius: 8,
-                              background: wallpaper.url ? `url(${wallpaper.url}) center/cover no-repeat` : 'linear-gradient(135deg,#f8fafc,#e5e7eb)',
+                              background: wallpaper.css || 'linear-gradient(135deg,#f8fafc,#e5e7eb)',
                               border: '1px solid rgba(0,0,0,0.06)',
                               marginBottom: 6,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#9ca3af',
+                              fontSize: '0.7rem',
                             }}
-                          />
+                          >
+                            {wallpaper.id === 'none' ? '默认' : ''}
+                          </div>
                           <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#111827' }}>
-                            {wallpaper.id === 'aurora' ? '极光' : wallpaper.id === 'sunrise' ? '日出' : '波浪'}
+                            {wallpaper.label}
                           </div>
                         </button>
                       );

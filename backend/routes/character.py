@@ -75,7 +75,12 @@ def default_character_chat_config():
     }
 
 ALLOWED_BACKGROUND_TYPES = {"none", "preset", "upload", "character_picture"}
-ALLOWED_PRESET_IDS = {"none", "aurora", "sunrise", "waves"}
+# Gradient presets (see frontend/src/utils/backgroundPresets.js) plus the retired
+# image presets. The retired ids are still accepted on purpose: they are stored
+# on characters that predate the gradients, and rejecting one makes
+# `parse_background_config` return None for the whole config, which would erase
+# the background of any such character the next time it is saved.
+ALLOWED_PRESET_IDS = {"none", "lavender", "midnight", "sunrise", "paper", "aurora", "waves"}
 
 def parse_background_config(raw: Optional[str]) -> Optional[dict]:
     """Parse and validate the background JSON string from the form."""

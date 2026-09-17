@@ -44,6 +44,7 @@ const MessageBubble = React.memo(function MessageBubble({
   index,
   isMobile,
   cleanMode,
+  darkSurface,
   selectedCharacter,
   selectedPersona,
   userData,
@@ -209,7 +210,11 @@ const MessageBubble = React.memo(function MessageBubble({
               className={isCleanAssistant ? 'chat-bubble-clean' : undefined}
               style={{
                 background: isCleanAssistant ? 'transparent' : '#f5f6fa',
-                color: '#232323',
+                // A clean-mode reply has no bubble behind it, so on a dark
+                // gradient the usual near-black would disappear into the
+                // surface. Bubble mode keeps its own light background and so
+                // keeps dark text either way.
+                color: isCleanAssistant && darkSurface ? '#f4f1fb' : '#232323',
                 borderRadius: isCleanAssistant ? 0 : '0.88rem',
                 padding: isCleanAssistant ? 0 : '14px 18px',
                 boxShadow: isCleanAssistant ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',

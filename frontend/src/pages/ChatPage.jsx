@@ -10,6 +10,7 @@ import SidebarToggleButton from '../components/chat/SidebarToggleButton';
 import ChatMessagesList from '../components/chat/ChatMessagesList';
 import ChatInputBar from '../components/chat/ChatInputBar';
 import ChatModals from '../components/chat/ChatModals';
+import ShareScreenshotDialog from '../components/share/ShareScreenshotDialog';
 import { useToast } from '../components/ToastProvider';
 import {
   normalizeChatEntry,
@@ -72,6 +73,7 @@ export default function ChatPage() {
   const [serverContextWindowUsage, setServerContextWindowUsage] = useState(null);
   const { hasLiked, setHasLiked, likeEntity, unlikeEntity } = useLikeEntity({ sessionToken, setLikes });
   const [showChatHistory, setShowChatHistory] = useState(false);
+  const [showShareScreenshot, setShowShareScreenshot] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
   const [editingChatId, setEditingChatId] = useState(null);
   const [editingMessageId, setEditingMessageId] = useState(null);
@@ -582,11 +584,12 @@ export default function ChatPage() {
         flexDirection: 'column', 
         minHeight: 0, 
         zIndex: 1,
-        background: '#fff',
-        backgroundImage: selectedWallpaper?.url ? `url(${selectedWallpaper.url})` : 'none',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
+        // One shorthand on purpose: a gradient lives in `background-image`, so
+        // pairing a `background` shorthand with a separate `backgroundImage:
+        // 'none'` would wipe the gradient for every preset.
+        background: selectedWallpaper?.url
+          ? `#fff url(${selectedWallpaper.url}) center/cover no-repeat`
+          : (selectedWallpaper?.css || '#fff'),
         borderRadius: 0,
         margin: 0,
         boxShadow: 'none',
@@ -697,6 +700,7 @@ export default function ChatPage() {
         onUnpinMemory={(messageId) => handleTogglePin(messageId, false)}
         isMobile={isMobile}
         setPersonaModalShow={() => setPersonaModal({ show: true })}
+        onOpenShareScreenshot={() => setShowShareScreenshot(true)}
         onShareChatLink={(toast) => {
           try {
             const url = window.location.href;
@@ -746,6 +750,17 @@ export default function ChatPage() {
         advancedChatConfirm={advancedChatConfirm}
         handleAdvancedChatConfirm={handleAdvancedChatConfirm}
         handleAdvancedChatExit={handleAdvancedChatExit}
+      />
+
+      <ShareScreenshotDialog
+        show={showShareScreenshot}
+        onClose={() => setShowShareScreenshot(false)}
+        messages={messages}
+        character={selectedCharacter}
+        scene={selectedScene}
+        persona={selectedPersona}
+        userData={userData}
+        wallpaperUrl={selectedWallpaper?.url || null}
       />
     </PageWrapper>
   );

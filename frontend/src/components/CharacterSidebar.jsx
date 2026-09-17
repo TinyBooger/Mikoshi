@@ -9,6 +9,8 @@ import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import ModelSelect from './ModelSelect';
 import { useToast } from '../components/ToastProvider';
 import { SIDEBAR_WIDTH, SIDEBAR_BORDER_WIDTH } from '../constants/layout';
+import { WALLPAPER_OPTIONS } from '../utils/chatPageConstants';
+import { resolveBackgroundPresetId } from '../utils/backgroundPresets';
 
 
 // Accept all required props for the sidebar
@@ -58,7 +60,8 @@ export default function CharacterSidebar({
   onUnpinMemory,
   isMobile = false, // allow parent to pass isMobile, default false
   setPersonaModalShow, // <-- new prop to open PersonaModal
-  onShareChatLink // <-- handler for share button
+  onShareChatLink, // <-- handler for share button
+  onOpenShareScreenshot // <-- handler for the "制作截图" share-card dialog
 }) {
   const [creatorHover, setCreatorHover] = React.useState(false);
   const toast = useToast();
@@ -68,6 +71,7 @@ export default function CharacterSidebar({
   const [activeTab, setActiveTab] = React.useState('chat');
   const [activeHintKey, setActiveHintKey] = React.useState(null);
   const [shareIconFocused, setShareIconFocused] = React.useState(false);
+  const [screenshotIconFocused, setScreenshotIconFocused] = React.useState(false);
   const [reportIconFocused, setReportIconFocused] = React.useState(false);
   const [lastSavedConfig, setLastSavedConfig] = React.useState(() =>
     JSON.parse(JSON.stringify(advancedChatConfig)),
@@ -285,6 +289,30 @@ export default function CharacterSidebar({
             </button>
             {(selectedCharacter || selectedScene) && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => { if (onOpenShareScreenshot) onOpenShareScreenshot(); }}
+                  aria-label="制作截图"
+                  title="制作截图"
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    padding: 0,
+                    color: '#7c3aed',
+                    cursor: 'pointer',
+                    fontSize: '1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    lineHeight: 1,
+                  }}
+                  onMouseEnter={() => setScreenshotIconFocused(true)}
+                  onMouseLeave={() => setScreenshotIconFocused(false)}
+                  onFocus={() => setScreenshotIconFocused(true)}
+                  onBlur={() => setScreenshotIconFocused(false)}
+                >
+                  <i className={`bi ${screenshotIconFocused ? 'bi-card-image' : 'bi-image'}`} style={{ pointerEvents: 'none' }}></i>
+                </button>
                 <button
                   type="button"
                   onClick={() => { if (onShareChatLink) onShareChatLink(toast); }}
@@ -578,7 +606,10 @@ export default function CharacterSidebar({
                   { type: 'upload', icon: 'bi-cloud-upload', title: '上传自定义' },
                 ].filter(c => c.visible !== false);
                 return cards.map(card => {
-                  const actualType = ['character_picture', 'custom_upload', 'character_upload'].includes(wallpaper.id) ? wallpaper.id : (['aurora', 'sunrise', 'waves', 'none'].includes(wallpaper.id) ? 'preset' : wallpaper.id);
+                  const isPresetId = WALLPAPER_OPTIONS.some((o) => o.id === resolveBackgroundPresetId(wallpaper.id));
+                  const actualType = ['character_picture', 'custom_upload', 'character_upload'].includes(wallpaper.id)
+                    ? wallpaper.id
+                    : (isPresetId ? 'preset' : wallpaper.id);
                   const active = actualType === card.type;
                   return (
                     <button
@@ -628,42 +659,23 @@ export default function CharacterSidebar({
               })()}
             </div>
 
-            {/* Preset grid */}
-            {(['none', 'aurora', 'sunrise', 'waves'].includes(wallpaper.id)) && (
+            {/* Preset grid. Every wallpaper id that is not one of the three
+                image-backed types above is a preset, so it is enough to test
+                for their absence rather than list ids that must be kept in
+                sync with WALLPAPER_OPTIONS. */}
+            {!['character_picture', 'custom_upload', 'character_upload'].includes(wallpaper.id) && (
               <div>
                 <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: 8 }}>
                   选择预设背景
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
-                  <button
-                    type="button"
-                    onClick={() => onSetWallpaper?.({ id: 'none', url: null })}
-                    style={{
-                      border: wallpaper.id === 'none' ? '2px solid #7c3aed' : '1px solid #e5e7eb',
-                      borderRadius: 10,
-                      background: '#fff',
-                      padding: 6,
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      transition: 'border 0.15s',
-                    }}
-                  >
-                    <div style={{ width: '100%', height: 52, borderRadius: 8, background: 'linear-gradient(135deg,#f8fafc,#e5e7eb)', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '0.7rem' }}>
-                      默认
-                    </div>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#111827' }}>默认</div>
-                  </button>
-                  {[
-                    { id: 'aurora', url: '/wallpapers/aurora.svg' },
-                    { id: 'sunrise', url: '/wallpapers/sunrise.svg' },
-                    { id: 'waves', url: '/wallpapers/waves.svg' },
-                  ].map(wp => {
-                    const selected = wallpaper.id === wp.id;
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+                  {WALLPAPER_OPTIONS.map((option) => {
+                    const selected = resolveBackgroundPresetId(wallpaper.id) === option.id;
                     return (
                       <button
-                        key={wp.id}
+                        key={option.id}
                         type="button"
-                        onClick={() => onSetWallpaper?.({ id: wp.id, url: null })}
+                        onClick={() => onSetWallpaper?.({ id: option.id, url: null })}
                         style={{
                           border: selected ? '2px solid #7c3aed' : '1px solid #e5e7eb',
                           borderRadius: 10,
@@ -674,9 +686,25 @@ export default function CharacterSidebar({
                           transition: 'border 0.15s',
                         }}
                       >
-                        <div style={{ width: '100%', height: 52, borderRadius: 8, background: `url(${wp.url}) center/cover no-repeat`, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 6 }} />
+                        <div
+                          style={{
+                            width: '100%',
+                            height: 52,
+                            borderRadius: 8,
+                            background: option.css || 'linear-gradient(135deg,#f8fafc,#e5e7eb)',
+                            border: '1px solid rgba(0,0,0,0.06)',
+                            marginBottom: 6,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#9ca3af',
+                            fontSize: '0.68rem',
+                          }}
+                        >
+                          {option.id === 'none' ? '默认' : ''}
+                        </div>
                         <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#111827' }}>
-                          {wp.id === 'aurora' ? '极光' : wp.id === 'sunrise' ? '日出' : '波浪'}
+                          {option.label}
                         </div>
                       </button>
                     );

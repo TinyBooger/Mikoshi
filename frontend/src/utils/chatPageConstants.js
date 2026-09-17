@@ -14,12 +14,19 @@ import rehypeHighlight from 'rehype-highlight';
 import CodeBlock from '../components/CodeBlock';
 import MarkdownLink from '../components/MarkdownLink';
 import { HIGHLIGHT_ALIASES, HIGHLIGHT_LANGUAGES } from './highlightLanguages';
+import { GRADIENT_BACKGROUNDS } from './backgroundPresets';
 
+/**
+ * Wallpaper choices offered in the chat sidebar and the character form.
+ *
+ * `kind` tells the chat surface how to paint it: `none` is plain white,
+ * `gradient` paints `css`, and an entry with a `url` is treated as an image.
+ * Presets carry no `url` — `getSelectedWallpaper` resolves the id back to the
+ * full entry.
+ */
 export const WALLPAPER_OPTIONS = [
-  { id: 'none', url: null },
-  { id: 'aurora', url: '/wallpapers/aurora.svg' },
-  { id: 'sunrise', url: '/wallpapers/sunrise.svg' },
-  { id: 'waves', url: '/wallpapers/waves.svg' },
+  { id: 'none', label: '默认', kind: 'none', url: null, css: null },
+  ...GRADIENT_BACKGROUNDS.map((bg) => ({ ...bg, kind: 'gradient', url: null })),
 ];
 
 // Markdown pipeline for message bubbles.

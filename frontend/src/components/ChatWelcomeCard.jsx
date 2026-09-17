@@ -4,10 +4,14 @@ import defaultPic from '../assets/images/default-picture.png';
 /**
  * Welcome card shown at the top of a new chat.
  * Displays character/scene avatar, title, and welcome text.
+ *
+ * The card has no background of its own — it sits directly on the chat surface,
+ * which is why it needs to know whether that surface is dark.
  */
 export default function ChatWelcomeCard({
   selectedCharacter,
   selectedScene,
+  darkSurface,
 }) {
   const charName = selectedCharacter?.name;
   const sceneName = selectedScene?.name;
@@ -70,7 +74,7 @@ export default function ChatWelcomeCard({
           style={{
             fontSize: '1rem',
             fontWeight: 650,
-            color: '#121212',
+            color: darkSurface ? '#f4f1fb' : '#121212',
             marginTop: 18,
           }}
         >
@@ -80,7 +84,7 @@ export default function ChatWelcomeCard({
         <div
           style={{
             marginTop: 14,
-            color: '#4b5563',
+            color: darkSurface ? 'rgba(255, 255, 255, 0.72)' : '#4b5563',
             fontSize: '0.92rem',
             lineHeight: 1.42,
           }}

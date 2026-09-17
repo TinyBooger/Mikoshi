@@ -3,6 +3,7 @@ import ContextWindowIndicator from '../ContextWindowIndicator';
 import { CreditLockedBanner, BanBanner } from '../ChatBanners';
 import { isCreditLocked } from '../../utils/creditCheck';
 import { CHAT_INPUT_BASE_HEIGHT, CHAT_INPUT_MAX_HEIGHT } from '../../utils/chatPageConstants';
+import { getChromeSurface } from '../../utils/backgroundPresets';
 import ChatVoiceButton from './ChatVoiceButton';
 import ChatSendButton from './ChatSendButton';
 
@@ -40,6 +41,7 @@ export default function ChatInputBar({
   onAbort,
 }) {
   const creditLocked = isCreditLocked(creditLimits);
+  const chromeSurface = getChromeSurface(selectedWallpaper?.kind);
 
   return (
     /* Input Area (no form) */
@@ -52,7 +54,7 @@ export default function ChatInputBar({
         paddingBottom: isMobile
           ? 'calc(0.8rem + env(safe-area-inset-bottom, 0px))'
           : '0.8rem',
-        background: selectedWallpaper?.url ? 'rgba(255, 255, 255, 0.76)' : '#fff',
+        ...chromeSurface,
         flexShrink: 0
       }}
     >

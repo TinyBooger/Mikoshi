@@ -1,6 +1,7 @@
 import React from 'react';
 import MessageBubble from '../MessageBubble';
 import ChatWelcomeCard from '../ChatWelcomeCard';
+import { getChromeSurface, isVeiledBackground, isDarkSurface } from '../../utils/backgroundPresets';
 
 /**
  * Scrollable messages area of the chat: context-window-compaction notice,
@@ -41,6 +42,10 @@ export default function ChatMessagesList({
   onEditTextChange,
 }) {
   const nonSystem = messages.filter(m => m.role !== 'system');
+  const chromeSurface = getChromeSurface(selectedWallpaper?.kind);
+  // Clean mode paints the assistant reply straight onto the surface, so on a
+  // dark gradient its text has to flip to light — see `isDarkSurface`.
+  const darkSurface = isDarkSurface(selectedWallpaper);
 
   return (
     /* Messages Area */
@@ -49,8 +54,8 @@ export default function ChatMessagesList({
         flex: 1,
         padding: '1.2rem',
         overflowY: 'auto',
-        background: selectedWallpaper?.url ? 'rgba(255, 255, 255, 0.76)' : '#fff',
-        backdropFilter: selectedWallpaper?.url ? 'blur(1.5px)' : 'none',
+        ...chromeSurface,
+        backdropFilter: isVeiledBackground(selectedWallpaper?.kind) ? 'blur(1.5px)' : 'none',
         minHeight: 0,
       }}
     >
@@ -79,11 +84,21 @@ export default function ChatMessagesList({
           <ChatWelcomeCard
             selectedCharacter={selectedCharacter}
             selectedScene={selectedScene}
+            darkSurface={darkSurface}
           />
         )}
 
         {nonSystem.length === 0 ? (
-          <div className="text-muted text-center" style={{ marginTop: '3.2rem', fontSize: '0.88rem' }}>暂无消息，快来开始对话吧！</div>
+          <div
+            className={darkSurface ? 'text-center' : 'text-muted text-center'}
+            style={{
+              marginTop: '3.2rem',
+              fontSize: '0.88rem',
+              color: darkSurface ? 'rgba(255, 255, 255, 0.72)' : undefined,
+            }}
+          >
+            暂无消息，快来开始对话吧！
+          </div>
         ) : (
           nonSystem.map((m, i) => (
             <MessageBubble
@@ -92,6 +107,7 @@ export default function ChatMessagesList({
               index={i}
               isMobile={isMobile}
               cleanMode={cleanMode}
+              darkSurface={darkSurface}
               selectedCharacter={selectedCharacter}
               selectedPersona={selectedPersona}
               userData={userData}
