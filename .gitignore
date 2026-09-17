@@ -4,6 +4,9 @@ secrets/
 # Ignore Python virtual environment
 backend/venv/
 
+# Ignore editor settings
+.vscode/
+
 **/__pycache__/
 frontend/node_modules/
 backend/static/images/

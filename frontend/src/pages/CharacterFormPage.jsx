@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router";
 import TagsInput from '../components/TagsInput';
 import TagRecommendations from '../components/TagRecommendations';
 import ImageCropModal from '../components/ImageCropModal';
+import ImageGenerateModal from '../components/ImageGenerateModal';
 import { createPortal } from 'react-dom';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
@@ -205,6 +206,7 @@ export default function CharacterFormPage() {
   const [selectedDefaultPicture, setSelectedDefaultPicture] = useState(null);
   const [backgroundPicture, setBackgroundPicture] = useState(null);
   const [backgroundPreview, setBackgroundPreview] = useState(null);
+  const [showImageGen, setShowImageGen] = useState(false);
   const DEFAULT_PICTURES = [
     { name: 'male_1', src: '/default/male_1.png', label: 'Male 1' },
     { name: 'male_2', src: '/default/male_2.png', label: 'Male 2' },
@@ -256,6 +258,16 @@ export default function CharacterFormPage() {
   }, [charData.tagline]);
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
+  // Seed the AI image prompt from whatever the creator has filled in so far.
+  const buildImagePrompt = () => {
+    const parts = [charData.name.trim(), charData.tagline.trim()].filter(Boolean);
+    const persona = charData.persona.trim();
+    if (persona) parts.push(persona.slice(0, 120));
+    const subject = parts.join('，');
+    return subject
+      ? `角色立绘，${subject}。半身构图，精致细节，柔和光线，高清质感。`
+      : '角色立绘，半身构图，精致细节，柔和光线，高清质感。';
+  };
   const [loading, setLoading] = useState(mode === 'edit' || mode === 'fork');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [appealReason, setAppealReason] = useState('');
@@ -945,9 +957,32 @@ export default function CharacterFormPage() {
                 </div>
               ))}
             </div>
-            <small className="text-muted" style={{ display: 'block', marginTop: 6 }}>
-              或选择默认图片，将同时用作封面和头像
-            </small>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
+              <small className="text-muted" style={{ margin: 0 }}>
+                或选择默认图片，将同时用作封面和头像
+              </small>
+              <button
+                type="button"
+                onClick={() => setShowImageGen(true)}
+                disabled={isSubmitting}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  background: '#fff',
+                  color: '#736B92',
+                  border: '1.5px solid #736B92',
+                  borderRadius: 999,
+                  padding: '0.28rem 0.85rem',
+                  fontSize: '0.84rem',
+                  fontWeight: 600,
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <i className="bi bi-stars"></i>
+                AI 生成图片
+              </button>
+            </div>
           </div>
 
           {/* Name */}
@@ -1902,6 +1937,21 @@ export default function CharacterFormPage() {
           mode="avatar"
         />, document.body)
       }
+
+      <ImageGenerateModal
+        show={showImageGen}
+        onClose={() => setShowImageGen(false)}
+        defaultPrompt={buildImagePrompt()}
+        onGenerated={({ file, dataUrl }) => {
+          setPicture(file);
+          setPicturePreview(dataUrl);
+          setAvatarPicture(file);
+          setAvatarPreview(dataUrl);
+          setSelectedDefaultPicture(null);
+          setRawSelectedFile(null);
+          setShowCrop(false);
+        }}
+      />
       <ConfirmModal
         show={confirmModal.show}
         title={t('confirm.delete_character.title')}
