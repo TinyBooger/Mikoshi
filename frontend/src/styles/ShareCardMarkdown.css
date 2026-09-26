@@ -1,0 +1,93 @@
+/**
+ * Share-card overrides for rendered markdown.
+ *
+ * The card renders message bodies through the chat's own pipeline
+ * (`components/MarkdownMessage.jsx`), so `.chat-markdown` and every rule in
+ * `ChatBubble.css` apply as-is — typography, list spacing, headings and the
+ * highlight.js palette are deliberately left untouched.
+ *
+ * What `ChatBubble.css` cannot know is that the card's surface is not the
+ * chat's. A chat bubble is always the same light `#f5f6fa`, whereas the card
+ * paints six backgrounds, three of them dark (midnight, character-art,
+ * chat-wallpaper). Everything below fixes only what breaks on a surface the
+ * chat never had.
+ *
+ * Specificity note: every selector is `.share-markdown.chat-markdown …`. Two
+ * classes beat the single-class rules in `ChatBubble.css` whatever order the
+ * bundler emits the two files in, so these do not depend on import order. The
+ * `pre` rule below is written twice for exactly that reason — `.code-block pre`
+ * there is three classes, which outranks the `.chat-markdown .code-block pre`
+ * tie a bare `pre` selector would leave.
+ */
+
+/* The copy button is an affordance and an image has none — it would just be
+   captured as a stray icon. Hidden rather than removed so the code-block DOM
+   stays identical to the chat's. */
+.share-markdown.chat-markdown .code-block-copy {
+  display: none;
+}
+
+/* Code blocks get an explicit light panel instead of the chat's
+   `rgba(0, 0, 0, 0.05)`.
+   ChatBubble.css's highlight.js palette is GitHub-light — `#24292e` body text,
+   `#d73a49` keywords — and is only legible on a light surface. A translucent
+   black panel would put it on near-black on the dark backgrounds, and on the
+   purple user bubble. A fixed light panel keeps the shared palette valid on
+   every background, and is what the chat shows anyway (translucent black over
+   `#f5f6fa` is a light grey). */
+.share-markdown.chat-markdown .code-block {
+  background: #f4f5f7;
+}
+
+/* Wrapping replaces the chat's horizontal scrolling.
+   A screenshot has no scrollbar, and html2canvas treats any non-`visible`
+   overflow as a hard clip, so a long code line would be cut off at the card
+   edge with nothing to indicate content was lost. Wrapping is the only option
+   that keeps the whole line on the image. */
+.share-markdown.chat-markdown pre,
+.share-markdown.chat-markdown .code-block pre {
+  overflow-x: visible;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Display math must not be clipped vertically.
+   The chat sets `overflow-y: hidden` on `.katex-display` because it is the
+   horizontal scroll container; html2canvas turns that into a clip, which would
+   slice tall fractions and radicals. */
+.share-markdown.chat-markdown .katex-display {
+  overflow: visible;
+}
+
+/* Inline code. `:not(pre) > code` keeps this off the code-block contents, which
+   `ChatBubble.css` resets to `background: none` — matching it with equal
+   specificity would otherwise leave the winner down to file order. */
+.share-markdown.chat-markdown :not(pre) > code {
+  background: rgba(127, 127, 127, 0.22);
+}
+
+/* Surfaces and dividers that `ChatBubble.css` paints with translucent black,
+   which is invisible on a dark card. A mid-grey reads as a subtle edge on light
+   and dark alike. Plain `rgba()` is required rather than `color-mix()`: those
+   rules have to survive html2canvas's colour parser, which understands only the
+   classic colour functions. */
+.share-markdown.chat-markdown blockquote {
+  border-left-color: rgba(127, 127, 127, 0.45);
+}
+
+.share-markdown.chat-markdown hr {
+  border-top-color: rgba(127, 127, 127, 0.4);
+}
+
+.share-markdown.chat-markdown th,
+.share-markdown.chat-markdown td {
+  border-color: rgba(127, 127, 127, 0.45);
+}
+
+.share-markdown.chat-markdown th {
+  background: rgba(127, 127, 127, 0.18);
+}
+
+.share-markdown.chat-markdown .footnotes {
+  border-top-color: rgba(127, 127, 127, 0.35);
+}

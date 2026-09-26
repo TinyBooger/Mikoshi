@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import { useNavigate, useSearchParams, useOutletContext } from 'react-router';
-import ReactMarkdown from 'react-markdown';
+import MarkdownMessage from '../components/MarkdownMessage';
 import { buildSystemMessage } from '../utils/systemTemplate';
-import '../styles/ChatBubble.css';
 import { AuthContext } from '../components/AuthProvider';
 import CharacterSidebar from '../components/CharacterSidebar';
 import PageWrapper from '../components/PageWrapper';
@@ -20,9 +19,6 @@ import {
   MAX_PINNED_MEMORIES,
 } from '../utils/chatHelpers';
 import {
-  REMARK_PLUGINS,
-  REHYPE_PLUGINS,
-  MARKDOWN_COMPONENTS,
   SUMMARY_PREFIX,
   DEFAULT_ADVANCED_CHAT_CONFIG,
 } from '../utils/chatPageConstants';
@@ -484,28 +480,11 @@ export default function ChatPage() {
     }
   };
 
-  // Parse message content as standard Markdown via react-markdown + GFM,
-  // LaTeX math ($inline$ / $$display$$) and syntax-highlighted code fences.
-  // Italic (*text*), bold (**text**), lists, code blocks, line breaks, etc.
-  // are all handled natively.
-  const renderMessageContent = (text, role) => {
-    if (!text) return null;
-    // User messages are typed input where literal newlines matter, so convert
-    // single newlines into Markdown hard breaks (two trailing spaces). Character
-    // messages are left as-is to preserve their existing formatting.
-    const content = role === 'user' ? text.replace(/([^\n])\n(?!\n)/g, '$1  \n') : text;
-    return (
-      <div className="chat-markdown">
-        <ReactMarkdown
-          remarkPlugins={REMARK_PLUGINS}
-          rehypePlugins={REHYPE_PLUGINS}
-          components={MARKDOWN_COMPONENTS}
-        >
-          {content}
-        </ReactMarkdown>
-      </div>
-    );
-  };
+  // Message bodies are rendered by the shared markdown renderer, which the
+  // share card uses too — see `components/MarkdownMessage.jsx`. Keeping the
+  // `(text, role)` signature means the memoized `MessageBubble` prop is passed
+  // exactly as before.
+  const renderMessageContent = (text, role) => <MarkdownMessage content={text} role={role} />;
 
   const pinnedMemories = messages
     .filter((m) => m?.role !== 'system' && m?.message_id && m?.is_pinned)

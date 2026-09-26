@@ -1,5 +1,9 @@
 import React, { forwardRef } from 'react';
+import MarkdownMessage from '../MarkdownMessage';
 import { SHARE_CARD_MIN_HEIGHT, SHARE_CARD_WIDTH } from './shareTemplates';
+// Card-specific markdown surface fixes. The chat's own rules come along with
+// `MarkdownMessage`, which imports `styles/ChatBubble.css` itself.
+import '../../styles/ShareCardMarkdown.css';
 // Same-origin fallbacks. They are bundled by Vite, so they are guaranteed to
 // load and therefore guarantee the card never shows an empty avatar slot.
 import fallbackCharacterAvatar from '../../assets/images/default-picture.png';
@@ -11,14 +15,22 @@ import brandLogo from '../../assets/images/logo.png';
 /**
  * The social-share card that gets rasterised into a PNG.
  *
- * This component is intentionally *not* the chat UI: it shares no styles and no
- * DOM with `MessageBubble`. That keeps the exported image free of hover
- * controls, timestamps and input chrome, and means html2canvas only ever has to
+ * This component is intentionally *not* the chat UI: it shares no DOM with
+ * `MessageBubble`. That keeps the exported image free of hover controls,
+ * timestamps and input chrome, and means html2canvas only ever has to
  * understand a small, self-contained tree of plain boxes.
  *
- * It is rendered twice at runtime — once scaled down inside the dialog preview
- * and once at full size in an off-screen node that is handed to html2canvas —
- * so it must stay free of state and side effects.
+ * Message bodies are the one thing it does share — they are rendered by the
+ * same `MarkdownMessage` pipeline the chat uses, so a screenshot shows what the
+ * chat showed. Because that HTML is therefore not "a small tree of plain
+ * boxes", card-specific CSS lives in `styles/ShareCardMarkdown.css`, which
+ * adapts the chat's markdown rules to the card's palettes (three of the six
+ * backgrounds are dark) and removes the scrolling the chat relies on.
+ *
+ * It is rendered once at runtime: full size in an off-screen node that is
+ * handed to html2canvas. The dialog's preview is the resulting PNG, not a
+ * second copy of this tree, so this component must stay free of state and side
+ * effects.
  */
 
 const FONT_STACK =
@@ -43,8 +55,8 @@ const LOGO_SIZE = 44;
 function handleImageFallback(fallback) {
   return (event) => {
     const img = event.currentTarget;
-    if (img.dataset.shareFallback === '1' || !fallback) return;
-    img.dataset.shareFallback = '1';
+    if (img.dataset.shareFallbackUsed === '1' || !fallback) return;
+    img.dataset.shareFallbackUsed = '1';
     img.src = fallback;
   };
 }
@@ -62,12 +74,14 @@ function handleImageFallback(fallback) {
  * No `crossOrigin` attribute: a CORS-mode request would make the preview fail
  * outright on a server that does not send `Access-Control-Allow-Origin`. The
  * export resolves image bytes itself instead — see `inlineImagesAsDataUrls`
- * in `utils/shareImage.js`.
+ * in `utils/shareImage.js` — and `data-share-fallback` tells it which bundled
+ * asset to substitute when those bytes cannot be read.
  */
 function ShareAvatar({ src, fallback, size, radius, borderColor, shadow }) {
   return (
     <img
       data-share-image="1"
+      data-share-fallback={fallback}
       src={src || fallback}
       alt=""
       onError={handleImageFallback(fallback)}
@@ -116,17 +130,23 @@ function ShareMessageMinimal({ line, background }) {
         <span style={{ fontSize: 25, fontWeight: 700, color: background.accent, letterSpacing: 0.5 }}>
           {line.author}
         </span>
-        <span
+        {/* A block container, not the `span` this used to be: markdown emits
+            `<p>`, `<ul>`, `<pre>` and `<table>`, which are invalid inside an
+            inline box and would collapse its layout. `minWidth: 0` plus a
+            percentage cap keeps a wide table or code block from pushing the
+            column past the card. */}
+        <div
           style={{
+            minWidth: 0,
+            maxWidth: '100%',
             fontSize: 31,
             lineHeight: 1.62,
             color: background.textColor,
-            whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
           }}
         >
-          {line.text}
-        </span>
+          <MarkdownMessage content={line.text} role={line.role} className="share-markdown" />
+        </div>
       </div>
     </div>
   );
@@ -156,6 +176,11 @@ function ShareMessageBubble({ line, background }) {
           flexDirection: 'column',
           alignItems: isUser ? 'flex-end' : 'flex-start',
           gap: 10,
+          // `minWidth: 0` is load-bearing now that the body is real markdown.
+          // A flex item's automatic minimum size is its min-content size, and
+          // for a `<pre>` or table that is the whole unwrapped line — which
+          // would win over `maxWidth` and push the bubble off the card.
+          minWidth: 0,
           maxWidth: 780,
         }}
       >
@@ -168,14 +193,15 @@ function ShareMessageBubble({ line, background }) {
             color: isUser ? background.bubbleUserText : background.bubbleCharText,
             borderRadius: 28,
             padding: '26px 32px',
+            minWidth: 0,
+            maxWidth: '100%',
             fontSize: 30,
             lineHeight: 1.6,
-            whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
             boxShadow: '0 12px 28px rgba(35, 22, 70, 0.16)',
           }}
         >
-          {line.text}
+          <MarkdownMessage content={line.text} role={line.role} className="share-markdown" />
         </div>
       </div>
     </div>
@@ -206,6 +232,7 @@ function ShareHeaderPortrait({ payload }) {
     >
       <img
         data-share-image="1"
+        data-share-fallback={fallbackCharacterAvatar}
         src={payload.characterImage}
         alt=""
         onError={handleImageFallback(fallbackCharacterAvatar)}

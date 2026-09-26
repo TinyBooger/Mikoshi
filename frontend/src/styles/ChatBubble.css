@@ -1,6 +1,8 @@
 /* Chat bubble markdown rendering styles.
  * Targets elements produced by react-markdown + remark-gfm inside
- * .chat-markdown containers (used by renderMessageContent).
+ * .chat-markdown containers (used by components/MarkdownMessage.jsx, which is
+ * shared by the chat and the share card). The card layers its own surface fixes
+ * on top via styles/ShareCardMarkdown.css.
  */
 
 .chat-markdown {

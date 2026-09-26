@@ -6,16 +6,24 @@
  *
  *   chat messages -> buildSharePayload() -> <ShareCard> -> html2canvas -> PNG
  *
- * Because the card is painted by html2canvas (not by a browser screenshot),
- * message bodies are flattened from Markdown down to plain text. The card
- * renderer only ever deals with plain strings, which keeps the export reliable
- * (no KaTeX/highlight.js measurement inside the capture) and the card legible
- * at social-media sizes.
+ * Message bodies stay as raw Markdown all the way to the card and are rendered
+ * by the same pipeline the chat uses (`components/MarkdownMessage.jsx`), so the
+ * screenshot shows each message the way the chat displayed it — headings,
+ * lists, tables, code blocks and math included. `stripMarkdownForShare` now
+ * exists only to give the dialog's message picker a one-line plain-text label.
  */
 
-/** Hard caps that keep the exported image a sane size. */
+/**
+ * How many messages one card may carry.
+ *
+ * A *count* cap only. Message bodies are exported at full length: an earlier
+ * version also cut each one to 260 characters, which filled long replies with
+ * ellipses and made the card misrepresent the conversation it was showing.
+ * The card is a minimum-height box, so it simply grows instead — see
+ * `resolveExportScale` in `utils/shareImage.js` for the canvas ceiling that
+ * has to be respected once height stops being bounded.
+ */
 export const MAX_SHARE_MESSAGES = 8;
-export const MAX_SHARE_MESSAGE_CHARS = 260;
 
 /**
  * How many recent messages the dialog pre-selects when it opens. Small on
@@ -36,23 +44,17 @@ export function resolveMediaUrl(path) {
   return `${base}/${raw.replace(/\\/g, '/').replace(/^\//, '')}`;
 }
 
-/** Trim a message to a shareable length, cutting on a word/character boundary. */
-export function truncateShareText(text, max = MAX_SHARE_MESSAGE_CHARS) {
-  if (typeof text !== 'string') return '';
-  const compact = text.replace(/[ \t]+$/gm, '').trim();
-  if (compact.length <= max) return compact;
-  const slice = compact.slice(0, max);
-  const lastBreak = Math.max(slice.lastIndexOf('\n'), slice.lastIndexOf(' '));
-  const cut = lastBreak > max * 0.6 ? slice.slice(0, lastBreak) : slice;
-  return `${cut.trimEnd()}…`;
-}
-
 /**
- * Flatten a Markdown message body to plain text for the share card.
+ * Flatten a Markdown message body to a single line of plain text.
+ *
+ * This is *not* what the card shows — the card renders the real Markdown. It is
+ * only used for the dialog's message picker, a list of labels that each have to
+ * fit on one tail-truncated line, where reading `**` and `|---|` as literal
+ * characters would be worse than losing them.
  *
  * Deliberately conservative: it only removes syntax that would look like noise
- * on an image (fences, emphasis markers, link URLs, table pipes) and never
- * tries to re-interpret the content.
+ * in a label (fences, emphasis markers, link URLs, table pipes) and never tries
+ * to re-interpret the content.
  */
 export function stripMarkdownForShare(raw) {
   if (typeof raw !== 'string' || !raw) return '';
@@ -119,10 +121,18 @@ export function buildSharePayload({ character, scene, persona, userData, message
         role: m.role,
         author: isUser ? personaName : characterName,
         avatar: isUser ? personaAvatar : characterAvatar,
-        text: truncateShareText(stripMarkdownForShare(m.content)),
+        // The raw Markdown body, untouched. The card renders it through the
+        // chat's own pipeline so the screenshot matches the conversation.
+        text: m.content,
+        // One-line plain-text label for the picker in the dialog. Whitespace is
+        // collapsed because the picker truncates rather than wraps.
+        preview: stripMarkdownForShare(m.content).replace(/\s+/g, ' ').trim(),
       };
     })
-    .filter((line) => line.text.length > 0);
+    // Filtered on `preview` rather than `text`: a message whose body is nothing
+    // but Markdown syntax renders to an empty card row even though it has a
+    // non-empty `text`, which is exactly what this drop is for.
+    .filter((line) => line.preview.length > 0);
 
   return {
     characterName,

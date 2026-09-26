@@ -7,6 +7,10 @@ services:
       - ./secrets/Mikoshi.env
     environment:
       - VITE_API_BASE_URL=http://localhost
+      # Only used if a request actually reaches the Vite dev server instead of
+      # nginx, but the default (localhost:8000) would resolve inside this
+      # container rather than to the backend service.
+      - VITE_DEV_PROXY_TARGET=http://backend:8000
     depends_on:
       - backend
     logging:

@@ -12,8 +12,6 @@ import {
   resolveMediaUrl,
 } from '../../utils/shareData';
 import {
-  SHARE_CARD_WIDTH,
-  SHARE_CARD_MIN_HEIGHT,
   DEFAULT_BACKGROUND_ID,
   DEFAULT_TEMPLATE_ID,
   SHARE_TEMPLATES,
@@ -41,17 +39,23 @@ import fallbackUserAvatar from '../../assets/images/default-avatar.png';
  * template + background, preview the exact card that will be exported, then
  * download / copy / share it as a PNG.
  *
- * The preview and the export are the *same component*, so what the user sees is
- * what they get. Only the preview is CSS-scaled; the export node is rendered at
- * full size off-screen and handed to html2canvas untouched.
+ * The preview IS the export: a full-size `<ShareCard>` is laid out off-screen at
+ * 1080px, rasterised with html2canvas, and the resulting PNG blob is shown in a
+ * real `<img>`. It is therefore a normal image on the page — right-clickable,
+ * draggable, selectable — and not a CSS-scaled DOM copy that merely approximates
+ * what the export will look like.
  */
 
-/** The preview box is a fixed viewport the card is scaled to *contain*. */
+/** The preview box is a fixed viewport the captured PNG is fitted into. */
 const PREVIEW_BOX_HEIGHT_DESKTOP = '60vh';
 const PREVIEW_BOX_HEIGHT_MOBILE = '46vh';
 
-/** Breathing room kept around the card in the full-screen zoom view. */
-const ZOOM_GUTTER = 48;
+/**
+ * Wait this long after the last change before rasterising. Clicking through
+ * several messages/backgrounds in a row then costs one html2canvas run instead
+ * of one per click.
+ */
+const PREVIEW_RENDER_DEBOUNCE_MS = 200;
 
 export default function ShareScreenshotDialog({
   show,
@@ -75,22 +79,22 @@ export default function ShareScreenshotDialog({
   const [backgroundId, setBackgroundId] = useState(DEFAULT_BACKGROUND_ID);
   const [selectedIds, setSelectedIds] = useState([]);
   const [busy, setBusy] = useState(null);
-  const [previewScale, setPreviewScale] = useState(0.36);
-  const [cardHeight, setCardHeight] = useState(SHARE_CARD_MIN_HEIGHT);
+  // Object URL of the rendered PNG. The preview shows this, and the copy/save
+  // actions reuse its blob whenever it is up to date.
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [rendering, setRendering] = useState(false);
+  const [renderError, setRenderError] = useState(false);
   const [zoomed, setZoomed] = useState(false);
-  // Seeded from the live window (like `useIsMobile`) so the very first zoom
-  // frame is already correctly scaled instead of flashing a full-size card.
-  const [zoomViewport, setZoomViewport] = useState(() => ({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  }));
 
   const captureRef = useRef(null);
-  const previewCardRef = useRef(null);
-  const previewBoxRef = useRef(null);
-  // Read inside the ResizeObserver callback, which must not be re-created on
-  // every height change just to see the latest value.
-  const cardHeightRef = useRef(SHARE_CARD_MIN_HEIGHT);
+  const previewUrlRef = useRef(null);
+  const previewBlobRef = useRef(null);
+  // Only the newest render may publish its result: a debounced render can be
+  // superseded by another option change while html2canvas is still working.
+  const renderTokenRef = useRef(0);
+  // html2canvas runs are chained so an export capture never overlaps a preview
+  // capture of the same node (they would race their own temporary DOM clones).
+  const captureQueueRef = useRef(Promise.resolve());
 
   const payload = useMemo(
     () => buildSharePayload({ character, scene, persona, userData, messages }),
@@ -141,6 +145,20 @@ export default function ShareScreenshotDialog({
     [payload, selectedLines],
   );
 
+  // Content fingerprint of the card, kept as a *string* on purpose: the parent
+  // hands down a fresh `messages` array on every streaming chunk, so comparing
+  // object identities would invalidate a perfectly good preview on every render
+  // and re-rasterise forever. A string only changes when the card really changes.
+  const renderKey = useMemo(
+    () => JSON.stringify([
+      template.id,
+      background?.id || '',
+      background?.imageUrl || '',
+      capturePayload.lines.map((line) => [line.id, line.avatar || '', line.text]),
+    ]),
+    [template, background, capturePayload],
+  );
+
   const atLimit = selectedIds.length >= MAX_SHARE_MESSAGES;
 
   // Initial state = the current chat: most recent messages selected, plus the
@@ -178,46 +196,75 @@ export default function ShareScreenshotDialog({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [show, onClose, zoomed]);
 
-  // The preview is the full-size card scaled down. The card sizes itself to its
-  // content (height) while the width is fixed, so the scale is the *smaller* of
-  // the width and height ratios — the card is fitted to *contain* in the box,
-  // which means the whole layout is visible at once instead of the box width
-  // setting the scale and the overflow being scrolled.
+  // Drop the rendered PNG and invalidate any capture still in flight so it
+  // cannot publish into the freshly-cleared state.
+  const clearPreview = useCallback(() => {
+    renderTokenRef.current += 1;
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = null;
+    previewBlobRef.current = null;
+    setPreviewUrl(null);
+    setRendering(false);
+    setRenderError(false);
+  }, []);
+
+  const runCapture = useCallback(() => {
+    const task = captureQueueRef.current.then(() => captureShareCard(captureRef.current));
+    // Keep the chain alive even when this capture rejects.
+    captureQueueRef.current = task.then(() => {}, () => {});
+    return task;
+  }, []);
+
+  // Rasterise the off-screen card and publish the PNG. Everything the user sees
+  // in the preview box comes from here.
+  const renderPreview = useCallback(async () => {
+    const token = renderTokenRef.current + 1;
+    renderTokenRef.current = token;
+    setRendering(true);
+    try {
+      const canvas = await runCapture();
+      const blob = await canvasToPngBlob(canvas);
+      if (token !== renderTokenRef.current) return;
+      const url = URL.createObjectURL(blob);
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = url;
+      previewBlobRef.current = blob;
+      setPreviewUrl(url);
+      setRenderError(false);
+    } catch {
+      // Leave any previous image on screen and offer a retry instead of a toast:
+      // an auto-render failure would otherwise pop up on every option change.
+      if (token === renderTokenRef.current) setRenderError(true);
+    } finally {
+      if (token === renderTokenRef.current) setRendering(false);
+    }
+  }, [runCapture]);
+
+  // Free the blob URL while the dialog is closed, so reopening always
+  // rasterises the current conversation instead of flashing the last one.
+  useEffect(() => {
+    if (!show) clearPreview();
+  }, [show, clearPreview]);
+
+  // The blob URL lives outside React's lifecycle — release it on unmount.
+  useEffect(
+    () => () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    },
+    [],
+  );
+
+  // Re-rasterise whenever the card's content changes. Debounced, so picking the
+  // messages and the look costs a single capture rather than one per click.
   useEffect(() => {
     if (!show) return undefined;
-    const card = previewCardRef.current;
-    const box = previewBoxRef.current;
-    if (!card || !box) return undefined;
-
-    const sync = () => {
-      const naturalHeight = card.offsetHeight || SHARE_CARD_MIN_HEIGHT;
-      cardHeightRef.current = naturalHeight;
-      setCardHeight(naturalHeight);
-
-      const width = box.clientWidth;
-      const height = box.clientHeight;
-      if (width <= 0 || height <= 0) return;
-      setPreviewScale(
-        Math.min(1, width / SHARE_CARD_WIDTH, height / naturalHeight),
-      );
-    };
-
-    sync();
-    const observer = new ResizeObserver(sync);
-    observer.observe(card);
-    observer.observe(box);
-    return () => observer.disconnect();
-  }, [show, template, background, capturePayload]);
-
-  // Measure the viewport while the zoom view is open so the card can be scaled
-  // to fill it without ever overflowing.
-  useEffect(() => {
-    if (!zoomed) return undefined;
-    const update = () => setZoomViewport({ width: window.innerWidth, height: window.innerHeight });
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, [zoomed]);
+    if (selectedLines.length === 0) {
+      clearPreview();
+      return undefined;
+    }
+    const timer = setTimeout(renderPreview, PREVIEW_RENDER_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [show, renderKey, selectedLines.length, renderPreview, clearPreview]);
 
   const toggleLine = useCallback((id) => {
     setSelectedIds((prev) => {
@@ -238,8 +285,14 @@ export default function ShareScreenshotDialog({
       }
       setBusy(mode);
       try {
-        const canvas = await captureShareCard(captureRef.current);
-        const blob = await canvasToPngBlob(canvas);
+        // Reuse the PNG already on screen when it is up to date, so what gets
+        // copied or saved is exactly the image the user just looked at. Only a
+        // pending/failed render forces a fresh capture.
+        let blob = !rendering && !renderError ? previewBlobRef.current : null;
+        if (!blob) {
+          const canvas = await runCapture();
+          blob = await canvasToPngBlob(canvas);
+        }
         const filename = buildShareFilename(payload.characterName);
 
         if (mode === 'copy') {
@@ -259,23 +312,12 @@ export default function ShareScreenshotDialog({
         setBusy(null);
       }
     },
-    [selectedLines.length, payload.characterName, toast],
+    [selectedLines.length, payload.characterName, rendering, renderError, runCapture, toast],
   );
 
   if (!show) return null;
 
   const nonSystemCount = payload.lines.length;
-
-  // Fill the viewport with the card, keeping a gutter so it never touches the
-  // screen edges. `cardHeight` is the natural height measured by the preview.
-  const zoomScale =
-    zoomViewport.width > 0
-      ? Math.min(
-          1,
-          (zoomViewport.width - ZOOM_GUTTER) / SHARE_CARD_WIDTH,
-          (zoomViewport.height - ZOOM_GUTTER) / Math.max(cardHeight, 1),
-        )
-      : 1;
 
   return createPortal(
     <>
@@ -476,7 +518,7 @@ export default function ShareScreenshotDialog({
                               whiteSpace: 'nowrap',
                             }}
                           >
-                            {line.text}
+                            {line.preview}
                           </span>
                         </span>
                       </button>
@@ -585,21 +627,29 @@ export default function ShareScreenshotDialog({
               >
                 <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#232323' }}>预览</span>
                 <span
-                  onClick={() => setZoomed(true)}
-                  style={{ fontSize: '0.74rem', color: '#8b8b93', cursor: 'zoom-in' }}
+                  onClick={() => {
+                    if (previewUrl) setZoomed(true);
+                  }}
+                  style={{
+                    fontSize: '0.74rem',
+                    color: previewUrl ? '#8b8b93' : '#c4c7cf',
+                    cursor: previewUrl ? 'zoom-in' : 'default',
+                  }}
                 >
                   <i className="bi bi-arrows-fullscreen" style={{ marginRight: 4 }}></i>
                   点击查看大图
                 </span>
               </div>
               <div
-                ref={previewBoxRef}
-                role="button"
-                tabIndex={0}
-                aria-label="放大预览截图"
-                title="点击查看大图"
-                onClick={() => setZoomed(true)}
+                role={previewUrl ? 'button' : undefined}
+                tabIndex={previewUrl ? 0 : undefined}
+                aria-label={previewUrl ? '放大预览截图' : undefined}
+                title={previewUrl ? '点击查看大图' : undefined}
+                onClick={() => {
+                  if (previewUrl) setZoomed(true);
+                }}
                 onKeyDown={(event) => {
+                  if (!previewUrl) return;
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
                     setZoomed(true);
@@ -616,29 +666,78 @@ export default function ShareScreenshotDialog({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'zoom-in',
+                  cursor: previewUrl ? 'zoom-in' : 'default',
                 }}
               >
-                {/* The wrapper keeps its natural (unscaled) size so the card
-                    lays out exactly as it will when exported; only the visual
-                    is scaled, centred on the wrapper's own centre. */}
-                <div
-                  style={{
-                    width: SHARE_CARD_WIDTH,
-                    height: cardHeight,
-                    flexShrink: 0,
-                    transform: `scale(${previewScale})`,
-                    transformOrigin: 'center center',
-                  }}
-                >
-                  <ShareCard
-                    ref={previewCardRef}
-                    payload={capturePayload}
-                    template={template}
-                    background={background}
-                    backgroundImageUrl={background.imageUrl}
+                {/* The preview is the exported PNG itself, as a real <img> —
+                    right-click / drag / copy behave like any other image. */}
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="分享截图预览"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      display: 'block',
+                      opacity: rendering ? 0.55 : 1,
+                      transition: 'opacity 0.15s ease',
+                      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.14)',
+                    }}
                   />
-                </div>
+                ) : (
+                  <span style={{ padding: 16, textAlign: 'center', fontSize: '0.82rem', color: '#8b8b93' }}>
+                    {selectedLines.length === 0
+                      ? '请至少选择一条消息'
+                      : renderError
+                        ? '预览生成失败'
+                        : '正在生成预览…'}
+                  </span>
+                )}
+
+                {rendering && previewUrl ? (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      bottom: 10,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      padding: '3px 10px',
+                      borderRadius: 999,
+                      background: 'rgba(35, 35, 35, 0.72)',
+                      color: '#fff',
+                      fontSize: '0.72rem',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    生成中…
+                  </span>
+                ) : null}
+
+                {renderError && previewUrl ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      renderPreview();
+                    }}
+                    style={{
+                      position: 'absolute',
+                      bottom: 10,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      border: 'none',
+                      borderRadius: 999,
+                      padding: '3px 12px',
+                      background: '#736B92',
+                      color: '#fff',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    重新生成
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -680,8 +779,8 @@ export default function ShareScreenshotDialog({
         </div>
       </div>
 
-      {/* Full-screen zoom. Same card, scaled to fill the viewport. */}
-      {zoomed ? (
+      {/* Full-screen zoom. The same PNG, fitted to the viewport. */}
+      {zoomed && previewUrl ? (
         <div
           role="dialog"
           aria-modal="true"
@@ -697,33 +796,20 @@ export default function ShareScreenshotDialog({
             justifyContent: 'center',
             overflow: 'hidden',
             cursor: 'zoom-out',
+            padding: 24,
           }}
         >
-          <div
+          <img
+            src={previewUrl}
+            alt="分享截图预览"
+            onClick={(event) => event.stopPropagation()}
             style={{
-              width: SHARE_CARD_WIDTH * zoomScale,
-              height: cardHeight * zoomScale,
-              flexShrink: 0,
-              overflow: 'hidden',
+              maxWidth: '100%',
+              maxHeight: '100%',
+              display: 'block',
               boxShadow: '0 24px 64px rgba(0, 0, 0, 0.55)',
             }}
-          >
-            <div
-              style={{
-                width: SHARE_CARD_WIDTH,
-                height: cardHeight,
-                transform: `scale(${zoomScale})`,
-                transformOrigin: 'top left',
-              }}
-            >
-              <ShareCard
-                payload={capturePayload}
-                template={template}
-                background={background}
-                backgroundImageUrl={background.imageUrl}
-              />
-            </div>
-          </div>
+          />
 
           <button
             type="button"
@@ -746,7 +832,7 @@ export default function ShareScreenshotDialog({
               whiteSpace: 'nowrap',
             }}
           >
-            点击任意位置或按 Esc 返回
+            按 Esc 或点击空白处返回
           </div>
         </div>
       ) : null}
