@@ -147,7 +147,12 @@ const MessageBubble = React.memo(function MessageBubble({
         maxWidth: isEditingUser
           ? (isMobile ? '96%' : '92%')
           : isClean ? cleanContentWidth : '100%',
-        width: isClean ? '100%' : undefined,
+        // A definite width is what lets the bubble below cap itself: with a
+        // shrink-to-fit row, the bubble's `maxWidth: '100%'` resolves against a
+        // content-sized parent and is ignored for intrinsic sizing, so a wide
+        // code block / display equation / table pushes the whole thread past
+        // the viewport. Filling the row makes the percentage mean something.
+        width: '100%',
       }}
       onMouseEnter={() => onHoverMessage(m.message_id)}
       onMouseLeave={() => onHoverMessage(null)}
@@ -202,7 +207,11 @@ const MessageBubble = React.memo(function MessageBubble({
             flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
             alignItems: 'flex-start',
             gap: '0.4rem',
-            width: isClean ? '100%' : 'auto',
+            // Full width (see the main row above): the bubble is a flex item
+            // here, so a definite row lets flex-shrink + `minWidth: 0` bring
+            // wide content down to the available width, where `pre` /
+            // `.katex-display` can scroll it.
+            width: '100%',
             justifyContent: isClean ? (m.role === 'user' ? 'flex-start' : 'center') : undefined,
           }}>
             {/* Bubble */}

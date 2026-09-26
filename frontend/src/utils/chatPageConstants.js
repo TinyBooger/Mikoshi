@@ -13,6 +13,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import CodeBlock from '../components/CodeBlock';
 import MarkdownLink from '../components/MarkdownLink';
+import MarkdownTable from '../components/MarkdownTable';
 import { HIGHLIGHT_ALIASES, HIGHLIGHT_LANGUAGES } from './highlightLanguages';
 import { GRADIENT_BACKGROUNDS } from './backgroundPresets';
 
@@ -77,6 +78,7 @@ export const REHYPE_PLUGINS = [
 export const MARKDOWN_COMPONENTS = {
   pre: CodeBlock,
   a: MarkdownLink,
+  table: MarkdownTable,
 };
 
 export const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
