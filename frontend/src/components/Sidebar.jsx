@@ -13,6 +13,24 @@ import SecondaryButton from './SecondaryButton';
 import TextButton from './TextButton';
 import { formatCompactTokenCount, formatCreditCount, getTokenQuotaLabel } from '../utils/creditDisplay.js';
 
+/**
+ * Whether a raw chat_history row belongs to the group a recent-chat entry
+ * represents. Must mirror the grouping rule used by `recentChats`:
+ *   scene entry     -> every chat with that scene_id, any character
+ *   character entry -> scene-less chats with that character_id
+ *   deleted entry   -> scene-less chats with no id but the same cached name
+ */
+const isChatInRecentGroup = (entry, item) => {
+  if (!entry || !item) return false;
+  if (item.type === 'scene') {
+    return String(entry.scene_id) === String(item.scene_id);
+  }
+  if (item.character_id) {
+    return !entry.scene_id && String(entry.character_id) === String(item.character_id);
+  }
+  return !entry.scene_id && !entry.character_id && entry.character_name === item.character_name;
+};
+
 export default function Sidebar({ isMobile, setSidebarVisible }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -115,39 +133,57 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       }
     );
 
-    // Keep only the most recent chat per character (scene or not)
+    // Collapse to one entry per *group*, mirroring the two ways a chat can be
+    // entered (same rule as the profile history tab):
+    //   scene     → keyed by scene_id; all chats of that scene become one entry,
+    //               the character they were with may differ between them
+    //   character → keyed by character_id (or name for deleted characters)
+    // A character used both with and without a scene therefore appears twice,
+    // once per mode, and the two entries route to different places.
     const seen = new Set();
     const items = [];
 
     for (const chat of sorted) {
+      const isScene = !!chat.scene_id;
       // For deleted characters, character_id is null but character_name is cached.
       // Use "deleted:<name>" as the dedup key so they still appear in recent chats.
-      const key = chat.character_id
-        ? `character:${chat.character_id}`
-        : (chat.character_name ? `deleted:${chat.character_name}` : null);
+      const key = isScene
+        ? `scene:${chat.scene_id}`
+        : (chat.character_id
+          ? `character:${chat.character_id}`
+          : (chat.character_name ? `deleted:${chat.character_name}` : null));
       if (!key) continue;
       if (seen.has(key)) continue;
       seen.add(key);
 
       items.push({
-        type: 'character',
+        type: isScene ? 'scene' : 'character',
         chat_id: chat.chat_id,
-        id: chat.character_id,          // null for deleted characters
-        character_id: chat.character_id,
-        name: chat.character_name || 'Unknown Character',
-        picture: chat.character_picture,
+        id: isScene ? chat.scene_id : chat.character_id,
+        character_id: chat.character_id,          // null for deleted characters
+        character_name: chat.character_name || null,
+        character_picture: chat.character_picture || null,
+        name: isScene
+          ? (chat.scene_name || 'Unknown Scene')
+          : (chat.character_name || 'Unknown Character'),
+        picture: isScene ? (chat.scene_picture || null) : chat.character_picture,
         scene_id: chat.scene_id || null,
         scene_name: chat.scene_name || null,
         scene_picture: chat.scene_picture || null,
         is_pinned: !!chat.is_pinned,
         last_updated: chat.last_updated,
-        character_deleted: chat.character_id ? !!chat.character_deleted : true,
-        character_moderation_status: chat.character_moderation_status || null,
+        // A scene entry stays usable even if the character it was last used
+        // with is gone — the scene can be opened with another character.
+        character_deleted: isScene ? false : (chat.character_id ? !!chat.character_deleted : true),
+        character_moderation_status: isScene ? null : (chat.character_moderation_status || null),
       });
     }
 
     return items.slice(0, 10);
   }, [userData?.chat_history]);
+
+  const chatPictureUrl = (path) =>
+    path ? `${window.API_BASE_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}` : null;
 
   const [chatMenuOpenId, setChatMenuOpenId] = useState(null);
   const [chatMenuPosition, setChatMenuPosition] = useState(null);
@@ -190,15 +226,17 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
 
     const nextPinnedState = !chatItem?.is_pinned;
 
-    // Optimistic UI update for instant feedback.
+    // Optimistic UI update for instant feedback. The entry represents a whole
+    // group, and the backend pins every chat in that group, so update them all.
     setUserData((prev) => {
       if (!prev?.chat_history) return prev;
       return {
         ...prev,
-        chat_history: prev.chat_history.map((entry) => {
-          if (entry.chat_id !== chatId) return entry;
-          return { ...entry, is_pinned: nextPinnedState };
-        }),
+        chat_history: prev.chat_history.map((entry) => (
+          isChatInRecentGroup(entry, chatItem)
+            ? { ...entry, is_pinned: nextPinnedState }
+            : entry
+        )),
       };
     });
 
@@ -222,9 +260,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       }
 
       toast.show(
-        nextPinnedState
-          ? (t('sidebar.chat_pinned_success') || 'Chat pinned.')
-          : (t('sidebar.chat_unpinned_success') || 'Chat unpinned.'),
+        nextPinnedState ? '该组会话已置顶。' : '该组会话已取消置顶。',
         { type: 'success' }
       );
     } catch (error) {
@@ -232,24 +268,20 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         if (!prev?.chat_history) return prev;
         return {
           ...prev,
-          chat_history: prev.chat_history.map((entry) => {
-            if (entry.chat_id !== chatId) return entry;
-            return { ...entry, is_pinned: !nextPinnedState };
-          }),
+          chat_history: prev.chat_history.map((entry) => (
+            isChatInRecentGroup(entry, chatItem)
+              ? { ...entry, is_pinned: !nextPinnedState }
+              : entry
+          )),
         };
       });
-      toast.show(t('sidebar.chat_action_failed') || 'Failed to update chat.', { type: 'error' });
+      toast.show('更新会话失败。', { type: 'error' });
     }
   };
 
   const handleDeleteRecentChat = async (chatItem) => {
     const chatId = chatItem?.chat_id;
     if (!sessionToken || !chatId) return;
-
-    const confirmed = window.confirm(
-      t('sidebar.confirm_remove_from_recent') || 'Remove this chat from recent? You can still access it from your profile.'
-    );
-    if (!confirmed) return;
 
     setChatMenuOpenId(null);
 
@@ -269,16 +301,18 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
 
       setUserData((prev) => {
         if (!prev?.chat_history) return prev;
+        // The backend hides the whole group, so drop every row of it locally
+        // too — otherwise the next-newest chat would pop back into the list.
         return {
           ...prev,
-          chat_history: prev.chat_history.filter((entry) => entry.chat_id !== chatId),
+          chat_history: prev.chat_history.filter((entry) => !isChatInRecentGroup(entry, chatItem)),
         };
       });
 
-      toast.show(t('sidebar.removed_from_recent') || 'Removed from recent chats.', { type: 'success' });
+      toast.show('已从最近会话移除。', { type: 'success' });
       refreshUserData?.({ silent: true });
     } catch (error) {
-      toast.show(t('sidebar.chat_action_failed') || 'Failed to update chat.', { type: 'error' });
+      toast.show('更新会话失败。', { type: 'error' });
     }
   };
 
@@ -288,7 +322,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
-      toast.show(t('sidebar.logout_failed'), { type: 'error' });
+      toast.show('退出失败，请重试。', { type: 'error' });
     }
   };
 
@@ -409,7 +443,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         {/* Text logo on far left */}
         <a
           href="/"
-          aria-label={t('sidebar.home')}
+          aria-label="首页"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -428,8 +462,8 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
           <a
             href="/"
-            aria-label={t('sidebar.home')}
-            title={t('sidebar.home')}
+            aria-label="首页"
+            title="首页"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -639,7 +673,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             backgroundSize: '300% 100%',
             animation: 'rainbow-slide 4s linear infinite'
           }} 
-          title={t('sidebar.create_tooltip')}>
+          title="创建角色、场景或自设">
             <button
               className={`fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center${createOpen ? ' active' : ''}`}
               style={{ fontSize: isMobile ? '0.95rem' : '0.86rem', letterSpacing: '0.4px', background: createOpen ? '#dbeafe' : '#fff', color: '#232323', borderRadius: 19, padding: isMobile ? '12px 0' : '9px 0', border: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 700, transition: 'background 0.2s' }}
@@ -650,7 +684,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               aria-haspopup="true"
               tabIndex={0}
             >
-              <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-plus-circle me-2"></i> {t('sidebar.create')}</span>
+              <span className="d-flex align-items-center justify-content-center w-100"><i className="bi bi-plus-circle me-2"></i> 创建</span>
             </button>
           </div>
           <style>{`
@@ -744,11 +778,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { 
                   setCreateOpen(false); 
-                  if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); 
+                  if (!userData) return toast.show('请先登录', { type: 'info' }); 
                   handleNavigate('/character/create'); 
                 }}
               >
-                <i className="bi bi-person-plus me-2"></i> {t('sidebar.create_character')}
+                <i className="bi bi-person-plus me-2"></i> 角色
               </button>
             </li>
             <li className="dropdown-divider" style={{ borderTop: '1px solid rgba(35, 35, 35, 0.09)', margin: '0.3rem 0.4rem' }} />
@@ -760,11 +794,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { 
                   setCreateOpen(false); 
-                  if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); 
+                  if (!userData) return toast.show('请先登录', { type: 'info' }); 
                   handleNavigate('/scene/create'); 
                 }}
               >
-                <i className="bi bi-easel2 me-2"></i> {t('sidebar.create_scene')}
+                <i className="bi bi-easel2 me-2"></i> 场景
               </button>
             </li>
             <li className="dropdown-divider" style={{ borderTop: '1px solid rgba(35, 35, 35, 0.09)', margin: '0.3rem 0.4rem' }} />
@@ -776,11 +810,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                 onClick={() => { 
                   setCreateOpen(false); 
-                  if (!userData) return toast.show(t('sidebar.login_first'), { type: 'info' }); 
+                  if (!userData) return toast.show('请先登录', { type: 'info' }); 
                   handleNavigate('/persona/create'); 
                 }}
               >
-                <i className="bi bi-person-badge me-2"></i> {t('sidebar.create_persona')}
+                <i className="bi bi-person-badge me-2"></i> 自设
               </button>
             </li>
           </ul>
@@ -788,7 +822,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       </div>
       {/* Recent chats */}
       <div className="recent-chats-scroll mb-3 d-flex flex-column" style={{ minHeight: 0, flex: '1 1 auto', overflowX: 'hidden', overflowY: 'auto' }}>
-        <h6 className="fw-bold mb-2" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px', flexShrink: 0 }}>{t('sidebar.recent_chats')}</h6>
+        <h6 className="fw-bold mb-2" style={{ color: '#6c757d', fontSize: '0.82rem', letterSpacing: '0.16px', flexShrink: 0 }}>最近会话</h6>
         <div className="list-group rounded-4" style={{ background: 'transparent', boxShadow: 'none', minHeight: 0 }}>
           {recentChats.length === 0 ? (
             <div className="rounded-4 p-3" style={{ 
@@ -797,20 +831,20 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             }}>
               <div className="text-center mb-2" style={{ fontSize: '1.5rem' }}>👋</div>
               <h6 className="fw-bold text-center mb-2" style={{ fontSize: '0.85rem', color: '#736B92' }}>
-                {t('sidebar.empty_state_title')}
+                👋 欢迎！让我们开始吧
               </h6>
               <div className="d-flex flex-column gap-2" style={{ fontSize: '0.75rem', color: '#6c757d' }}>
                 <div className="d-flex align-items-start gap-2">
                   <span style={{ color: '#736B92' }}>→</span>
-                  <span>{t('sidebar.empty_state_step1')}</span>
+                  <span>浏览热门角色</span>
                 </div>
                 <div className="d-flex align-items-start gap-2">
                   <span style={{ color: '#736B92' }}>→</span>
-                  <span>{t('sidebar.empty_state_step2')}</span>
+                  <span>与角色开始聊天</span>
                 </div>
                 <div className="d-flex align-items-start gap-2">
                   <span style={{ color: '#736B92' }}>→</span>
-                  <span>{t('sidebar.empty_state_step3')}</span>
+                  <span>创建你自己的角色</span>
                 </div>
               </div>
             </div>
@@ -844,30 +878,44 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                         if (item.scene_id) {
                           handleNavigate(`/chat?scene=${item.scene_id}`);
                         } else {
-                          handleNavigate(`/chat?character=${item.id}`);
+                          handleNavigate(`/chat?character=${item.character_id}`);
                         }
                       }}
                       onMouseEnter={e => { if (!item.character_deleted) { e.currentTarget.style.background = '#f5f6fa'; e.currentTarget.style.color = '#232323'; } }}
                       onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#232323'; }}
                     >
-                      {/* Character = big image, scene = small overlay */}
+                      {/* Scene entries lead with the scene (small character overlay);
+                          character entries lead with the character only. */}
                       <div style={{ position: 'relative', width: 38, height: 38, flexShrink: 0 }}>
-                        <img
-                          src={item.picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${item.picture.replace(/^\//, '')}` : defaultPicture}
-                          alt={item.name}
-                          className="rounded-circle border"
-                          onError={(event) => {
-                            // Prevent broken-image alt rendering from stretching avatar shape.
-                            event.currentTarget.onerror = null;
-                            event.currentTarget.src = defaultPicture;
-                          }}
-                          style={{ width: 38, height: 38, minWidth: 38, minHeight: 38, maxWidth: 38, maxHeight: 38, aspectRatio: '1 / 1', display: 'block', objectFit: 'cover', border: '1.6px solid #e9ecef', filter: item.character_deleted ? 'grayscale(1)' : 'none' }}
-                        />
-                        {item.scene_picture && (
-                          <img
-                            src={`${window.API_BASE_URL.replace(/\/$/, '')}/${item.scene_picture.replace(/^\//, '')}`}
-                            alt={item.scene_name || 'Scene'}
+                        {item.type === 'scene' && !chatPictureUrl(item.picture) ? (
+                          <div
                             className="rounded-circle border"
+                            style={{ width: 38, height: 38, minWidth: 38, minHeight: 38, background: 'linear-gradient(135deg, rgba(167,139,250,0.22) 0%, rgba(155,143,184,0.14) 100%)', border: '1.6px solid #e9ecef', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <i className="bi bi-collection" style={{ color: '#9d7fcf', fontSize: '1.05rem' }}></i>
+                          </div>
+                        ) : (
+                          <img
+                            src={chatPictureUrl(item.picture) || defaultPicture}
+                            alt={item.name}
+                            className="rounded-circle border"
+                            onError={(event) => {
+                              // Prevent broken-image alt rendering from stretching avatar shape.
+                              event.currentTarget.onerror = null;
+                              event.currentTarget.src = defaultPicture;
+                            }}
+                            style={{ width: 38, height: 38, minWidth: 38, minHeight: 38, maxWidth: 38, maxHeight: 38, aspectRatio: '1 / 1', display: 'block', objectFit: 'cover', border: '1.6px solid #e9ecef', filter: item.character_deleted ? 'grayscale(1)' : 'none' }}
+                          />
+                        )}
+                        {item.type === 'scene' && chatPictureUrl(item.character_picture) && (
+                          <img
+                            src={chatPictureUrl(item.character_picture)}
+                            alt={item.character_name || 'Character'}
+                            className="rounded-circle border"
+                            onError={(event) => {
+                              event.currentTarget.onerror = null;
+                              event.currentTarget.src = defaultPicture;
+                            }}
                             style={{
                               width: 18,
                               height: 18,
@@ -884,11 +932,11 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                         <span className="fw-bold text-truncate" style={{ color: item.character_deleted ? '#9ca3af' : '#232323', fontWeight: 700, lineHeight: 1.25 }}>{item.name}</span>
                         {item.character_deleted ? (
-                          <span style={{ color: '#ef4444', fontSize: '0.68rem', fontWeight: 600 }}>{t('sidebar.character_deleted') || 'Deleted'}</span>
+                          <span style={{ color: '#ef4444', fontSize: '0.68rem', fontWeight: 600 }}>已删除</span>
                         ) : item.character_moderation_status ? (
-                          <span style={{ color: '#f59e0b', fontSize: '0.68rem', fontWeight: 600 }}>{t('sidebar.character_moderated') || 'Unavailable'}</span>
-                        ) : item.scene_name ? (
-                          <span className="text-truncate" style={{ color: '#9ca3af', fontSize: '0.71rem', fontWeight: 500, lineHeight: 1.2 }}>{item.scene_name}</span>
+                          <span style={{ color: '#f59e0b', fontSize: '0.68rem', fontWeight: 600 }}>不可用</span>
+                        ) : item.type === 'scene' && item.character_name ? (
+                          <span className="text-truncate" style={{ color: '#9ca3af', fontSize: '0.71rem', fontWeight: 500, lineHeight: 1.2 }}>{item.character_name}</span>
                         ) : null}
                       </div>
                       {item.is_pinned && (
@@ -940,8 +988,8 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                         zIndex: 2,
                       }}
                       className={`chat-options-btn${chatMenuOpenId === item.chat_id ? ' menu-open' : ''}`}
-                      aria-label={t('sidebar.chat_options') || 'Chat options'}
-                      title={t('sidebar.chat_options') || 'Chat options'}
+                      aria-label="会话选项"
+                      title="会话选项"
                     >
                       <i className="bi bi-three-dots"></i>
                     </button>
@@ -982,9 +1030,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             }}
           >
             <i className={activeChatMenuItem.is_pinned ? 'bi bi-pin-angle' : 'bi bi-pin-angle-fill'}></i>
-            {activeChatMenuItem.is_pinned
-              ? (t('sidebar.unpin_chat') || 'Unpin chat')
-              : (t('sidebar.pin_chat') || 'Pin chat')}
+            {activeChatMenuItem.is_pinned ? '取消置顶' : '置顶'}
           </button>
           <button
             type="button"
@@ -999,7 +1045,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             }}
           >
             <i className="bi bi-eye-slash"></i>
-            {t('sidebar.remove_from_recent') || 'Remove from recent'}
+            隐藏
           </button>
         </div>,
         document.body
@@ -1017,7 +1063,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               backgroundSize: '300% 100%',
               animation: 'rainbow-slide 4s linear infinite'
             }}
-            title={t('sidebar.upgrade_to_pro_tooltip')}
+            title="升级到Pro会员解锁更多功能"
           >
             <button
               className="fw-bold shadow-sm w-100 d-flex align-items-center justify-content-center"
@@ -1049,7 +1095,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               tabIndex={0}
             >
               <span className="d-flex align-items-center justify-content-center w-100">
-                <i className="bi bi-star-fill me-2"></i> {t('sidebar.upgrade_to_pro')}
+                <i className="bi bi-star-fill me-2"></i> 升级为Pro用户
               </span>
             </button>
           </div>
@@ -1222,7 +1268,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                     handleNavigate("/profile"); 
                   }}
                 >
-                  <i className="bi bi-person-circle me-2"></i> {t('sidebar.profile')}
+                  <i className="bi bi-person-circle me-2"></i> 个人资料
                 </button>
               </li>
               <li className="dropdown-divider" style={{ borderTop: '1px solid rgba(35, 35, 35, 0.09)', margin: '0.3rem 0.4rem' }} />
@@ -1239,7 +1285,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                         handleNavigate("/admin"); 
                       }}
                     >
-                      <i className="bi bi-shield-lock me-2"></i> {t('sidebar.admin_panel')}
+                      <i className="bi bi-shield-lock me-2"></i> 管理面板
                     </button>
                   </li>
                   <li className="dropdown-divider" style={{ borderTop: '1px solid rgba(35, 35, 35, 0.09)', margin: '0.3rem 0.4rem' }} />
@@ -1253,7 +1299,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#232323'; }}
                   onClick={() => { setProfileOpen(false); handleLogout(); }}
                 >
-                  <i className="bi bi-box-arrow-right me-2"></i> {t('sidebar.logout')}
+                  <i className="bi bi-box-arrow-right me-2"></i> 退出登录
                 </button>
               </li>
             </ul>
@@ -1267,7 +1313,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 handleNavigate('/login');
               }}
             >
-              <i className="bi bi-person-circle me-2" style={{ fontSize: '0.8rem' }}></i> {t('sidebar.login_to_continue')}
+              <i className="bi bi-person-circle me-2" style={{ fontSize: '0.8rem' }}></i> 请登录以继续
             </button>
           </div>
         )}

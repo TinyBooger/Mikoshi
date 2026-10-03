@@ -21,9 +21,13 @@ from utils.chat_history_utils import (
     fork_chat_history_branch,
     generate_chat_message_id,
     fetch_user_chat_history_paginated,
-    fetch_user_chat_history_grouped_by_character,
+    fetch_user_chat_history_grouped,
     delete_user_chat_history_by_character,
+    delete_user_chat_history_by_scene,
     delete_unavailable_chat_history,
+    set_chat_history_group_pinned,
+    hide_chat_history_group_from_recent,
+    restore_chat_history_group_to_recent,
     set_chat_history_active_branch_for_entry,
     toggle_chat_history_message_pin,
 )
@@ -1024,13 +1028,15 @@ async def pin_chat(request: Request, current_user: User = Depends(get_current_us
     if not entry:
         return JSONResponse(content={"error": "Chat not found"}, status_code=404)
 
-    entry.is_pinned = is_pinned
-    db.commit()
+    # The sidebar shows one row per group (scene group / character group), so
+    # pinning applies to the whole group rather than just this chat.
+    updated_count = set_chat_history_group_pinned(db, current_user.id, entry, is_pinned)
 
     return {
         "status": "success",
         "chat_id": chat_id,
-        "is_pinned": bool(entry.is_pinned),
+        "is_pinned": is_pinned,
+        "updated": updated_count,
     }
 
 
@@ -1145,9 +1151,10 @@ async def hide_chat_from_recent(request: Request, current_user: User = Depends(g
     if not entry:
         return JSONResponse(content={"error": "Chat not found"}, status_code=404)
 
-    entry.hidden_from_recent = True
-    db.commit()
-    return {"status": "success", "chat_id": chat_id}
+    # Group-scoped: hiding only this row would just promote the next-newest
+    # chat of the same group back into the sidebar recents.
+    updated_count = hide_chat_history_group_from_recent(db, current_user.id, entry)
+    return {"status": "success", "chat_id": chat_id, "updated": updated_count}
 
 
 @router.post("/api/chat/restore-to-recent")
@@ -1165,9 +1172,8 @@ async def restore_chat_to_recent(request: Request, current_user: User = Depends(
     if not entry:
         return JSONResponse(content={"error": "Chat not found"}, status_code=404)
 
-    entry.hidden_from_recent = False
-    db.commit()
-    return {"status": "success", "chat_id": chat_id}
+    updated_count = restore_chat_history_group_to_recent(db, current_user.id, entry)
+    return {"status": "success", "chat_id": chat_id, "updated": updated_count}
 
 
 @router.get("/api/chat/history")
@@ -1184,6 +1190,9 @@ async def get_chat_history(
     return fetch_user_chat_history_paginated(db, current_user.id, page=page, page_size=page_size)
 
 
+# NOTE: the path is kept for backward compatibility with already-deployed
+# frontend bundles; the response now contains scene groups as well as character
+# groups (each item carries `group_type`).
 @router.get("/api/chat/history-by-character")
 async def get_chat_history_by_character(
     page: int = 1,
@@ -1195,7 +1204,7 @@ async def get_chat_history_by_character(
         page = 1
     if page_size < 1 or page_size > 100:
         page_size = 20
-    return fetch_user_chat_history_grouped_by_character(db, current_user.id, page=page, page_size=page_size)
+    return fetch_user_chat_history_grouped(db, current_user.id, page=page, page_size=page_size)
 
 
 @router.post("/api/chat/delete-by-character")
@@ -1228,6 +1237,41 @@ async def delete_chat_history_by_character(
         metadata={
             "character_id": character_id,
             "character_name": character_name,
+            "deleted_count": deleted_count,
+        },
+    )
+
+    return {"status": "success", "deleted": deleted_count}
+
+
+@router.post("/api/chat/delete-by-scene")
+async def delete_chat_history_by_scene(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        data = await request.json()
+    except ClientDisconnect:
+        return Response(status_code=499)
+
+    scene_id = data.get("scene_id")
+    if scene_id is None:
+        return JSONResponse(content={"error": "Missing scene_id"}, status_code=400)
+
+    try:
+        scene_id = int(scene_id)
+    except (TypeError, ValueError):
+        return JSONResponse(content={"error": "Invalid scene_id"}, status_code=400)
+
+    deleted_count = delete_user_chat_history_by_scene(db, current_user.id, scene_id)
+
+    audit_request(
+        request,
+        action="delete_chats_by_scene",
+        user_id=current_user.id,
+        metadata={
+            "scene_id": scene_id,
             "deleted_count": deleted_count,
         },
     )

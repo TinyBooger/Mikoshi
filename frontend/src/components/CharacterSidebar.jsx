@@ -195,6 +195,23 @@ export default function CharacterSidebar({
   // Priority: Scene > Character > None (mutually exclusive states)
   const isSceneMode = !!selectedScene;
   const isCharacterMode = !isSceneMode && !!selectedCharacter;
+  // The history list mirrors the entry mode so that picking an entry never
+  // silently switches modes:
+  //   scene mode     → every chat that used this scene, whichever character
+  //   character mode → only the scene-less chats with this character (a chat
+  //                    that has a scene belongs to its scene group instead)
+  const modeChatHistory = React.useMemo(() => {
+    const history = userData?.chat_history || [];
+    let filtered;
+    if (isSceneMode) {
+      filtered = history.filter((chat) => String(chat.scene_id) === String(selectedScene.id));
+    } else if (isCharacterMode) {
+      filtered = history.filter((chat) => !chat.scene_id && String(chat.character_id) === String(selectedCharacter.id));
+    } else {
+      filtered = history.filter((chat) => String(chat.character_id) === String(characterId));
+    }
+    return filtered.slice().sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated));
+  }, [userData?.chat_history, isSceneMode, isCharacterMode, selectedScene?.id, selectedCharacter?.id, characterId]);
   const sidebarMotion = '0.35s cubic-bezier(.4,0,.2,1)';
 
   // Mobile: a fixed, right-side slide-in drawer rendered over the content via
@@ -891,7 +908,7 @@ export default function CharacterSidebar({
           )}
         </div>
 
-        {userData?.chat_history?.length > 0 && (
+        {modeChatHistory.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#2f2b3d' }}>对话历史</h6>
@@ -905,13 +922,7 @@ export default function CharacterSidebar({
             </div>
             {showChatHistory && (
               <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 12, background: '#f8f7fc', padding: 8, border: '1px solid #ece9f4' }}>
-                {userData.chat_history
-                  .filter(chat => {
-                    // Always filter by character — show all chats of this character, with or without a scene
-                    return String(chat.character_id) === String(characterId);
-                  })
-                  .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated))
-                  .map((chat) => (
+                {modeChatHistory.map((chat) => (
                     <div
                       key={chat.chat_id}
                       style={{
@@ -982,9 +993,9 @@ export default function CharacterSidebar({
                             <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {chat.title || chat.messages.find(m => m.role === 'user')?.content || '新对话'}
                             </span>
-                            {chat.scene_name && (
+                            {isSceneMode && chat.character_name && (
                               <span style={{ display: 'block', fontSize: '0.75rem', color: '#9d8ec0', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
-                                {chat.scene_name}
+                                {chat.character_name}
                               </span>
                             )}
                           </span>

@@ -116,9 +116,13 @@ export function useChatInitialization({
     setInitLoading(true);
     try {
       const fetchedData = await fetchInitialData();
+      // Only scene-less chats are resumed here; a chat that was started from a
+      // scene belongs to the scene route and must not be picked up as "the most
+      // recent chat with this character".
       const existingChats = userData?.chat_history?.filter(h => {
         const characterMatches = String(h.character_id) === String(characterId);
-        return characterMatches;
+        const hasScene = Boolean(h.scene_id);
+        return characterMatches && !hasScene;
       }) || [];
 
       if (existingChats.length > 0) {

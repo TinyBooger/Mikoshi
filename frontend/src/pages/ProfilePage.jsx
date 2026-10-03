@@ -597,10 +597,13 @@ export default function ProfilePage() {
       .finally(() => setChatHistoryLoading(false));
   }, [isOwnProfile, activeTab, chatHistoryPage, sessionToken]);
 
-  const handleDeleteChatByCharacter = async (characterId, characterName) => {
+  // Removes the character group only (scene-less chats). Scene chats belong to
+  // their scene group and are removed with handleDeleteChatByScene instead.
+  const handleDeleteChatByCharacter = async (chat) => {
+    const { character_id: characterId, character_name: characterName } = chat;
     const label = characterName || '这个角色';
     if (!window.confirm(`确定要永久删除与 ${label} 的所有聊天记录吗？此操作无法撤销。`)) return;
-    setDeletingChatId(characterId ?? characterName);
+    setDeletingChatId(chat.chat_id);
     try {
       const res = await fetch(`${window.API_BASE_URL}/api/chat/delete-by-character`, {
         method: 'POST',
@@ -609,8 +612,31 @@ export default function ProfilePage() {
       });
       if (res.ok) {
         setChatHistoryItems(prev => prev.filter(c =>
-          characterId ? c.character_id !== characterId : c.character_name !== characterName
+          c.group_type === 'scene' ||
+          (characterId ? c.character_id !== characterId : c.character_name !== characterName)
         ));
+        setChatHistoryTotal(prev => Math.max(0, prev - 1));
+        toast.show('所有聊天记录已删除。', { type: 'success' });
+      }
+    } finally {
+      setDeletingChatId(null);
+    }
+  };
+
+  // Removes a whole scene group: every chat that used that scene, whichever
+  // character it was with.
+  const handleDeleteChatByScene = async (chat) => {
+    const label = chat.scene_name || '这个场景';
+    if (!window.confirm(`确定要永久删除场景「${label}」下的所有聊天记录吗？此操作无法撤销。`)) return;
+    setDeletingChatId(chat.chat_id);
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/chat/delete-by-scene`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: sessionToken },
+        body: JSON.stringify({ scene_id: chat.scene_id }),
+      });
+      if (res.ok) {
+        setChatHistoryItems(prev => prev.filter(c => c.scene_id !== chat.scene_id));
         setChatHistoryTotal(prev => Math.max(0, prev - 1));
         toast.show('所有聊天记录已删除。', { type: 'success' });
       }
@@ -1069,85 +1095,102 @@ export default function ProfilePage() {
               .map(key => ({ key, label: bucketLabels[key], items: chatHistoryItems.filter(c => getBucket(c.last_updated) === key) }))
               .filter(g => g.items.length > 0);
 
-            const renderCard = (chat) => (
-              <div
-                key={chat.character_id}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  background: '#fff',
-                  border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12,
-                  padding: '10px 14px',
-                  opacity: chat.character_deleted ? 0.75 : 1,
-                }}
-              >
-                {/* Avatar: character big, scene small overlay */}
-                <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
-                  {chat.character_picture ? (
-                    <img
-                      src={`${window.API_BASE_URL.replace(/\/$/, '')}/${chat.character_picture.replace(/^\//, '')}`}
-                      alt=""
-                      style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover', filter: chat.character_deleted ? 'grayscale(1)' : 'none' }}
-                    />
-                  ) : (
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(167,139,250,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <i className="bi bi-person" style={{ color: '#9d7fcf', fontSize: '1.3rem' }} />
+            const toPictureUrl = (path) =>
+              `${window.API_BASE_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+
+            const renderCard = (chat) => {
+              const isSceneGroup = chat.group_type === 'scene';
+              const unavailable = !isSceneGroup && (!!chat.character_deleted || !!chat.character_moderation_status);
+              // Scene groups lead with the scene (the character can change);
+              // character groups lead with the character (the scene is separate).
+              const title = isSceneGroup ? (chat.scene_name || '未知场景') : (chat.character_name || '未知角色');
+              const mainPicture = isSceneGroup ? chat.scene_picture : chat.character_picture;
+              const overlayPicture = isSceneGroup ? chat.character_picture : chat.scene_picture;
+              const subtitleName = isSceneGroup ? chat.character_name : chat.scene_name;
+              const openHref = isSceneGroup
+                ? `/chat?scene=${chat.scene_id}`
+                : `/chat?character=${chat.character_id}`;
+
+              return (
+                <div
+                  key={isSceneGroup ? `scene:${chat.scene_id}` : `character:${chat.character_id ?? chat.character_name}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    background: '#fff',
+                    border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12,
+                    padding: '10px 14px',
+                    opacity: unavailable ? 0.75 : 1,
+                  }}
+                >
+                  {/* Avatar: primary entity big, the other one small overlay */}
+                  <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+                    {mainPicture ? (
+                      <img
+                        src={toPictureUrl(mainPicture)}
+                        alt=""
+                        style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover', filter: unavailable ? 'grayscale(1)' : 'none' }}
+                      />
+                    ) : (
+                      <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(167,139,250,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <i className={isSceneGroup ? 'bi bi-collection' : 'bi bi-person'} style={{ color: '#9d7fcf', fontSize: '1.3rem' }} />
+                      </div>
+                    )}
+                    {overlayPicture && (
+                      <img
+                        src={toPictureUrl(overlayPicture)}
+                        alt=""
+                        style={{ width: 20, height: 20, borderRadius: 6, objectFit: 'cover', border: '1.5px solid #fff', position: 'absolute', bottom: -3, right: -3, boxShadow: '0 1px 3px rgba(0,0,0,0.18)' }}
+                      />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: unavailable ? '#9ca3af' : '#18191a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {title}
                     </div>
-                  )}
-                  {chat.scene_picture && (
-                    <img
-                      src={`${window.API_BASE_URL.replace(/\/$/, '')}/${chat.scene_picture.replace(/^\//, '')}`}
-                      alt=""
-                      style={{ width: 20, height: 20, borderRadius: 6, objectFit: 'cover', border: '1.5px solid #fff', position: 'absolute', bottom: -3, right: -3, boxShadow: '0 1px 3px rgba(0,0,0,0.18)' }}
-                    />
-                  )}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: chat.character_deleted ? '#9ca3af' : '#18191a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {chat.character_name || '未知角色'}
+                    <div style={{ fontSize: '0.77rem', color: '#6b7280', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                      {chat.character_deleted && !isSceneGroup ? (
+                        <span style={{ color: '#ef4444', fontWeight: 600 }}>{'已删除'}</span>
+                      ) : chat.character_moderation_status && !isSceneGroup ? (
+                        <span style={{ color: '#f59e0b', fontWeight: 600 }}>{'不可用'}</span>
+                      ) : subtitleName ? (
+                        <>
+                          <span style={{ color: '#9d7fcf', fontWeight: 500 }}>{subtitleName}</span>
+                          <span style={{ opacity: 0.4 }}>·</span>
+                        </>
+                      ) : null}
+                      <span>{chat.chat_count} 次会话</span>
+                      <span style={{ opacity: 0.4 }}>·</span>
+                      <span>{formatChatDate(chat.last_updated)}</span>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.77rem', color: '#6b7280', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                    {chat.character_deleted ? (
-                      <span style={{ color: '#ef4444', fontWeight: 600 }}>{'已删除'}</span>
-                    ) : chat.character_moderation_status ? (
-                      <span style={{ color: '#f59e0b', fontWeight: 600 }}>{'不可用'}</span>
-                    ) : chat.scene_name ? (
-                      <>
-                        <span style={{ color: '#9d7fcf', fontWeight: 500 }}>{chat.scene_name}</span>
-                        <span style={{ opacity: 0.4 }}>·</span>
-                      </>
-                    ) : null}
-                    <span>{chat.chat_count} 次会话</span>
-                    <span style={{ opacity: 0.4 }}>·</span>
-                    <span>{formatChatDate(chat.last_updated)}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                  {!chat.character_deleted && !chat.character_moderation_status && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                    {!unavailable && (
+                      <button
+                        type="button"
+                        title={'打开'}
+                        onClick={() => navigate(openHref)}
+                        style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: '#7c5cbf', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.12)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <i className="bi bi-arrow-right" />
+                      </button>
+                    )}
                     <button
                       type="button"
-                      title={'打开'}
-                      onClick={() => navigate(`/chat?character=${chat.character_id}`)}
-                      style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: '#7c5cbf', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.12)'; }}
+                      title={'删除'}
+                      disabled={deletingChatId === chat.chat_id}
+                      onClick={() => (isSceneGroup ? handleDeleteChatByScene(chat) : handleDeleteChatByCharacter(chat))}
+                      style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', opacity: deletingChatId === chat.chat_id ? 0.4 : 1 }}
+                      onMouseEnter={e => { if (deletingChatId !== chat.chat_id) e.currentTarget.style.background = 'rgba(220,38,38,0.08)'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
-                      <i className="bi bi-arrow-right" />
+                      <i className="bi bi-trash3" />
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    title={'删除'}
-                    disabled={deletingChatId === (chat.character_id ?? chat.character_name)}
-                    onClick={() => handleDeleteChatByCharacter(chat.character_id, chat.character_name)}
-                    style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', opacity: deletingChatId === (chat.character_id ?? chat.character_name) ? 0.4 : 1 }}
-                    onMouseEnter={e => { if (deletingChatId !== (chat.character_id ?? chat.character_name)) e.currentTarget.style.background = 'rgba(220,38,38,0.08)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    <i className="bi bi-trash3" />
-                  </button>
+                  </div>
                 </div>
-              </div>
-            );
+              );
+            };
 
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>

@@ -548,43 +548,103 @@ def fetch_user_chat_history_paginated(db: Session, user_id: str, page: int = 1, 
     }
 
 
-def fetch_user_chat_history_grouped_by_character(db: Session, user_id: str, page: int = 1, page_size: int = 20) -> dict:
-    """Return one entry per character (the most recent chat) for the profile history tab.
+def fetch_user_chat_history_grouped(db: Session, user_id: str, page: int = 1, page_size: int = 20) -> dict:
+    """Return one entry per chat group for the profile history tab.
 
-    Includes entries for deleted characters whose character_id was set to NULL by the
-    ON DELETE SET NULL FK constraint — these are grouped by cached character_name.
+    A group is the entity the chat was *entered* through, mirroring the two
+    entry modes of the chat page:
+
+    * ``group_type == "scene"`` — every chat that used a scene, grouped by
+      ``scene_id`` regardless of character. Opening one enters scene mode:
+      the scene is kept and a (possibly different) character is chosen.
+    * ``group_type == "character"`` — chats with no scene, grouped by
+      ``character_id``. Opening one enters character mode: the character is
+      kept, the scene can change.
+
+    Deleted characters (``character_id`` NULLed by ON DELETE SET NULL) are
+    grouped by the cached ``character_name``. A deleted scene loses its
+    ``scene_id`` the same way, so its chats fall back into character groups —
+    a scene that no longer exists cannot be entered in scene mode anyway.
     """
     from sqlalchemy.orm import aliased
 
     CharAlias = aliased(Character)
+    items: list[dict] = []
 
-    # ── Part 1: active characters (character_id still set) ─────────────────────
-    sub = (
+    # ── Part 1: scene groups (scene_id still set) ──────────────────────────────
+    # Window functions pick exactly one representative row per group (the most
+    # recently updated) while counting the whole partition in the same pass.
+    scene_ranked = (
         db.query(
-            ChatHistory.character_id,
-            func.max(ChatHistory.last_updated).label("max_updated"),
-            func.count(ChatHistory.id).label("chat_count"),
+            ChatHistory.id.label("id"),
+            func.count().over(partition_by=ChatHistory.scene_id).label("chat_count"),
+            func.row_number().over(
+                partition_by=ChatHistory.scene_id,
+                order_by=(ChatHistory.last_updated.desc(), ChatHistory.id.desc()),
+            ).label("rn"),
         )
-        .filter(ChatHistory.user_id == user_id, ChatHistory.character_id.isnot(None))
-        .group_by(ChatHistory.character_id)
+        .filter(ChatHistory.user_id == user_id, ChatHistory.scene_id.isnot(None))
+        .subquery()
+    )
+
+    scene_rows = (
+        db.query(ChatHistory, scene_ranked.c.chat_count)
+        .join(scene_ranked, ChatHistory.id == scene_ranked.c.id)
+        .filter(scene_ranked.c.rn == 1)
+        .all()
+    )
+
+    for entry, chat_count in scene_rows:
+        items.append({
+            "group_type": "scene",
+            "chat_id": entry.chat_id,
+            "character_id": entry.character_id,
+            "character_name": entry.character_name,
+            "character_picture": entry.character_picture,
+            "scene_id": entry.scene_id,
+            "scene_name": entry.scene_name,
+            "scene_picture": entry.scene_picture,
+            "hidden_from_recent": bool(getattr(entry, "hidden_from_recent", False)),
+            "last_updated": entry.last_updated.isoformat() if entry.last_updated else None,
+            "chat_count": chat_count,
+            "character_deleted": False,
+            "character_moderation_status": None,
+        })
+
+    # ── Part 2: character groups (no scene, character still exists) ─────────────
+    char_ranked = (
+        db.query(
+            ChatHistory.id.label("id"),
+            func.count().over(partition_by=ChatHistory.character_id).label("chat_count"),
+            func.row_number().over(
+                partition_by=ChatHistory.character_id,
+                order_by=(ChatHistory.last_updated.desc(), ChatHistory.id.desc()),
+            ).label("rn"),
+        )
+        .filter(
+            ChatHistory.user_id == user_id,
+            ChatHistory.scene_id.is_(None),
+            ChatHistory.character_id.isnot(None),
+        )
         .subquery()
     )
 
     active_rows = (
-        db.query(ChatHistory, sub.c.chat_count, CharAlias.id.label("char_exists"), CharAlias.moderation_status.label("char_mod_status"))
-        .join(
-            sub,
-            (ChatHistory.character_id == sub.c.character_id)
-            & (ChatHistory.last_updated == sub.c.max_updated)
-            & (ChatHistory.user_id == user_id),
+        db.query(
+            ChatHistory,
+            char_ranked.c.chat_count,
+            CharAlias.id.label("char_exists"),
+            CharAlias.moderation_status.label("char_mod_status"),
         )
+        .join(char_ranked, ChatHistory.id == char_ranked.c.id)
+        .filter(char_ranked.c.rn == 1)
         .outerjoin(CharAlias, CharAlias.id == ChatHistory.character_id)
         .all()
     )
 
-    items: list[dict] = []
     for entry, chat_count, char_exists, char_mod_status in active_rows:
         items.append({
+            "group_type": "character",
             "chat_id": entry.chat_id,
             "character_id": entry.character_id,
             "character_name": entry.character_name,
@@ -599,38 +659,38 @@ def fetch_user_chat_history_grouped_by_character(db: Session, user_id: str, page
             "character_moderation_status": char_mod_status if char_exists is not None else None,
         })
 
-    # ── Part 2: deleted characters (character_id NULLed by FK cascade) ─────────
+    # ── Part 3: deleted characters (character_id NULLed, no scene) ─────────────
     # Group by character_name since the ID is gone.
-    del_sub = (
+    del_ranked = (
         db.query(
-            ChatHistory.character_name,
-            ChatHistory.character_picture,
-            func.max(ChatHistory.last_updated).label("max_updated"),
-            func.count(ChatHistory.id).label("chat_count"),
+            ChatHistory.id.label("id"),
+            func.count().over(
+                partition_by=(ChatHistory.character_name, ChatHistory.character_picture)
+            ).label("chat_count"),
+            func.row_number().over(
+                partition_by=(ChatHistory.character_name, ChatHistory.character_picture),
+                order_by=(ChatHistory.last_updated.desc(), ChatHistory.id.desc()),
+            ).label("rn"),
         )
         .filter(
             ChatHistory.user_id == user_id,
+            ChatHistory.scene_id.is_(None),
             ChatHistory.character_id.is_(None),
             ChatHistory.character_name.isnot(None),
         )
-        .group_by(ChatHistory.character_name, ChatHistory.character_picture)
         .subquery()
     )
 
     deleted_rows = (
-        db.query(ChatHistory, del_sub.c.chat_count)
-        .join(
-            del_sub,
-            (ChatHistory.character_name == del_sub.c.character_name)
-            & (ChatHistory.last_updated == del_sub.c.max_updated)
-            & (ChatHistory.user_id == user_id)
-            & ChatHistory.character_id.is_(None),
-        )
+        db.query(ChatHistory, del_ranked.c.chat_count)
+        .join(del_ranked, ChatHistory.id == del_ranked.c.id)
+        .filter(del_ranked.c.rn == 1)
         .all()
     )
 
     for entry, chat_count in deleted_rows:
         items.append({
+            "group_type": "character",
             "chat_id": entry.chat_id,
             "character_id": None,
             "character_name": entry.character_name,
@@ -660,21 +720,25 @@ def delete_user_chat_history_by_character(
     character_id: str | None,
     character_name: str | None = None,
 ) -> int:
-    """Delete all chat history entries for a user+character.
+    """Delete all *scene-less* chat history entries for a user+character.
 
-    When character_id is None (deleted character whose FK was set to NULL),
-    falls back to matching by character_name. Returns the number of rows deleted.
+    Scene chats belong to their scene group, so they are deliberately left
+    alone here — use delete_user_chat_history_by_scene for those. When
+    character_id is None (deleted character whose FK was set to NULL), falls
+    back to matching by character_name. Returns the number of rows deleted.
     """
     if character_id is not None:
         q = db.query(ChatHistory).filter(
             ChatHistory.user_id == user_id,
             ChatHistory.character_id == character_id,
+            ChatHistory.scene_id.is_(None),
         )
     elif character_name:
         q = db.query(ChatHistory).filter(
             ChatHistory.user_id == user_id,
             ChatHistory.character_id.is_(None),
             ChatHistory.character_name == character_name,
+            ChatHistory.scene_id.is_(None),
         )
     else:
         return 0
@@ -683,12 +747,35 @@ def delete_user_chat_history_by_character(
     return deleted
 
 
+def delete_user_chat_history_by_scene(db: Session, user_id: str, scene_id: int | None) -> int:
+    """Delete all chat history entries for a user+scene, whatever character they used.
+
+    Mirror of delete_user_chat_history_by_character for scene groups. Returns
+    the number of rows deleted.
+    """
+    if scene_id is None:
+        return 0
+    deleted = (
+        db.query(ChatHistory)
+        .filter(
+            ChatHistory.user_id == user_id,
+            ChatHistory.scene_id == scene_id,
+        )
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    return deleted
+
+
 def delete_unavailable_chat_history(db: Session, user_id: str) -> int:
-    """Delete all chat history entries for unavailable characters.
+    """Delete *scene-less* chat history entries for unavailable characters.
 
     Covers two cases:
     1. Deleted characters — character_id was set to NULL by ON DELETE SET NULL cascade.
     2. Moderated characters — character still exists but has been restricted or taken down.
+
+    Scene chats are skipped: the scene itself may still be usable, and those
+    rows belong to a scene group the user can keep with another character.
     Returns total rows deleted.
     """
     # Case 1: deleted characters (character_id NULLed, name cached)
@@ -696,6 +783,7 @@ def delete_unavailable_chat_history(db: Session, user_id: str) -> int:
         db.query(ChatHistory)
         .filter(
             ChatHistory.user_id == user_id,
+            ChatHistory.scene_id.is_(None),
             ChatHistory.character_id.is_(None),
             ChatHistory.character_name.isnot(None),
         )
@@ -712,6 +800,7 @@ def delete_unavailable_chat_history(db: Session, user_id: str) -> int:
         db.query(ChatHistory)
         .filter(
             ChatHistory.user_id == user_id,
+            ChatHistory.scene_id.is_(None),
             ChatHistory.character_id.in_(moderated_ids),
         )
         .delete(synchronize_session=False)
@@ -727,6 +816,78 @@ def fetch_chat_history_entry(db: Session, user_id: str, chat_id: str) -> Optiona
         .filter(ChatHistory.user_id == user_id, ChatHistory.chat_id == chat_id)
         .first()
     )
+
+
+def chat_history_group_filters(user_id: str, entry: ChatHistory) -> list:
+    """Return filter conditions selecting every row in ``entry``'s group.
+
+    A group mirrors how a chat is entered, the same rule the profile history tab
+    and the sidebar recents use:
+
+    * a chat with a scene belongs to its **scene** group, whichever character
+      it was used with;
+    * a chat without a scene belongs to its **character** group;
+    * a deleted character (``character_id`` NULLed by ON DELETE SET NULL) falls
+      back to the cached ``character_name``.
+    """
+    if entry.scene_id is not None:
+        return [ChatHistory.user_id == user_id, ChatHistory.scene_id == entry.scene_id]
+    if entry.character_id is not None:
+        return [
+            ChatHistory.user_id == user_id,
+            ChatHistory.scene_id.is_(None),
+            ChatHistory.character_id == entry.character_id,
+        ]
+    if entry.character_name:
+        return [
+            ChatHistory.user_id == user_id,
+            ChatHistory.scene_id.is_(None),
+            ChatHistory.character_id.is_(None),
+            ChatHistory.character_name == entry.character_name,
+        ]
+    # Nothing to group by (no scene, no id, no cached name) — fall back to the
+    # single row so callers still behave sensibly.
+    return [ChatHistory.user_id == user_id, ChatHistory.chat_id == entry.chat_id]
+
+
+def set_chat_history_group_pinned(db: Session, user_id: str, entry: ChatHistory, is_pinned: bool) -> int:
+    """Pin/unpin every chat in the entry's group (the UI shows one row per group).
+
+    Returns the number of rows updated.
+    """
+    updated = (
+        db.query(ChatHistory)
+        .filter(*chat_history_group_filters(user_id, entry))
+        .update({ChatHistory.is_pinned: bool(is_pinned)}, synchronize_session=False)
+    )
+    db.commit()
+    return updated
+
+
+def hide_chat_history_group_from_recent(db: Session, user_id: str, entry: ChatHistory) -> int:
+    """Hide every chat in the entry's group from the sidebar recents.
+
+    Hiding only the representative row would just promote the next-newest chat
+    of the same group back into the list. Returns the number of rows updated.
+    """
+    updated = (
+        db.query(ChatHistory)
+        .filter(*chat_history_group_filters(user_id, entry))
+        .update({ChatHistory.hidden_from_recent: True}, synchronize_session=False)
+    )
+    db.commit()
+    return updated
+
+
+def restore_chat_history_group_to_recent(db: Session, user_id: str, entry: ChatHistory) -> int:
+    """Undo hide_chat_history_group_from_recent for the entry's group."""
+    updated = (
+        db.query(ChatHistory)
+        .filter(*chat_history_group_filters(user_id, entry))
+        .update({ChatHistory.hidden_from_recent: False}, synchronize_session=False)
+    )
+    db.commit()
+    return updated
 
 
 def prune_chat_history(db: Session, user_id: str, limit: int = 30, auto_commit: bool = True) -> None:
