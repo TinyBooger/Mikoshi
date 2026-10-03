@@ -30,6 +30,9 @@ class Character(Base):
     presence_penalty = Column(Float, nullable=False, default=0)
     frequency_penalty = Column(Float, nullable=False, default=0)
     interface_preference = Column(String(20), nullable=False, default="bubbles")
+    # Creator default for the prompt-only local-time marker. Pro users may
+    # override it per chat (stored in the user_character_configs delta).
+    time_awareness = Column(Boolean, nullable=False, default=True)
 
     created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     creator_id = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)

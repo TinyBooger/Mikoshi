@@ -74,6 +74,7 @@ class CharacterOut(BaseModel):
     presence_penalty: float = 0.0
     frequency_penalty: float = 0.0
     interface_preference: str = "bubbles"
+    time_awareness: bool = True
     created_time: Any
     creator_id: str
     creator_name: Optional[str] = None
@@ -111,6 +112,7 @@ class UserCharacterConfigIn(BaseModel):
     presence_penalty: Optional[float] = None
     frequency_penalty: Optional[float] = None
     interface_preference: Optional[str] = None
+    time_awareness: Optional[bool] = None
 
 
 class UserCharacterConfigOut(BaseModel):

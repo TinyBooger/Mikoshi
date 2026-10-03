@@ -121,6 +121,9 @@ export function useChatSend({
           context_messages: nextMessages,
           full_messages: nextMessages,
           chat_config: advancedChatConfig,
+          // Minutes east of UTC so the backend can stamp the user's local
+          // wall clock on the request copy (prompt-only, never stored).
+          timezone_offset_minutes: -new Date().getTimezoneOffset(),
           stream: true,
         }),
         signal: controller.signal,

@@ -93,6 +93,8 @@ export default function CharacterFormPage() {
     presence_penalty: 0,
     frequency_penalty: 0,
     interface_preference: 'bubbles',
+    // Prompt-only local-time marker. On by default; Pro users can turn it off.
+    time_awareness: true,
   };
   const MAX_NAME_LENGTH = 50;
   const MAX_PERSONA_LENGTH = 400;
@@ -192,6 +194,7 @@ export default function CharacterFormPage() {
     presence_penalty: DEFAULT_CHAT_CONFIG.presence_penalty,
     frequency_penalty: DEFAULT_CHAT_CONFIG.frequency_penalty,
     interface_preference: DEFAULT_CHAT_CONFIG.interface_preference,
+    time_awareness: DEFAULT_CHAT_CONFIG.time_awareness,
     background: JSON.stringify({ type: 'preset', preset_id: 'none' }),
   });
   const [picture, setPicture] = useState(null);
@@ -404,6 +407,9 @@ export default function CharacterFormPage() {
               presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
               frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
               interface_preference: data.interface_preference === 'clean' ? 'clean' : 'bubbles',
+              // Defaults to on: only an explicit `false` reads as off, so a
+              // character saved before this field existed stays time-aware.
+              time_awareness: data.time_awareness !== false,
               background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
           } else {
@@ -431,6 +437,7 @@ export default function CharacterFormPage() {
               presence_penalty: clampValue(data.presence_penalty, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty),
               frequency_penalty: clampValue(data.frequency_penalty, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty),
               interface_preference: data.interface_preference === 'clean' ? 'clean' : 'bubbles',
+              time_awareness: data.time_awareness !== false,
               background: data.background ? JSON.stringify(data.background) : JSON.stringify({ type: 'preset', preset_id: 'none' }),
             });
           }
@@ -559,6 +566,7 @@ export default function CharacterFormPage() {
     formData.append("presence_penalty", String(canUseAdvancedConfig ? (charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty) : DEFAULT_CHAT_CONFIG.presence_penalty));
     formData.append("frequency_penalty", String(canUseAdvancedConfig ? (charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty) : DEFAULT_CHAT_CONFIG.frequency_penalty));
     formData.append("interface_preference", String(charData.interface_preference === 'clean' ? 'clean' : 'bubbles'));
+    formData.append("time_awareness", String(canUseAdvancedConfig ? charData.time_awareness !== false : DEFAULT_CHAT_CONFIG.time_awareness));
     formData.append("is_public", String(!!charData.is_public));
     formData.append("is_forkable", String(!!charData.is_forkable));
     if (picture) formData.append("picture", picture);
@@ -1470,6 +1478,34 @@ export default function CharacterFormPage() {
                         value={charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty}
                         onChange={e => updateConfig('frequency_penalty', e.target.value, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty)}
                         disabled={!canUseAdvancedConfig}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pro-Gated Time Awareness */}
+              <div className="mb-4">
+                <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+                  <div className="d-flex align-items-center justify-content-between gap-3">
+                    <div>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#232323' }}>
+                        时间感知
+                      </span>
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 2 }}>
+                        让角色知道当前时间。
+                      </div>
+                    </div>
+                    <div className="form-check form-switch mb-0" style={{ paddingLeft: 0 }}>
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        role="switch"
+                        id="charTimeAwarenessToggle"
+                        checked={charData.time_awareness !== false}
+                        disabled={!canUseAdvancedConfig}
+                        onChange={e => handleChange('time_awareness', e.target.checked)}
+                        style={{ width: '2.5em', height: '1.4em', cursor: canUseAdvancedConfig ? 'pointer' : 'not-allowed' }}
                       />
                     </div>
                   </div>

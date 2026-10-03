@@ -45,6 +45,7 @@ def parse_character_chat_config(
     presence_penalty: float,
     frequency_penalty: float,
     interface_preference: str = "bubbles",
+    time_awareness: bool = True,
 ):
     safe_model = model if model in ALLOWED_MODEL_IDS else "deepseek-v4-flash"
     safe_temperature = max(0.0, min(2.0, float(temperature)))
@@ -60,6 +61,7 @@ def parse_character_chat_config(
         "presence_penalty": safe_presence_penalty,
         "frequency_penalty": safe_frequency_penalty,
         "interface_preference": safe_interface_preference,
+        "time_awareness": bool(time_awareness),
     }
 
 
@@ -72,6 +74,7 @@ def default_character_chat_config():
         "presence_penalty": 0.0,
         "frequency_penalty": 0.0,
         "interface_preference": "bubbles",
+        "time_awareness": True,
     }
 
 ALLOWED_BACKGROUND_TYPES = {"none", "preset", "upload", "character_picture"}
@@ -150,6 +153,7 @@ async def create_character(
     presence_penalty: float = Form(0),
     frequency_penalty: float = Form(0),
     interface_preference: str = Form("bubbles"),
+    time_awareness: bool = Form(True),
     is_public: bool = Form(False),
     is_forkable: bool = Form(False),
     forked_from_id: Optional[int] = Form(None),
@@ -233,6 +237,7 @@ async def create_character(
         presence_penalty=presence_penalty,
         frequency_penalty=frequency_penalty,
         interface_preference=interface_preference,
+        time_awareness=time_awareness,
     )
     # Model is always accepted from the user.
     # Sampling params (temperature, top_p, max_tokens, penalties) are gated for Pro users.
@@ -243,6 +248,7 @@ async def create_character(
         chat_config["max_tokens"] = default_cfg["max_tokens"]
         chat_config["presence_penalty"] = default_cfg["presence_penalty"]
         chat_config["frequency_penalty"] = default_cfg["frequency_penalty"]
+        chat_config["time_awareness"] = default_cfg["time_awareness"]
     long_description_chunks = []
 
     char = Character(
@@ -262,6 +268,7 @@ async def create_character(
         presence_penalty=chat_config["presence_penalty"],
         frequency_penalty=chat_config["frequency_penalty"],
         interface_preference=chat_config["interface_preference"],
+        time_awareness=chat_config["time_awareness"],
         creator_id=current_user.id,
         creator_name=current_user.name,
         is_public=False if shadow else is_public,
@@ -394,6 +401,7 @@ async def update_character(
     presence_penalty: Optional[float] = Form(None),
     frequency_penalty: Optional[float] = Form(None),
     interface_preference: Optional[str] = Form(None),
+    time_awareness: Optional[bool] = Form(None),
     is_public: Optional[bool] = Form(None),
     is_forkable: Optional[bool] = Form(None),
     picture: UploadFile = File(None),
@@ -480,6 +488,7 @@ async def update_character(
         presence_penalty=presence_penalty if presence_penalty is not None else char.presence_penalty,
         frequency_penalty=frequency_penalty if frequency_penalty is not None else char.frequency_penalty,
         interface_preference=interface_preference if interface_preference is not None else char.interface_preference,
+        time_awareness=time_awareness if time_awareness is not None else char.time_awareness,
     )
     # Model is always accepted from the user.
     # Sampling params (temperature, top_p, max_tokens, penalties) are gated for Pro users.
@@ -490,6 +499,7 @@ async def update_character(
         chat_config["max_tokens"] = default_cfg["max_tokens"]
         chat_config["presence_penalty"] = default_cfg["presence_penalty"]
         chat_config["frequency_penalty"] = default_cfg["frequency_penalty"]
+        chat_config["time_awareness"] = default_cfg["time_awareness"]
     char.model = chat_config["model"]
     char.temperature = chat_config["temperature"]
     char.top_p = chat_config["top_p"]
@@ -497,6 +507,7 @@ async def update_character(
     char.presence_penalty = chat_config["presence_penalty"]
     char.frequency_penalty = chat_config["frequency_penalty"]
     char.interface_preference = chat_config["interface_preference"]
+    char.time_awareness = chat_config["time_awareness"]
 
     if is_public is not None:
         char.is_public = False if shadow else is_public

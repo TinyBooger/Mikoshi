@@ -39,6 +39,7 @@ from datetime import datetime, UTC
 from models import User, Character, Scene, ChatHistory
 from utils.message_limit import can_send_user_message, increment_user_message_count
 from utils.context_window import compact_conversation_messages, DEFAULT_SOFT_TOKEN_LIMIT, SUMMARY_PREFIX, estimate_guard_input
+from utils.prompt_time import apply_time_marker, normalize_time_awareness, normalize_tz_offset_minutes
 from utils.usage_utils import normalize_usage, usage_to_credits
 from utils.credit_usage_ledger import apply_credit_usage_with_wallet, apply_fixed_credit_usage_with_wallet
 from utils.credit_cap import can_consume_credits, get_credit_cap_info, build_credit_cap_reached_payload
@@ -79,6 +80,7 @@ def parse_chat_config(chat_config):
         "top_p": 0.9,
         "presence_penalty": 0.0,
         "frequency_penalty": 0.0,
+        "time_awareness": True,
     }
 
     if not isinstance(chat_config, dict):
@@ -107,6 +109,10 @@ def parse_chat_config(chat_config):
     config["presence_penalty"] = clamp_float("presence_penalty", -2.0, 2.0)
     config["frequency_penalty"] = clamp_float("frequency_penalty", -2.0, 2.0)
 
+    # Per-chat switch for the prompt-only time marker.  Defaults on, so an older
+    # client that never sends the key keeps the previous always-on behaviour.
+    config["time_awareness"] = normalize_time_awareness(chat_config.get("time_awareness"))
+
     return config
 
 
@@ -118,6 +124,7 @@ def default_chat_config():
         "top_p": 0.9,
         "presence_penalty": 0.0,
         "frequency_penalty": 0.0,
+        "time_awareness": True,
     }
 
 
@@ -386,6 +393,9 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     persona_id = data.get("persona_id")
     branch_id = data.get("branch_id")
     fork_from_message_id = data.get("fork_from_message_id")
+    # Browser wall-clock offset (minutes east of UTC), used only to localize the
+    # prompt-only time marker. Optional, so older clients keep working.
+    client_tz_offset_minutes = normalize_tz_offset_minutes(data.get("timezone_offset_minutes"))
     raw_base_message_count = data.get("base_message_count")
     base_message_count = None
     if isinstance(raw_base_message_count, int) and raw_base_message_count >= 0:
@@ -405,6 +415,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         chat_config["max_tokens"] = default_cfg["max_tokens"]
         chat_config["presence_penalty"] = default_cfg["presence_penalty"]
         chat_config["frequency_penalty"] = default_cfg["frequency_penalty"]
+        chat_config["time_awareness"] = default_cfg["time_awareness"]
     # The model context window is shared between the prompt and this turn's
     # completion, so reserve the requested output room before comparing input
     # size against the window. Models with an explicit input cap (e.g.
@@ -699,6 +710,20 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         )
     if not prepared_messages:
         return JSONResponse(content={"error": "Invalid messages after normalization"}, status_code=400)
+
+    # Prompt-only time marker on the user's own message. Applied here — after
+    # compaction and the emergency rung, and to the request copy only — so the
+    # clock is current for this turn and can never reach the persisted
+    # ``full_messages`` or the client UI.  ``time_awareness`` is the per-chat
+    # switch: Pro users can turn it off, and it is forced to the default for
+    # everyone else (see the gate above).
+    apply_time_marker(
+        prepared_messages,
+        now=datetime.now(UTC),
+        last_message_at=existing_entry.last_updated if existing_entry is not None else None,
+        tz_offset_minutes=client_tz_offset_minutes,
+        enabled=chat_config["time_awareness"],
+    )
 
     character = None
     effective_character_id = character_id or (existing_entry.character_id if existing_entry else None)

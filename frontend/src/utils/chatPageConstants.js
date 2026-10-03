@@ -89,6 +89,8 @@ export const DEFAULT_ADVANCED_CHAT_CONFIG = {
   presence_penalty: 0,
   frequency_penalty: 0,
   interface_preference: 'bubbles',
+  // Prompt-only local-time marker. On by default; Pro users can turn it off.
+  time_awareness: true,
 };
 
 // Sentinel used to indicate a character should have an improvising greeting

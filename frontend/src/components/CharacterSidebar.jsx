@@ -1197,6 +1197,36 @@ export default function CharacterSidebar({
                   修改后会立即用于当前聊天请求。
                 </div>
               </div>
+
+              {/* Time awareness — prompt-only local clock stamp */}
+              <div style={{
+                background: '#f5f6fa',
+                borderRadius: '0.9rem',
+                padding: '0.9rem',
+                border: '1px solid rgba(24, 25, 26, 0.08)',
+                marginTop: 8,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#444' }}>
+                    时间感知
+                  </span>
+                  <div className="form-check form-switch mb-0" style={{ paddingLeft: 0 }}>
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      role="switch"
+                      id="timeAwarenessToggle"
+                      checked={advancedChatConfig?.time_awareness !== false}
+                      disabled={!canUseAdvancedChatConfig}
+                      onChange={(e) => setAdvancedChatConfig((prev) => ({ ...prev, time_awareness: e.target.checked }))}
+                      style={{ width: '2.5em', height: '1.4em', cursor: canUseAdvancedChatConfig ? 'pointer' : 'not-allowed' }}
+                    />
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#888', lineHeight: 1.4, marginTop: 6 }}>
+                  让角色知道当前时间。
+                </div>
+              </div>
               {!canUseAdvancedChatConfig && (
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(245, 246, 250, 0.90)', borderRadius: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
                   <a href="/pro-upgrade" onClick={e => { e.preventDefault(); navigate('/pro-upgrade'); }} style={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.88rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>

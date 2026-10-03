@@ -12,6 +12,7 @@ from database import get_db
 from models import User, Character, UserCharacterConfig
 from schemas import UserCharacterConfigIn, UserCharacterConfigOut
 from utils.session import get_current_user
+from utils.prompt_time import normalize_time_awareness
 from model_configs import ALLOWED_MODEL_IDS
 from datetime import datetime, UTC
 import logging
@@ -32,6 +33,7 @@ CONFIG_KEYS = [
     "presence_penalty",
     "frequency_penalty",
     "interface_preference",
+    "time_awareness",
 ]
 
 ALLOWED_INTERFACE_PREFERENCES = {"bubbles", "clean"}
@@ -47,6 +49,7 @@ def _get_character_defaults(character: Character) -> dict:
         "presence_penalty": float(character.presence_penalty),
         "frequency_penalty": float(character.frequency_penalty),
         "interface_preference": character.interface_preference,
+        "time_awareness": normalize_time_awareness(character.time_awareness),
     }
 
 
@@ -120,6 +123,15 @@ def _validate_and_normalize_config(raw: dict, is_pro: bool, defaults: dict) -> d
     pref = raw.get("interface_preference")
     if isinstance(pref, str) and pref in ALLOWED_INTERFACE_PREFERENCES:
         config["interface_preference"] = pref
+
+    # time_awareness (Pro-gated, alongside the sampling params).  Non-Pro users
+    # always get the character's default; the master switch in prompt_time still
+    # applies on top of whichever value lands here.
+    config["time_awareness"] = (
+        normalize_time_awareness(raw.get("time_awareness"), default=defaults["time_awareness"])
+        if is_pro
+        else defaults["time_awareness"]
+    )
 
     return config
 

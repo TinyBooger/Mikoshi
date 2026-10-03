@@ -126,6 +126,9 @@ export default function ChatPage() {
       presence_penalty: canUseAdvancedChatConfig ? clamp(character.presence_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty) : DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty,
       frequency_penalty: canUseAdvancedChatConfig ? clamp(character.frequency_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty) : DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty,
       interface_preference: character.interface_preference === 'clean' ? 'clean' : 'bubbles',
+      // Defaults to on, so anything other than an explicit `false` (null from an
+      // older API response, undefined from a stale draft) means enabled.
+      time_awareness: canUseAdvancedChatConfig ? character.time_awareness !== false : true,
     };
   };
   const [advancedChatConfig, setAdvancedChatConfig] = useState(DEFAULT_ADVANCED_CHAT_CONFIG);
