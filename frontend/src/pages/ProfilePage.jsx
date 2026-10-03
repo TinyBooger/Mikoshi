@@ -1445,8 +1445,12 @@ export default function ProfilePage() {
     }
     // Let the write-back effect below skip one cycle so it can't undo an adopted URL.
     if (changed) skipUrlWriteRef.current = true;
+    // Intentionally keyed on the URL (and profile) only — NOT on activeTab/activeSubtab.
+    // Tab clicks update local state and are mirrored into the URL by the effect below; if
+    // this effect also re-ran on those state changes it would read the not-yet-updated URL
+    // and immediately snap the tab back to the default.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlKey, profileUserId, activeTab, activeSubtab]);
+  }, [urlKey, profileUserId]);
 
   // state → URL: mirror the active view so refresh and shared links reproduce it.
   useEffect(() => {
