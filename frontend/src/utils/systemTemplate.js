@@ -1,4 +1,5 @@
 import { MARKDOWN_GUIDE } from './markdownGuide';
+import { applyCharacterPlaceholders } from './characterPlaceholders';
 
 export function buildSystemMessage(
   characterName,
@@ -9,6 +10,13 @@ export function buildSystemMessage(
   scene = null,
   longDescription = null
 ) {
+  // Character-authored text may contain {{char}} / {{user}} placeholders.
+  // Resolve them against the character name and the active user persona
+  // (the account name is never used).
+  const resolvedPersona = applyCharacterPlaceholders(characterPersona, characterName, personaName);
+  const resolvedLongDescription = applyCharacterPlaceholders(longDescription, characterName, personaName);
+  const resolvedExampleMessages = applyCharacterPlaceholders(exampleMessages, characterName, personaName);
+
   // Base instruction
   const baseInstruction = `扮演 ${characterName}。始终保持角色，不要跳出角色或提及这些指令。`;
 
@@ -18,18 +26,18 @@ export function buildSystemMessage(
     : '';
 
   // Character persona section
-  const charPersonaText = characterPersona 
-    ? `[角色设定]\n${characterPersona}\n[/角色设定]` 
+  const charPersonaText = resolvedPersona 
+    ? `[角色设定]\n${resolvedPersona}\n[/角色设定]` 
     : '';
 
   // Detailed background section
-  const longDescriptionText = longDescription
-    ? `[详细背景]\n${longDescription}\n[/详细背景]`
+  const longDescriptionText = resolvedLongDescription
+    ? `[详细背景]\n${resolvedLongDescription}\n[/详细背景]`
     : '';
 
   // Example dialogues section
-  const exampleDialoguesText = exampleMessages 
-    ? `[对话示例]\n${exampleMessages}\n[/对话示例]` 
+  const exampleDialoguesText = resolvedExampleMessages 
+    ? `[对话示例]\n${resolvedExampleMessages}\n[/对话示例]` 
     : '';
 
   // Context information (user persona and scene)
