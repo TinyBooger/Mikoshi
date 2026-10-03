@@ -1,7 +1,7 @@
 import React from 'react';
 import MessageBubble from '../MessageBubble';
 import ChatWelcomeCard from '../ChatWelcomeCard';
-import { getChromeSurface, isVeiledBackground, isDarkSurface } from '../../utils/backgroundPresets';
+import { getChromeSurface, isVeiledBackground, getSurfacePalette } from '../../utils/backgroundPresets';
 
 /**
  * Scrollable messages area of the chat: context-window-compaction notice,
@@ -43,9 +43,11 @@ export default function ChatMessagesList({
 }) {
   const nonSystem = messages.filter(m => m.role !== 'system');
   const chromeSurface = getChromeSurface(selectedWallpaper?.kind);
-  // Clean mode paints the assistant reply straight onto the surface, so on a
-  // dark gradient its text has to flip to light — see `isDarkSurface`.
-  const darkSurface = isDarkSurface(selectedWallpaper);
+  // Colours for everything painted on this background: the bubbles' fills and
+  // text, the name header, the message controls. `getSurfacePalette` returns a
+  // module-level constant, so passing it down does not defeat `MessageBubble`'s
+  // memo during streaming.
+  const palette = getSurfacePalette(selectedWallpaper);
 
   return (
     /* Messages Area */
@@ -84,17 +86,17 @@ export default function ChatMessagesList({
           <ChatWelcomeCard
             selectedCharacter={selectedCharacter}
             selectedScene={selectedScene}
-            darkSurface={darkSurface}
+            palette={palette}
           />
         )}
 
         {nonSystem.length === 0 ? (
           <div
-            className={darkSurface ? 'text-center' : 'text-muted text-center'}
+            className="text-center"
             style={{
               marginTop: '3.2rem',
               fontSize: '0.88rem',
-              color: darkSurface ? 'rgba(255, 255, 255, 0.72)' : undefined,
+              color: palette.mutedColor,
             }}
           >
             暂无消息，快来开始对话吧！
@@ -107,7 +109,7 @@ export default function ChatMessagesList({
               index={i}
               isMobile={isMobile}
               cleanMode={cleanMode}
-              darkSurface={darkSurface}
+              palette={palette}
               selectedCharacter={selectedCharacter}
               selectedPersona={selectedPersona}
               userData={userData}

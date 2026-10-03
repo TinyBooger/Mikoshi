@@ -462,3 +462,72 @@
   margin: 0;
   padding: 0.6em 0.8em;
 }
+
+/* ---------------------------------------------------------------------------
+ * Tinted bubbles (`.chat-bubble-tinted`)
+ *
+ * `MessageBubble` adds this class when the chat is not on the plain default
+ * background — see `SURFACE_PALETTES` in utils/backgroundPresets.js. Everything
+ * above assumes that default: a `#f5f6fa` bubble holding near-black text, which
+ * is why every panel and edge in this file is a translucent black. Those blacks
+ * vanish on a saturated user bubble, and the shared highlight.js palette
+ * (GitHub-light: `#24292e` body, `#d73a49` keywords) loses its light ground on a
+ * translucent reply over a dark gradient.
+ *
+ * Only colours are restated. Typography, spacing and every scroll container are
+ * deliberately left alone, so a tinted bubble lays out exactly like a plain one
+ * — in particular `pre`, `.markdown-table-wrap` and `.katex-display` keep their
+ * horizontal scrolling, which the share card removes for html2canvas reasons and
+ * the chat must not.
+ *
+ * Specificity: `.chat-bubble-tinted .chat-markdown …` is two classes, which
+ * outranks the single-class rules above whatever order the bundler emits the
+ * files in.
+ * ------------------------------------------------------------------------- */
+
+/* Inline code: same mid-grey accent as the share card, so the two surfaces
+   agree. Plain `rgba()` rather than `color-mix()`, matching that file. */
+.chat-bubble-tinted .chat-markdown :not(pre) > code {
+  background: rgba(127, 127, 127, 0.22);
+}
+
+/* Code blocks keep an explicit light panel rather than the translucent black.
+   The shared highlight.js palette is only legible on a light ground, and this
+   is what a plain bubble already shows anyway — translucent black over
+   `#f5f6fa` is a light grey. The header's own translucent blacks need no
+   restating: it sits on this panel, so they are dark-on-light again. */
+.chat-bubble-tinted .chat-markdown .code-block {
+  background: #f4f5f7;
+}
+
+/* Edges and panels drawn straight on the bubble. A mid-grey reads as a subtle
+   hairline on light and dark fills alike; the original blacks read as nothing
+   at all on a dark one. */
+.chat-bubble-tinted .chat-markdown blockquote {
+  border-left-color: rgba(127, 127, 127, 0.45);
+}
+
+.chat-bubble-tinted .chat-markdown hr {
+  border-top-color: rgba(127, 127, 127, 0.4);
+}
+
+.chat-bubble-tinted .chat-markdown th,
+.chat-bubble-tinted .chat-markdown td {
+  border-color: rgba(127, 127, 127, 0.45);
+}
+
+.chat-bubble-tinted .chat-markdown th {
+  background: rgba(127, 127, 127, 0.18);
+}
+
+.chat-bubble-tinted .chat-markdown .footnotes {
+  border-top-color: rgba(127, 127, 127, 0.35);
+}
+
+/* The "thinking" placeholder is painted onto the bubble itself, so it follows
+   the bubble's text colour like everything else in it instead of the fixed
+   grey that was tuned for the plain white bubble. */
+.chat-bubble-tinted .ai-thinking {
+  color: inherit;
+  opacity: 0.72;
+}

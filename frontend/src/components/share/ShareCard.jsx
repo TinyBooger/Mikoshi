@@ -24,7 +24,7 @@ import brandLogo from '../../assets/images/logo.png';
  * same `MarkdownMessage` pipeline the chat uses, so a screenshot shows what the
  * chat showed. Because that HTML is therefore not "a small tree of plain
  * boxes", card-specific CSS lives in `styles/ShareCardMarkdown.css`, which
- * adapts the chat's markdown rules to the card's palettes (three of the six
+ * adapts the chat's markdown rules to the card's palettes (three of the seven
  * backgrounds are dark) and removes the scrolling the chat relies on.
  *
  * It is rendered once at runtime: full size in an off-screen node that is

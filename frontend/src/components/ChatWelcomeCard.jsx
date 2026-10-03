@@ -6,16 +6,21 @@ import defaultPic from '../assets/images/default-picture.png';
  * Displays character/scene avatar, title, and welcome text.
  *
  * The card has no background of its own — it sits directly on the chat surface,
- * which is why it needs to know whether that surface is dark.
+ * which is why it takes the surface's `palette` for its text colours.
  */
 export default function ChatWelcomeCard({
   selectedCharacter,
   selectedScene,
-  darkSurface,
+  palette,
 }) {
   const charName = selectedCharacter?.name;
   const sceneName = selectedScene?.name;
 
+  // The two highlighted names keep their literal violet/indigo: they are brand
+  // hues rather than surface colours, and at `fontWeight: 800` they clear the
+  // large-text contrast bar on every background including the dark gradient.
+  // Only the surrounding copy has to follow the surface, which is what
+  // `palette` is for.
   const title = sceneName ? (
     <>
       <span>正在场景 </span>
@@ -74,7 +79,7 @@ export default function ChatWelcomeCard({
           style={{
             fontSize: '1rem',
             fontWeight: 650,
-            color: darkSurface ? '#f4f1fb' : '#121212',
+            color: palette.textColor,
             marginTop: 18,
           }}
         >
@@ -84,7 +89,7 @@ export default function ChatWelcomeCard({
         <div
           style={{
             marginTop: 14,
-            color: darkSurface ? 'rgba(255, 255, 255, 0.72)' : '#4b5563',
+            color: palette.mutedColor,
             fontSize: '0.92rem',
             lineHeight: 1.42,
           }}

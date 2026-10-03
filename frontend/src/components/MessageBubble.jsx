@@ -2,10 +2,10 @@ import React from 'react';
 import defaultPic from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 
-const getMessageActionButtonStyle = (disabled) => ({
+const getMessageActionButtonStyle = (disabled, palette) => ({
   border: 'none',
   background: 'transparent',
-  color: disabled ? '#d1d5db' : '#9ca3af',
+  color: disabled ? '#d1d5db' : palette.iconColor,
   cursor: disabled ? 'not-allowed' : 'pointer',
   width: 26,
   height: 26,
@@ -18,17 +18,21 @@ const getMessageActionButtonStyle = (disabled) => ({
   transition: 'background-color 0.15s ease, color 0.15s ease, transform 0.15s ease',
 });
 
-const handleMessageActionMouseEnter = (event, disabled) => {
+// A neutral mid-grey reads as a hover plate on both a light and a dark surface,
+// so only the text colour has to come from the palette.
+const ACTION_HOVER_BACKGROUND = 'rgba(127, 127, 127, 0.18)';
+
+const handleMessageActionMouseEnter = (event, disabled, palette) => {
   if (disabled) return;
-  event.currentTarget.style.background = 'rgba(31, 41, 55, 0.08)';
-  event.currentTarget.style.color = '#4b5563';
+  event.currentTarget.style.background = ACTION_HOVER_BACKGROUND;
+  event.currentTarget.style.color = palette.textColor;
   event.currentTarget.style.transform = 'translateY(-1px)';
 };
 
-const handleMessageActionMouseLeave = (event, disabled) => {
+const handleMessageActionMouseLeave = (event, disabled, palette) => {
   if (disabled) return;
   event.currentTarget.style.background = 'transparent';
-  event.currentTarget.style.color = '#9ca3af';
+  event.currentTarget.style.color = palette.iconColor;
   event.currentTarget.style.transform = 'none';
 };
 
@@ -38,13 +42,17 @@ const handleMessageActionMouseLeave = (event, disabled) => {
  * Uses React.memo so that only the actively-streaming (last) message
  * re-renders on every token chunk.  All earlier messages skip re-render
  * because their content / state hasn't changed.
+ *
+ * `palette` is the surface palette for the current chat background (see
+ * `getSurfacePalette`). It is a module-level constant, so it never invalidates
+ * that memo.
  */
 const MessageBubble = React.memo(function MessageBubble({
   message,
   index,
   isMobile,
   cleanMode,
-  darkSurface,
+  palette,
   selectedCharacter,
   selectedPersona,
   userData,
@@ -74,6 +82,22 @@ const MessageBubble = React.memo(function MessageBubble({
   const bubbleWidth = isEditingUser ? editorWidth : 'auto';
   const bubbleMaxWidth = isEditingUser ? editorWidth : '100%';
   const cleanContentWidth = 'min(80%, 800px)';
+
+  // A tinted bubble is any palette that is not the plain white default. Its
+  // surface fixes live in `ChatBubble.css` — the shared markdown rules assume the
+  // chat's neutral `#f5f6fa` panel, which a saturated user bubble or a
+  // translucent reply over a dark gradient is not.
+  const isTintedSurface = palette.id !== 'plain';
+  const bubbleBackground = isCleanAssistant
+    ? 'transparent'
+    : (m.role === 'user' ? palette.bubbleUser : palette.bubbleChar);
+  const bubbleTextColor = isCleanAssistant
+    ? palette.textColor
+    : (m.role === 'user' ? palette.bubbleUserText : palette.bubbleCharText);
+  const bubbleClassName = [
+    isCleanAssistant ? 'chat-bubble-clean' : null,
+    isTintedSurface ? 'chat-bubble-tinted' : null,
+  ].filter(Boolean).join(' ') || undefined;
 
   // Below-bubble actions (revealed on hover). Ordering:
   //   user messages: retry → pin → edit → copy
@@ -153,6 +177,10 @@ const MessageBubble = React.memo(function MessageBubble({
         // code block / display equation / table pushes the whole thread past
         // the viewport. Filling the row makes the percentage mean something.
         width: '100%',
+        // Primary on-surface text. The name header has no colour of its own, so
+        // it inherits this and keeps its existing `opacity: 0.7`; on the dark
+        // gradient it would otherwise stay near-black and vanish.
+        color: palette.textColor,
       }}
       onMouseEnter={() => onHoverMessage(m.message_id)}
       onMouseLeave={() => onHoverMessage(null)}
@@ -175,7 +203,7 @@ const MessageBubble = React.memo(function MessageBubble({
                   : defaultPic)
           }
           alt={m.role === 'user' ? (selectedPersona?.name || '你') : selectedCharacter?.name}
-          style={{ width: messageAvatarSize, height: messageAvatarSize, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.6px solid #e9ecef', flexShrink: 0 }}
+          style={{ width: messageAvatarSize, height: messageAvatarSize, objectFit: 'cover', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: `1.6px solid ${palette.dividerColor}`, flexShrink: 0 }}
         />
           );
         })()}
@@ -193,7 +221,7 @@ const MessageBubble = React.memo(function MessageBubble({
             <div style={{ fontWeight: 600, fontSize: isMobile ? '0.85rem' : '0.76rem', opacity: 0.7, marginBottom: 6 }}>
               {m.role === 'user' ? '你' : selectedCharacter?.name}
               {m.is_pinned && (
-                <span style={{ marginLeft: 8, fontSize: '0.72rem', color: '#334155' }}>
+                <span style={{ marginLeft: 8, fontSize: '0.72rem', color: palette.accent }}>
                   <i className="bi bi-pin-angle-fill" style={{ marginRight: 4 }}></i>
                   已固定
                 </span>
@@ -216,14 +244,12 @@ const MessageBubble = React.memo(function MessageBubble({
           }}>
             {/* Bubble */}
             <div
-              className={isCleanAssistant ? 'chat-bubble-clean' : undefined}
+              className={bubbleClassName}
               style={{
-                background: isCleanAssistant ? 'transparent' : '#f5f6fa',
-                // A clean-mode reply has no bubble behind it, so on a dark
-                // gradient the usual near-black would disappear into the
-                // surface. Bubble mode keeps its own light background and so
-                // keeps dark text either way.
-                color: isCleanAssistant && darkSurface ? '#f4f1fb' : '#232323',
+                background: bubbleBackground,
+                // Clean mode has no bubble behind the reply, so its text sits
+                // straight on the surface and has to take the surface colour.
+                color: bubbleTextColor,
                 borderRadius: isCleanAssistant ? 0 : '0.88rem',
                 padding: isCleanAssistant ? 0 : '14px 18px',
                 boxShadow: isCleanAssistant ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
@@ -292,10 +318,10 @@ const MessageBubble = React.memo(function MessageBubble({
                     type="button"
                     onClick={action.onClick}
                     disabled={action.disabled}
-                    onMouseEnter={(event) => handleMessageActionMouseEnter(event, action.disabled)}
-                    onMouseLeave={(event) => handleMessageActionMouseLeave(event, action.disabled)}
+                    onMouseEnter={(event) => handleMessageActionMouseEnter(event, action.disabled, palette)}
+                    onMouseLeave={(event) => handleMessageActionMouseLeave(event, action.disabled, palette)}
                     style={{
-                      ...getMessageActionButtonStyle(action.disabled),
+                      ...getMessageActionButtonStyle(action.disabled, palette),
                       opacity: hoveredMessageId === m.message_id ? 1 : 0,
                       transition: 'opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.15s ease',
                     }}
@@ -315,7 +341,11 @@ const MessageBubble = React.memo(function MessageBubble({
                 const navBtnStyle = {
                   border: 'none',
                   background: 'transparent',
-                  color: '#374151',
+                  // Stronger than the counter beside it, mirroring the action
+                  // buttons: idle controls are muted, emphasis is the surface's
+                  // own text colour rather than a fixed grey that only works on
+                  // the plain white background.
+                  color: palette.textColor,
                   borderRadius: 6,
                   width: 24,
                   height: 24,
@@ -337,7 +367,7 @@ const MessageBubble = React.memo(function MessageBubble({
                       onClick={() => onSelectBranch(nav.options[prevIdx].branch_id)}
                       title={nav.options[prevIdx]?.label || `Branch ${prevIdx + 1}`}
                     >‹</button>
-                    <span style={{ fontSize: '0.74rem', color: '#6b7280', minWidth: 36, textAlign: 'center', userSelect: 'none' }}>
+                    <span style={{ fontSize: '0.74rem', color: palette.mutedColor, minWidth: 36, textAlign: 'center', userSelect: 'none' }}>
                       {nav.currentIdx + 1}&nbsp;/&nbsp;{nav.options.length}
                     </span>
                     <button

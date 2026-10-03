@@ -6,7 +6,11 @@
  * Adding a new look means adding an entry here, never a new component.
  */
 
-import { GRADIENT_BACKGROUNDS, resolveBackgroundPresetId } from '../../utils/backgroundPresets';
+import {
+  GRADIENT_BACKGROUNDS,
+  SURFACE_PALETTES,
+  resolveBackgroundPresetId,
+} from '../../utils/backgroundPresets';
 
 /**
  * Pull a gradient preset in from the shared source so the chat background and
@@ -30,7 +34,8 @@ export const SHARE_TEMPLATES = [
 ];
 
 export const DEFAULT_TEMPLATE_ID = 'minimal';
-export const DEFAULT_BACKGROUND_ID = 'lavender';
+// The chat opens on '默认' (no wallpaper), so the card does too.
+export const DEFAULT_BACKGROUND_ID = 'plain';
 
 /**
  * Chat interface mode -> share template. Mirrors the chat's own rule, which is
@@ -46,13 +51,16 @@ export const getDefaultTemplateId = (interfacePreference) =>
  *
  * The dialog should open looking like the conversation the user is on, so a
  * preset maps to its identically-named gradient, a photo maps to the
- * full-bleed image background, and the character's own artwork has a
- * dedicated background. 'none' has no card equivalent (the card is never
- * plain white), so it lands on the default preset.
+ * full-bleed image background, the character's own artwork has a dedicated
+ * background, and the chat's plain default (`none` / '默认') maps to the card's
+ * own plain surface.
  */
 export function resolveShareBackgroundId({ wallpaperId, characterImageUrl, wallpaperUrl }) {
   if (wallpaperId === 'character_picture' && characterImageUrl) return 'character-art';
   if (wallpaperUrl) return 'chat-wallpaper';
+  // 'none' is the chat's own default and now has an exact card equivalent, so
+  // it must not be folded into a gradient.
+  if (!wallpaperId || wallpaperId === 'none') return 'plain';
   const presetId = resolveBackgroundPresetId(wallpaperId);
   return SHARE_BACKGROUNDS.some((bg) => bg.kind === 'gradient' && bg.id === presetId)
     ? presetId
@@ -62,65 +70,56 @@ export function resolveShareBackgroundId({ wallpaperId, characterImageUrl, wallp
 /**
  * Background presets.
  *
- * kind: 'gradient' -> `css` paints the card.
+ * kind: 'plain'    -> a flat surface; `css` is the flat colour. Mirrors the
+ *                     chat's own default wallpaper, which is plain white.
+ *       'gradient' -> `css` paints the card.
  *       'image'    -> a photo/illustration is painted full-bleed behind an
  *                     `overlay` gradient; the palette switches to light-on-dark.
  *
  * Every background owns the complete colour set the card needs, so the renderer
  * never has to guess whether it is on a light or dark surface.
+ *
+ * The flat and gradient entries take that colour set from `SURFACE_PALETTES`
+ * (`utils/backgroundPresets.js`) rather than repeating it, so the exported card
+ * and the chat messages area cannot drift apart — they are the same colours on
+ * the same background. Only `watermarkColor`, which the chat has no equivalent
+ * of, and the two full-bleed image entries (whose dark palettes are the card's
+ * own choice, because the chat veils an image background instead) stay here.
+ *
+ * Ordering is the picker order, so the default sits first.
  */
 export const SHARE_BACKGROUNDS = [
   {
+    id: 'plain',
+    label: '默认',
+    kind: 'plain',
+    css: '#ffffff',
+    ...SURFACE_PALETTES.plain,
+    watermarkColor: '#8b8b93',
+  },
+  {
     ...gradient('lavender'),
+    ...SURFACE_PALETTES.lavender,
     kind: 'gradient',
-    textColor: '#2c2342',
-    mutedColor: '#6f6591',
-    accent: '#7a68b8',
-    dividerColor: 'rgba(122, 104, 184, 0.22)',
     watermarkColor: '#5f5580',
-    bubbleUser: 'linear-gradient(135deg, #8f7fd6 0%, #6d5cb4 100%)',
-    bubbleUserText: '#ffffff',
-    bubbleChar: 'rgba(255, 255, 255, 0.9)',
-    bubbleCharText: '#2c2342',
   },
   {
     ...gradient('midnight'),
+    ...SURFACE_PALETTES.midnight,
     kind: 'gradient',
-    textColor: '#f4f1fb',
-    mutedColor: '#b3a9d6',
-    accent: '#c2b0f5',
-    dividerColor: 'rgba(226, 217, 255, 0.22)',
     watermarkColor: '#ded5ff',
-    bubbleUser: 'linear-gradient(135deg, #9b86e8 0%, #7059c9 100%)',
-    bubbleUserText: '#ffffff',
-    bubbleChar: 'rgba(255, 255, 255, 0.12)',
-    bubbleCharText: '#f4f1fb',
   },
   {
     ...gradient('sunrise'),
+    ...SURFACE_PALETTES.sunrise,
     kind: 'gradient',
-    textColor: '#43242a',
-    mutedColor: '#96686c',
-    accent: '#d9748b',
-    dividerColor: 'rgba(217, 116, 139, 0.26)',
     watermarkColor: '#8c5a63',
-    bubbleUser: 'linear-gradient(135deg, #f59aa6 0%, #e0708c 100%)',
-    bubbleUserText: '#ffffff',
-    bubbleChar: 'rgba(255, 255, 255, 0.92)',
-    bubbleCharText: '#43242a',
   },
   {
     ...gradient('paper'),
+    ...SURFACE_PALETTES.paper,
     kind: 'gradient',
-    textColor: '#33291c',
-    mutedColor: '#7d7161',
-    accent: '#9c7a44',
-    dividerColor: 'rgba(156, 122, 68, 0.25)',
     watermarkColor: '#6d5c44',
-    bubbleUser: 'linear-gradient(135deg, #b99b6a 0%, #9c7a44 100%)',
-    bubbleUserText: '#ffffff',
-    bubbleChar: 'rgba(255, 255, 255, 0.9)',
-    bubbleCharText: '#33291c',
   },
   {
     id: 'character-art',
