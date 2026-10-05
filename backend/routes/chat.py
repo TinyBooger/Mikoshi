@@ -52,6 +52,26 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# DashScope flags input/output blocked by its content audit with this code (native
+# API spells it `DataInspectionFailed`). The raw provider text is opaque to users,
+# so it is swapped for a localized message before being streamed to the client.
+_CONTENT_MODERATION_ERROR_CODE = "datainspectionfailed"  # normalized, underscore/case-insensitive
+_CONTENT_MODERATION_MESSAGE = "内容未通过内容审核，请修改后重试。"
+
+
+def _normalize_error_code(value) -> str:
+    return str(value or "").lower().replace("_", "")
+
+
+def _is_content_moderation_error(exc: Exception) -> bool:
+    body = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        nested = body.get("error")
+        code = body.get("code") or (nested.get("code") if isinstance(nested, dict) else None)
+        if _normalize_error_code(code) == _CONTENT_MODERATION_ERROR_CODE:
+            return True
+    return _CONTENT_MODERATION_ERROR_CODE in _normalize_error_code(exc)
+
 
 def _extract_context_summary_usage(context_info: dict | None) -> dict[str, int]:
     if not isinstance(context_info, dict):
@@ -956,6 +976,10 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         except ClientDisconnect:
             return
         except Exception as e:
+            if _is_content_moderation_error(e):
+                logger.warning("Chat blocked by provider content moderation: %s", e)
+                yield f"data: {json.dumps({'error': _CONTENT_MODERATION_MESSAGE})}\n\n"
+                return
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(
