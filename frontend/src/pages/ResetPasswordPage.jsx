@@ -186,7 +186,7 @@ export default function ResetPasswordPage() {
       
       if (response.ok) {
         setSuccess(true);
-        setTimeout(() => navigate('/welcome'), 2000);
+        setTimeout(() => navigate('/', { replace: true }), 2000);
       } else {
         setError(result.message || result.detail || '重置失败');
       }
@@ -347,7 +347,7 @@ export default function ResetPasswordPage() {
         ) : (
           <form onSubmit={handleResetPassword}>
             {error && <div className="alert alert-danger">{error}</div>}
-            {success && <div className="alert alert-success">密码重置成功！即将跳转到登录页...</div>}
+            {success && <div className="alert alert-success">密码重置成功！即将跳转到首页...</div>}
             
             <div className="alert alert-success mb-3">
               ✓ 身份验证成功，请设置新密码
