@@ -1,5 +1,11 @@
 # Workspace instructions
 
+## Product naming
+
+- The product's user-facing name is **语伴岛**. Any string a user can see (emails, notifications, SMS copy, page text, share cards, etc.) must use 语伴岛 — never "Mikoshi".
+- "Mikoshi" is only the internal/repository name: keep it for repo/directory names, container/service names, code identifiers, env file names (`secrets/Mikoshi.env`), comments, and logs.
+- In backend Python, reuse the shared brand constant instead of hardcoding the name (for example `BRAND_NAME` in `backend/utils/email_utils.py`).
+
 ## Validation defaults
 
 - Do not run `npm run build` after frontend changes unless the user explicitly requests it.

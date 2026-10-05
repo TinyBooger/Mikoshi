@@ -9,7 +9,7 @@
 所需环境变量：
 - ALIBABA_CLOUD_DM_ACCOUNT_NAME    发信地址（SMTP 用户名），必填
 - ALIBABA_CLOUD_DM_SMTP_PASSWORD   SMTP 密码，必填
-- ALIBABA_CLOUD_DM_SENDER_NICKNAME 发信人显示昵称，可选（默认 Mikoshi）
+- ALIBABA_CLOUD_DM_SENDER_NICKNAME 发信人显示昵称，可选（默认语伴岛）
 - ALIBABA_CLOUD_DM_REPLY_TO        回信地址，可选
 - ALIBABA_CLOUD_DM_SMTP_HOST       SMTP 服务器地址，可选（默认 smtpdm.aliyun.com）
 - ALIBABA_CLOUD_DM_SMTP_PORT       SMTP 端口，可选（默认 465）
@@ -31,7 +31,9 @@ from email.utils import formataddr
 
 DEFAULT_SMTP_HOST = 'smtpdm.aliyun.com'
 DEFAULT_SMTP_PORT = 465
-DEFAULT_SENDER_NICKNAME = 'Mikoshi'
+# 用户可见文案统一使用产品名「语伴岛」；Mikoshi 仅作为代码/仓库名，不要出现在邮件里。
+BRAND_NAME = '语伴岛'
+DEFAULT_SENDER_NICKNAME = BRAND_NAME
 SMTP_TIMEOUT_SECONDS = 15
 
 EMAIL_CODE_LENGTH = 6
@@ -237,12 +239,12 @@ def _build_code_email(title: str, lead: str, code: str):
         f"验证码 {EMAIL_CODE_TTL_MINUTES} 分钟内有效，请勿转发给他人。"
         "如非本人操作，请忽略本邮件。"
     )
-    subject = f'Mikoshi {title}'
+    subject = f'{BRAND_NAME} {title}'
     text_body = f"{lead}{code}\n{footer}"
     html_body = (
         '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,'
         'Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1f2937;">'
-        f'<h2 style="margin:0 0 16px;font-size:20px;">Mikoshi {title}</h2>'
+        f'<h2 style="margin:0 0 16px;font-size:20px;">{BRAND_NAME} {title}</h2>'
         f'<p style="margin:0 0 12px;line-height:1.6;">{lead}</p>'
         f'<p style="margin:0 0 16px;font-size:28px;font-weight:700;letter-spacing:6px;">{code}</p>'
         '<p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;">'
@@ -254,12 +256,12 @@ def _build_code_email(title: str, lead: str, code: str):
 
 def build_password_reset_email(code: str):
     """构建密码重置验证码邮件的主题与正文，返回 (subject, html_body, text_body)。"""
-    return _build_code_email('密码重置验证码', '您正在重置 Mikoshi 账号密码，验证码为：', code)
+    return _build_code_email('密码重置验证码', f'您正在重置 {BRAND_NAME} 账号密码，验证码为：', code)
 
 
 def build_email_change_email(code: str):
     """构建更换邮箱验证码邮件的主题与正文，返回 (subject, html_body, text_body)。"""
-    return _build_code_email('更换邮箱验证码', '您正在更换 Mikoshi 账号绑定的邮箱，验证码为：', code)
+    return _build_code_email('更换邮箱验证码', f'您正在更换 {BRAND_NAME} 账号绑定的邮箱，验证码为：', code)
 
 
 def send_password_reset_code(to_address: str, code: str) -> dict:
