@@ -11,6 +11,19 @@
 - Configure via environment variables.
 - See provider documentation for sandbox and production setup.
 
+## 邮件推送 (Aliyun DirectMail)
+- 用途：
+  - 登录时通过邮箱找回密码（`POST /api/send-reset-code-email` → `POST /api/verify-reset-code-email` → `POST /api/reset-password-with-token`）。
+  - 设置页更换绑定邮箱的激活验证（`POST /api/change-email/send-code` → `POST /api/change-email/confirm`）。两步均需登录态（`Authorization: <session token>`）：第一步校验邮箱格式/占用并向新邮箱发送验证码，第二步校验验证码后才写入新邮箱。原有的无需验证的 `POST /api/change-email` 已移除。
+- 发信方式：SMTP，实现在 `backend/utils/email_utils.py`（`smtplib`）；密码重置路由在 `backend/routes/password.py`，更换邮箱路由在 `backend/routes/user.py`。
+- 配置：在 `secrets/Mikoshi.env` 设置 `ALIBABA_CLOUD_DM_ACCOUNT_NAME`（控制台创建的**发信地址**）与 `ALIBABA_CLOUD_DM_SMTP_PASSWORD`（该发信地址对应的 **SMTP 密码**，非 AccessKey）。
+  - 可选：`ALIBABA_CLOUD_DM_SENDER_NICKNAME`（默认 `Mikoshi`）、`ALIBABA_CLOUD_DM_REPLY_TO`。
+  - 可选：`ALIBABA_CLOUD_DM_SMTP_HOST`（默认 `smtpdm.aliyun.com`）、`ALIBABA_CLOUD_DM_SMTP_PORT`（默认 `465`）、`ALIBABA_CLOUD_DM_SMTP_SSL`（默认：465 端口启用 SSL，其余端口禁用）。如需 25/80 明文端口，请同时设置 `ALIBABA_CLOUD_DM_SMTP_SSL=false`。
+- 行为：验证码为 6 位数字，5 分钟有效，同一邮箱 60 秒内只能发送一次；发送失败不会写入缓存，因此不会触发冷却。
+- 降级：未配置邮件服务时，非生产环境把验证码打印到后端日志（并仅在非生产环境的响应中返回 `code`）；生产环境返回“邮件服务未配置”，不会泄露验证码。
+- Python 3.10/3.11 的 SSL 握手兼容处理已内置（`ssl.create_default_context().set_ciphers('DEFAULT')`）。
+- 注意：验证码缓存在进程内存中（`email_utils.verification_codes`），多进程/多实例部署时需替换为 Redis 等共享存储。
+
 ## Qwen-Image (AI 图片生成)
 - Provider: Aliyun Bailian / DashScope, native text-to-image API (image models are **not** available in OpenAI-compatible mode).
 - Configure `QWEN_API_KEY` in `secrets/Mikoshi.env` (and `secrets/Mikoshi-production.env`). Optional: `QWEN_IMAGE_MODEL` (default `qwen-image-3.0`, alternatives `qwen-image-2.0-pro`, `qwen-image-max`, `qwen-image-plus`), `QWEN_IMAGE_API_URL` (override the endpoint, e.g. the per-workspace host).

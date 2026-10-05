@@ -9,6 +9,7 @@ from database import get_db
 from models import User
 from utils.session import verify_session_token
 from utils.sms_utils import send_verification_code, verify_code
+from utils.email_utils import send_password_reset_code, is_email_configured, is_dev_environment
 from utils.audit_logger import record_audit, audit_request
 from utils.request_utils import get_client_ip, get_user_agent, get_request_metadata
 
@@ -217,7 +218,7 @@ def send_reset_code_email(
     from datetime import datetime, timedelta
     code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
     
-    # 存储验证码（60秒内不能重复发送）
+    # 频率限制：同一邮箱60秒内只能发送一次
     if email in reset_verification_codes:
         last_send = reset_verification_codes[email].get('sent_at')
         if last_send and (datetime.now() - last_send).total_seconds() < 60:
@@ -234,15 +235,44 @@ def send_reset_code_email(
                 "message": "请求过于频繁，请60秒后再试"
             }
     
+    # 发送邮件；发送失败时不写入缓存，避免触发 60 秒冷却
+    if is_email_configured():
+        send_result = send_password_reset_code(email, code)
+        if not send_result.get('success'):
+            audit_request(
+                request,
+                action="reset_code_requested",
+                user_id=user.id,
+                status="failure",
+                error_message=send_result.get('message'),
+                metadata={"channel": "email", "email": email},
+            )
+            return {
+                "success": False,
+                "message": send_result.get('message') or "验证码发送失败，请稍后重试",
+            }
+    elif is_dev_environment():
+        # 未配置邮件服务时，开发环境打印验证码，便于本地调试
+        print(f"邮箱验证码: {code}")
+    else:
+        audit_request(
+            request,
+            action="reset_code_requested",
+            user_id=user.id,
+            status="failure",
+            error_message="Email service not configured",
+            metadata={"channel": "email", "email": email},
+        )
+        return {
+            "success": False,
+            "message": "邮件服务未配置，请联系管理员",
+        }
+    
     reset_verification_codes[email] = {
         'code': code,
         'sent_at': datetime.now(),
         'expires_at': datetime.now() + timedelta(minutes=5)
     }
-    
-    # TODO: 实际发送邮件（需要配置邮件服务）
-    # 开发环境直接返回验证码
-    print(f"邮箱验证码: {code}")
     
     audit_request(
         request,
@@ -251,11 +281,14 @@ def send_reset_code_email(
         metadata={"channel": "email", "email": email},
     )
     
-    return {
+    result = {
         "success": True,
         "message": "验证码已发送到邮箱",
-        "code": code  # 开发环境返回，生产环境删除
     }
+    # 仅非生产环境返回验证码，便于开发/自动化测试
+    if is_dev_environment():
+        result['code'] = code
+    return result
 
 
 @router.post("/api/verify-reset-code-email")

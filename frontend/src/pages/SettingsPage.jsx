@@ -64,10 +64,15 @@ export default function SettingsPage() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordError, setPasswordError] = useState('');
 
+  // Email change states
   const [changingEmail, setChangingEmail] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [emailChangeStep, setEmailChangeStep] = useState(1); // 1: enter new email, 2: verify code
+  const [emailCode, setEmailCode] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResendTimer, setEmailResendTimer] = useState(0);
 
   // Phone change states
   const [showPhoneForm, setShowPhoneForm] = useState(false);
@@ -213,20 +218,73 @@ export default function SettingsPage() {
     }
   };
 
-  const doChangeEmail = async (e) => {
-    e?.preventDefault();
+  // Email change handlers
+  const startEmailChange = () => {
+    setShowEmailForm(true);
+    setEmailChangeStep(1);
+    setNewEmail('');
+    setEmailCode('');
     setEmailError('');
-    setChangingEmail(true);
+  };
+
+  const startEmailResendTimer = () => {
+    setEmailResendTimer(60);
+    const interval = setInterval(() => {
+      setEmailResendTimer(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const sendEmailChangeCode = async () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) {
+      setEmailError('邮箱格式不正确');
+      return;
+    }
+    setEmailSending(true);
+    setEmailError('');
     try {
-      const res = await fetch(`${window.API_BASE_URL}/api/change-email`, {
+      const res = await fetch(`${window.API_BASE_URL}/api/change-email/send-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': sessionToken },
-        body: JSON.stringify({ newEmail })
+        body: JSON.stringify({ newEmail: newEmail.trim() })
       });
       const data = await res.json();
       if (res.ok) {
-        toast.show(data.message || '邮箱已更新', { type: 'info' });
-        setNewEmail(''); setShowEmailForm(false);
+        toast.show(data.message || '验证码已发送', { type: 'info' });
+        setEmailChangeStep(2);
+        setEmailCode('');
+        startEmailResendTimer();
+      } else {
+        const msg = data.detail || data.message || '发送验证码失败';
+        setEmailError(msg);
+        toast.show(msg, { type: 'error' });
+      }
+    } catch (err) {
+      toast.show(t('common.network_error'), { type: 'error' });
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  const confirmEmailChange = async () => {
+    setChangingEmail(true);
+    setEmailError('');
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/change-email/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': sessionToken },
+        body: JSON.stringify({ newEmail: newEmail.trim(), code: emailCode.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.show(data.message || '邮箱已更新', { type: 'success' });
+        cancelEmailChange();
+        refreshUserData();
       } else {
         const msg = data.detail || data.message || '修改邮箱失败';
         setEmailError(msg);
@@ -237,6 +295,14 @@ export default function SettingsPage() {
     } finally {
       setChangingEmail(false);
     }
+  };
+
+  const cancelEmailChange = () => {
+    setShowEmailForm(false);
+    setEmailChangeStep(1);
+    setNewEmail('');
+    setEmailCode('');
+    setEmailError('');
   };
 
   const doDeleteAccount = async () => {
@@ -532,22 +598,103 @@ export default function SettingsPage() {
                   <p>当前邮箱 <strong>{userData.email || '当前未绑定邮箱'}</strong></p>
                   {!showEmailForm ? (
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <AppButton onClick={() => setShowEmailForm(true)}>修改邮箱</AppButton>
+                      <AppButton onClick={startEmailChange}>修改邮箱</AppButton>
                     </div>
                   ) : (
-                    <form onSubmit={doChangeEmail}>
-                      <div className="mb-2">
-                        <label className="form-label">新邮箱</label>
-                        <input type="email" className="form-control" value={newEmail} onChange={e => setNewEmail(e.target.value)} required />
+                    <div>
+                      {/* Progress Indicator */}
+                      <div style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {[1, 2].map(step => (
+                          <div key={step} style={{
+                            flex: 1,
+                            height: 4,
+                            background: emailChangeStep >= step ? '#736B92' : '#e9ecef',
+                            borderRadius: 2,
+                            transition: 'background 0.3s'
+                          }} />
+                        ))}
                       </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <AppButton type="submit" disabled={changingEmail}>修改邮箱</AppButton>
-                        <AppButton variant="secondary" type="button" onClick={() => { setShowEmailForm(false); setNewEmail(''); setEmailError(''); }}>取消</AppButton>
-                      </div>
-                      {emailError && (
-                        <div className="text-danger mt-2" style={{ fontSize: '0.95rem' }}>{emailError}</div>
+
+                      {/* Step 1: Enter New Email */}
+                      {emailChangeStep === 1 && (
+                        <div>
+                          <h5 style={{ marginBottom: 8, fontSize: '1rem' }}>第一步：输入新邮箱</h5>
+                          <p style={{ color: '#6c757d', fontSize: '0.9rem', marginBottom: 16 }}>
+                            请输入新的邮箱地址，我们会向该邮箱发送验证码用于激活。
+                          </p>
+                          <div style={{
+                            padding: 12,
+                            background: '#fff3cd',
+                            border: '1px solid #ffc107',
+                            borderRadius: 8,
+                            marginBottom: 16,
+                            fontSize: '0.9rem'
+                          }}>
+                            更换邮箱后，原邮箱将无法用于登录。
+                          </div>
+                          <div className="mb-3">
+                            <label className="form-label">新邮箱</label>
+                            <input
+                              type="email"
+                              className="form-control"
+                              value={newEmail}
+                              onChange={e => setNewEmail(e.target.value)}
+                              placeholder="请输入新邮箱"
+                            />
+                          </div>
+                          {emailError && (
+                            <div className="text-danger mb-2" style={{ fontSize: '0.95rem' }}>{emailError}</div>
+                          )}
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <AppButton onClick={sendEmailChangeCode} disabled={emailSending || !newEmail}>
+                              {emailSending ? '发送中...' : '发送验证码'}
+                            </AppButton>
+                            <AppButton variant="secondary" onClick={cancelEmailChange}>取消</AppButton>
+                          </div>
+                        </div>
                       )}
-                    </form>
+
+                      {/* Step 2: Verify New Email */}
+                      {emailChangeStep === 2 && (
+                        <div>
+                          <h5 style={{ marginBottom: 8, fontSize: '1rem' }}>第二步：验证新邮箱</h5>
+                          <p style={{ color: '#6c757d', fontSize: '0.9rem', marginBottom: 16 }}>
+                            验证码已发送至 <strong>{newEmail}</strong>，请输入收到的验证码完成更换。
+                          </p>
+                          <div className="mb-3">
+                            <label className="form-label">验证码</label>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={emailCode}
+                                onChange={e => setEmailCode(e.target.value)}
+                                placeholder="请输入6位验证码"
+                                maxLength={6}
+                              />
+                              <AppButton
+                                onClick={sendEmailChangeCode}
+                                disabled={emailSending || emailResendTimer > 0}
+                                style={{ minWidth: 120 }}
+                              >
+                                {emailSending ? '发送中...' :
+                                 emailResendTimer > 0 ? `${emailResendTimer}秒后可重发` :
+                                 '重新发送'}
+                              </AppButton>
+                            </div>
+                          </div>
+                          {emailError && (
+                            <div className="text-danger mb-2" style={{ fontSize: '0.95rem' }}>{emailError}</div>
+                          )}
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <AppButton onClick={confirmEmailChange} disabled={changingEmail || !emailCode}>
+                              {changingEmail ? '提交中...' : '确认更换'}
+                            </AppButton>
+                            <AppButton variant="secondary" onClick={cancelEmailChange}>取消</AppButton>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </section>
 

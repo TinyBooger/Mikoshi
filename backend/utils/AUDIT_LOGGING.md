@@ -61,7 +61,7 @@ snapshot the identifying fields **before** `db.delete(...)`.
 | `reset_password` / `reset_password_failed` | `password.py` (code flow and token flow) |
 | `reset_code_requested` / `reset_code_verified` / `reset_code_verify_failed` | `password.py` (OTP send/verify, phone + email; failed attempts are the abuse signal) |
 | `change_password` / `change_password_failed` | `password.py` |
-| `change_email` | `user.py` |
+| `change_email` / `change_email_code_requested` | `user.py` (email change requires a code sent to the new address; failed sends/codes are the abuse signal) |
 | `change_phone` | `user.py` (stores last-4 hints only) |
 | `update_profile` | `user.py` |
 | `delete_account` | `user.py` (identity snapshot captured pre-delete) |

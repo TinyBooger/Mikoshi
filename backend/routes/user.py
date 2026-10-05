@@ -11,6 +11,15 @@ from utils.text_moderation import moderate_form_payload_with_review
 from utils.user_utils import build_user_response, enrich_user_with_character_count
 from utils.validators import validate_account_fields
 from utils.sms_utils import send_verification_code, verify_code
+from utils.email_utils import (
+    can_resend_email_code,
+    generate_email_code,
+    is_dev_environment,
+    is_email_configured,
+    send_email_change_code,
+    store_email_code,
+    verify_email_code,
+)
 from utils.credit_cap import get_credit_cap_info
 from utils.invitation_utils import count_today_invites, INVITATION_BONUS_CREDITS, INVITATION_MAX_PER_DAY
 from sqlalchemy import func
@@ -548,19 +557,125 @@ def increment_views_multi(
     return {"message": "views updated", "updated": updated}
 
 
-@router.post('/api/change-email')
-def request_change_email(request: Request, payload: dict = Body(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # payload expected: { newEmail: '...' }
-    new_email = None
-    if payload:
-        new_email = payload.get('newEmail') or payload.get('new_email') or payload.get('newEmail')
+CHANGE_EMAIL_CODE_PURPOSE = 'change_email'
+EMAIL_PATTERN = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+MAX_EMAIL_LENGTH = 100
+
+
+def _extract_new_email(payload: dict) -> str:
+    """从请求体中取出新邮箱并去除首尾空白。"""
+    raw = payload.get('newEmail') or payload.get('new_email') or ''
+    return str(raw).strip()
+
+
+@router.post('/api/change-email/send-code')
+async def send_change_email_code(
+    request: Request,
+    payload: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    步骤1：向新邮箱发送验证码（验证通过后才会真正更换邮箱）
+    """
+    new_email = _extract_new_email(payload)
     if not new_email:
-        raise HTTPException(status_code=400, detail='Missing new email')
-    # ensure not already used
-    exists = db.query(User).filter(User.email == new_email).first()
-    if exists:
-        raise HTTPException(status_code=400, detail='Email already in use')
-    # Directly replace user's email (no confirmation)
+        raise HTTPException(status_code=400, detail='请输入新邮箱')
+
+    if len(new_email) > MAX_EMAIL_LENGTH:
+        raise HTTPException(status_code=400, detail=f'邮箱过长（最多 {MAX_EMAIL_LENGTH} 字）')
+
+    if not EMAIL_PATTERN.match(new_email):
+        raise HTTPException(status_code=400, detail='邮箱格式不正确')
+
+    if current_user.email and new_email == current_user.email.strip():
+        raise HTTPException(status_code=400, detail='新邮箱与当前邮箱相同')
+
+    if db.query(User).filter(User.email == new_email).first():
+        raise HTTPException(status_code=400, detail='该邮箱已被其他账号使用')
+
+    if not can_resend_email_code(new_email, CHANGE_EMAIL_CODE_PURPOSE):
+        raise HTTPException(status_code=400, detail='请求过于频繁，请60秒后再试')
+
+    code = generate_email_code()
+
+    # 发送邮件；发送失败时不写入缓存，避免触发 60 秒冷却
+    if is_email_configured():
+        send_result = send_email_change_code(new_email, code)
+        if not send_result.get('success'):
+            audit_request(
+                request,
+                action="change_email_code_requested",
+                user_id=current_user.id,
+                status="failure",
+                error_message=send_result.get('message'),
+                metadata={"new_email": new_email},
+            )
+            raise HTTPException(status_code=400, detail=send_result.get('message') or '验证码发送失败，请稍后重试')
+    elif is_dev_environment():
+        # 未配置邮件服务时，开发环境打印验证码，便于本地调试
+        print(f"[DEV] 更换邮箱验证码 {new_email}: {code}")
+    else:
+        audit_request(
+            request,
+            action="change_email_code_requested",
+            user_id=current_user.id,
+            status="failure",
+            error_message="Email service not configured",
+            metadata={"new_email": new_email},
+        )
+        raise HTTPException(status_code=400, detail='邮件服务未配置，请联系管理员')
+
+    store_email_code(new_email, CHANGE_EMAIL_CODE_PURPOSE, code)
+
+    audit_request(
+        request,
+        action="change_email_code_requested",
+        user_id=current_user.id,
+        metadata={"new_email": new_email},
+    )
+
+    result = {"message": "验证码已发送到新邮箱"}
+    # 仅非生产环境返回验证码，便于开发/自动化测试
+    if is_dev_environment():
+        result['code'] = code
+    return result
+
+
+@router.post('/api/change-email/confirm')
+async def confirm_change_email(
+    request: Request,
+    payload: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    步骤2：校验新邮箱验证码并完成更换
+    """
+    new_email = _extract_new_email(payload)
+    code = str(payload.get('code') or '').strip()
+
+    if not new_email or not code:
+        raise HTTPException(status_code=400, detail='缺少必要参数')
+
+    if not EMAIL_PATTERN.match(new_email):
+        raise HTTPException(status_code=400, detail='邮箱格式不正确')
+
+    # 再次检查新邮箱是否已被使用
+    if db.query(User).filter(User.email == new_email).first():
+        raise HTTPException(status_code=400, detail='该邮箱已被其他账号使用')
+
+    if not verify_email_code(new_email, CHANGE_EMAIL_CODE_PURPOSE, code):
+        audit_request(
+            request,
+            action="change_email",
+            user_id=current_user.id,
+            status="failure",
+            error_message="Invalid or expired verification code",
+            metadata={"new_email": new_email},
+        )
+        raise HTTPException(status_code=400, detail='验证码错误或已过期')
+
     old_email = current_user.email
     current_user.email = new_email
     db.commit()
@@ -572,7 +687,7 @@ def request_change_email(request: Request, payload: dict = Body(...), current_us
         metadata={"old_email": old_email, "new_email": new_email},
     )
 
-    return {"message": "Email updated"}
+    return {"message": "邮箱更换成功", "email": new_email}
 
 
 @router.post('/api/change-phone/send-current-code')
