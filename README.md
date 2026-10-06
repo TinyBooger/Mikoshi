@@ -96,7 +96,13 @@ Mikoshi-MonoRepo
 │  │  │  ├─ 支付宝logo-方形.pdf
 │  │  │  ├─ 支付宝logo-方形.png
 │  │  │  └─ 电脑网站支付.png
-│  │  └─ favicon.ico
+│  │  ├─ apple-touch-icon.png
+│  │  ├─ favicon.ico
+│  │  ├─ icon-192.png
+│  │  ├─ icon-512.png
+│  │  ├─ manifest.json
+│  │  ├─ robots.txt
+│  │  └─ sitemap.xml
 │  ├─ README.md
 │  ├─ src
 │  │  ├─ admin
@@ -125,11 +131,13 @@ Mikoshi-MonoRepo
 │  │  ├─ assets
 │  │  │  └─ images
 │  │  │     ├─ default-avatar.png
-│  │  │     ├─ default-picture-expired.png
 │  │  │     ├─ default-picture.png
+│  │  │     ├─ female_1.png
+│  │  │     ├─ female_2.png
 │  │  │     ├─ logo.png
 │  │  │     ├─ logo_text.png
-│  │  │     └─ logo_v1_old.png
+│  │  │     ├─ male_1.png
+│  │  │     └─ male_2.png
 │  │  ├─ components
 │  │  │  ├─ AdminRoute.jsx
 │  │  │  ├─ AuthLayout.jsx

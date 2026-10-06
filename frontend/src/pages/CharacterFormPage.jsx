@@ -19,6 +19,10 @@ import ModelSelect from '../components/ModelSelect';
 import BanNotice from '../components/BanNotice';
 import { WALLPAPER_OPTIONS } from '../utils/chatPageConstants';
 import { resolveBackgroundPresetId } from '../utils/backgroundPresets';
+import presetMale1 from '../assets/images/male_1.png';
+import presetMale2 from '../assets/images/male_2.png';
+import presetFemale1 from '../assets/images/female_1.png';
+import presetFemale2 from '../assets/images/female_2.png';
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
@@ -207,12 +211,12 @@ export default function CharacterFormPage() {
   const [backgroundPreview, setBackgroundPreview] = useState(null);
   const [showImageGen, setShowImageGen] = useState(false);
   const DEFAULT_PICTURES = [
-    { name: 'male_1', src: '/default/male_1.png', label: 'Male 1' },
-    { name: 'male_2', src: '/default/male_2.png', label: 'Male 2' },
-    { name: 'female_1', src: '/default/female_1.png', label: 'Female 1' },
-    { name: 'female_2', src: '/default/female_2.png', label: 'Female 2' },
+    { name: 'male_1', src: presetMale1, label: 'Male 1' },
+    { name: 'male_2', src: presetMale2, label: 'Male 2' },
+    { name: 'female_1', src: presetFemale1, label: 'Female 1' },
+    { name: 'female_2', src: presetFemale2, label: 'Female 2' },
   ];
-  const handleSelectDefaultPicture = async (src) => {
+  const handleSelectDefaultPicture = async (src, filename) => {
     if (selectedDefaultPicture === src) {
       // Deselect
       setSelectedDefaultPicture(null);
@@ -225,7 +229,6 @@ export default function CharacterFormPage() {
     try {
       const response = await fetch(src);
       const blob = await response.blob();
-      const filename = src.split('/').pop();
       const file = new File([blob], filename, { type: blob.type || 'image/png' });
       setPicture(file);
       setAvatarPicture(file);
@@ -914,7 +917,7 @@ export default function CharacterFormPage() {
               {DEFAULT_PICTURES.map(pic => (
                 <div
                   key={pic.name}
-                  onClick={() => handleSelectDefaultPicture(pic.src)}
+                  onClick={() => handleSelectDefaultPicture(pic.src, `${pic.name}.png`)}
                   title={selectedDefaultPicture === pic.src ? `${pic.label} — 点击取消选择` : pic.label}
                   style={{
                     position: 'relative',
