@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import defaultPicture from '../assets/images/default-picture.png';
+import defaultAvatar from '../assets/images/default-avatar.png';
 import EntityCard from './EntityCard';
 import { AuthContext } from './AuthProvider';
 
@@ -109,7 +109,7 @@ export default function UserCard({ user, onClick, disableClick = false, isFollow
             src={
               profile_pic
                 ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(profile_pic).replace(/^\//, '')}`
-                : defaultPicture
+                : defaultAvatar
             }
             alt={name}
             style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover' }}
