@@ -22,7 +22,12 @@
   <!-- Prevent password managers from triggering layout shift -->
   <meta name="password-managers" content="false" />
   <!-- Favicon and app icons (placed in frontend/public/) -->
-  <link rel="icon" href="/favicon.ico" />
+  <!-- Root-absolute paths keep these resolvable on nested SPA routes. -->
+  <!-- The ICO plus an explicit PNG covers WebView-based browsers (e.g. Via on
+       Android), which do not reliably parse SVG-only or PNG-only icon tags. -->
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
   <!-- Apple Touch Icon (iOS home screen shortcut / Chrome iOS) -->
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <!-- Web App Manifest (Android + PWA install for all platforms) -->
