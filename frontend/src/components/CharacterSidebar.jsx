@@ -7,7 +7,6 @@ import ContentReportModal from './ContentReportModal';
 import { useTranslation } from 'react-i18next';
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import ModelSelect from './ModelSelect';
-import { useToast } from '../components/ToastProvider';
 import { SIDEBAR_WIDTH, SIDEBAR_BORDER_WIDTH } from '../constants/layout';
 import { WALLPAPER_OPTIONS } from '../utils/chatPageConstants';
 import { resolveBackgroundPresetId } from '../utils/backgroundPresets';
@@ -60,11 +59,10 @@ export default function CharacterSidebar({
   onUnpinMemory,
   isMobile = false, // allow parent to pass isMobile, default false
   setPersonaModalShow, // <-- new prop to open PersonaModal
-  onShareChatLink, // <-- handler for share button
+  onOpenCharacterShare, // <-- handler for the "分享角色卡片" dialog
   onOpenShareScreenshot // <-- handler for the "制作截图" share-card dialog
 }) {
   const [creatorHover, setCreatorHover] = React.useState(false);
-  const toast = useToast();
   const [showFullTagline, setShowFullTagline] = React.useState(false);
   const [showProblemReport, setShowProblemReport] = React.useState(false);
   const [showMemoryManagement, setShowMemoryManagement] = React.useState(false);
@@ -332,9 +330,9 @@ export default function CharacterSidebar({
                 </button>
                 <button
                   type="button"
-                  onClick={() => { if (onShareChatLink) onShareChatLink(toast); }}
-                  aria-label="分享当前聊天链接"
-                  title="分享当前聊天链接"
+                  onClick={() => { if (onOpenCharacterShare) onOpenCharacterShare(); }}
+                  aria-label="分享角色卡片"
+                  title="分享角色卡片"
                   style={{
                     border: 'none',
                     background: 'none',

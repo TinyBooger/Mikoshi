@@ -8,6 +8,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import ContentReportModal from '../components/ContentReportModal';
 import ConfirmModal from '../components/ConfirmModal';
+import ShareCharacterDialog from '../components/share/ShareCharacterDialog';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import { applyCharacterPlaceholders } from '../utils/characterPlaceholders';
@@ -32,6 +33,8 @@ export default function EntityDetailPage() {
   const [followLoading, setFollowLoading] = useState(false);
   const [showProblemReport, setShowProblemReport] = useState(false);
   const [reportIconHovered, setReportIconHovered] = useState(false);
+  const [showShareCharacter, setShowShareCharacter] = useState(false);
+  const [shareIconHovered, setShareIconHovered] = useState(false);
   const [contentAppeals, setContentAppeals] = useState([]);
   const [appealsLoading, setAppealsLoading] = useState(false);
   const [showAppealHistory, setShowAppealHistory] = useState(false);
@@ -553,6 +556,35 @@ export default function EntityDetailPage() {
                 className="d-flex align-items-center flex-shrink-0"
                 style={{ gap: '0.1rem', marginLeft: '0.75rem' }}
               >
+                <button
+                  type="button"
+                  onClick={() => setShowShareCharacter(true)}
+                  title="分享角色卡片"
+                  aria-label="分享角色卡片"
+                  onMouseEnter={() => setShareIconHovered(true)}
+                  onMouseLeave={() => setShareIconHovered(false)}
+                  onFocus={() => setShareIconHovered(true)}
+                  onBlur={() => setShareIconHovered(false)}
+                  style={{
+                    border: 'none',
+                    background: shareIconHovered ? 'rgba(115,107,146,0.12)' : 'transparent',
+                    color: '#736B92',
+                    cursor: 'pointer',
+                    fontSize: '1.2rem',
+                    lineHeight: 1,
+                    padding: '0.3rem',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'background 0.16s',
+                  }}
+                >
+                  <i
+                    className={`bi ${shareIconHovered ? 'bi-share-fill' : 'bi-share'}`}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                </button>
                 {!isOwner && sessionToken && (
                   <button
                     type="button"
@@ -932,6 +964,13 @@ export default function EntityDetailPage() {
         targetType={type}
         targetId={entity?.id}
         targetName={entity?.name}
+      />
+      <ShareCharacterDialog
+        show={showShareCharacter}
+        onClose={() => setShowShareCharacter(false)}
+        entity={entity}
+        type={type}
+        id={entity?.id ?? id}
       />
       <ConfirmModal
         show={showForkAdvancedConfirm}

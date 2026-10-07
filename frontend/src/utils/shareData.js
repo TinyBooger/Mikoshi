@@ -150,3 +150,45 @@ export function buildSharePayload({ character, scene, persona, userData, message
     lines,
   };
 }
+
+/**
+ * Build the plain-data payload the character card renders.
+ *
+ * There are no messages here: this card promotes the entity itself, so it
+ * carries identity, tags, creator, counters, and the URL its QR code encodes.
+ * Everything is optional-tolerant because ChatPage hands over the lighter
+ * character object it already holds in state — that one has no `views`/`likes`,
+ * and a zero is dropped rather than printed as a stat nobody has.
+ */
+export function buildCharacterSharePayload({ entity, type, id }) {
+  const name = entity?.name || '角色';
+  // `picture` is the full portrait (立绘); `avatar_picture` is the round crop.
+  const portrait = resolveMediaUrl(entity?.picture);
+  const avatar = resolveMediaUrl(entity?.avatar_picture) || portrait;
+  // Scenes carry their blurb in `intro`, characters in `tagline`; `description`
+  // is the last resort so a persona still gets a line of copy.
+  const tagline = String(entity?.tagline || entity?.intro || entity?.description || '').trim();
+  const tags = (Array.isArray(entity?.tags) ? entity.tags : [])
+    .map((tag) => (tag && typeof tag === 'object' ? tag.name : tag))
+    .map((tag) => String(tag || '').trim())
+    .filter(Boolean)
+    .slice(0, 6);
+  const entityType = type || 'character';
+  const entityId = id ?? entity?.id ?? null;
+
+  return {
+    name,
+    tagline: tagline.slice(0, 140),
+    tags,
+    portrait,
+    avatar,
+    creatorName: String(entity?.creator_name || '').trim(),
+    likes: Number.isFinite(entity?.likes) ? entity.likes : null,
+    views: Number.isFinite(entity?.views) ? entity.views : null,
+    // The QR target. `entityId` is absent only for an entity that failed to
+    // load, where the dialog is not opened at all.
+    url: entityId != null
+      ? `${window.location.origin}/${entityType}/${entityId}`
+      : window.location.origin,
+  };
+}

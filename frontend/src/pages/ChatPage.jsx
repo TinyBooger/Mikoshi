@@ -10,6 +10,7 @@ import ChatMessagesList from '../components/chat/ChatMessagesList';
 import ChatInputBar from '../components/chat/ChatInputBar';
 import ChatModals from '../components/chat/ChatModals';
 import ShareScreenshotDialog from '../components/share/ShareScreenshotDialog';
+import ShareCharacterDialog from '../components/share/ShareCharacterDialog';
 import { useToast } from '../components/ToastProvider';
 import {
   normalizeChatEntry,
@@ -70,6 +71,7 @@ export default function ChatPage() {
   const { hasLiked, setHasLiked, likeEntity, unlikeEntity } = useLikeEntity({ sessionToken, setLikes });
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [showShareScreenshot, setShowShareScreenshot] = useState(false);
+  const [showShareCharacter, setShowShareCharacter] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
   const [editingChatId, setEditingChatId] = useState(null);
   const [editingMessageId, setEditingMessageId] = useState(null);
@@ -684,26 +686,7 @@ export default function ChatPage() {
         isMobile={isMobile}
         setPersonaModalShow={() => setPersonaModal({ show: true })}
         onOpenShareScreenshot={() => setShowShareScreenshot(true)}
-        onShareChatLink={(toast) => {
-          try {
-            const url = window.location.href;
-            if (navigator.clipboard) {
-              navigator.clipboard.writeText(url);
-              toast.show('聊天链接已复制到剪贴板', { type: 'success' });
-            } else {
-              // fallback
-              const input = document.createElement('input');
-              input.value = url;
-              document.body.appendChild(input);
-              input.select();
-              document.execCommand('copy');
-              document.body.removeChild(input);
-              toast.show('聊天链接已复制到剪贴板', { type: 'success' });
-            }
-          } catch {
-            toast.show('复制失败，请手动复制链接', { type: 'error' });
-          }
-        }}
+        onOpenCharacterShare={() => setShowShareCharacter(true)}
       />
     </div>
 
@@ -746,6 +729,17 @@ export default function ChatPage() {
         wallpaperUrl={selectedWallpaper?.url || null}
         wallpaperId={wallpaper.id}
         interfacePreference={advancedChatConfig?.interface_preference}
+      />
+
+      {/* Shares the entity itself as a card — the replacement for the old
+          "copy chat link" action. A scene wins over its character, matching how
+          the chat's own title and share payload resolve the entity. */}
+      <ShareCharacterDialog
+        show={showShareCharacter}
+        onClose={() => setShowShareCharacter(false)}
+        entity={selectedScene || selectedCharacter}
+        type={selectedScene ? 'scene' : 'character'}
+        id={(selectedScene || selectedCharacter)?.id}
       />
     </PageWrapper>
   );
