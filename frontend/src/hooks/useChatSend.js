@@ -187,7 +187,6 @@ export function useChatSend({
         }
 
         if (data.chunk) {
-          console.log('[RAW chunk]', data.chunk);
           accumulatedReply += data.chunk;
           setMessages((prev) => {
             const newMessages = [...prev];
@@ -205,7 +204,6 @@ export function useChatSend({
         }
 
         if (data.done) {
-          console.log('[RAW chat_entry]', JSON.stringify(data.chat_entry));
           applyChatLimits(data.limits);
           applyCreditLimits(data.credit_limits);
           if (refreshUserData) {
