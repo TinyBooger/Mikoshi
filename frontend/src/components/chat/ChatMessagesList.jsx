@@ -1,7 +1,9 @@
 import React from 'react';
 import MessageBubble from '../MessageBubble';
 import ChatWelcomeCard from '../ChatWelcomeCard';
+import MessageTimestampDivider from './MessageTimestampDivider';
 import { getChromeSurface, isVeiledBackground, getSurfacePalette } from '../../utils/backgroundPresets';
+import { buildTranscriptDividers } from '../../utils/chatTimestamps';
 
 /**
  * Scrollable messages area of the chat: context-window-compaction notice,
@@ -23,6 +25,7 @@ export default function ChatMessagesList({
   userData,
   isMobile,
   cleanMode,
+  timestampGapSeconds,
   editingMessageId,
   editingMessageText,
   hoveredMessageId,
@@ -48,6 +51,10 @@ export default function ChatMessagesList({
   // module-level constant, so passing it down does not defeat `MessageBubble`'s
   // memo during streaming.
   const palette = getSurfacePalette(selectedWallpaper);
+  // Time breaks for the rendered transcript: the pause threshold comes from the
+  // server (`timestamp_gap_seconds`) so it cannot drift from the gap the prompt's
+  // time marker uses; see `chatTimestamps.js`.
+  const dividers = buildTranscriptDividers(nonSystem, timestampGapSeconds);
 
   return (
     /* Messages Area */
@@ -103,33 +110,37 @@ export default function ChatMessagesList({
           </div>
         ) : (
           nonSystem.map((m, i) => (
-            <MessageBubble
-              key={m.message_id || i}
-              message={m}
-              index={i}
-              isMobile={isMobile}
-              cleanMode={cleanMode}
-              palette={palette}
-              selectedCharacter={selectedCharacter}
-              selectedPersona={selectedPersona}
-              userData={userData}
-              editingMessageId={editingMessageId}
-              editingMessageText={editingMessageText}
-              hoveredMessageId={hoveredMessageId}
-              forkNavMap={forkNavMap}
-              branchSelectionPending={branchSelectionPending}
-              sending={sending}
-              renderMessageContent={renderMessageContent}
-              onHoverMessage={onHoverMessage}
-              onTogglePin={onTogglePin}
-              onCopyMessage={onCopyMessage}
-              onCancelEditing={onCancelEditing}
-              onSaveEditedMessage={onSaveEditedMessage}
-              onResendMessage={onResendMessage}
-              onStartEditing={onStartEditing}
-              onSelectBranch={onSelectBranch}
-              onEditTextChange={onEditTextChange}
-            />
+            <React.Fragment key={m.message_id || i}>
+              {dividers.has(i) && (
+                <MessageTimestampDivider label={dividers.get(i)} palette={palette} />
+              )}
+              <MessageBubble
+                message={m}
+                index={i}
+                isMobile={isMobile}
+                cleanMode={cleanMode}
+                palette={palette}
+                selectedCharacter={selectedCharacter}
+                selectedPersona={selectedPersona}
+                userData={userData}
+                editingMessageId={editingMessageId}
+                editingMessageText={editingMessageText}
+                hoveredMessageId={hoveredMessageId}
+                forkNavMap={forkNavMap}
+                branchSelectionPending={branchSelectionPending}
+                sending={sending}
+                renderMessageContent={renderMessageContent}
+                onHoverMessage={onHoverMessage}
+                onTogglePin={onTogglePin}
+                onCopyMessage={onCopyMessage}
+                onCancelEditing={onCancelEditing}
+                onSaveEditedMessage={onSaveEditedMessage}
+                onResendMessage={onResendMessage}
+                onStartEditing={onStartEditing}
+                onSelectBranch={onSelectBranch}
+                onEditTextChange={onEditTextChange}
+              />
+            </React.Fragment>
           ))
         )}
         {/* Invisible element to scroll to */}

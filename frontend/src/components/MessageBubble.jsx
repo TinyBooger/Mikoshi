@@ -1,6 +1,7 @@
 import React from 'react';
 import defaultPic from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
+import { formatExactMessageTimestamp, formatMessageClock } from '../utils/chatTimestamps';
 
 const getMessageActionButtonStyle = (disabled, palette) => ({
   border: 'none',
@@ -35,6 +36,16 @@ const handleMessageActionMouseLeave = (event, disabled, palette) => {
   event.currentTarget.style.color = palette.iconColor;
   event.currentTarget.style.transform = 'none';
 };
+
+// A tap on the bubble pins its exact time on screen — hovering alone can only
+// ever reveal one message at a time, which is not enough when a shot needs
+// several quick messages stamped. Clicks that belong to the message's own
+// content (a link, the editor) are not taps on the bubble.
+const isInteractiveMessageTarget = (target) => (
+  !!target
+  && typeof target.closest === 'function'
+  && !!target.closest('a, button, textarea, input, select, [role="button"]')
+);
 
 /**
  * Memoized message bubble.
@@ -82,6 +93,18 @@ const MessageBubble = React.memo(function MessageBubble({
   const bubbleWidth = isEditingUser ? editorWidth : 'auto';
   const bubbleMaxWidth = isEditingUser ? editorWidth : '100%';
   const cleanContentWidth = 'min(80%, 800px)';
+
+  // Exact time of this message, for when the minute matters but a clock under
+  // every bubble does not: revealed while the bubble is hovered, or pinned by
+  // tapping it. Messages without a trustworthy time stay clockless.
+  const [showExactTime, setShowExactTime] = React.useState(false);
+  const messageClock = formatMessageClock(m.created_at);
+  const exactTimestamp = formatExactMessageTimestamp(m.created_at);
+  const exactTimeVisible = !!messageClock && (showExactTime || hoveredMessageId === m.message_id);
+  const handleBubbleClick = (event) => {
+    if (!messageClock || isInteractiveMessageTarget(event.target)) return;
+    setShowExactTime((previous) => !previous);
+  };
 
   // A tinted bubble is any palette that is not the plain white default. Its
   // surface fixes live in `ChatBubble.css` — the shared markdown rules assume the
@@ -245,6 +268,7 @@ const MessageBubble = React.memo(function MessageBubble({
             {/* Bubble */}
             <div
               className={bubbleClassName}
+              onClick={handleBubbleClick}
               style={{
                 background: bubbleBackground,
                 // Clean mode has no bubble behind the reply, so its text sits
@@ -291,6 +315,23 @@ const MessageBubble = React.memo(function MessageBubble({
           {/* Below-bubble action row — user: retry · pin · edit · copy / bot: copy · pin */}
           {m?.message_id && (m.role === 'user' || m.role === 'assistant') && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, justifyContent: cleanMode && m.role === 'assistant' ? 'center' : (m.role === 'user' ? 'flex-end' : 'flex-start'), width: '100%' }}>
+              {/* Exact time of this message — the divider above only exists where
+                  the conversation paused, so this covers the messages it skipped. */}
+              {exactTimestamp && (
+                <span
+                  title={exactTimeVisible ? exactTimestamp : undefined}
+                  style={{
+                    fontSize: '0.7rem',
+                    color: palette.mutedColor,
+                    opacity: exactTimeVisible ? 1 : 0,
+                    transition: 'opacity 0.15s ease',
+                    whiteSpace: 'nowrap',
+                    userSelect: 'none',
+                  }}
+                >
+                  {messageClock}
+                </span>
+              )}
               {/* Editing a user message: replace action buttons with Cancel / Send */}
               {showEditingControls ? (
                 <>

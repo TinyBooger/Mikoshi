@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { ensureMessageIds, generateMessageId } from '../utils/chatHelpers';
+import { ensureMessageIds, generateMessageId, createLocalMessageTimestamp } from '../utils/chatHelpers';
 import { isCreditLocked } from '../utils/creditCheck';
 import { getChatErrorMessage, compactMessagesForRequest } from '../utils/chatMessages';
 import { resetTextareaHeight } from '../utils/textarea';
@@ -100,7 +100,7 @@ export function useChatSend({
     const controller = new AbortController();
     const assistantMessageId = generateMessageId();
     setAbortController(controller);
-    setMessages(ensureMessageIds([...nextMessages, { role: 'assistant', content: '', message_id: assistantMessageId, is_pinned: false }]));
+    setMessages(ensureMessageIds([...nextMessages, { role: 'assistant', content: '', message_id: assistantMessageId, is_pinned: false, created_at: createLocalMessageTimestamp() }]));
 
     try {
       const response = await fetch(`${window.API_BASE_URL}/api/chat`, {
@@ -191,7 +191,10 @@ export function useChatSend({
           accumulatedReply += data.chunk;
           setMessages((prev) => {
             const newMessages = [...prev];
+            // Spread the placeholder so the timestamp it was created with (and
+            // anything else the message carries) survives the stream.
             newMessages[newMessages.length - 1] = {
+              ...newMessages[newMessages.length - 1],
               role: 'assistant',
               content: accumulatedReply,
               message_id: assistantMessageId,
@@ -263,7 +266,7 @@ export function useChatSend({
       return;
     }
     if (sending || !input.trim() || !selectedCharacter) return;
-    const updatedMessages = ensureMessageIds([...messages, { role: 'user', content: input.trim(), message_id: generateMessageId(), is_pinned: false }]);
+    const updatedMessages = ensureMessageIds([...messages, { role: 'user', content: input.trim(), message_id: generateMessageId(), is_pinned: false, created_at: createLocalMessageTimestamp() }]);
     setMessages(updatedMessages);
     setInput('');
 

@@ -27,6 +27,10 @@ PROMPT_TIME_ENABLED = True
 # Gaps shorter than this are not mentioned at all: during a rapid back-and-forth
 # a "5 minutes ago" marker is pure noise, costs tokens, and invites the model to
 # comment on the gap.
+#
+# The chat transcript draws its time dividers at exactly this gap (the value is
+# sent to the client as ``timestamp_gap_seconds``), so the breaks the user sees
+# and the gaps the model is told about stay the same thing. Change it here only.
 MIN_GAP_SECONDS = 30 * 60
 
 _MAX_TZ_OFFSET_MINUTES = 14 * 60

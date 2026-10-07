@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import MarkdownMessage from '../MarkdownMessage';
+import { buildTranscriptDividers } from '../../utils/chatTimestamps';
 import { SHARE_CARD_MIN_HEIGHT, SHARE_CARD_WIDTH } from './shareTemplates';
 // Card-specific markdown surface fixes. The chat's own rules come along with
 // `MarkdownMessage`, which imports `styles/ChatBubble.css` itself.
@@ -16,9 +17,13 @@ import brandLogo from '../../assets/images/logo.png';
  * The social-share card that gets rasterised into a PNG.
  *
  * This component is intentionally *not* the chat UI: it shares no DOM with
- * `MessageBubble`. That keeps the exported image free of hover controls,
- * timestamps and input chrome, and means html2canvas only ever has to
- * understand a small, self-contained tree of plain boxes.
+ * `MessageBubble`. That keeps the exported image free of hover controls, the
+ * tap-to-reveal exact times and input chrome, and means html2canvas only ever
+ * has to understand a small, self-contained tree of plain boxes.
+ *
+ * Time dividers are the one piece of chat chrome the card *does* carry: they
+ * come from the same `buildTranscriptDividers` the transcript uses, so an
+ * exported card shows the same pauses and day breaks the chat shows.
  *
  * Message bodies are the one thing it does share — they are rendered by the
  * same `MarkdownMessage` pipeline the chat uses, so a screenshot shows what the
@@ -96,6 +101,39 @@ function ShareAvatar({ src, fallback, size, radius, borderColor, shadow }) {
         boxShadow: shadow || undefined,
       }}
     />
+  );
+}
+
+/**
+ * Centered time break between two stretches of the conversation.
+ *
+ * The card's copy of `components/chat/MessageTimestampDivider`, scaled for the
+ * export: two hairlines and a muted label, nothing interactive, so html2canvas
+ * rasterises it like any other box.
+ */
+function ShareTimeDivider({ label, background }) {
+  const ruleStyle = {
+    flex: 1,
+    height: 1,
+    background: background.dividerColor,
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+      <div style={ruleStyle} />
+      <span
+        style={{
+          fontSize: 26,
+          fontWeight: 600,
+          letterSpacing: 1,
+          color: background.mutedColor,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </span>
+      <div style={ruleStyle} />
+    </div>
   );
 }
 
@@ -336,6 +374,11 @@ const ShareCard = forwardRef(function ShareCard(
   // The portrait header is skipped when the artwork already *is* the backdrop,
   // otherwise the same image would be painted twice on one card.
   const showPortrait = !!payload.characterImage && background.id !== 'character-art';
+  // Computed from the lines that actually render, so a card built from a
+  // hand-picked selection divides on the gaps *it* shows. The default gap is the
+  // mirrored backend constant, the same one the chat only overrides when the
+  // server sends its own.
+  const dividers = buildTranscriptDividers(payload.lines);
 
   return (
     <div
@@ -385,8 +428,13 @@ const ShareCard = forwardRef(function ShareCard(
 
         {/* Conversation */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 44 }}>
-          {payload.lines.map((line) => (
-            <MessageRenderer key={line.id} line={line} background={background} />
+          {payload.lines.map((line, index) => (
+            <React.Fragment key={line.id}>
+              {dividers.has(index) ? (
+                <ShareTimeDivider label={dividers.get(index)} background={background} />
+              ) : null}
+              <MessageRenderer line={line} background={background} />
+            </React.Fragment>
           ))}
         </div>
 

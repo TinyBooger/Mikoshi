@@ -154,7 +154,8 @@ export default function ShareScreenshotDialog({
       template.id,
       background?.id || '',
       background?.imageUrl || '',
-      capturePayload.lines.map((line) => [line.id, line.avatar || '', line.text]),
+      // `created_at` is part of the card: it decides the time dividers.
+      capturePayload.lines.map((line) => [line.id, line.avatar || '', line.created_at || '', line.text]),
     ]),
     [template, background, capturePayload],
   );

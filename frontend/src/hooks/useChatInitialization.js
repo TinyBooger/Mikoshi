@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { normalizeChatEntry, ensureMessageIds, generateMessageId } from '../utils/chatHelpers';
+import { normalizeChatEntry, ensureMessageIds, generateMessageId, createLocalMessageTimestamp } from '../utils/chatHelpers';
 import { SPECIAL_IMPROVISING_GREETING, DEFAULT_ADVANCED_CHAT_CONFIG } from '../utils/chatPageConstants';
 import {
   applyCharacterPlaceholders,
@@ -523,6 +523,7 @@ export function useChatInitialization({
         content: openingGreeting,
         message_id: generateMessageId(),
         is_pinned: false,
+        created_at: createLocalMessageTimestamp(),
       };
     }
     setMessages(ensureMessageIds(greet ? [sys, greet] : [sys]));

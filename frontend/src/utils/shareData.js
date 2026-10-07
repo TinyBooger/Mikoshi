@@ -124,6 +124,10 @@ export function buildSharePayload({ character, scene, persona, userData, message
         // The raw Markdown body, untouched. The card renders it through the
         // chat's own pipeline so the screenshot matches the conversation.
         text: m.content,
+        // Send time, used for the card's time dividers. Absent on messages the
+        // backend could not vouch for, which is why the card must tolerate it
+        // being null (see `buildTranscriptDividers`).
+        created_at: m.created_at || null,
         // One-line plain-text label for the picker in the dialog. Whitespace is
         // collapsed because the picker truncates rather than wraps.
         preview: stripMarkdownForShare(m.content).replace(/\s+/g, ' ').trim(),

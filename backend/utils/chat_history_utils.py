@@ -12,10 +12,42 @@ from sqlalchemy import and_, func
 from sqlalchemy.orm import Session, object_session
 
 from models import ChatHistory, Character, ChatHistoryBranch, ChatHistoryMessage
+from utils.prompt_time import MIN_GAP_SECONDS
 
 
 CHAT_HISTORY_VERSION = 2
 DEFAULT_BRANCH_ID = "branch_main"
+
+# A stored message's ``created_at`` is only handed to the client when we know it
+# is the moment the message was actually written:
+#
+# * rows written before timestamps reached clients carry no meaningful send time,
+#   and
+# * rows a store backfill had to invent are deliberately stamped with
+#   :data:`TIMESTAMP_UNKNOWN` instead of "now" (see ``_sync_chat_history_store``),
+#   because a backfill has no idea when those messages were sent.
+#
+# Anything at or after :data:`TIMESTAMP_TRUSTED_FROM` is real, so the client may
+# draw its time dividers from it; older/unknown rows are serialized without a
+# timestamp, and the client hides the time instead of showing a wrong one.
+# Bump the cutoff only if a future migration invents timestamps again.
+TIMESTAMP_TRUSTED_FROM = datetime(2026, 10, 7, tzinfo=UTC)
+TIMESTAMP_UNKNOWN = datetime(1970, 1, 1, tzinfo=UTC)
+
+
+def _as_utc(value: Optional[datetime]) -> Optional[datetime]:
+    """Return `value` as an aware UTC datetime (SQLite drops tzinfo)."""
+    if not isinstance(value, datetime):
+        return None
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+def _display_timestamp(value: Optional[datetime]) -> Optional[str]:
+    """ISO timestamp for the client, or None when the row's time is not real."""
+    timestamp = _as_utc(value)
+    if timestamp is None or timestamp < TIMESTAMP_TRUSTED_FROM:
+        return None
+    return timestamp.isoformat()
 
 
 def generate_chat_branch_id() -> str:
@@ -286,6 +318,11 @@ def _build_chat_history_payload_from_store(db: Session, entry: ChatHistory) -> d
                 "role": item.role,
                 "content": item.content,
             }
+            # Empty for rows whose stored time is not trustworthy, so the client
+            # has nothing to render a (wrong) clock from.
+            created_at = _display_timestamp(item.created_at)
+            if created_at:
+                message["created_at"] = created_at
             if isinstance(item.usage, dict):
                 message["usage"] = item.usage
             if item.role in {"user", "assistant"}:
@@ -322,7 +359,20 @@ def _build_chat_history_payload_from_store(db: Session, entry: ChatHistory) -> d
     }
 
 
-def _sync_chat_history_store(db: Session, entry: ChatHistory, payload: dict[str, Any]) -> None:
+def _sync_chat_history_store(
+    db: Session,
+    entry: ChatHistory,
+    payload: dict[str, Any],
+    *,
+    live_timestamps: bool = True,
+) -> None:
+    """Append any messages the store does not have yet.
+
+    ``live_timestamps`` says whether the payload being synced was produced by the
+    send path, where "now" really is when those messages were sent. A read-path
+    backfill passes ``False``, because it is translating a legacy JSON blob whose
+    messages have no send time at all — see :data:`TIMESTAMP_UNKNOWN`.
+    """
     normalized_payload = normalize_chat_history_payload(payload)
     branch_ids = [b["branch_id"] for b in normalized_payload["branches"]]
 
@@ -332,6 +382,23 @@ def _sync_chat_history_store(db: Session, entry: ChatHistory, payload: dict[str,
         .all()
     )
     existing_by_id = {b.branch_id: b for b in existing_branches}
+
+    # Message ids this chat already stores, so a payload that carries an existing
+    # message into a new branch (a fork duplicates every message of its source
+    # branch) keeps the time that message was actually written instead of looking
+    # freshly sent. A copy of an untrusted row inherits that untrustworthiness
+    # along with the timestamp.
+    stored_message_times = {
+        message_id: created_at
+        for message_id, created_at in (
+            db.query(ChatHistoryMessage.message_id, ChatHistoryMessage.created_at)
+            .filter(
+                ChatHistoryMessage.chat_id == entry.chat_id,
+                ChatHistoryMessage.message_id.isnot(None),
+            )
+            .all()
+        )
+    }
 
     for branch in normalized_payload["branches"]:
         branch_id = branch["branch_id"]
@@ -409,17 +476,21 @@ def _sync_chat_history_store(db: Session, entry: ChatHistory, payload: dict[str,
         for index in range(len(existing_messages), len(incoming_messages)):
             message = incoming_messages[index]
             role = str(message.get("role") or "assistant").strip().lower()
+            message_id = message.get("message_id") if isinstance(message.get("message_id"), str) else None
             db.add(
                 ChatHistoryMessage(
                     chat_id=entry.chat_id,
                     branch_id=branch_id,
-                    message_id=message.get("message_id") if isinstance(message.get("message_id"), str) else None,
+                    message_id=message_id,
                     role=role,
                     content=message.get("content") or "",
                     usage=message.get("usage") if isinstance(message.get("usage"), dict) else None,
                     is_pinned=bool(message.get("is_pinned")) if role in {"user", "assistant"} else False,
                     created_seq=index,
-                    created_at=datetime.now(UTC),
+                    created_at=(
+                        stored_message_times.get(message_id)
+                        or (datetime.now(UTC) if live_timestamps else TIMESTAMP_UNKNOWN)
+                    ),
                 )
             )
 
@@ -430,6 +501,12 @@ def _sync_chat_history_store(db: Session, entry: ChatHistory, payload: dict[str,
 
 
 def _ensure_chat_history_store(db: Session, entry: ChatHistory) -> None:
+    """Create the store rows for `entry` if the chat has none yet.
+
+    This runs from read paths, so the rows a backfill has to create carry no
+    timestamps: the legacy payload being backfilled has no send times, and the
+    moment of the backfill is not one either.
+    """
     branch_exists = (
         db.query(ChatHistoryBranch.id)
         .filter(ChatHistoryBranch.chat_id == entry.chat_id)
@@ -443,7 +520,7 @@ def _ensure_chat_history_store(db: Session, entry: ChatHistory) -> None:
         return
 
     payload = normalize_chat_history_payload(entry.messages)
-    _sync_chat_history_store(db, entry, payload)
+    _sync_chat_history_store(db, entry, payload, live_timestamps=False)
     db.flush()
 
 
@@ -470,6 +547,10 @@ def serialize_chat_history_entry(entry: ChatHistory) -> dict:
         "branches": payload["branches"],
         "active_branch_id": payload["active_branch_id"],
         "message_store_version": payload["version"],
+        # Same threshold the prompt's time marker uses, so the conversation breaks
+        # the client draws match the gaps the model is told about; sent to the
+        # client instead of being duplicated there.
+        "timestamp_gap_seconds": MIN_GAP_SECONDS,
         "is_pinned": bool(getattr(entry, "is_pinned", False)),
         "hidden_from_recent": bool(getattr(entry, "hidden_from_recent", False)),
         "last_updated": entry.last_updated.isoformat() if entry.last_updated else None,

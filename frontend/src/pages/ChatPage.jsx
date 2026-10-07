@@ -590,6 +590,7 @@ export default function ChatPage() {
           userData={userData}
           isMobile={isMobile}
           cleanMode={advancedChatConfig?.interface_preference === 'clean'}
+          timestampGapSeconds={selectedChat?.timestamp_gap_seconds}
           editingMessageId={editingMessageId}
           editingMessageText={editingMessageText}
           hoveredMessageId={hoveredMessageId}

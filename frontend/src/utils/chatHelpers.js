@@ -17,6 +17,15 @@ export const generateMessageId = () => {
   return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
 
+/**
+ * Local send time for a message that is not persisted yet.
+ *
+ * The server stamps the real time when the turn is stored, and that value wins as
+ * soon as the entry is synced; this only keeps the transcript's time dividers
+ * correct while a reply is still streaming.
+ */
+export const createLocalMessageTimestamp = () => new Date().toISOString();
+
 export const ensureMessageIds = (messageList = []) => {
   if (!Array.isArray(messageList)) return [];
   return messageList.map((message) => {
