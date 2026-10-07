@@ -211,7 +211,6 @@ async def create_character(
     if error:
         raise HTTPException(status_code=400, detail=error)
 
-    is_pro_user = bool(current_user.is_pro)
     can_create_private = True
 
     # Advanced character context_label is now open to all users (free & pro).
@@ -228,7 +227,6 @@ async def create_character(
             db.add(Tag(name=tag_name, count=1))
 
     normalized_long_description = normalize_line_endings(long_description).strip()
-    can_use_advanced_config = is_pro_user
     chat_config = parse_character_chat_config(
         model=model,
         temperature=temperature,
@@ -239,16 +237,6 @@ async def create_character(
         interface_preference=interface_preference,
         time_awareness=time_awareness,
     )
-    # Model is always accepted from the user.
-    # Sampling params (temperature, top_p, max_tokens, penalties) are gated for Pro users.
-    if not can_use_advanced_config:
-        default_cfg = default_character_chat_config()
-        chat_config["temperature"] = default_cfg["temperature"]
-        chat_config["top_p"] = default_cfg["top_p"]
-        chat_config["max_tokens"] = default_cfg["max_tokens"]
-        chat_config["presence_penalty"] = default_cfg["presence_penalty"]
-        chat_config["frequency_penalty"] = default_cfg["frequency_penalty"]
-        chat_config["time_awareness"] = default_cfg["time_awareness"]
     long_description_chunks = []
 
     char = Character(
@@ -454,7 +442,6 @@ async def update_character(
     if error:
         raise HTTPException(status_code=400, detail=error)
     
-    is_pro_user = bool(current_user.is_pro)
     can_create_private = True
 
     # Advanced character context_label is now open to all users (free & pro).
@@ -479,7 +466,6 @@ async def update_character(
     char.long_description = normalized_long_description
     char.long_description_chunks = long_description_chunks
     char.context_label = context_label
-    can_use_advanced_config = is_pro_user
     chat_config = parse_character_chat_config(
         model=model,
         temperature=temperature if temperature is not None else char.temperature,
@@ -490,16 +476,6 @@ async def update_character(
         interface_preference=interface_preference if interface_preference is not None else char.interface_preference,
         time_awareness=time_awareness if time_awareness is not None else char.time_awareness,
     )
-    # Model is always accepted from the user.
-    # Sampling params (temperature, top_p, max_tokens, penalties) are gated for Pro users.
-    if not can_use_advanced_config:
-        default_cfg = default_character_chat_config()
-        chat_config["temperature"] = default_cfg["temperature"]
-        chat_config["top_p"] = default_cfg["top_p"]
-        chat_config["max_tokens"] = default_cfg["max_tokens"]
-        chat_config["presence_penalty"] = default_cfg["presence_penalty"]
-        chat_config["frequency_penalty"] = default_cfg["frequency_penalty"]
-        chat_config["time_awareness"] = default_cfg["time_awareness"]
     char.model = chat_config["model"]
     char.temperature = chat_config["temperature"]
     char.top_p = chat_config["top_p"]

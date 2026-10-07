@@ -47,7 +47,6 @@ import { NAV_WIDTH, SIDEBAR_WIDTH, CHAT_CONTENT_PADDING } from '../constants/lay
 export default function ChatPage() {
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
   const { userData, setUserData, sessionToken, refreshUserData, loading } = useContext(AuthContext);
-  const canUseAdvancedChatConfig = !!userData?.is_pro;
   const isProUser = !!userData?.is_pro;
   const toast = useToast();
   const [searchParams] = useSearchParams();
@@ -122,15 +121,15 @@ export default function ChatPage() {
     const tokenLimits = getTokenLimits(model);
     return {
       model,
-      temperature: canUseAdvancedChatConfig ? clamp(character.temperature, 0, 2, DEFAULT_ADVANCED_CHAT_CONFIG.temperature) : DEFAULT_ADVANCED_CHAT_CONFIG.temperature,
-      top_p: canUseAdvancedChatConfig ? clamp(character.top_p, 0, 1, DEFAULT_ADVANCED_CHAT_CONFIG.top_p) : DEFAULT_ADVANCED_CHAT_CONFIG.top_p,
-      max_tokens: canUseAdvancedChatConfig ? normalizeTokenTierValue(model, clamp(character.max_tokens, tokenLimits.min, tokenLimits.max, tokenLimits.defaultValue)) : tokenLimits.defaultValue,
-      presence_penalty: canUseAdvancedChatConfig ? clamp(character.presence_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty) : DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty,
-      frequency_penalty: canUseAdvancedChatConfig ? clamp(character.frequency_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty) : DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty,
+      temperature: clamp(character.temperature, 0, 2, DEFAULT_ADVANCED_CHAT_CONFIG.temperature),
+      top_p: clamp(character.top_p, 0, 1, DEFAULT_ADVANCED_CHAT_CONFIG.top_p),
+      max_tokens: normalizeTokenTierValue(model, clamp(character.max_tokens, tokenLimits.min, tokenLimits.max, tokenLimits.defaultValue)),
+      presence_penalty: clamp(character.presence_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.presence_penalty),
+      frequency_penalty: clamp(character.frequency_penalty, -2, 2, DEFAULT_ADVANCED_CHAT_CONFIG.frequency_penalty),
       interface_preference: character.interface_preference === 'clean' ? 'clean' : 'bubbles',
       // Defaults to on, so anything other than an explicit `false` (null from an
       // older API response, undefined from a stale draft) means enabled.
-      time_awareness: canUseAdvancedChatConfig ? character.time_awareness !== false : true,
+      time_awareness: character.time_awareness !== false,
     };
   };
   const [advancedChatConfig, setAdvancedChatConfig] = useState(DEFAULT_ADVANCED_CHAT_CONFIG);
@@ -674,7 +673,6 @@ export default function ChatPage() {
         setAdvancedChatConfig={setAdvancedChatConfig}
         onResetAdvancedChatConfig={() => setAdvancedChatConfig(normalizeAdvancedChatConfig(selectedCharacter))}
         onSaveAdvancedChatConfig={saveUserCharacterConfig}
-        canUseAdvancedChatConfig={canUseAdvancedChatConfig}
         wallpaper={wallpaper}
         onSetWallpaper={setWallpaper}
         characterPicture={selectedCharacter?.picture}

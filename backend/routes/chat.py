@@ -422,20 +422,8 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         base_message_count = raw_base_message_count
     elif isinstance(raw_base_message_count, str) and raw_base_message_count.strip().isdigit():
         base_message_count = int(raw_base_message_count.strip())
-    can_use_advanced_config = bool(current_user.is_pro)
     raw_chat_config = data.get("chat_config")
     chat_config = parse_chat_config(raw_chat_config)
-    # The model id is always accepted from the user (the per-turn context
-    # budget below is derived from that model's config, never user-picked).
-    # Sampling params (temperature, top_p, max_tokens, penalties) are gated for Pro users.
-    if not can_use_advanced_config:
-        default_cfg = default_chat_config()
-        chat_config["temperature"] = default_cfg["temperature"]
-        chat_config["top_p"] = default_cfg["top_p"]
-        chat_config["max_tokens"] = default_cfg["max_tokens"]
-        chat_config["presence_penalty"] = default_cfg["presence_penalty"]
-        chat_config["frequency_penalty"] = default_cfg["frequency_penalty"]
-        chat_config["time_awareness"] = default_cfg["time_awareness"]
     # The model context window is shared between the prompt and this turn's
     # completion, so reserve the requested output room before comparing input
     # size against the window. Models with an explicit input cap (e.g.

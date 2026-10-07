@@ -48,7 +48,6 @@ export default function CharacterSidebar({
   setAdvancedChatConfig,
   onResetAdvancedChatConfig,
   onSaveAdvancedChatConfig,
-  canUseAdvancedChatConfig,
   wallpaper,
   onSetWallpaper,
   characterPicture,
@@ -86,7 +85,6 @@ export default function CharacterSidebar({
     onSaveAdvancedChatConfig();
   };
   const { t } = useTranslation();
-  const isProUser = !!userData?.is_pro;
   const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
   const SHARED_TOKEN_TIERS = [
     { value: 1024, label: '短句' },
@@ -1099,8 +1097,8 @@ export default function CharacterSidebar({
               </div>
             </div>
 
-            {/* Pro-Gated Sampling Params */}
-            <div style={{ marginBottom: 16, position: 'relative', marginTop: 4 }}>
+            {/* Sampling Params */}
+            <div style={{ marginBottom: 16, marginTop: 4 }}>
               <div style={{
                 background: '#f5f6fa',
                 borderRadius: '0.9rem',
@@ -1122,7 +1120,6 @@ export default function CharacterSidebar({
                   step="0.1"
                   value={advancedChatConfig?.temperature ?? 1.3}
                   onChange={(e) => updateConfig('temperature', e.target.value, 0, 2, 1.3)}
-                  disabled={!canUseAdvancedChatConfig}
                   style={{ width: '100%', marginBottom: 10 }}
                 />
 
@@ -1137,7 +1134,6 @@ export default function CharacterSidebar({
                   step="0.05"
                   value={advancedChatConfig?.top_p ?? 0.9}
                   onChange={(e) => updateConfig('top_p', e.target.value, 0, 1, 0.9)}
-                  disabled={!canUseAdvancedChatConfig}
                   style={{ width: '100%', marginBottom: 10 }}
                 />
 
@@ -1149,7 +1145,6 @@ export default function CharacterSidebar({
                   className="form-select form-select-sm"
                   value={normalizeTokenTierValue(advancedChatConfig?.model || 'deepseek-v4-flash', advancedChatConfig?.max_tokens ?? selectedTokenLimits.defaultValue)}
                   onChange={(e) => setAdvancedChatConfig((prev) => ({ ...prev, max_tokens: Number(e.target.value) }))}
-                  disabled={!canUseAdvancedChatConfig}
                   style={{ marginBottom: 10, borderRadius: 8 }}
                 >
                   {selectedTokenTiers.map((tier) => (
@@ -1170,7 +1165,6 @@ export default function CharacterSidebar({
                   step="0.1"
                   value={advancedChatConfig?.presence_penalty ?? 0}
                   onChange={(e) => updateConfig('presence_penalty', e.target.value, -2, 2, 0)}
-                  disabled={!canUseAdvancedChatConfig}
                   className="form-range"
                   style={{ width: '100%', marginBottom: 10 }}
                 />
@@ -1186,7 +1180,6 @@ export default function CharacterSidebar({
                   step="0.1"
                   value={advancedChatConfig?.frequency_penalty ?? 0}
                   onChange={(e) => updateConfig('frequency_penalty', e.target.value, -2, 2, 0)}
-                  disabled={!canUseAdvancedChatConfig}
                   className="form-range"
                   style={{ width: '100%', marginBottom: 8 }}
                 />
@@ -1215,9 +1208,8 @@ export default function CharacterSidebar({
                       role="switch"
                       id="timeAwarenessToggle"
                       checked={advancedChatConfig?.time_awareness !== false}
-                      disabled={!canUseAdvancedChatConfig}
                       onChange={(e) => setAdvancedChatConfig((prev) => ({ ...prev, time_awareness: e.target.checked }))}
-                      style={{ width: '2.5em', height: '1.4em', cursor: canUseAdvancedChatConfig ? 'pointer' : 'not-allowed' }}
+                      style={{ width: '2.5em', height: '1.4em', cursor: 'pointer' }}
                     />
                   </div>
                 </div>
@@ -1225,19 +1217,11 @@ export default function CharacterSidebar({
                   让角色知道当前时间。
                 </div>
               </div>
-              {!canUseAdvancedChatConfig && (
-                <div style={{ position: 'absolute', inset: 0, background: 'rgba(245, 246, 250, 0.90)', borderRadius: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
-                  <a href="/pro-upgrade" onClick={e => { e.preventDefault(); navigate('/pro-upgrade'); }} style={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.88rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <i className="bi bi-lock-fill" style={{ fontSize: '0.85rem' }}></i>
-                    升级 Pro 解锁高级选项
-                  </a>
-                </div>
-              )}
             </div>
           </>
         )}
             </aside>
-            {/* Sticky footer for save/reset buttons - always accessible regardless of pro status */}
+            {/* Sticky footer for save/reset buttons */}
             {activeTab === 'advanced' && (
               <div style={{
                 flexShrink: 0,

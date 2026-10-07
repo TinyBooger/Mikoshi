@@ -73,7 +73,7 @@ def _apply_delta(defaults: dict, delta: dict) -> dict:
     return effective
 
 
-def _validate_and_normalize_config(raw: dict, is_pro: bool, defaults: dict) -> dict:
+def _validate_and_normalize_config(raw: dict, defaults: dict) -> dict:
     """Validate and normalize incoming config values, clamping to safe ranges."""
     config = {}
 
@@ -87,22 +87,19 @@ def _validate_and_normalize_config(raw: dict, is_pro: bool, defaults: dict) -> d
         val = float(raw.get("temperature", defaults["temperature"]))
     except (TypeError, ValueError):
         val = defaults["temperature"]
-    config["temperature"] = max(0.0, min(2.0, val)) if is_pro else defaults["temperature"]
+    config["temperature"] = max(0.0, min(2.0, val))
 
     # top_p
     try:
         val = float(raw.get("top_p", defaults["top_p"]))
     except (TypeError, ValueError):
         val = defaults["top_p"]
-    config["top_p"] = max(0.0, min(1.0, val)) if is_pro else defaults["top_p"]
+    config["top_p"] = max(0.0, min(1.0, val))
 
     # max_tokens
-    if is_pro:
-        try:
-            config["max_tokens"] = max(1, int(raw.get("max_tokens", defaults["max_tokens"])))
-        except (TypeError, ValueError):
-            config["max_tokens"] = defaults["max_tokens"]
-    else:
+    try:
+        config["max_tokens"] = max(1, int(raw.get("max_tokens", defaults["max_tokens"])))
+    except (TypeError, ValueError):
         config["max_tokens"] = defaults["max_tokens"]
 
     # presence_penalty
@@ -110,27 +107,24 @@ def _validate_and_normalize_config(raw: dict, is_pro: bool, defaults: dict) -> d
         val = float(raw.get("presence_penalty", defaults["presence_penalty"]))
     except (TypeError, ValueError):
         val = defaults["presence_penalty"]
-    config["presence_penalty"] = max(-2.0, min(2.0, val)) if is_pro else defaults["presence_penalty"]
+    config["presence_penalty"] = max(-2.0, min(2.0, val))
 
     # frequency_penalty
     try:
         val = float(raw.get("frequency_penalty", defaults["frequency_penalty"]))
     except (TypeError, ValueError):
         val = defaults["frequency_penalty"]
-    config["frequency_penalty"] = max(-2.0, min(2.0, val)) if is_pro else defaults["frequency_penalty"]
+    config["frequency_penalty"] = max(-2.0, min(2.0, val))
 
-    # interface_preference (non-pro-gated, like model)
+    # interface_preference
     pref = raw.get("interface_preference")
     if isinstance(pref, str) and pref in ALLOWED_INTERFACE_PREFERENCES:
         config["interface_preference"] = pref
 
-    # time_awareness (Pro-gated, alongside the sampling params).  Non-Pro users
-    # always get the character's default; the master switch in prompt_time still
-    # applies on top of whichever value lands here.
-    config["time_awareness"] = (
-        normalize_time_awareness(raw.get("time_awareness"), default=defaults["time_awareness"])
-        if is_pro
-        else defaults["time_awareness"]
+    # time_awareness.  The master switch in prompt_time still applies on top of
+    # whichever value lands here.
+    config["time_awareness"] = normalize_time_awareness(
+        raw.get("time_awareness"), default=defaults["time_awareness"]
     )
 
     return config
@@ -179,16 +173,14 @@ def save_user_character_config(
 
     The client sends the full effective config.  The backend loads character
     defaults, validates/clamps the values, and stores only the keys that differ
-    from the defaults (delta).  Non-Pro users get sampling params forced back to
-    defaults.
+    from the defaults (delta).
     """
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
 
-    is_pro = bool(current_user.is_pro)
     defaults = _get_character_defaults(character)
-    normalized = _validate_and_normalize_config(body.model_dump(exclude_none=True), is_pro, defaults)
+    normalized = _validate_and_normalize_config(body.model_dump(exclude_none=True), defaults)
     delta = _compute_delta(normalized, defaults)
 
     entry = db.query(UserCharacterConfig).filter(

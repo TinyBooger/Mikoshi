@@ -166,7 +166,6 @@ export default function CharacterFormPage() {
 
   const isProUser = !!userData?.is_pro;
 
-  const canUseAdvancedConfig = isProUser;
   // Advanced character context (long description) is available to all users
   const canUseAdvancedCharacter = true;
   const canPrivate = true;
@@ -563,13 +562,13 @@ export default function CharacterFormPage() {
   const finalTokenLimits = getTokenLimits(finalModel);
   const safeMaxTokens = clampValue(charData.max_tokens, finalTokenLimits.min, finalTokenLimits.max, finalTokenLimits.defaultValue);
   formData.append("model", finalModel);
-    formData.append("temperature", String(canUseAdvancedConfig ? (charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature) : DEFAULT_CHAT_CONFIG.temperature));
-    formData.append("top_p", String(canUseAdvancedConfig ? (charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p) : DEFAULT_CHAT_CONFIG.top_p));
-  formData.append("max_tokens", String(canUseAdvancedConfig ? safeMaxTokens : DEFAULT_CHAT_CONFIG.max_tokens));
-    formData.append("presence_penalty", String(canUseAdvancedConfig ? (charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty) : DEFAULT_CHAT_CONFIG.presence_penalty));
-    formData.append("frequency_penalty", String(canUseAdvancedConfig ? (charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty) : DEFAULT_CHAT_CONFIG.frequency_penalty));
+    formData.append("temperature", String(charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature));
+    formData.append("top_p", String(charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p));
+  formData.append("max_tokens", String(safeMaxTokens));
+    formData.append("presence_penalty", String(charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty));
+    formData.append("frequency_penalty", String(charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty));
     formData.append("interface_preference", String(charData.interface_preference === 'clean' ? 'clean' : 'bubbles'));
-    formData.append("time_awareness", String(canUseAdvancedConfig ? charData.time_awareness !== false : DEFAULT_CHAT_CONFIG.time_awareness));
+    formData.append("time_awareness", String(charData.time_awareness !== false));
     formData.append("is_public", String(!!charData.is_public));
     formData.append("is_forkable", String(!!charData.is_forkable));
     if (picture) formData.append("picture", picture);
@@ -1357,7 +1356,7 @@ export default function CharacterFormPage() {
 
           <hr style={{ borderTop: '2px solid #e9ecef', margin: '1.5rem 0' }} />
 
-          {/* Pro-Gated Advanced Options */}
+          {/* Advanced Options */}
           <div className="mb-4">
             <button
               type="button"
@@ -1382,16 +1381,8 @@ export default function CharacterFormPage() {
           </div>
 
           {showAdvancedOptions && (
-            <div style={{ position: 'relative' }}>
-              {!canUseAdvancedConfig && (
-                <div style={{ position: 'absolute', inset: 0, background: 'rgba(248, 249, 250, 0.90)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
-                  <a href="/pro-upgrade" onClick={e => { e.preventDefault(); navigate('/pro-upgrade'); }} style={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <i className="bi bi-lock-fill" style={{ fontSize: '0.85rem' }}></i>
-                    升级 Pro 解锁高级选项
-                  </a>
-                </div>
-              )}
-              {/* Pro-Gated Sampling Config */}
+            <div>
+              {/* Sampling Config */}
               <div className="mb-4">
                 <label className="form-label fw-bold" style={{ color: '#232323', marginBottom: '0.75rem' }}>
                   采样参数
@@ -1410,7 +1401,6 @@ export default function CharacterFormPage() {
                       className="form-range"
                       value={charData.temperature ?? DEFAULT_CHAT_CONFIG.temperature}
                       onChange={e => updateConfig('temperature', e.target.value, 0, 2, DEFAULT_CHAT_CONFIG.temperature)}
-                      disabled={!canUseAdvancedConfig}
                     />
                   </div>
 
@@ -1427,7 +1417,6 @@ export default function CharacterFormPage() {
                       className="form-range"
                       value={charData.top_p ?? DEFAULT_CHAT_CONFIG.top_p}
                       onChange={e => updateConfig('top_p', e.target.value, 0, 1, DEFAULT_CHAT_CONFIG.top_p)}
-                      disabled={!canUseAdvancedConfig}
                     />
                   </div>
 
@@ -1441,7 +1430,6 @@ export default function CharacterFormPage() {
                         className="form-select"
                         value={normalizeTokenTierValue(charData.model || DEFAULT_CHAT_CONFIG.model, charData.max_tokens ?? selectedTokenLimits.defaultValue)}
                         onChange={e => handleChange('max_tokens', Number(e.target.value))}
-                        disabled={!canUseAdvancedConfig}
                         style={{ borderRadius: 12 }}
                       >
                         {selectedTokenTiers.map(tier => (
@@ -1464,7 +1452,6 @@ export default function CharacterFormPage() {
                         className="form-range"
                         value={charData.presence_penalty ?? DEFAULT_CHAT_CONFIG.presence_penalty}
                         onChange={e => updateConfig('presence_penalty', e.target.value, -2, 2, DEFAULT_CHAT_CONFIG.presence_penalty)}
-                        disabled={!canUseAdvancedConfig}
                       />
                     </div>
                     <div className="col-md-4">
@@ -1480,14 +1467,13 @@ export default function CharacterFormPage() {
                         className="form-range"
                         value={charData.frequency_penalty ?? DEFAULT_CHAT_CONFIG.frequency_penalty}
                         onChange={e => updateConfig('frequency_penalty', e.target.value, -2, 2, DEFAULT_CHAT_CONFIG.frequency_penalty)}
-                        disabled={!canUseAdvancedConfig}
                       />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Pro-Gated Time Awareness */}
+              {/* Time Awareness */}
               <div className="mb-4">
                 <div className="p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
                   <div className="d-flex align-items-center justify-content-between gap-3">
@@ -1506,9 +1492,8 @@ export default function CharacterFormPage() {
                         role="switch"
                         id="charTimeAwarenessToggle"
                         checked={charData.time_awareness !== false}
-                        disabled={!canUseAdvancedConfig}
                         onChange={e => handleChange('time_awareness', e.target.checked)}
-                        style={{ width: '2.5em', height: '1.4em', cursor: canUseAdvancedConfig ? 'pointer' : 'not-allowed' }}
+                        style={{ width: '2.5em', height: '1.4em', cursor: 'pointer' }}
                       />
                     </div>
                   </div>
