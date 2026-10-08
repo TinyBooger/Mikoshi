@@ -292,7 +292,7 @@ export default function EntityDetailPage() {
   // Get description based on entity type
   let description = '';
   if (type === 'character') {
-    description = applyCharacterPlaceholders(entity.persona, entity.name, viewerPersonaName) || '';
+    description = applyCharacterPlaceholders(entity.description, entity.name, viewerPersonaName) || '';
   } else if (type === 'persona') {
     description = entity.description || '';
   } else if (type === 'scene') {
@@ -805,7 +805,7 @@ export default function EntityDetailPage() {
               <div style={sectionTitleWrapStyle}>
                 <h3 style={sectionTitleStyle}>
                   {type === 'character' 
-                    ? '设定'
+                    ? '角色设定'
                     : '描述'}
                 </h3>
               </div>
@@ -861,21 +861,6 @@ export default function EntityDetailPage() {
                   </div>
                   <p style={sectionBodyStyle}>
                     {applyCharacterPlaceholders(entity.example_messages, entity.name, viewerPersonaName)}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {entity.long_description && (
-              <div className="card mb-4">
-                <div className="card-body">
-                  <div style={sectionTitleWrapStyle}>
-                    <h3 style={sectionTitleStyle}>
-                      详细人物设定
-                    </h3>
-                  </div>
-                  <p style={sectionBodyStyle}>
-                    {applyCharacterPlaceholders(entity.long_description, entity.name, viewerPersonaName)}
                   </p>
                 </div>
               </div>
@@ -974,8 +959,8 @@ export default function EntityDetailPage() {
       />
       <ConfirmModal
         show={showForkAdvancedConfirm}
-        title="二次创作进阶角色"
-        message="该角色包含详细人物设定和进阶配置，这些内容仅限 Pro 用户使用，不会被复制到您的版本。是否继续？"
+        title="二次创作长设定角色"
+        message="该角色包含长设定和进阶配置，这些内容仅限 Pro 用户使用，不会被复制到您的版本。是否继续？"
         confirmText={t('common.confirm', '继续')}
         cancelText={t('common.cancel', '取消')}
         onConfirm={() => { setShowForkAdvancedConfirm(false); doForkNavigate(); }}

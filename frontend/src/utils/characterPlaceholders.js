@@ -1,6 +1,6 @@
 // Helpers for resolving the {{char}} / {{user}} placeholders that creators can
-// use inside character-authored text (persona, example dialogue, long
-// description, greetings, ...).
+// use inside character-authored text (the 角色设定 description, example
+// dialogue, greetings, ...).
 
 // Fallback used for {{user}} when the active persona has no name. The user's
 // account name / nickname is intentionally never used, and no attempt is made
@@ -63,9 +63,8 @@ export function characterUsesUserPlaceholder(character) {
   if (!character || typeof character !== 'object') return false;
   const greetings = Array.isArray(character.greetings) ? character.greetings.join('\n') : '';
   return (
-    hasUserPlaceholder(character.persona) ||
+    hasUserPlaceholder(character.description) ||
     hasUserPlaceholder(character.example_messages) ||
-    hasUserPlaceholder(character.long_description) ||
     hasUserPlaceholder(character.greeting) ||
     hasUserPlaceholder(greetings)
   );

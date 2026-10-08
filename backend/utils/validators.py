@@ -1,24 +1,19 @@
 from utils.text_normalization import normalize_line_endings
 
 
-def validate_character_fields(name, persona, tagline, greetings, sample_dialogue, tags, context_label="standard", long_description=""):
+def validate_character_fields(name, description, tagline, greetings, sample_dialogue, tags):
     MAX_NAME_LENGTH = 50
-    MAX_PERSONA_LENGTH = 400
+    MAX_DESCRIPTION_LENGTH = 15000
     MAX_TAGLINE_LENGTH = 200
     MAX_GREETING_LENGTH = 3000
     MAX_GREETINGS_COUNT = 20
     MAX_SAMPLE_LENGTH = 200
     MAX_TAGS = 20
-    ADVANCED_MAX_LONG_DESCRIPTION_LENGTH = 15000
-
-    safe_context_label = "advanced" if context_label == "advanced" else "standard"
-    normalized_long_description = normalize_line_endings(long_description).strip()
 
     if len(name) > MAX_NAME_LENGTH:
         return f"名称过长（最多 {MAX_NAME_LENGTH} 字）"
-    logical_persona = normalize_line_endings(persona)
-    if len(logical_persona) > MAX_PERSONA_LENGTH:
-        return f"核心设定过长（最多 {MAX_PERSONA_LENGTH} 字）"
+    if len(normalize_line_endings(description)) > MAX_DESCRIPTION_LENGTH:
+        return f"角色设定过长（最多 {MAX_DESCRIPTION_LENGTH} 字）"
     if len(normalize_line_endings(tagline)) > MAX_TAGLINE_LENGTH:
         return f"简介过长（最多 {MAX_TAGLINE_LENGTH} 字）"
     # Validate greetings list
@@ -32,8 +27,6 @@ def validate_character_fields(name, persona, tagline, greetings, sample_dialogue
             return f"开场白过长（最多 {MAX_GREETING_LENGTH} 字）"
     if len(normalize_line_endings(sample_dialogue)) > MAX_SAMPLE_LENGTH:
         return f"示例对话过长（最多 {MAX_SAMPLE_LENGTH} 字）"
-    if safe_context_label == "advanced" and len(normalized_long_description) > ADVANCED_MAX_LONG_DESCRIPTION_LENGTH:
-        return f"详细设定过长（最多 {ADVANCED_MAX_LONG_DESCRIPTION_LENGTH} 字）"
     if len(tags) > MAX_TAGS:
         return f"标签数量过多（最多 {MAX_TAGS} 个）"
     if len(set(tags)) != len(tags):

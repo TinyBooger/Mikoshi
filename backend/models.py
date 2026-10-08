@@ -8,10 +8,10 @@ class Character(Base):
     __tablename__ = "characters"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
-    persona = Column(Text, nullable=False)
+    # Merged persona + long_description ("角色设定"). 15000-char limit is
+    # enforced in utils/validators.py.
+    description = Column(Text, nullable=False, default="")
     example_messages = Column(Text, default="")
-    long_description = Column(Text, default="", nullable=True)
-    long_description_chunks = Column(JSONB, default=list, nullable=False)
     context_label = Column(String(20), nullable=False, default="standard")
     tagline = Column(String(255), default="")  # 50 words fits ~255 chars
     tags = Column(ARRAY(Text), default=[])   # array of strings

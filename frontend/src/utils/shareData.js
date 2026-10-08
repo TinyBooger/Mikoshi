@@ -162,18 +162,24 @@ export function buildSharePayload({ character, scene, persona, userData, message
  */
 export function buildCharacterSharePayload({ entity, type, id }) {
   const name = entity?.name || '角色';
+  const entityType = type || 'character';
   // `picture` is the full portrait (立绘); `avatar_picture` is the round crop.
   const portrait = resolveMediaUrl(entity?.picture);
   const avatar = resolveMediaUrl(entity?.avatar_picture) || portrait;
   // Scenes carry their blurb in `intro`, characters in `tagline`; `description`
-  // is the last resort so a persona still gets a line of copy.
-  const tagline = String(entity?.tagline || entity?.intro || entity?.description || '').trim();
+  // is the last resort for personas, which have no `tagline`/`intro`. It is
+  // never used for characters, whose `description` is long-form role settings.
+  const tagline = String(
+    entity?.tagline ||
+    entity?.intro ||
+    (entityType === 'character' ? '' : entity?.description) ||
+    '',
+  ).trim();
   const tags = (Array.isArray(entity?.tags) ? entity.tags : [])
     .map((tag) => (tag && typeof tag === 'object' ? tag.name : tag))
     .map((tag) => String(tag || '').trim())
     .filter(Boolean)
     .slice(0, 6);
-  const entityType = type || 'character';
   const entityId = id ?? entity?.id ?? null;
 
   return {

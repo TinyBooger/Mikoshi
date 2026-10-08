@@ -240,12 +240,11 @@ export default function ChatPage() {
     role: 'system',
     content: buildSystemMessage(
       character?.name || '',
-      character?.persona || '',
+      character?.description || '',
       character?.example_messages || '',
       persona?.description || null,
       persona?.name || null,
-      scene?.description || null,
-      character?.long_description || null
+      scene?.description || null
     )
   });
 

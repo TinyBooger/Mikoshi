@@ -31,8 +31,14 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def normalize_context_label(value: Optional[str]) -> str:
-    return "advanced" if value == "advanced" else "standard"
+# Description length at which a character is flagged "advanced" (长设定 badge +
+# higher credit cost). Keep in sync with ADVANCED_DESCRIPTION_THRESHOLD in
+# frontend/src/pages/CharacterFormPage.jsx.
+ADVANCED_DESCRIPTION_THRESHOLD = 1500
+
+
+def derive_context_label(description: str) -> str:
+    return "advanced" if len(description or "") > ADVANCED_DESCRIPTION_THRESHOLD else "standard"
 
 
 ALLOWED_INTERFACE_PREFERENCES = {"bubbles", "clean"}
@@ -139,13 +145,11 @@ def _join_greetings_for_moderation(greetings_list: list[str]) -> str:
 @router.post("/api/create-character")
 async def create_character(
     name: str = Form(...),
-    persona: str = Form(...),
+    description: str = Form(...),
     tagline: str = Form(""),
     tags: List[str] = Form([]),
     greetings: str = Form("[]"),
     sample_dialogue: str = Form(""),
-    long_description: str = Form(""),
-    context_label: str = Form("standard"),
     model: str = Form("deepseek-v4-flash"),
     temperature: float = Form(1.3),
     top_p: float = Form(0.9),
@@ -178,12 +182,11 @@ async def create_character(
 
     text_safe, needs_text_review, blocked_field, blocked_label, blocked_sub_label, blocked_keywords, review_field, review_label = moderate_form_payload_with_review({
         "name": name,
-        "persona": persona,
+        "description": description,
         "tagline": tagline,
         "tags": tags,
         "greeting": _join_greetings_for_moderation(greetings_list),
         "sample_dialogue": sample_dialogue,
-        "long_description": long_description,
         "forked_from_name": forked_from_name,
     })
     if not text_safe:
@@ -200,14 +203,14 @@ async def create_character(
     name = name.strip()
     # multipart transport converts LF to CRLF; normalize to LF-only so length
     # checks and DB storage count the same logical chars as the frontend.
-    persona = normalize_line_endings(persona).strip()
-    context_label = normalize_context_label(context_label)
+    description = normalize_line_endings(description).strip()
+    context_label = derive_context_label(description)
 
     existing = db.query(Character).filter(Character.name == name).first()
     if existing:
         return JSONResponse(content={"error": "Character already exists"}, status_code=400)
     
-    error = validate_character_fields(name, persona, tagline, greetings_list, sample_dialogue, tags, context_label, long_description)
+    error = validate_character_fields(name, description, tagline, greetings_list, sample_dialogue, tags)
     if error:
         raise HTTPException(status_code=400, detail=error)
 
@@ -226,7 +229,6 @@ async def create_character(
         else:
             db.add(Tag(name=tag_name, count=1))
 
-    normalized_long_description = normalize_line_endings(long_description).strip()
     chat_config = parse_character_chat_config(
         model=model,
         temperature=temperature,
@@ -237,17 +239,14 @@ async def create_character(
         interface_preference=interface_preference,
         time_awareness=time_awareness,
     )
-    long_description_chunks = []
 
     char = Character(
         name=name,
-        persona=persona,
+        description=description,
         tagline=normalize_line_endings(tagline).strip(),
         tags=tags,
         greetings=greetings_list,
         example_messages=normalize_line_endings(sample_dialogue).strip(),
-        long_description=normalized_long_description,
-        long_description_chunks=long_description_chunks,
         context_label=context_label,
         model=chat_config["model"],
         temperature=chat_config["temperature"],
@@ -375,13 +374,11 @@ async def create_character(
 async def update_character(
     id: int = Form(...),
     name: str = Form(...),
-    persona: str = Form(...),
+    description: str = Form(...),
     tagline: str = Form(""),
     tags: List[str] = Form([]),
     greetings: str = Form("[]"),
     sample_dialogue: str = Form(""),
-    long_description: str = Form(""),
-    context_label: Optional[str] = Form(None),
     model: str = Form("deepseek-v4-flash"),
     temperature: Optional[float] = Form(None),
     top_p: Optional[float] = Form(None),
@@ -414,12 +411,11 @@ async def update_character(
 
     text_safe, needs_text_review, blocked_field, blocked_label, blocked_sub_label, blocked_keywords, review_field, review_label = moderate_form_payload_with_review({
         "name": name,
-        "persona": persona,
+        "description": description,
         "tagline": tagline,
         "tags": tags,
         "greeting": _join_greetings_for_moderation(greetings_list),
         "sample_dialogue": sample_dialogue,
-        "long_description": long_description,
     })
     if not text_safe:
         detail_parts = [f"Text rejected by content moderation ({blocked_field}: {blocked_label})"]
@@ -435,10 +431,10 @@ async def update_character(
     name = name.strip()
     # multipart transport converts LF to CRLF; normalize to LF-only so length
     # checks and DB storage count the same logical chars as the frontend.
-    persona = normalize_line_endings(persona).strip()
-    context_label = normalize_context_label(context_label if context_label is not None else char.context_label)
+    description = normalize_line_endings(description).strip()
+    context_label = derive_context_label(description)
     
-    error = validate_character_fields(name, persona, tagline, greetings_list, sample_dialogue, tags, context_label, long_description)
+    error = validate_character_fields(name, description, tagline, greetings_list, sample_dialogue, tags)
     if error:
         raise HTTPException(status_code=400, detail=error)
     
@@ -453,18 +449,12 @@ async def update_character(
 
     final_is_forkable = is_forkable if is_forkable is not None else char.is_forkable
 
-    normalized_long_description = normalize_line_endings(long_description).strip()
-
-    long_description_chunks = []
-
     char.name = name
-    char.persona = persona
+    char.description = description
     char.tagline = normalize_line_endings(tagline).strip()
     char.tags = tags
     char.greetings = greetings_list
     char.example_messages = normalize_line_endings(sample_dialogue).strip()
-    char.long_description = normalized_long_description
-    char.long_description_chunks = long_description_chunks
     char.context_label = context_label
     chat_config = parse_character_chat_config(
         model=model,

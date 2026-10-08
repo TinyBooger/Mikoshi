@@ -21,7 +21,7 @@ router = APIRouter(tags=["admin"])
 # Pydantic models for request bodies
 class CharacterUpdate(BaseModel):
     name: Optional[str] = None
-    persona: Optional[str] = None
+    description: Optional[str] = None
     tagline: Optional[str] = None
     greetings: Optional[List[str]] = None
     example_messages: Optional[str] = None
@@ -147,7 +147,7 @@ def _serialize_character_detail(char, creator_profile_pic=None):
         "id": char.id,
         "name": char.name,
         "tagline": char.tagline,
-        "persona": char.persona,
+        "description": char.description,
         "example_messages": char.example_messages,
         "tags": char.tags or [],
         "picture": char.picture,
@@ -448,8 +448,8 @@ def update_character(
             raise HTTPException(status_code=400, detail="Character name already exists")
         character.name = update_data.name
 
-    if update_data.persona is not None:
-        character.persona = update_data.persona
+    if update_data.description is not None:
+        character.description = update_data.description
     if update_data.tagline is not None:
         character.tagline = update_data.tagline
     if update_data.greetings is not None:
@@ -472,7 +472,7 @@ def update_character(
             "id": character.id,
             "name": character.name,
             "tagline": character.tagline,
-            "persona": character.persona,
+            "description": character.description,
             "greetings": character.greetings,
             "tags": character.tags,
             "is_public": character.is_public,

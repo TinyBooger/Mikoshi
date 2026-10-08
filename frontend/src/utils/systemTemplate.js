@@ -3,18 +3,16 @@ import { applyCharacterPlaceholders } from './characterPlaceholders';
 
 export function buildSystemMessage(
   characterName,
-  characterPersona,
+  characterDescription,
   exampleMessages = null,
   personaDescription = null,
   personaName = null,
-  scene = null,
-  longDescription = null
+  scene = null
 ) {
   // Character-authored text may contain {{char}} / {{user}} placeholders.
   // Resolve them against the character name and the active user persona
   // (the account name is never used).
-  const resolvedPersona = applyCharacterPlaceholders(characterPersona, characterName, personaName);
-  const resolvedLongDescription = applyCharacterPlaceholders(longDescription, characterName, personaName);
+  const resolvedDescription = applyCharacterPlaceholders(characterDescription, characterName, personaName);
   const resolvedExampleMessages = applyCharacterPlaceholders(exampleMessages, characterName, personaName);
 
   // Base instruction
@@ -25,14 +23,9 @@ export function buildSystemMessage(
     ? `[角色名称]\n${characterName}\n[/角色名称]` 
     : '';
 
-  // Character persona section
-  const charPersonaText = resolvedPersona 
-    ? `[角色设定]\n${resolvedPersona}\n[/角色设定]` 
-    : '';
-
-  // Detailed background section
-  const longDescriptionText = resolvedLongDescription
-    ? `[详细背景]\n${resolvedLongDescription}\n[/详细背景]`
+  // Character settings section (merged persona + long description)
+  const charDescriptionText = resolvedDescription
+    ? `[角色设定]\n${resolvedDescription}\n[/角色设定]`
     : '';
 
   // Example dialogues section
@@ -62,8 +55,7 @@ export function buildSystemMessage(
   const systemPrompts = [
     { role: 'system', content: baseInstruction, identifier: 'baseInstruction' },
     { role: 'system', content: charNameText, identifier: 'charName' },
-    { role: 'system', content: charPersonaText, identifier: 'charPersona' },
-    { role: 'system', content: longDescriptionText, identifier: 'longDescription' },
+    { role: 'system', content: charDescriptionText, identifier: 'charDescription' },
     { role: 'system', content: exampleDialoguesText, identifier: 'exampleDialogues' },
     { role: 'system', content: contextInfo, identifier: 'contextInfo' },
     // Placed last-but-one so the formatting rules sit next to the completion

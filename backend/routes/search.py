@@ -28,7 +28,7 @@ def search_characters(
     base_query = db.query(Character).filter(
         Character.is_public == True,
         Character.name.ilike(ilike_pattern) | 
-        Character.persona.ilike(ilike_pattern) |
+        Character.description.ilike(ilike_pattern) |
         func.array_to_string(Character.tags, ',').ilike(ilike_pattern)
     )
 
@@ -43,7 +43,7 @@ def search_characters(
         score_case = case(
             (Character.name.ilike(ilike_pattern), NAME_WEIGHT),
             (func.array_to_string(Character.tags, ',').ilike(ilike_pattern), TAG_WEIGHT),
-            (Character.persona.ilike(ilike_pattern), PERSONA_WEIGHT),
+            (Character.description.ilike(ilike_pattern), PERSONA_WEIGHT),
             else_=0
         ).label("relevance_score")
         

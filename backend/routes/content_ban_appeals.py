@@ -43,7 +43,7 @@ def _build_snapshot(entity, entity_type: str) -> dict:
         return {
             "name": entity.name,
             "tagline": getattr(entity, "tagline", None),
-            "persona": entity.persona,
+            "description": entity.description,
             "greetings": entity.greetings,
             "example_messages": getattr(entity, "example_messages", None),
             "tags": entity.tags or [],

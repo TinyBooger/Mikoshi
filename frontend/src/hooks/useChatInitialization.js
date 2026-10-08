@@ -425,8 +425,9 @@ export function useChatInitialization({
   const startNewChat = async (fetchedData) => {
     const { character } = fetchedData || {};
 
-    // Free users starting a chat with an advanced character (long description
-    // ⇒ higher token/point consumption) get a heads-up before the chat begins.
+    // Free users starting a chat with an advanced character (a 角色设定 longer
+    // than ADVANCED_DESCRIPTION_THRESHOLD ⇒ higher token/point consumption) get
+    // a heads-up before the chat begins.
     // This fires after character data has loaded but before the first greeting
     // message is generated/sent.
     if (!isProUser && character?.context_label === 'advanced') {

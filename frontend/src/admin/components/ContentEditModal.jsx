@@ -34,7 +34,7 @@ const resolveMediaUrl = (path) => {
 const buildEmptyForm = (contentType) => {
   const base = { tags: [], is_public: true, is_forkable: false };
   if (contentType === 'character') {
-    return { ...base, name: '', tagline: '', persona: '', example_messages: '', greetings: [] };
+    return { ...base, name: '', tagline: '', description: '', example_messages: '', greetings: [] };
   }
   if (contentType === 'scene') {
     return { ...base, name: '', intro: '', description: '', greeting: '' };
@@ -51,7 +51,7 @@ const formFromDetail = (contentType, d) => {
   form.tags = Array.isArray(d.tags) ? [...d.tags] : [];
   if (contentType === 'character') {
     form.tagline = d.tagline || '';
-    form.persona = d.persona || '';
+    form.description = d.description || '';
     form.example_messages = d.example_messages || '';
     form.greetings = Array.isArray(d.greetings)
       ? d.greetings.filter((g) => typeof g === 'string')
@@ -71,7 +71,7 @@ const formFromDetail = (contentType, d) => {
 
 /** Per-type editable field names that map 1:1 to the PATCH schema. */
 const EDITABLE_FIELDS = {
-  character: ['name', 'tagline', 'persona', 'example_messages', 'greetings', 'tags', 'is_public', 'is_forkable'],
+  character: ['name', 'tagline', 'description', 'example_messages', 'greetings', 'tags', 'is_public', 'is_forkable'],
   scene: ['name', 'intro', 'description', 'greeting', 'tags', 'is_public', 'is_forkable'],
   persona: ['name', 'intro', 'description', 'tags', 'is_public', 'is_forkable'],
 };
@@ -227,8 +227,8 @@ export default function ContentEditModal({ contentType, item, onClose, onContent
       showNotice('danger', 'Name is required');
       return;
     }
-    if (contentType === 'character' && !form.persona.trim()) {
-      showNotice('danger', 'Persona is required');
+    if (contentType === 'character' && !form.description.trim()) {
+      showNotice('danger', 'Description is required');
       return;
     }
     if (contentType === 'scene' && !form.description.trim()) {
@@ -418,15 +418,15 @@ export default function ContentEditModal({ contentType, item, onClose, onContent
                       {contentType === 'character' && (
                         <div className="col-12">
                           <label className="form-label fw-semibold">
-                            Persona <span className="text-danger">*</span>
+                            Description <span className="text-danger">*</span>
                           </label>
                           <textarea
                             className="form-control"
                             rows={8}
                             required
-                            value={form.persona}
+                            value={form.description}
                             disabled={isBusy}
-                            onChange={(e) => setField('persona', e.target.value)}
+                            onChange={(e) => setField('description', e.target.value)}
                           />
                         </div>
                       )}

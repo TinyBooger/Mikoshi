@@ -90,8 +90,8 @@ export default function ChatModals({
       />
       <ConfirmModal
         show={advancedChatConfirm}
-        title="进阶角色提醒"
-        message="该角色是进阶角色，点数消耗量大，推荐Pro用户使用"
+        title="长设定角色提醒"
+        message="该角色是长设定角色，点数消耗量大，推荐Pro用户使用，或在钱包点数充足时使用"
         confirmText="继续对话"
         cancelText="退出"
         onConfirm={handleAdvancedChatConfirm}

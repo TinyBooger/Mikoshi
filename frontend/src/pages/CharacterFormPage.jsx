@@ -24,6 +24,15 @@ import presetMale2 from '../assets/images/male_2.png';
 import presetFemale1 from '../assets/images/female_1.png';
 import presetFemale2 from '../assets/images/female_2.png';
 
+// Drafts saved before the persona + long_description merge still carry the old
+// shape. Fold them into the new `description` field when restoring.
+const migrateDraftCharData = (charData) => {
+  if (!charData || 'description' in charData) return charData;
+  const { persona = '', long_description: longDescription = '', ...rest } = charData;
+  const merged = [persona, longDescription].filter(Boolean).join('\n\n');
+  return { ...rest, description: merged.slice(0, 15000) };
+};
+
 export default function CharacterFormPage() {
   const { t } = useTranslation();
   const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096, step: 128 };
@@ -101,9 +110,12 @@ export default function CharacterFormPage() {
     time_awareness: true,
   };
   const MAX_NAME_LENGTH = 50;
-  const MAX_PERSONA_LENGTH = 400;
+  const MAX_DESCRIPTION_LENGTH = 15000;
+  // A character is flagged as "advanced" (长设定 badge + higher credit cost)
+  // once its 角色设定 grows past this length. Must stay in sync with
+  // ADVANCED_DESCRIPTION_THRESHOLD in backend/routes/character.py
+  const ADVANCED_DESCRIPTION_THRESHOLD = 1500;
   const MAX_TAGLINE_LENGTH = 100;
-  const ADVANCED_MAX_LONG_DESCRIPTION_LENGTH = 15000;
 
   // Get id param from route
   const params = useParams();
@@ -160,24 +172,21 @@ export default function CharacterFormPage() {
         localStorage.removeItem(getDraftKey());
         return null;
       }
+      parsed.charData = migrateDraftCharData(parsed.charData);
       return parsed;
     } catch (_) { return null; }
   }, [getDraftKey]);
 
   const isProUser = !!userData?.is_pro;
 
-  // Advanced character context (long description) is available to all users
-  const canUseAdvancedCharacter = true;
   const canPrivate = true;
   const canFork = isProUser;
   const navigate = useNavigate();
   const toast = useToast();
   const [charData, setCharData] = useState({
     name: '',
-    persona: '',
-    context_label: 'standard',
+    description: '',
     sample: '',
-    long_description: '',
     tagline: '',
     tags: [],
     greetings: [],
@@ -262,8 +271,8 @@ export default function CharacterFormPage() {
   // Seed the AI image prompt from whatever the creator has filled in so far.
   const buildImagePrompt = () => {
     const parts = [charData.name.trim(), charData.tagline.trim()].filter(Boolean);
-    const persona = charData.persona.trim();
-    if (persona) parts.push(persona.slice(0, 120));
+    const description = charData.description.trim();
+    if (description) parts.push(description.slice(0, 120));
     const subject = parts.join('，');
     return subject
       ? `角色立绘，${subject}。半身构图，精致细节，柔和光线，高清质感。`
@@ -278,7 +287,7 @@ export default function CharacterFormPage() {
   const [showDraftBanner, setShowDraftBanner] = useState(false);
   const selectedTokenLimits = getTokenLimits(charData.model || DEFAULT_CHAT_CONFIG.model);
   const selectedTokenTiers = getTokenTiers(charData.model || DEFAULT_CHAT_CONFIG.model);
-  const effectiveContextLabel = charData.context_label === 'advanced' ? 'advanced' : 'standard';
+  const isAdvancedDescription = charData.description.trim().length > ADVANCED_DESCRIPTION_THRESHOLD;
 
   // Greeting capacity: every manual greeting row counts as one slot and the
   // AI-generated greeting also occupies one slot in the stored greetings list,
@@ -320,7 +329,7 @@ export default function CharacterFormPage() {
 
   // ── beforeunload warning for unsaved changes ──────────────────
   useEffect(() => {
-    const hasContent = charData.name.trim() || charData.persona.trim() || charData.greetings.some(g => g.trim());
+    const hasContent = charData.name.trim() || charData.description.trim() || charData.greetings.some(g => g.trim());
     if (!hasContent) return;
 
     const handler = (e) => {
@@ -329,7 +338,7 @@ export default function CharacterFormPage() {
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [charData.name, charData.persona, charData.greetings]);
+  }, [charData.name, charData.description, charData.greetings]);
 
   // Enforce level locks on fork/paid options
   useEffect(() => {
@@ -381,15 +390,12 @@ export default function CharacterFormPage() {
           const manualGreetings = loadedGreetings.filter(g => g !== SPECIAL_IMPROVISING_GREETING);
           
           if (mode === 'fork') {
-            const sourceIsAdvanced = data.context_label === 'advanced';
             const loadedModel = normalizeModelName(data.model);
             // In fork mode, set forked_from fields and clear the name for new creation
             setCharData({
               name: data.name,
-              persona: data.persona || '',
-              context_label: sourceIsAdvanced ? 'advanced' : 'standard',
+              description: data.description || '',
               sample: data.example_messages || '',
-              long_description: data.long_description || '',
               tagline: data.tagline || '',
               tags: data.tags || [],
               greetings: manualGreetings,
@@ -419,10 +425,8 @@ export default function CharacterFormPage() {
             // Edit mode
             setCharData({
               name: data.name || '',
-              persona: data.persona || '',
-              context_label: data.context_label === 'advanced' ? 'advanced' : 'standard',
+              description: data.description || '',
               sample: data.example_messages || '',
-              long_description: data.long_description || '',
               tagline: data.tagline || '',
               tags: data.tags || [],
               greetings: manualGreetings,
@@ -505,8 +509,8 @@ export default function CharacterFormPage() {
       navigate("/");
       return;
     }
-    if (!charData.name.trim() || !charData.persona.trim()) {
-      toast.show('名称和自设为必填项。', { type: 'error' });
+    if (!charData.name.trim() || !charData.description.trim()) {
+      toast.show('名称和角色设定为必填项。', { type: 'error' });
       return;
     }
     if (!charData.tags || charData.tags.length === 0) {
@@ -522,17 +526,13 @@ export default function CharacterFormPage() {
       toast.show('请上传或选择角色封面图片', { type: 'error' });
       return;
     }
-    if (charData.persona.length > MAX_PERSONA_LENGTH) {
-      toast.show(`Persona too long (max ${MAX_PERSONA_LENGTH})`, { type: 'error' });
+    const trimmedDescription = charData.description.trim();
+    if (trimmedDescription.length > MAX_DESCRIPTION_LENGTH) {
+      toast.show(`角色设定过长（最多 ${MAX_DESCRIPTION_LENGTH} 字）`, { type: 'error' });
       return;
     }
     if (charData.sample.length > MAX_SAMPLE_LENGTH) {
       toast.show(`Sample dialogue too long (max ${MAX_SAMPLE_LENGTH})`, { type: 'error' });
-      return;
-    }
-    const trimmedLongDescription = charData.long_description.trim();
-    if (effectiveContextLabel === 'advanced' && trimmedLongDescription.length > ADVANCED_MAX_LONG_DESCRIPTION_LENGTH) {
-      toast.show(`Long description too long (max ${ADVANCED_MAX_LONG_DESCRIPTION_LENGTH})`, { type: 'error' });
       return;
     }
     const formData = new FormData();
@@ -543,9 +543,7 @@ export default function CharacterFormPage() {
       formData.append("forked_from_name", charData.forked_from_name);
     }
     formData.append("name", charData.name.trim());
-    const sentPersona = charData.persona.trim();
-    formData.append("persona", sentPersona);
-    formData.append("context_label", effectiveContextLabel);
+    formData.append("description", trimmedDescription);
     formData.append("tagline", charData.tagline.trim());
     charData.tags.forEach(tag => formData.append("tags", tag));
   // Build greetings list: manual greetings + optional improvise sentinel
@@ -555,9 +553,6 @@ export default function CharacterFormPage() {
   }
   formData.append("greetings", JSON.stringify(finalGreetings));
     formData.append("sample_dialogue", charData.sample.trim());
-    if (effectiveContextLabel === 'advanced') {
-      formData.append("long_description", trimmedLongDescription);
-    }
     const finalModel = charData.model || DEFAULT_CHAT_CONFIG.model;
   const finalTokenLimits = getTokenLimits(finalModel);
   const safeMaxTokens = clampValue(charData.max_tokens, finalTokenLimits.min, finalTokenLimits.max, finalTokenLimits.defaultValue);
@@ -1058,21 +1053,21 @@ export default function CharacterFormPage() {
             </small>
           </div>
 
-          {/* Persona */}
+          {/* 角色设定 */}
           <div className="mb-4 position-relative">
             <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              核心设定
+              角色设定
               <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
               <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>设定决定了角色的行为方式和说话风格，仅自己可见</small>
             </label>
             <textarea
               className="form-control"
-              rows={Math.max(5, Math.min(20, Math.ceil(charData.persona.length / 80)))}
+              rows={Math.max(5, Math.min(20, Math.ceil(charData.description.length / 80)))}
               required
-              value={charData.persona}
-              maxLength={MAX_PERSONA_LENGTH}
+              value={charData.description}
+              maxLength={MAX_DESCRIPTION_LENGTH}
               placeholder="描述角色的特质、背景和说话风格。例如：文艺复兴时期的剧作家，语言华丽，喜欢用隐喻。"
-              onChange={e => handleChange('persona', e.target.value)}
+              onChange={e => handleChange('description', e.target.value)}
               style={{
                 background: '#f5f6fa',
                 color: '#18191a',
@@ -1087,10 +1082,12 @@ export default function CharacterFormPage() {
               }}
             />
             <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-              {charData.persona.length}/{MAX_PERSONA_LENGTH}
+              {charData.description.length}/{MAX_DESCRIPTION_LENGTH}
             </small>
-            <small style={{ display: 'block', color: '#9ca3af', marginBottom: 6, fontSize: '0.8rem' }}>
-              如果想要写下更长的设定内容，下方"启用详细人物设定"按钮可启用更长的设定长度
+            <small style={{ display: 'block', color: isAdvancedDescription ? '#b45309' : '#9ca3af', marginBottom: 6, fontSize: '0.8rem', fontWeight: isAdvancedDescription ? 600 : 400 }}>
+              {isAdvancedDescription
+                ? <>设定超过 {ADVANCED_DESCRIPTION_THRESHOLD} 字，角色卡片封面将显示「长设定」标识，表示该角色消耗更多点数</>
+                : <>设定超过 {ADVANCED_DESCRIPTION_THRESHOLD} 字后，角色卡片封面将显示「长设定」标识，表示该角色消耗更多点数</>}
             </small>
           </div>
 
@@ -1221,7 +1218,7 @@ export default function CharacterFormPage() {
             <TagRecommendations
               currentTags={charData.tags}
               onAddTag={tag => handleChange('tags', [...charData.tags, tag])}
-              sourceText={[charData.name, charData.tagline, charData.persona, charData.sample, charData.long_description]}
+              sourceText={[charData.name, charData.tagline, charData.description, charData.sample]}
               maxTags={MAX_TAGS}
             />
           </div>
@@ -1253,69 +1250,6 @@ export default function CharacterFormPage() {
               {charData.sample.length}/{MAX_SAMPLE_LENGTH}
             </small>
           </div>
-
-          {/* Detailed Description Toggle */}
-          <div className="mb-3 d-flex align-items-center justify-content-between" style={{ background: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: 14, padding: '0.75rem 1rem' }}>
-            <div>
-              <span style={{ fontWeight: 700, color: '#232323', fontSize: '0.97rem' }}>启用详细人物设定</span>
-              {effectiveContextLabel === 'advanced' ? (
-                <small style={{ display: 'block', color: '#b45309', marginTop: 2, fontWeight: 600 }}>
-                  <i className="bi bi-info-circle me-1"></i>
-                  角色卡片封面将显示「进阶角色」标识，表示该角色消耗更多点数
-                </small>
-              ) : (
-                <small style={{ display: 'block', color: '#888', marginTop: 2 }}>
-                  开启后，角色卡片封面将显示「进阶角色」标识，表示该角色消耗更多点数
-                </small>
-              )}
-            </div>
-            <div className="form-check form-switch mb-0" style={{ paddingLeft: 0 }}>
-              <input
-                className="form-check-input"
-                type="checkbox"
-                role="switch"
-                id="detailedDescriptionToggle"
-                checked={effectiveContextLabel === 'advanced'}
-                onChange={e => handleChange('context_label', e.target.checked ? 'advanced' : 'standard')}
-                style={{ width: '2.5em', height: '1.4em', cursor: 'pointer' }}
-              />
-            </div>
-          </div>
-
-          {/* Long Description (shown when detailed description is enabled) */}
-          {effectiveContextLabel === 'advanced' && (
-            <div className="mb-4 position-relative">
-              <label className="form-label fw-bold" style={{ color: '#232323' }}>
-                详细设定
-                <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>
-                  用于补充更完整的背景、经历、关系与规则，仅自己可见
-                </small>
-              </label>
-              <textarea
-                className="form-control"
-                rows={Math.max(6, Math.min(30, Math.ceil((charData.long_description || '').length / 80)))}
-                value={charData.long_description || ''}
-                maxLength={ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
-                placeholder=""
-                onChange={e => handleChange('long_description', e.target.value)}
-                style={{
-                  background: '#f5f6fa',
-                  color: '#18191a',
-                  border: '1.5px solid #e9ecef',
-                  borderRadius: 16,
-                  fontSize: '1.08rem',
-                  padding: '0.7rem 1.2rem',
-                  boxShadow: 'none',
-                  outline: 'none',
-                  paddingRight: '3rem',
-                  resize: 'vertical',
-                }}
-              />
-              <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-                {(charData.long_description || '').trim().length}/{ADVANCED_MAX_LONG_DESCRIPTION_LENGTH}
-              </small>
-            </div>
-          )}
 
           {/* Model & Context Window — available to all users */}
           <div className="mb-4">
