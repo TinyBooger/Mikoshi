@@ -304,11 +304,10 @@ export default function ProUpgradePaymentPage() {
           <WeChatPayModal
             codeUrl={wechatQrData.codeUrl}
             outTradeNo={wechatQrData.outTradeNo}
-            orderType="pro_upgrade"
             amount={wechatQrData.amount}
-            onSuccess={() => {
+            onSuccess={(outTradeNo) => {
               setWechatQrData(null);
-              toast.show('Pro会员开通成功！', { type: 'success' });
+              navigate(`/payment/return?out_trade_no=${encodeURIComponent(outTradeNo)}`);
             }}
             onCancel={() => setWechatQrData(null)}
           />

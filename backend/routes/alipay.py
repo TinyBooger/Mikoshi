@@ -616,7 +616,7 @@ async def create_order(
         
         # 构造回调URL（使用完整URL以确保支付宝可以正确跳转�?
         frontend_base_url = os.getenv("FRONTEND_BASE_URL", "").rstrip("/")
-        return_url = f"{frontend_base_url}/alipay/return" if frontend_base_url else None
+        return_url = f"{frontend_base_url}/payment/return" if frontend_base_url else None
 
         provider = _get_payment_provider()
 
@@ -797,14 +797,6 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
                     total_amount=total_amount,
                     source="return_query",
                 )
-            elif resolved_order_type == "credit_topup":
-                _handle_credit_topup(
-                    db=db,
-                    out_trade_no=out_trade_no or "",
-                    trade_no=trade_no,
-                    total_amount=total_amount,
-                    source="return_query",
-                )
         elif out_trade_no or trade_no:
             try:
                 query_result = provider.query_order(out_trade_no=out_trade_no, trade_no=trade_no)
@@ -816,14 +808,6 @@ async def alipay_return(request: Request, db: Session = Depends(get_db)):
             resolved_order_type = _resolve_order_type_from_out_trade_no(out_trade_no or "")
             if resolved_order_type == "pro_upgrade":
                 _handle_pro_upgrade(
-                    db=db,
-                    out_trade_no=out_trade_no or "",
-                    trade_no=trade_no,
-                    total_amount=total_amount,
-                    source="return_query",
-                )
-            elif resolved_order_type == "credit_topup":
-                _handle_credit_topup(
                     db=db,
                     out_trade_no=out_trade_no or "",
                     trade_no=trade_no,

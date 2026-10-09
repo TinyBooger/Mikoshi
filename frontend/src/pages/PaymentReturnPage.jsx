@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useContext } from 'react';
-import { useSearchParams, useNavigate } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { useToast } from '../components/ToastProvider';
 import { AuthContext } from '../components/AuthProvider';
 
@@ -7,16 +7,17 @@ function isPaymentSuccessStatus(status) {
   return status === 'TRADE_SUCCESS' || status === 'TRADE_FINISHED';
 }
 
-function AlipayReturnPage() {
+function PaymentReturnPage() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const toast = useToast();
   const { refreshUserData } = useContext(AuthContext);
   const handledRef = useRef(false);
   const queryKey = useMemo(() => searchParams.toString(), [searchParams]);
   const outTradeNoForView = searchParams.get('out_trade_no');
-  const isProUpgradeForView = outTradeNoForView?.startsWith('PRO_');
-  const isCreditTopupForView = outTradeNoForView?.startsWith('TOPUP_');
+  const isProUpgradeForView =
+    outTradeNoForView?.startsWith('PRO_') || outTradeNoForView?.startsWith('WXPRO_');
+  const isCreditTopupForView =
+    outTradeNoForView?.startsWith('TOPUP_') || outTradeNoForView?.startsWith('WXTOPUP_');
 
   useEffect(() => {
     if (handledRef.current) {
@@ -56,11 +57,27 @@ function AlipayReturnPage() {
     };
 
     if (outTradeNo) {
-      // 检查是否是Pro升级订单
       const isProUpgrade = outTradeNo.startsWith('PRO_');
       const isCreditTopup = outTradeNo.startsWith('TOPUP_');
-      
-      if (isProUpgrade) {
+      const isWeChatOrder = outTradeNo.startsWith('WXPRO_') || outTradeNo.startsWith('WXTOPUP_');
+
+      if (isWeChatOrder) {
+        if (!wasHandled) {
+          const message = outTradeNo.startsWith('WXPRO_')
+            ? `恭喜！您已成功升级为Pro会员！订单号：${outTradeNo}`
+            : `点数充值成功！订单号：${outTradeNo}`;
+          toast.show(message, { type: 'success' });
+        }
+        if (outTradeNo.startsWith('WXTOPUP_')) {
+          if ('BroadcastChannel' in window) {
+            const channel = new BroadcastChannel('mikoshi-credit-topup-return');
+            channel.postMessage({ type: 'credit-topup-return', outTradeNo });
+            channel.close();
+          } else {
+            localStorage.setItem('mikoshi-credit-topup-return', String(Date.now()));
+          }
+        }
+      } else if (isProUpgrade) {
         if (!wasHandled) {
           toast.show(`恭喜！您已成功升级为Pro会员！订单号：${outTradeNo}`, { type: 'success' });
         }
@@ -75,11 +92,13 @@ function AlipayReturnPage() {
         if (!wasHandled) {
           toast.show(`点数充值成功！订单号：${outTradeNo}`, { type: 'success' });
         }
-        verifyReturn().then((result) => {
-          if (isPaymentSuccessStatus(result?.trade_status) && refreshUserData) {
-            refreshUserData({ silent: true });
-          }
-        });
+        if ('BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('mikoshi-credit-topup-return');
+          channel.postMessage({ type: 'credit-topup-return', outTradeNo });
+          channel.close();
+        } else {
+          localStorage.setItem('mikoshi-credit-topup-return', String(Date.now()));
+        }
       } else {
         if (!wasHandled) {
           toast.show(`支付成功！订单号：${outTradeNo}，金额：¥${totalAmount}`, { type: 'success' });
@@ -102,13 +121,6 @@ function AlipayReturnPage() {
     boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
     minWidth: 132,
     padding: '0.56rem 1.05rem',
-  };
-
-  const neutralButtonStyle = {
-    ...baseButtonStyle,
-    background: '#f3f4f6',
-    border: '1px solid #e1e5eb',
-    color: '#4b5563',
   };
 
   const lavenderButtonStyle = {
@@ -139,34 +151,6 @@ function AlipayReturnPage() {
             <p style={{ color: '#666', marginBottom: 22 }}>
               您已成功升级，现在可以享受Pro会员的所有特权。
             </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => navigate('/profile')}
-                style={lavenderButtonStyle}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#e7e0f4';
-                  e.currentTarget.style.color = '#554d73';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#ede7f7';
-                  e.currentTarget.style.color = '#5f567f';
-                }}
-              >
-                查看我的账户
-              </button>
-              <button
-                onClick={() => navigate('/')}
-                style={neutralButtonStyle}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#eceff4';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#f3f4f6';
-                }}
-              >
-                回到首页
-              </button>
-            </div>
           </>
         ) : isCreditTopupForView ? (
           <>
@@ -175,60 +159,33 @@ function AlipayReturnPage() {
             <p style={{ color: '#666', marginBottom: 22 }}>
               点数已到账，可在套餐额度用尽后继续使用。
             </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => navigate('/pro-upgrade')}
-                style={lavenderButtonStyle}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#e7e0f4';
-                  e.currentTarget.style.color = '#554d73';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#ede7f7';
-                  e.currentTarget.style.color = '#5f567f';
-                }}
-              >
-                继续充值
-              </button>
-              <button
-                onClick={() => navigate('/chat')}
-                style={neutralButtonStyle}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#eceff4';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#f3f4f6';
-                }}
-              >
-                去聊天
-              </button>
-            </div>
           </>
         ) : (
           <>
             <h2 style={{ marginBottom: 10, color: '#2f2b3d' }}>支付结果</h2>
             <p style={{ color: '#666', marginBottom: 22 }}>
-              支付已完成，请点击下方按钮继续。
+              支付已完成，请点击下方按钮关闭此页面。
             </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => navigate('/')}
-                style={neutralButtonStyle}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#eceff4';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#f3f4f6';
-                }}
-              >
-                回到首页
-              </button>
-            </div>
           </>
         )}
+        <button
+          type="button"
+          onClick={() => window.close()}
+          style={lavenderButtonStyle}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#e7e0f4';
+            e.currentTarget.style.color = '#554d73';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#ede7f7';
+            e.currentTarget.style.color = '#5f567f';
+          }}
+        >
+          完成
+        </button>
       </div>
     </div>
   );
 }
 
-export default AlipayReturnPage;
+export default PaymentReturnPage;

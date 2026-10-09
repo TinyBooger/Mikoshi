@@ -9,7 +9,6 @@ const POLL_MAX_COUNT = 100; // ~5 minutes
 export default function WeChatPayModal({
   codeUrl,
   outTradeNo,
-  orderType,
   amount,
   onSuccess,
   onCancel,
@@ -68,7 +67,7 @@ export default function WeChatPayModal({
         closedRef.current = true; // no need to close
         setStatus('success');
         if (refreshUserData) refreshUserData({ silent: true });
-        if (onSuccess) onSuccess(orderType);
+        if (onSuccess) onSuccess(outTradeNo);
         return;
       }
 
@@ -83,7 +82,7 @@ export default function WeChatPayModal({
     }
 
     pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
-  }, [status, outTradeNo, sessionToken, stopPolling, closeOrder, refreshUserData, onSuccess, orderType]);
+  }, [status, outTradeNo, sessionToken, stopPolling, closeOrder, refreshUserData, onSuccess]);
 
   useEffect(() => {
     pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);

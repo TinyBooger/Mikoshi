@@ -1861,7 +1861,7 @@ export default function ProfilePage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => navigate('/pro-upgrade')}
+                      onClick={() => window.open('/pro-upgrade', '_blank', 'noopener,noreferrer')}
                       style={{
                         border: 'none',
                         borderRadius: 999,
@@ -1945,7 +1945,7 @@ export default function ProfilePage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => navigate('/pro-upgrade')}
+                        onClick={() => window.open('/pro-upgrade', '_blank', 'noopener,noreferrer')}
                         style={{
                           border: 'none',
                           borderRadius: 999,

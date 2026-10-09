@@ -79,6 +79,13 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
     navigate(path);
   };
 
+  const handleOpenInNewTab = (path) => {
+    if (isMobile && setSidebarVisible) {
+      setSidebarVisible(false);
+    }
+    window.open(path, '_blank', 'noopener,noreferrer');
+  };
+
   const handleSearch = (q = query) => {
     const trimmed = q.trim();
     if (!trimmed) return;
@@ -1082,7 +1089,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                 color: '#fff'
               }}
               onClick={() => {
-                handleNavigate('/pro-upgrade');
+                handleOpenInNewTab('/pro-upgrade');
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
@@ -1163,7 +1170,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             <button
               type="button"
               className="btn btn-sm w-100 mt-2"
-              onClick={() => handleNavigate('/pro-upgrade')}
+              onClick={() => handleOpenInNewTab('/pro-upgrade')}
               onMouseEnter={e => {
                 e.currentTarget.style.background = 'rgba(115, 107, 146, 0.14)';
               }}

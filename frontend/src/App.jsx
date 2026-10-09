@@ -32,7 +32,7 @@ import TermsOfServicePage from './pages/TermsOfServicePage.jsx';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx';
 import EntityDetailPage from './pages/EntityDetailPage.jsx';
 import AlipayTestPage from './pages/AlipayTestPage.jsx';
-import AlipayReturnPage from './pages/AlipayReturnPage.jsx';
+import PaymentReturnPage from './pages/PaymentReturnPage.jsx';
 import ProUpgradePage from './pages/ProUpgradePage.jsx';
 import ProUpgradePaymentPage from './pages/ProUpgradePaymentPage.jsx';
 import CreditTopUpPage from './pages/CreditTopUpPage.jsx';
@@ -101,7 +101,8 @@ const router = createBrowserRouter([
       { path: 'order/:orderId', element: <ProtectedPage><OrderDetailPage /></ProtectedPage> },
       { path: 'search', element: <ProtectedPage><SearchPage /></ProtectedPage> },
       { path: 'alipay/test', element: <ProtectedPage><AlipayTestPage /></ProtectedPage> },
-      { path: 'alipay/return', element: <ProtectedPage><AlipayReturnPage /></ProtectedPage> },
+      { path: 'payment/return', element: <ProtectedPage><PaymentReturnPage /></ProtectedPage> },
+      { path: 'alipay/return', element: <ProtectedPage><PaymentReturnPage /></ProtectedPage> },
       { path: 'pro-upgrade', element: <ProtectedPage><ProUpgradePage /></ProtectedPage> },
       { path: 'pro-upgrade/payment', element: <ProtectedPage><ProUpgradePaymentPage /></ProtectedPage> },
       { path: 'pro-upgrade/payment/package', element: <ProtectedPage><PackagePaymentPage /></ProtectedPage> },

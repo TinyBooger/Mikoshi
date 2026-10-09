@@ -1,12 +1,10 @@
 import React from 'react';
-import { useNavigate } from 'react-router';
 import { formatCreditCount } from '../utils/creditDisplay';
 
 /**
  * Banner shown when the user has reached their credit limit.
  */
 export function CreditLockedBanner({ creditLimits }) {
-  const navigate = useNavigate();
   const isPro = !!creditLimits?.is_pro;
   const broke = !!creditLimits?.broke;
   // Broke pros (monthly quota exhausted) fall back to the free daily bucket.
@@ -59,7 +57,7 @@ export function CreditLockedBanner({ creditLimits }) {
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
           <button
             type="button"
-            onClick={() => navigate('/pro-upgrade')}
+            onClick={() => window.open('/pro-upgrade', '_blank', 'noopener,noreferrer')}
             style={{
               padding: '0.15rem 0.55rem',
               borderRadius: 6,
@@ -76,7 +74,7 @@ export function CreditLockedBanner({ creditLimits }) {
           {!creditLimits?.is_pro && (
             <button
               type="button"
-              onClick={() => navigate('/pro-upgrade')}
+              onClick={() => window.open('/pro-upgrade', '_blank', 'noopener,noreferrer')}
               style={{
                 padding: '0.15rem 0.55rem',
                 borderRadius: 6,

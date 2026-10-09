@@ -375,12 +375,10 @@ export default function PackagePaymentPage() {
         <WeChatPayModal
           codeUrl={wechatQrData.codeUrl}
           outTradeNo={wechatQrData.outTradeNo}
-          orderType="credit_topup"
           amount={wechatQrData.amount}
-          onSuccess={() => {
+          onSuccess={(outTradeNo) => {
             setWechatQrData(null);
-            toast.show('点数充值成功！', { type: 'success' });
-            if (refreshUserData) refreshUserData({ silent: true });
+            navigate(`/payment/return?out_trade_no=${encodeURIComponent(outTradeNo)}`);
           }}
           onCancel={() => setWechatQrData(null)}
         />
