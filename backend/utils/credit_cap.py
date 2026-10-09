@@ -278,18 +278,16 @@ def build_credit_cap_reached_payload(limit_info: dict[str, Any]) -> dict[str, An
 
     if plan == "pro" and broke:
         message = (
-            "You have reached your monthly Pro credit limit and today's free "
-            "credit allowance. Daily free credits reset at 12:00 PM (noon). "
-            "Please top up wallet credits or wait for the daily reset."
+            "您已达到 Pro 月度点数额度及今日免费点数额度上限。"
+            "每日免费点数于中午 12:00 重置。请充值钱包点数，或等待额度重置后再试。"
         )
     elif plan == "pro" and cap_scope == "monthly":
-        message = "You have reached your monthly credit limit for Pro. Please wait until next month for reset or top up wallet credits."
+        message = "您已达到 Pro 月度点数额度上限。请等待下月额度重置，或充值钱包点数后继续使用。"
     else:
-        message = "You have reached your daily credit limit. Upgrade to Pro for a much higher monthly limit or top up wallet credits."
+        message = "您已达到每日点数额度上限。升级至 Pro 可获得更高的月度额度，或充值钱包点数后继续使用。"
 
     return {
         "error": "CREDIT_CAP_REACHED",
         "message": message,
         "credit_limits": limit_info,
     }
-

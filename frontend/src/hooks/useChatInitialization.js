@@ -496,7 +496,6 @@ export function useChatInitialization({
 
     setSelectedChat(null);
     pendingChatIdRef.current = null;
-    setInput('');
 
     if (useImprovise) {
       // Reserve the chat_id up front (mirroring the backend's uuid.uuid4())
@@ -676,6 +675,7 @@ export function useChatInitialization({
     setSelectedChat(null);
     pendingChatIdRef.current = null;
     setMessages([]);
+    setInput('');
     setEditingMessageId(null);
     setEditingMessageText('');
     isNewChat.current = true;

@@ -30,6 +30,11 @@ import {
   normalizeChatModel,
 } from '../utils/chatConfigHelpers';
 import { getSelectedWallpaper } from '../utils/chatMessages';
+import {
+  getChatDraftStorageKeys,
+  loadChatDraft,
+  saveChatDraft,
+} from '../utils/chatDraftStorage';
 import { useCreditAndChatLimits } from '../hooks/useCreditAndChatLimits';
 import { usePinnedMemories } from '../hooks/usePinnedMemories';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -88,6 +93,7 @@ export default function ChatPage() {
   // streaming. Lets a message sent mid-greeting reuse the same chat instead
   // of minting a second (orphaned) chat_id on the backend.
   const pendingChatIdRef = useRef(null);
+  const activeDraftKeyRef = useRef(null);
 
   const [selectedPersona, setSelectedPersona] = useState(null);
   const [selectedScene, setSelectedScene] = useState(null);
@@ -158,6 +164,26 @@ export default function ChatPage() {
 
   const [characterId, setCharacterId] = useState(searchParams.get('character'));
   const [sceneId, setSceneId] = useState(searchParams.get('scene'));
+  const draftKeys = getChatDraftStorageKeys({
+    userId: userData?.id,
+    chatId: selectedChat?.chat_id,
+    characterId: selectedChat?.character_id || characterId || searchParams.get('character') || selectedCharacter?.id,
+    sceneId: selectedChat?.scene_id || sceneId || searchParams.get('scene') || selectedScene?.id,
+    personaId: selectedChat?.persona_id || selectedPersona?.id,
+  });
+
+  useEffect(() => {
+    if (!draftKeys.activeKey) return;
+
+    if (activeDraftKeyRef.current !== draftKeys.activeKey) {
+      activeDraftKeyRef.current = draftKeys.activeKey;
+      setInput(loadChatDraft(draftKeys.activeKey, draftKeys.fallbackKey));
+      return;
+    }
+
+    saveChatDraft(draftKeys.activeKey, input);
+  }, [draftKeys.activeKey, draftKeys.fallbackKey, input]);
+
   const selectedWallpaper = getSelectedWallpaper(wallpaper);
 
   useEffect(() => {
@@ -343,7 +369,7 @@ export default function ChatPage() {
     setMessages,
     input,
     setInput,
-    textareaRef,
+    draftStorageKey: draftKeys.activeKey,
     selectedChat,
     selectedCharacter,
     selectedScene,

@@ -2,7 +2,11 @@ import { useRef } from 'react';
 import { ensureMessageIds, generateMessageId, createLocalMessageTimestamp } from '../utils/chatHelpers';
 import { isCreditLocked } from '../utils/creditCheck';
 import { getChatErrorMessage, compactMessagesForRequest } from '../utils/chatMessages';
-import { resetTextareaHeight } from '../utils/textarea';
+import {
+  getChatDraftPendingStorageKey,
+  removeChatDraft,
+  saveChatDraft,
+} from '../utils/chatDraftStorage';
 
 /**
  * Streaming chat turns: builds the request, consumes the SSE stream, and owns
@@ -17,7 +21,7 @@ import { resetTextareaHeight } from '../utils/textarea';
  * @param {function} params.setMessages                     - setter for messages
  * @param {string}   params.input                           - current input value
  * @param {function} params.setInput                        - setter for the input value
- * @param {object}   params.textareaRef                     - ref to the input textarea
+ * @param {string}   params.draftStorageKey                 - local-storage key for this conversation's draft
  * @param {object}   params.selectedChat                    - current chat entry
  * @param {object}   params.selectedCharacter               - active character
  * @param {object}   params.selectedScene                   - active scene
@@ -46,7 +50,7 @@ export function useChatSend({
   setMessages,
   input,
   setInput,
-  textareaRef,
+  draftStorageKey,
   selectedChat,
   selectedCharacter,
   selectedScene,
@@ -69,6 +73,8 @@ export function useChatSend({
   // Monotonic counter used to invalidate superseded chat turns so a stale
   // stream can never clobber state from a newer request.
   const chatGenerationIdRef = useRef(0);
+  const inputRef = useRef(input);
+  inputRef.current = input;
 
   const sendChatTurn = async ({
     nextMessages,
@@ -76,12 +82,32 @@ export function useChatSend({
     forkFromMessageId = null,
     sourceBranchId = selectedChat?.active_branch_id || null,
     restoreMessagesOnError = nextMessages,
+    clearDraftOnComplete = false,
+    draftInputToClear = '',
+    draftKeyToClear = draftStorageKey,
     errorMessage = 'Failed to send message. Please try again.',
     characterOverride = selectedCharacter,
     sceneOverride = selectedScene,
     personaOverride = selectedPersona,
   }) => {
     if (!characterOverride) return;
+
+    const pendingDraftKey = clearDraftOnComplete
+      ? getChatDraftPendingStorageKey(draftKeyToClear)
+      : null;
+    let sentDraftRestored = false;
+    const restoreSentDraft = () => {
+      if (!clearDraftOnComplete || sentDraftRestored) return;
+      sentDraftRestored = true;
+
+      const currentInput = inputRef.current;
+      const restoredDraft = currentInput && currentInput !== draftInputToClear
+        ? `${draftInputToClear}\n${currentInput}`
+        : draftInputToClear;
+      setInput(restoredDraft);
+      saveChatDraft(draftKeyToClear, restoredDraft);
+      removeChatDraft(pendingDraftKey);
+    };
 
     // Cancel any in-flight turn for this chat before starting a new one.
     if (abortController) {
@@ -94,6 +120,11 @@ export function useChatSend({
 
     setSending(true);
     setIsStreaming(true);
+
+    if (clearDraftOnComplete) {
+      saveChatDraft(pendingDraftKey, draftInputToClear);
+      setInput('');
+    }
 
     const requestMessages = compactMessagesForRequest(nextMessages);
     const baseMessageCount = Array.isArray(nextMessages) ? nextMessages.length : 0;
@@ -148,6 +179,8 @@ export function useChatSend({
       const decoder = new TextDecoder();
       let accumulatedReply = '';
       let pendingEventBuffer = '';
+      let streamConfirmed = false;
+      let streamFailed = false;
 
       const processEventPayload = (rawPayload) => {
         // Ignore any event from a superseded request. A new turn has been
@@ -177,6 +210,8 @@ export function useChatSend({
         if (data.error) {
           const friendlyMessage = getChatErrorMessage(data);
           toast.show(friendlyMessage, { type: 'error' });
+          setMessages(ensureMessageIds(restoreMessagesOnError));
+          streamFailed = true;
           if (data.credit_limits) {
             applyCreditLimits(data.credit_limits);
           }
@@ -204,6 +239,11 @@ export function useChatSend({
         }
 
         if (data.done) {
+          streamConfirmed = !streamFailed;
+          if (clearDraftOnComplete) {
+            removeChatDraft(pendingDraftKey);
+            saveChatDraft(draftKeyToClear, inputRef.current);
+          }
           applyChatLimits(data.limits);
           applyCreditLimits(data.credit_limits);
           if (refreshUserData) {
@@ -238,6 +278,10 @@ export function useChatSend({
       if (pendingEventBuffer.trim()) {
         processEventPayload(pendingEventBuffer);
       }
+      if ((!streamConfirmed || streamFailed) && clearDraftOnComplete) {
+        setMessages(ensureMessageIds(restoreMessagesOnError));
+        restoreSentDraft();
+      }
     } catch (err) {
       // A superseded request must not show errors or restore stale messages.
       if (requestGenerationId !== chatGenerationIdRef.current) {
@@ -247,6 +291,7 @@ export function useChatSend({
         toast.show(err.message || errorMessage, { type: 'error' });
       }
       setMessages(ensureMessageIds(restoreMessagesOnError));
+      restoreSentDraft();
     } finally {
       // Only the latest request may clear sending/streaming state.
       if (requestGenerationId === chatGenerationIdRef.current) {
@@ -264,17 +309,16 @@ export function useChatSend({
       return;
     }
     if (sending || !input.trim() || !selectedCharacter) return;
+    saveChatDraft(draftStorageKey, input);
     const updatedMessages = ensureMessageIds([...messages, { role: 'user', content: input.trim(), message_id: generateMessageId(), is_pinned: false, created_at: createLocalMessageTimestamp() }]);
     setMessages(updatedMessages);
-    setInput('');
-
-    // Reset textarea height after sending
-    resetTextareaHeight(textareaRef.current);
-
     await sendChatTurn({
       nextMessages: updatedMessages,
       sourceBranchId: selectedChat?.active_branch_id || null,
-      restoreMessagesOnError: updatedMessages,
+      restoreMessagesOnError: messages,
+      clearDraftOnComplete: true,
+      draftInputToClear: input,
+      draftKeyToClear: draftStorageKey,
     });
   };
 
