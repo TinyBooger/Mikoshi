@@ -1,6 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
 import { cancelVoiceRecording, startVoiceRecording, stopVoiceRecording } from '../utils/voiceRecorder';
 
+const SILENCE_TIMEOUT_MS = 5000;
+const VOICE_ACTIVITY_THRESHOLD = 0.02;
+
 /**
  * Voice-to-text: records mic audio, streams it to the backend over a
  * websocket, and writes the (partial + final) transcript into the chat input.
@@ -25,6 +28,37 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
   const voicePrefixRef = useRef('');
   const voiceTranscriptRef = useRef('');
   const voicePartialRef = useRef('');
+  const silenceTimeoutRef = useRef(null);
+  const recordingActiveRef = useRef(false);
+
+  const clearSilenceTimeout = () => {
+    if (silenceTimeoutRef.current !== null) {
+      window.clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+  };
+
+  const resetSilenceTimeout = () => {
+    clearSilenceTimeout();
+    silenceTimeoutRef.current = window.setTimeout(() => {
+      void finishRecording();
+    }, SILENCE_TIMEOUT_MS);
+  };
+
+  async function finishRecording() {
+    if (!recordingActiveRef.current) return;
+    recordingActiveRef.current = false;
+    clearSilenceTimeout();
+
+    const socket = voiceSocketRef.current;
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'stop' }));
+    }
+    await stopVoiceRecording();
+    setIsRecording(false);
+    setRecordingLevel(0);
+    setIsTranscribing(true);
+  }
 
   /**
    * Tear down the mic capture and drop the transcription socket. Stable
@@ -32,6 +66,8 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
    * without re-running their cleanup on every render.
    */
   const closeVoiceConnection = useCallback(() => {
+    recordingActiveRef.current = false;
+    clearSilenceTimeout();
     cancelVoiceRecording();
     voiceSocketRef.current?.close();
     voiceSocketRef.current = null;
@@ -40,14 +76,7 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
   // Voice-to-text: record audio and transcribe it into the input field.
   const handleVoiceToggle = async () => {
     if (isRecording) {
-      const socket = voiceSocketRef.current;
-      if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'stop' }));
-      }
-      await stopVoiceRecording();
-      setIsRecording(false);
-      setRecordingLevel(0);
-      setIsTranscribing(true);
+      await finishRecording();
       return;
     }
     try {
@@ -91,10 +120,19 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
         (frame) => {
           if (socket.readyState === WebSocket.OPEN) socket.send(frame);
         },
-        (level) => setRecordingLevel(Math.min(1, level * 12)),
+        (level) => {
+          setRecordingLevel(Math.min(1, level * 12));
+          if (recordingActiveRef.current && level >= VOICE_ACTIVITY_THRESHOLD) {
+            resetSilenceTimeout();
+          }
+        },
       );
+      recordingActiveRef.current = true;
+      resetSilenceTimeout();
       setIsRecording(true);
     } catch (err) {
+      recordingActiveRef.current = false;
+      clearSilenceTimeout();
       setRecordingLevel(0);
       voiceSocketRef.current?.close();
       voiceSocketRef.current = null;
