@@ -16,9 +16,9 @@ export default function ChatVoiceButton({ isRecording, isTranscribing, disabled,
         right: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2 + 38 + 6}px`,
         bottom: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
         background: isRecording
-          ? 'linear-gradient(180deg, #ffe3e3 0%, #ffd0d0 100%)'
+          ? 'linear-gradient(180deg, #eee8fb 0%, #ded4f5 100%)'
           : 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)',
-        color: isRecording ? '#c0392b' : '#5f567f',
+        color: isRecording ? '#7053b5' : '#5f567f',
         border: '1px solid rgba(255, 255, 255, 0.78)',
         borderRadius: '50%',
         width: 38,
@@ -28,7 +28,7 @@ export default function ChatVoiceButton({ isRecording, isTranscribing, disabled,
         justifyContent: 'center',
         fontSize: 16,
         boxShadow: isRecording
-          ? '0 8px 16px rgba(220, 53, 69, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85)'
+          ? '0 8px 16px rgba(112, 83, 181, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.85)'
           : '0 8px 16px rgba(141, 125, 176, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
         transition: 'background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease',
         cursor: isTranscribing ? 'wait' : 'pointer',

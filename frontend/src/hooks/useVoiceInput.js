@@ -15,11 +15,12 @@ import { cancelVoiceRecording, startVoiceRecording, stopVoiceRecording } from '.
  * @param {string}   params.input        - current chat input value
  * @param {function} params.setInput     - setter for the chat input value
  * @param {object}   params.toast        - toast provider (from useToast)
- * @returns {{ isRecording, isTranscribing, handleVoiceToggle, closeVoiceConnection }}
+ * @returns {{ isRecording, isTranscribing, recordingLevel, handleVoiceToggle, closeVoiceConnection }}
  */
 export function useVoiceInput({ sessionToken, input, setInput, toast }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [recordingLevel, setRecordingLevel] = useState(0);
   const voiceSocketRef = useRef(null);
   const voicePrefixRef = useRef('');
   const voiceTranscriptRef = useRef('');
@@ -45,6 +46,7 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
       }
       await stopVoiceRecording();
       setIsRecording(false);
+      setRecordingLevel(0);
       setIsTranscribing(true);
       return;
     }
@@ -85,16 +87,20 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
         socket.onerror = () => reject(new Error('无法连接语音识别服务，请重试。'));
       });
 
-      await startVoiceRecording((frame) => {
-        if (socket.readyState === WebSocket.OPEN) socket.send(frame);
-      });
+      await startVoiceRecording(
+        (frame) => {
+          if (socket.readyState === WebSocket.OPEN) socket.send(frame);
+        },
+        (level) => setRecordingLevel(Math.min(1, level * 12)),
+      );
       setIsRecording(true);
     } catch (err) {
+      setRecordingLevel(0);
       voiceSocketRef.current?.close();
       voiceSocketRef.current = null;
       toast.show(err?.message || '无法启动麦克风录音，请检查权限。', { type: 'error' });
     }
   };
 
-  return { isRecording, isTranscribing, handleVoiceToggle, closeVoiceConnection };
+  return { isRecording, isTranscribing, recordingLevel, handleVoiceToggle, closeVoiceConnection };
 }

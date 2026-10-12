@@ -1,0 +1,37 @@
+.chat-voice-recording-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.35rem;
+  width: 100%;
+}
+
+.chat-voice-recording-wave {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 1.35rem;
+  width: min(100%, 13rem);
+  padding: 0 0.7rem;
+  overflow: hidden;
+  border-radius: 999px;
+  color: #7053b5;
+  background: rgba(112, 83, 181, 0.09);
+  direction: ltr;
+}
+
+.chat-voice-recording-wave span {
+  flex: 0 0 2px;
+  height: 1.1rem;
+  border-radius: 3px;
+  background: currentColor;
+  transform-origin: center;
+  transition: transform 90ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-voice-recording-wave span {
+    transition: none;
+  }
+}

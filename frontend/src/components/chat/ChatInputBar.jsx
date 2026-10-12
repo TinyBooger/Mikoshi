@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ContextWindowIndicator from '../ContextWindowIndicator';
 import { CreditLockedBanner, BanBanner } from '../ChatBanners';
 import { isCreditLocked } from '../../utils/creditCheck';
@@ -6,6 +6,7 @@ import { CHAT_INPUT_BASE_HEIGHT, CHAT_INPUT_MAX_HEIGHT } from '../../utils/chatP
 import { getChromeSurface } from '../../utils/backgroundPresets';
 import ChatVoiceButton from './ChatVoiceButton';
 import ChatSendButton from './ChatSendButton';
+import './ChatInputBar.css';
 
 /**
  * Bottom composer area of the chat: ban / credit-lock banners, the context
@@ -34,6 +35,7 @@ export default function ChatInputBar({
   handleKeyDown,
   textareaRef,
   isRecording,
+  recordingLevel,
   isTranscribing,
   handleVoiceToggle,
   isStreaming,
@@ -42,6 +44,26 @@ export default function ChatInputBar({
 }) {
   const creditLocked = isCreditLocked(creditLimits);
   const chromeSurface = getChromeSurface(selectedWallpaper?.kind);
+  const [waveformSamples, setWaveformSamples] = useState(() => Array(40).fill(0.025));
+  const recordingLevelRef = useRef(recordingLevel);
+
+  useEffect(() => {
+    recordingLevelRef.current = recordingLevel;
+  }, [recordingLevel]);
+
+  useEffect(() => {
+    if (!isRecording) {
+      setWaveformSamples(Array(40).fill(0.025));
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      const level = Math.max(0.025, Math.min(1, recordingLevelRef.current));
+      setWaveformSamples((samples) => [...samples.slice(1), level]);
+    }, 65);
+
+    return () => window.clearInterval(intervalId);
+  }, [isRecording]);
 
   return (
     /* Input Area (no form) */
@@ -64,6 +86,20 @@ export default function ChatInputBar({
         )}
         {creditLocked && (
           <CreditLockedBanner creditLimits={creditLimits} />
+        )}
+        {isRecording && (
+          <div className="chat-voice-recording-status" role="status" aria-label="正在录音">
+            <span className="chat-voice-recording-wave" aria-hidden="true">
+              {waveformSamples.map((sample, index) => (
+                <span
+                  key={index}
+                  style={{
+                    transform: `scaleY(${Math.max(0.04, sample * [0.58, 0.82, 1, 0.72, 0.94, 0.68, 0.88, 0.62][index % 8])})`,
+                  }}
+                />
+              ))}
+            </span>
+          </div>
         )}
         <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'center' }}>
           <ContextWindowIndicator

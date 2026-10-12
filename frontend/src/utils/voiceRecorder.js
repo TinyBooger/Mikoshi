@@ -50,7 +50,7 @@ function resetResampler() {
   resamplePosition = 0;
 }
 
-export async function startVoiceRecording(onAudioChunk = null) {
+export async function startVoiceRecording(onAudioChunk = null, onAudioLevel = null) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     throw new Error('当前浏览器不支持麦克风录音');
   }
@@ -66,6 +66,11 @@ export async function startVoiceRecording(onAudioChunk = null) {
     resetResampler();
     processorNode.onaudioprocess = (event) => {
       const inputData = event.inputBuffer.getChannelData(0);
+      let squareSum = 0;
+      for (let i = 0; i < inputData.length; i += 1) {
+        squareSum += inputData[i] * inputData[i];
+      }
+      onAudioLevel?.(Math.sqrt(squareSum / inputData.length));
       const pcmFrame = resampleFrame(inputData, audioContext.sampleRate);
       if (pcmFrame) audioChunkHandler?.(pcmFrame);
     };

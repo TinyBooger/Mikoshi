@@ -58,7 +58,7 @@ export default function ChatPage() {
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const { isRecording, isTranscribing, handleVoiceToggle, closeVoiceConnection } = useVoiceInput({
+  const { isRecording, isTranscribing, recordingLevel, handleVoiceToggle, closeVoiceConnection } = useVoiceInput({
     sessionToken,
     input,
     setInput,
@@ -654,6 +654,7 @@ export default function ChatPage() {
           handleKeyDown={handleKeyDown}
           textareaRef={textareaRef}
           isRecording={isRecording}
+          recordingLevel={recordingLevel}
           isTranscribing={isTranscribing}
           handleVoiceToggle={handleVoiceToggle}
           isStreaming={isStreaming}
