@@ -19,7 +19,7 @@ class Character(Base):
     )
     context_label = Column(String(20), nullable=False, default="standard")
     tagline = Column(String(255), default="")  # 50 words fits ~255 chars
-    tags = Column(ARRAY(Text), default=[])   # array of strings
+    tags = Column(ARRAY(Text), default=list)   # array of strings
     is_public = Column(Boolean, default=True, nullable=False)
     is_forkable = Column(Boolean, default=False, nullable=False)
 

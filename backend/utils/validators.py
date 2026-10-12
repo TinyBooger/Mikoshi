@@ -15,7 +15,7 @@ def validate_example_messages(example_messages):
 def validate_character_fields(name, description, tagline, greetings, sample_dialogue, tags):
     MAX_NAME_LENGTH = 50
     MAX_DESCRIPTION_LENGTH = 15000
-    MAX_TAGLINE_LENGTH = 200
+    MAX_TAGLINE_LENGTH = 255
     MAX_GREETING_LENGTH = 3000
     MAX_GREETINGS_COUNT = 20
     MAX_TAGS = 20

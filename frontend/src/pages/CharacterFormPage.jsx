@@ -14,6 +14,7 @@ import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { EXAMPLE_MESSAGE_COUNT, EXAMPLE_MESSAGE_MAX_LENGTH, normalizeExampleMessages } from '../utils/exampleMessages';
+import { parseCharacterCardFile } from '../utils/characterCardImport';
 
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import ModelSelect from '../components/ModelSelect';
@@ -118,7 +119,7 @@ export default function CharacterFormPage() {
   // once its 角色设定 grows past this length. Must stay in sync with
   // ADVANCED_DESCRIPTION_THRESHOLD in backend/routes/character.py
   const ADVANCED_DESCRIPTION_THRESHOLD = 1500;
-  const MAX_TAGLINE_LENGTH = 100;
+  const MAX_TAGLINE_LENGTH = 255;
 
   // Get id param from route
   const params = useParams();
@@ -217,6 +218,9 @@ export default function CharacterFormPage() {
   const [pictureAspectRatio, setPictureAspectRatio] = useState(1);
   const [avatarPicture, setAvatarPicture] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const cardImportInputRef = useRef(null);
+  const [isImportingCard, setIsImportingCard] = useState(false);
+  const [cardImportNotice, setCardImportNotice] = useState('');
   const [selectedDefaultPicture, setSelectedDefaultPicture] = useState(null);
   const [backgroundPicture, setBackgroundPicture] = useState(null);
   const [backgroundPreview, setBackgroundPreview] = useState(null);
@@ -488,6 +492,51 @@ export default function CharacterFormPage() {
     setCharData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleCharacterCardImport = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setIsImportingCard(true);
+    setCardImportNotice('');
+    try {
+      const { card, picture: importedPicture } = await parseCharacterCardFile(file);
+      setCharData(prev => ({
+        ...prev,
+        name: card.name,
+        description: card.description,
+        tagline: card.tagline,
+        tags: card.tags,
+        greetings: card.greetings,
+        sample: normalizeExampleMessages(card.sample),
+        is_forkable: true,
+      }));
+      setIsImprovisingGreeting(false);
+      if (importedPicture) {
+        const reader = new FileReader();
+        const preview = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('无法预览导入的 PNG 图片。'));
+          reader.readAsDataURL(importedPicture);
+        });
+        setPicture(importedPicture);
+        setAvatarPicture(importedPicture);
+        setPicturePreview(preview);
+        setAvatarPreview(preview);
+        setSelectedDefaultPicture(null);
+        setRawSelectedFile(null);
+        setShowCrop(false);
+      }
+      setCardImportNotice(card.hasCharacterBook
+        ? '角色卡已导入。角色书（lorebook）未导入。'
+        : '角色卡已导入，请检查内容后提交。');
+    } catch (error) {
+      toast.show(error.message || '无法导入角色卡。', { type: 'error' });
+    } finally {
+      setIsImportingCard(false);
+    }
+  };
+
   const updateConfig = (key, value, min, max, fallback) => {
     const parsed = Number(value);
     const nextValue = Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
@@ -658,6 +707,33 @@ export default function CharacterFormPage() {
           <p className="text-muted mb-4" style={{ fontSize: '0.95rem', textAlign: 'left', width: '100%' }}>
             创建与你对话的 AI 角色，赋予它独特的性格、背景与故事。
           </p>
+
+        {mode === 'create' && (
+          <div className="w-100 mb-3">
+            <input
+              ref={cardImportInputRef}
+              type="file"
+              accept=".png,.json,image/png,application/json"
+              className="d-none"
+              onChange={handleCharacterCardImport}
+            />
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              disabled={isImportingCard}
+              onClick={() => cardImportInputRef.current?.click()}
+            >
+              <i className={`bi ${isImportingCard ? 'bi-hourglass-split' : 'bi-upload'} me-2`}></i>
+              {isImportingCard ? '正在导入角色卡…' : '导入 Character Card V2'}
+            </button>
+            <small className="text-muted ms-2">支持 PNG 和 JSON，最大 20 MB</small>
+            {cardImportNotice && (
+              <div className="alert alert-info mt-3 mb-0" role="status">
+                {cardImportNotice}
+              </div>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="w-100" encType="multipart/form-data">
           <BanNotice banType={userData?.ban_type} banUntil={userData?.ban_until} context="upload" />
