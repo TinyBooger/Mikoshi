@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useRef } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider, useLocation } from 'react-router';
 import AdminApp from './admin/AdminApp.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
@@ -57,8 +57,15 @@ function ProtectedPage({ children }) {
 
 function PublicOnlyPage({ children }) {
   const { userData, loading } = useContext(AuthContext);
-  if (loading) return null; // or a spinner if you prefer
-  return userData ? <Navigate to="/browse" replace /> : children;
+  const location = useLocation();
+  const initialized = useRef(false);
+
+  if (!loading) initialized.current = true;
+  if (!initialized.current) return null;
+
+  return userData
+    ? <Navigate to={location.state?.from || '/browse'} replace />
+    : children;
 }
 
 function RootIndexPage() {
@@ -154,11 +161,5 @@ const router = createBrowserRouter([
 ]);
 
 export default function App() {
-  const { loading } = useContext(AuthContext);
-
-  if (loading) {
-    return null; // Or a loading spinner
-  }
-
   return <RouterProvider router={router} />;
 }

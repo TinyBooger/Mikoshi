@@ -116,6 +116,11 @@ export default function LoginPage() {
     passwordRef.current = password;
   }, [password]);
 
+  useEffect(() => {
+    console.log('LoginPage mounted');
+    return () => console.log('LoginPage unmounted');
+  }, []);
+
   // 开发环境：拉取万能验证码配置并在登录页展示
   useEffect(() => {
     let cancelled = false;
