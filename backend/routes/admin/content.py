@@ -440,13 +440,6 @@ def update_character(
 
     # Update only provided fields
     if update_data.name is not None:
-        # Check if name already exists (for another character)
-        existing = db.query(Character).filter(
-            Character.name == update_data.name,
-            Character.id != character_id
-        ).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="Character name already exists")
         character.name = update_data.name
 
     if update_data.description is not None:

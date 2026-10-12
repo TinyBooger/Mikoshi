@@ -222,10 +222,6 @@ async def create_character(
     description = normalize_line_endings(description).strip()
     context_label = derive_context_label(description)
 
-    existing = db.query(Character).filter(Character.name == name).first()
-    if existing:
-        return JSONResponse(content={"error": "Character already exists"}, status_code=400)
-    
     error = validate_character_fields(name, description, tagline, greetings_list, example_messages_list, tags)
     if error:
         raise HTTPException(status_code=400, detail=error)

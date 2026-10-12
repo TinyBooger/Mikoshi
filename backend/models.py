@@ -7,7 +7,7 @@ from datetime import datetime, UTC
 class Character(Base):
     __tablename__ = "characters"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, index=True, nullable=False)
     # Merged persona + long_description ("角色设定"). 15000-char limit is
     # enforced in utils/validators.py.
     description = Column(Text, nullable=False, default="")
@@ -232,7 +232,7 @@ class ChatHistoryMessage(Base):
 class Persona(Base):
     __tablename__ = "personas"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, index=True, nullable=False)
     description = Column(Text, nullable=True)
     intro = Column(Text, nullable=True)  # Short intro for display
     tags = Column(ARRAY(Text), default=[])  # array of strings
