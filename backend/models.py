@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Date, Text, ForeignKey, ForeignKeyConstraint, UniqueConstraint, Boolean, Float, BigInteger
+from sqlalchemy import Column, String, Integer, DateTime, Date, Text, ForeignKey, ForeignKeyConstraint, UniqueConstraint, Boolean, Float, BigInteger, text
 from sqlalchemy.orm import relationship
 from database import Base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -11,7 +11,12 @@ class Character(Base):
     # Merged persona + long_description ("角色设定"). 15000-char limit is
     # enforced in utils/validators.py.
     description = Column(Text, nullable=False, default="")
-    example_messages = Column(Text, default="")
+    example_messages = Column(
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+    )
     context_label = Column(String(20), nullable=False, default="standard")
     tagline = Column(String(255), default="")  # 50 words fits ~255 chars
     tags = Column(ARRAY(Text), default=[])   # array of strings

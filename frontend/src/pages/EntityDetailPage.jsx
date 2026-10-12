@@ -12,6 +12,7 @@ import ShareCharacterDialog from '../components/share/ShareCharacterDialog';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import { applyCharacterPlaceholders } from '../utils/characterPlaceholders';
+import { normalizeExampleMessages } from '../utils/exampleMessages';
 
 export default function EntityDetailPage() {
   const { t } = useTranslation();
@@ -851,7 +852,7 @@ export default function EntityDetailPage() {
               </div>
             )}
 
-            {entity.example_messages && (
+            {normalizeExampleMessages(entity.example_messages).some(message => message.trim()) && (
               <div className="card mb-4">
                 <div className="card-body">
                   <div style={sectionTitleWrapStyle}>
@@ -859,9 +860,13 @@ export default function EntityDetailPage() {
                       示例对话
                     </h3>
                   </div>
-                  <p style={sectionBodyStyle}>
-                    {applyCharacterPlaceholders(entity.example_messages, entity.name, viewerPersonaName)}
-                  </p>
+                  {normalizeExampleMessages(entity.example_messages)
+                    .filter(message => message.trim())
+                    .map((message, idx, examples) => (
+                      <p key={idx} style={{ ...sectionBodyStyle, marginBottom: idx < examples.length - 1 ? '0.75rem' : 0 }}>
+                        {applyCharacterPlaceholders(message, entity.name, viewerPersonaName)}
+                      </p>
+                    ))}
                 </div>
               </div>
             )}

@@ -14,6 +14,7 @@ from models import User, Character, Scene, Persona, Tag, SearchTerm
 from utils.audit_logger import audit_request
 from utils.session import get_current_admin_user
 from utils.local_storage_utils import delete_stored_image
+from utils.validators import validate_example_messages
 
 router = APIRouter(tags=["admin"])
 
@@ -24,7 +25,7 @@ class CharacterUpdate(BaseModel):
     description: Optional[str] = None
     tagline: Optional[str] = None
     greetings: Optional[List[str]] = None
-    example_messages: Optional[str] = None
+    example_messages: Optional[List[str]] = None
     tags: Optional[List[str]] = None
     is_public: Optional[bool] = None
     is_forkable: Optional[bool] = None
@@ -455,6 +456,9 @@ def update_character(
     if update_data.greetings is not None:
         character.greetings = update_data.greetings
     if update_data.example_messages is not None:
+        error = validate_example_messages(update_data.example_messages)
+        if error:
+            raise HTTPException(status_code=400, detail=error)
         character.example_messages = update_data.example_messages
     if update_data.tags is not None:
         character.tags = update_data.tags

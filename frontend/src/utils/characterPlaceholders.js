@@ -62,9 +62,12 @@ export function hasUserPlaceholder(text) {
 export function characterUsesUserPlaceholder(character) {
   if (!character || typeof character !== 'object') return false;
   const greetings = Array.isArray(character.greetings) ? character.greetings.join('\n') : '';
+  const exampleMessages = Array.isArray(character.example_messages)
+    ? character.example_messages.join('\n')
+    : character.example_messages;
   return (
     hasUserPlaceholder(character.description) ||
-    hasUserPlaceholder(character.example_messages) ||
+    hasUserPlaceholder(exampleMessages) ||
     hasUserPlaceholder(character.greeting) ||
     hasUserPlaceholder(greetings)
   );

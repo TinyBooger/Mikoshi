@@ -56,7 +56,7 @@ class CharacterOut(BaseModel):
     id: int
     name: str
     description: str = ""
-    example_messages: Optional[str] = ""
+    example_messages: list[str] = []
     context_label: str = "standard"
     tagline: Optional[str] = ""
     tags: list[str] = []

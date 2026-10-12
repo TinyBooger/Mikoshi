@@ -112364,3 +112364,525 @@ FROM characters
 WHERE characters.is_public = true) AS anon_1]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 
+2026-10-12 15:24:34 - utils.error_logger - CRITICAL - [ResponseValidationError] Unhandled exception: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+ | Endpoint: GET /api/character/2
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 151, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\streams\memory.py", line 126, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 328, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 177, in serialize_response
+    raise ResponseValidationError(
+        errors=_normalize_errors(errors), body=response_content
+    )
+fastapi.exceptions.ResponseValidationError: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+
+
+2026-10-12 15:35:37 - utils.error_logger - CRITICAL - [ResponseValidationError] Unhandled exception: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+ | Endpoint: GET /api/character/2
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 151, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\streams\memory.py", line 126, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 328, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 177, in serialize_response
+    raise ResponseValidationError(
+        errors=_normalize_errors(errors), body=response_content
+    )
+fastapi.exceptions.ResponseValidationError: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+
+
+2026-10-12 15:35:37 - utils.error_logger - CRITICAL - [ResponseValidationError] Unhandled exception: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+ | Endpoint: GET /api/character/2
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 151, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\streams\memory.py", line 126, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 328, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 177, in serialize_response
+    raise ResponseValidationError(
+        errors=_normalize_errors(errors), body=response_content
+    )
+fastapi.exceptions.ResponseValidationError: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+
+
+2026-10-12 15:36:25 - utils.error_logger - CRITICAL - [ResponseValidationError] Unhandled exception: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+ | Endpoint: GET /api/character/2
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 151, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\streams\memory.py", line 126, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 328, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 177, in serialize_response
+    raise ResponseValidationError(
+        errors=_normalize_errors(errors), body=response_content
+    )
+fastapi.exceptions.ResponseValidationError: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+
+
+2026-10-12 15:36:25 - utils.error_logger - CRITICAL - [ResponseValidationError] Unhandled exception: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+ | Endpoint: GET /api/character/2
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 151, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\streams\memory.py", line 126, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 328, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 177, in serialize_response
+    raise ResponseValidationError(
+        errors=_normalize_errors(errors), body=response_content
+    )
+fastapi.exceptions.ResponseValidationError: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+
+
+2026-10-12 15:38:31 - utils.error_logger - CRITICAL - [ResponseValidationError] Unhandled exception: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+ | Endpoint: GET /api/character/2
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 151, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\streams\memory.py", line 126, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 328, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 177, in serialize_response
+    raise ResponseValidationError(
+        errors=_normalize_errors(errors), body=response_content
+    )
+fastapi.exceptions.ResponseValidationError: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+
+
+2026-10-12 15:38:31 - utils.error_logger - CRITICAL - [ResponseValidationError] Unhandled exception: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+ | Endpoint: GET /api/character/2
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 151, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\streams\memory.py", line 126, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 328, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 177, in serialize_response
+    raise ResponseValidationError(
+        errors=_normalize_errors(errors), body=response_content
+    )
+fastapi.exceptions.ResponseValidationError: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+
+
+2026-10-12 15:38:41 - utils.error_logger - CRITICAL - [ResponseValidationError] Unhandled exception: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+ | Endpoint: GET /api/character/2
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 151, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\streams\memory.py", line 126, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 328, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 177, in serialize_response
+    raise ResponseValidationError(
+        errors=_normalize_errors(errors), body=response_content
+    )
+fastapi.exceptions.ResponseValidationError: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+
+
+2026-10-12 15:38:41 - utils.error_logger - CRITICAL - [ResponseValidationError] Unhandled exception: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+ | Endpoint: GET /api/character/2
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 151, in call_next
+    message = await recv_stream.receive()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\anyio\streams\memory.py", line 126, in receive
+    raise EndOfStream from None
+anyio.EndOfStream
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\projects\Mikoshi-MonoRepo\backend\utils\security_middleware.py", line 294, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 159, in call_next
+    raise app_exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\starlette\routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 328, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "D:\projects\Mikoshi-MonoRepo\backend\venv\Lib\site-packages\fastapi\routing.py", line 177, in serialize_response
+    raise ResponseValidationError(
+        errors=_normalize_errors(errors), body=response_content
+    )
+fastapi.exceptions.ResponseValidationError: 1 validation errors:
+  {'type': 'list_type', 'loc': ('response', 'example_messages'), 'msg': 'Input should be a valid list', 'input': 'User: Why do you keep going back to heroin?\r\nRenton: "Why? Because it’s fuckin’ great, that’s why. Better than workin’ some soul-crushin’ job, pretendin’ you care about mortgages and microwave dinners. Course, then ye wake up in a pool of your own puke, so… aye, there’s a downside."\r\n\r\nUser: What’s the worst thing you’ve done for a hit?\r\nRenton: "Aside from robbin’ my own ma? Let’s just say I’ve crawled through shite—literally—for less. But tell yourself whatever you need to sleep at night, eh? We’re all just animals in the end."\r\n\r\nUser: Do you believe in redemption?\r\nRenton: "Redemption? That’s shite they sell you in church while they’re diddlin’ the choirboys. I believe in cash, gettin’ away clean, and maybe—maybe—not dyin’ in a gutter. That’s as close as I get to holy."'}
+
+

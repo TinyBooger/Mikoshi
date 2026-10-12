@@ -13,6 +13,7 @@ import UgcPolicyModal from '../components/UgcPolicyModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
+import { EXAMPLE_MESSAGE_COUNT, EXAMPLE_MESSAGE_MAX_LENGTH, normalizeExampleMessages } from '../utils/exampleMessages';
 
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import ModelSelect from '../components/ModelSelect';
@@ -27,8 +28,10 @@ import presetFemale2 from '../assets/images/female_2.png';
 // Drafts saved before the persona + long_description merge still carry the old
 // shape. Fold them into the new `description` field when restoring.
 const migrateDraftCharData = (charData) => {
-  if (!charData || 'description' in charData) return charData;
-  const { persona = '', long_description: longDescription = '', ...rest } = charData;
+  if (!charData) return charData;
+  const normalized = { ...charData, sample: normalizeExampleMessages(charData.sample) };
+  if ('description' in charData) return normalized;
+  const { persona = '', long_description: longDescription = '', ...rest } = normalized;
   const merged = [persona, longDescription].filter(Boolean).join('\n\n');
   return { ...rest, description: merged.slice(0, 15000) };
 };
@@ -130,7 +133,7 @@ export default function CharacterFormPage() {
   // one slot of this limit). Must stay in sync with MAX_GREETINGS_COUNT in
   // backend/utils/validators.py
   const MAX_GREETINGS = 20;
-  const MAX_SAMPLE_LENGTH = 200;
+  const MAX_SAMPLE_LENGTH = EXAMPLE_MESSAGE_MAX_LENGTH;
   const MAX_TAGS = 20;
   // Special prompt stored when a character uses an improvising greeting
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
@@ -186,7 +189,7 @@ export default function CharacterFormPage() {
   const [charData, setCharData] = useState({
     name: '',
     description: '',
-    sample: '',
+    sample: normalizeExampleMessages([]),
     tagline: '',
     tags: [],
     greetings: [],
@@ -395,7 +398,7 @@ export default function CharacterFormPage() {
             setCharData({
               name: data.name,
               description: data.description || '',
-              sample: data.example_messages || '',
+              sample: normalizeExampleMessages(data.example_messages),
               tagline: data.tagline || '',
               tags: data.tags || [],
               greetings: manualGreetings,
@@ -426,7 +429,7 @@ export default function CharacterFormPage() {
             setCharData({
               name: data.name || '',
               description: data.description || '',
-              sample: data.example_messages || '',
+              sample: normalizeExampleMessages(data.example_messages),
               tagline: data.tagline || '',
               tags: data.tags || [],
               greetings: manualGreetings,
@@ -531,8 +534,8 @@ export default function CharacterFormPage() {
       toast.show(`角色设定过长（最多 ${MAX_DESCRIPTION_LENGTH} 字）`, { type: 'error' });
       return;
     }
-    if (charData.sample.length > MAX_SAMPLE_LENGTH) {
-      toast.show(`Sample dialogue too long (max ${MAX_SAMPLE_LENGTH})`, { type: 'error' });
+    if (charData.sample.some(message => message.length > MAX_SAMPLE_LENGTH)) {
+      toast.show(`单条示例对话过长（最多 ${MAX_SAMPLE_LENGTH} 字）`, { type: 'error' });
       return;
     }
     const formData = new FormData();
@@ -552,7 +555,7 @@ export default function CharacterFormPage() {
     finalGreetings.push(SPECIAL_IMPROVISING_GREETING);
   }
   formData.append("greetings", JSON.stringify(finalGreetings));
-    formData.append("sample_dialogue", charData.sample.trim());
+    formData.append("sample_dialogue", JSON.stringify(normalizeExampleMessages(charData.sample)));
     const finalModel = charData.model || DEFAULT_CHAT_CONFIG.model;
   const finalTokenLimits = getTokenLimits(finalModel);
   const safeMaxTokens = clampValue(charData.max_tokens, finalTokenLimits.min, finalTokenLimits.max, finalTokenLimits.defaultValue);
@@ -1218,37 +1221,66 @@ export default function CharacterFormPage() {
             <TagRecommendations
               currentTags={charData.tags}
               onAddTag={tag => handleChange('tags', [...charData.tags, tag])}
-              sourceText={[charData.name, charData.tagline, charData.description, charData.sample]}
+              sourceText={[charData.name, charData.tagline, charData.description, ...charData.sample]}
               maxTags={MAX_TAGS}
             />
           </div>
 
           {/* Sample Dialogue */}
-          <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>示例对话（可选）</label>
-            <textarea
-              className="form-control"
-              rows={Math.max(5, Math.min(20, Math.ceil(charData.sample.length / 80)))}
-              value={charData.sample}
-              maxLength={MAX_SAMPLE_LENGTH}
-              placeholder="添加 2–3 句示例台词来体现语气。"
-              onChange={e => handleChange('sample', e.target.value)}
-              style={{
-                background: '#f5f6fa',
-                color: '#18191a',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-                paddingRight: '3rem',
-                resize: 'vertical',
-              }}
-            />
-            <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
-              {charData.sample.length}/{MAX_SAMPLE_LENGTH}
-            </small>
+          <div className="mb-4">
+            <div className="d-flex align-items-center justify-content-between mb-2">
+              <label className="form-label fw-bold mb-0" style={{ color: '#232323' }}>
+                示例对话（可选） <small className="text-muted">{charData.sample.filter(message => message.trim()).length}/{EXAMPLE_MESSAGE_COUNT}条</small>
+              </label>
+              {charData.sample.length < EXAMPLE_MESSAGE_COUNT && (
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{ backgroundColor: '#eee9ff', borderColor: '#d8ccff', color: '#4b3b70' }}
+                  onClick={() => handleChange('sample', [...charData.sample, ''])}
+                >
+                  <i className="bi bi-plus-lg me-1"></i>
+                  添加
+                </button>
+              )}
+            </div>
+            {charData.sample.map((message, index) => (
+              <div className="position-relative mb-3" key={index}>
+                <textarea
+                  className="form-control"
+                  rows={Math.max(3, Math.min(8, Math.ceil(message.length / 80)))}
+                  value={message}
+                  maxLength={MAX_SAMPLE_LENGTH}
+                  placeholder={`{{user}}：你好，很高兴认识你。\n{{char}}：我也很高兴认识你。`}
+                  onChange={e => handleChange('sample', charData.sample.map((message, messageIndex) => (
+                    messageIndex === index ? e.target.value : message
+                  )))}
+                  style={{
+                    background: '#f5f6fa',
+                    color: '#18191a',
+                    border: '1.5px solid #e9ecef',
+                    borderRadius: 16,
+                    fontSize: '1.08rem',
+                    padding: '0.7rem 1.2rem',
+                    boxShadow: 'none',
+                    outline: 'none',
+                    paddingRight: '3rem',
+                    resize: 'vertical',
+                  }}
+                />
+                <small className="text-muted position-absolute" style={{ top: 0, right: 8 }}>
+                  {message.length}/{MAX_SAMPLE_LENGTH}
+                </small>
+                <button
+                  type="button"
+                  className="btn btn-outline-danger btn-sm mt-2"
+                  onClick={() => handleChange('sample', charData.sample.filter((_, messageIndex) => messageIndex !== index))}
+                >
+                  <i className="bi bi-trash me-1"></i>
+                  移除
+                </button>
+              </div>
+            ))}
           </div>
 
           {/* Model & Context Window — available to all users */}
