@@ -16,7 +16,9 @@ from utils.session import get_current_user, get_optional_current_user
 
 router = APIRouter()
 
+MAX_NAME_LENGTH = 50
 MAX_DESCRIPTION_LENGTH = 400
+MAX_INTRO_LENGTH = 200
 
 
 # Popular Personas
@@ -158,8 +160,12 @@ async def create_persona(
     description = normalize_line_endings(description).strip() if description is not None else None
     intro = normalize_line_endings(intro).strip() if intro is not None else None
 
+    if len(name) > MAX_NAME_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Name too long (max {MAX_NAME_LENGTH})")
     if description and len(description) > MAX_DESCRIPTION_LENGTH:
         raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
+    if intro is not None and len(intro) > MAX_INTRO_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Intro too long (max {MAX_INTRO_LENGTH})")
 
     persona = Persona(
         name=name,
@@ -310,6 +316,13 @@ async def update_persona(
     description = normalize_line_endings(description).strip() if description is not None else None
     intro = normalize_line_endings(intro).strip() if intro is not None else None
 
+    if name is not None and len(name) > MAX_NAME_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Name too long (max {MAX_NAME_LENGTH})")
+    if description is not None and len(description) > MAX_DESCRIPTION_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
+    if intro is not None and len(intro) > MAX_INTRO_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Intro too long (max {MAX_INTRO_LENGTH})")
+
     # Private personas are open to all users.
     final_is_public = is_public if is_public is not None else persona.is_public
 
@@ -318,8 +331,6 @@ async def update_persona(
     if name is not None:
         persona.name = name
     if description is not None:
-        if len(description) > MAX_DESCRIPTION_LENGTH:
-            raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
         persona.description = description
     if intro is not None:
         persona.intro = intro

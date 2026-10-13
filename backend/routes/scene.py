@@ -22,7 +22,10 @@ from utils.user_utils import get_active_ban_type, is_upload_banned
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+MAX_NAME_LENGTH = 50
 MAX_DESCRIPTION_LENGTH = 400
+MAX_INTRO_LENGTH = 100
+MAX_GREETING_LENGTH = 200
 
 # ------------------- SCENE CRUD ROUTES -------------------
 
@@ -66,8 +69,14 @@ async def create_scene(
     intro = normalize_line_endings(intro).strip() if intro is not None else None
     greeting = normalize_line_endings(greeting).strip() if greeting is not None else None
 
+    if len(name) > MAX_NAME_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Name too long (max {MAX_NAME_LENGTH})")
     if len(description) > MAX_DESCRIPTION_LENGTH:
         raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
+    if intro is not None and len(intro) > MAX_INTRO_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Intro too long (max {MAX_INTRO_LENGTH})")
+    if greeting is not None and len(greeting) > MAX_GREETING_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Greeting too long (max {MAX_GREETING_LENGTH})")
 
     scene = Scene(
         name=name,
@@ -333,6 +342,15 @@ async def update_scene(
     intro = normalize_line_endings(intro).strip() if intro is not None else None
     greeting = normalize_line_endings(greeting).strip() if greeting is not None else None
 
+    if name is not None and len(name) > MAX_NAME_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Name too long (max {MAX_NAME_LENGTH})")
+    if description is not None and len(description) > MAX_DESCRIPTION_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
+    if intro is not None and len(intro) > MAX_INTRO_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Intro too long (max {MAX_INTRO_LENGTH})")
+    if greeting is not None and len(greeting) > MAX_GREETING_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Greeting too long (max {MAX_GREETING_LENGTH})")
+
     # Private scenes are open to all users.
     final_is_public = is_public if is_public is not None else scene.is_public
 
@@ -341,8 +359,6 @@ async def update_scene(
     if name is not None:
         scene.name = name
     if description is not None:
-        if len(description) > MAX_DESCRIPTION_LENGTH:
-            raise HTTPException(status_code=400, detail=f"Description too long (max {MAX_DESCRIPTION_LENGTH})")
         scene.description = description
     if intro is not None:
         scene.intro = intro

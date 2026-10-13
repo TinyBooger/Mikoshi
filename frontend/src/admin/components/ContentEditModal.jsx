@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../../components/AuthProvider";
-import { EXAMPLE_MESSAGE_COUNT, EXAMPLE_MESSAGE_MAX_LENGTH, normalizeExampleMessages } from '../../utils/exampleMessages';
+import { EXAMPLE_MESSAGE_MAX_LENGTH, normalizeExampleMessage } from '../../utils/exampleMessages';
 
 const TYPE_META = {
   character: { label: 'Character', apiBase: '/api/admin/characters' },
@@ -35,7 +35,7 @@ const resolveMediaUrl = (path) => {
 const buildEmptyForm = (contentType) => {
   const base = { tags: [], is_public: true, is_forkable: false };
   if (contentType === 'character') {
-    return { ...base, name: '', tagline: '', description: '', example_messages: normalizeExampleMessages([]), greetings: [] };
+    return { ...base, name: '', tagline: '', description: '', example_messages: normalizeExampleMessage(''), greetings: [] };
   }
   if (contentType === 'scene') {
     return { ...base, name: '', intro: '', description: '', greeting: '' };
@@ -53,7 +53,7 @@ const formFromDetail = (contentType, d) => {
   if (contentType === 'character') {
     form.tagline = d.tagline || '';
     form.description = d.description || '';
-    form.example_messages = normalizeExampleMessages(d.example_messages);
+    form.example_messages = normalizeExampleMessage(d.example_messages);
     form.greetings = Array.isArray(d.greetings)
       ? d.greetings.filter((g) => typeof g === 'string')
       : d.greeting
@@ -450,44 +450,17 @@ export default function ContentEditModal({ contentType, item, onClose, onContent
 
                       {contentType === 'character' && (
                         <div className="col-12">
-                          <div className="d-flex align-items-center justify-content-between mb-2">
-                            <label className="form-label fw-semibold mb-0">Example Messages</label>
-                            {form.example_messages.length < EXAMPLE_MESSAGE_COUNT && (
-                              <button
-                                type="button"
-                                className="btn btn-sm"
-                                style={{ backgroundColor: '#eee9ff', borderColor: '#d8ccff', color: '#4b3b70' }}
-                                disabled={isBusy}
-                                onClick={() => setField('example_messages', [...form.example_messages, ''])}
-                              >
-                                Add message
-                              </button>
-                            )}
-                          </div>
-                          {form.example_messages.map((message, index) => (
-                            <div className="mb-2" key={index}>
-                              <textarea
-                                className="form-control"
-                                rows={3}
-                                maxLength={EXAMPLE_MESSAGE_MAX_LENGTH}
-                                value={message}
-                                disabled={isBusy}
-                                placeholder={`Example message ${index + 1} (max ${EXAMPLE_MESSAGE_MAX_LENGTH} characters)`}
-                                onChange={(e) => setField('example_messages', form.example_messages.map((message, messageIndex) => (
-                                  messageIndex === index ? e.target.value : message
-                                )))}
-                              />
-                              <small className="text-muted">{message.length}/{EXAMPLE_MESSAGE_MAX_LENGTH}</small>
-                              <button
-                                type="button"
-                                className="btn btn-outline-danger btn-sm mt-1"
-                                disabled={isBusy}
-                                onClick={() => setField('example_messages', form.example_messages.filter((_, messageIndex) => messageIndex !== index))}
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          ))}
+                          <label className="form-label fw-semibold">Example Messages</label>
+                          <textarea
+                            className="form-control"
+                            rows={6}
+                            maxLength={EXAMPLE_MESSAGE_MAX_LENGTH}
+                            value={form.example_messages}
+                            disabled={isBusy}
+                            placeholder={`Example conversation (max ${EXAMPLE_MESSAGE_MAX_LENGTH} characters)`}
+                            onChange={(e) => setField('example_messages', e.target.value)}
+                          />
+                          <small className="text-muted">{form.example_messages.length}/{EXAMPLE_MESSAGE_MAX_LENGTH}</small>
                         </div>
                       )}
 

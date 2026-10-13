@@ -13,7 +13,7 @@ import UgcPolicyModal from '../components/UgcPolicyModal';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
-import { EXAMPLE_MESSAGE_COUNT, EXAMPLE_MESSAGE_MAX_LENGTH, normalizeExampleMessages } from '../utils/exampleMessages';
+import { EXAMPLE_MESSAGE_MAX_LENGTH, normalizeExampleMessage } from '../utils/exampleMessages';
 import { parseCharacterCardFile } from '../utils/characterCardImport';
 
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
@@ -30,7 +30,7 @@ import presetFemale2 from '../assets/images/female_2.png';
 // shape. Fold them into the new `description` field when restoring.
 const migrateDraftCharData = (charData) => {
   if (!charData) return charData;
-  const normalized = { ...charData, sample: normalizeExampleMessages(charData.sample) };
+  const normalized = { ...charData, sample: normalizeExampleMessage(charData.sample) };
   if ('description' in charData) return normalized;
   const { persona = '', long_description: longDescription = '', ...rest } = normalized;
   const merged = [persona, longDescription].filter(Boolean).join('\n\n');
@@ -135,6 +135,7 @@ export default function CharacterFormPage() {
   // backend/utils/validators.py
   const MAX_GREETINGS = 20;
   const MAX_SAMPLE_LENGTH = EXAMPLE_MESSAGE_MAX_LENGTH;
+  const MAX_APPEAL_REASON_LENGTH = 1000;
   const MAX_TAGS = 20;
   // Special prompt stored when a character uses an improvising greeting
   const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
@@ -190,7 +191,7 @@ export default function CharacterFormPage() {
   const [charData, setCharData] = useState({
     name: '',
     description: '',
-    sample: normalizeExampleMessages([]),
+    sample: normalizeExampleMessage(''),
     tagline: '',
     tags: [],
     greetings: [],
@@ -402,7 +403,7 @@ export default function CharacterFormPage() {
             setCharData({
               name: data.name,
               description: data.description || '',
-              sample: normalizeExampleMessages(data.example_messages),
+              sample: normalizeExampleMessage(data.example_messages),
               tagline: data.tagline || '',
               tags: data.tags || [],
               greetings: manualGreetings,
@@ -433,7 +434,7 @@ export default function CharacterFormPage() {
             setCharData({
               name: data.name || '',
               description: data.description || '',
-              sample: normalizeExampleMessages(data.example_messages),
+              sample: normalizeExampleMessage(data.example_messages),
               tagline: data.tagline || '',
               tags: data.tags || [],
               greetings: manualGreetings,
@@ -508,7 +509,7 @@ export default function CharacterFormPage() {
         tagline: card.tagline,
         tags: card.tags,
         greetings: card.greetings,
-        sample: normalizeExampleMessages(card.sample),
+        sample: normalizeExampleMessage(card.sample),
         is_forkable: true,
       }));
       setIsImprovisingGreeting(false);
@@ -530,6 +531,9 @@ export default function CharacterFormPage() {
       setCardImportNotice(card.hasCharacterBook
         ? '角色卡已导入。角色书（lorebook）未导入。'
         : '角色卡已导入，请检查内容后提交。');
+      if (card.tagsWereTrimmed) {
+        toast.show('角色卡标签超过 20 个，已自动保留前 20 个标签。');
+      }
     } catch (error) {
       toast.show(error.message || '无法导入角色卡。', { type: 'error' });
     } finally {
@@ -561,6 +565,35 @@ export default function CharacterFormPage() {
       navigate("/");
       return;
     }
+    if (charData.name.trim().length > MAX_NAME_LENGTH) {
+      toast.show(`名称超过字数限制（最多 ${MAX_NAME_LENGTH} 字）`, { type: 'error' });
+      return;
+    }
+    if (charData.tagline.trim().length > MAX_TAGLINE_LENGTH) {
+      toast.show(`简介超过字数限制（最多 ${MAX_TAGLINE_LENGTH} 字）`, { type: 'error' });
+      return;
+    }
+    if (charData.description.trim().length > MAX_DESCRIPTION_LENGTH) {
+      toast.show(`角色设定超过字数限制（最多 ${MAX_DESCRIPTION_LENGTH} 字）`, { type: 'error' });
+      return;
+    }
+    if (greetingSlotsUsed > MAX_GREETINGS) {
+      toast.show(`开场白数量超过限制（最多 ${MAX_GREETINGS} 条）`, { type: 'error' });
+      return;
+    }
+    const oversizedGreetingIndex = charData.greetings.findIndex(greeting => greeting.trim().length > MAX_GREETING_LENGTH);
+    if (oversizedGreetingIndex >= 0) {
+      toast.show(`第 ${oversizedGreetingIndex + 1} 条开场白超过字数限制（最多 ${MAX_GREETING_LENGTH} 字）`, { type: 'error' });
+      return;
+    }
+    if (charData.sample.length > MAX_SAMPLE_LENGTH) {
+      toast.show(`示例对话超过字数限制（最多 ${MAX_SAMPLE_LENGTH} 字）`, { type: 'error' });
+      return;
+    }
+    if (isAppealMode && appealReason.length > MAX_APPEAL_REASON_LENGTH) {
+      toast.show(`申诉理由超过字数限制（最多 ${MAX_APPEAL_REASON_LENGTH} 字）`, { type: 'error' });
+      return;
+    }
     if (!charData.name.trim() || !charData.description.trim()) {
       toast.show('名称和角色设定为必填项。', { type: 'error' });
       return;
@@ -579,14 +612,6 @@ export default function CharacterFormPage() {
       return;
     }
     const trimmedDescription = charData.description.trim();
-    if (trimmedDescription.length > MAX_DESCRIPTION_LENGTH) {
-      toast.show(`角色设定过长（最多 ${MAX_DESCRIPTION_LENGTH} 字）`, { type: 'error' });
-      return;
-    }
-    if (charData.sample.some(message => message.length > MAX_SAMPLE_LENGTH)) {
-      toast.show(`单条示例对话过长（最多 ${MAX_SAMPLE_LENGTH} 字）`, { type: 'error' });
-      return;
-    }
     const formData = new FormData();
     if (mode === 'edit') formData.append("id", id);
     // In fork mode, don't append id - create a new entity
@@ -604,7 +629,7 @@ export default function CharacterFormPage() {
     finalGreetings.push(SPECIAL_IMPROVISING_GREETING);
   }
   formData.append("greetings", JSON.stringify(finalGreetings));
-    formData.append("sample_dialogue", JSON.stringify(normalizeExampleMessages(charData.sample)));
+    formData.append("sample_dialogue", charData.sample);
     const finalModel = charData.model || DEFAULT_CHAT_CONFIG.model;
   const finalTokenLimits = getTokenLimits(finalModel);
   const safeMaxTokens = clampValue(charData.max_tokens, finalTokenLimits.min, finalTokenLimits.max, finalTokenLimits.defaultValue);
@@ -1075,7 +1100,6 @@ export default function CharacterFormPage() {
               className="form-control"
               required
               value={charData.name}
-              maxLength={MAX_NAME_LENGTH}
               placeholder="例如：威廉·莎士比亚"
               onChange={e => handleChange('name', e.target.value)}
               style={{
@@ -1090,7 +1114,7 @@ export default function CharacterFormPage() {
                 paddingRight: '3rem',
               }}
             />
-            <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+            <small className="position-absolute" style={{ top: 0, right: 0, color: charData.name.length > MAX_NAME_LENGTH ? '#dc2626' : '#6c757d' }}>
               {charData.name.length}/{MAX_NAME_LENGTH}
             </small>
           </div>
@@ -1109,7 +1133,6 @@ export default function CharacterFormPage() {
                 autoResizeTextarea(el);
               }}
               value={charData.tagline}
-              maxLength={MAX_TAGLINE_LENGTH}
               placeholder=""
               onInput={e => autoResizeTextarea(e.target)}
               onChange={e => handleChange('tagline', e.target.value)}
@@ -1127,7 +1150,7 @@ export default function CharacterFormPage() {
                 overflow: 'hidden',
               }}
             />
-            <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+            <small className="position-absolute" style={{ top: 0, right: 0, color: charData.tagline.length > MAX_TAGLINE_LENGTH ? '#dc2626' : '#6c757d' }}>
               {charData.tagline.length}/{MAX_TAGLINE_LENGTH}
             </small>
           </div>
@@ -1144,7 +1167,6 @@ export default function CharacterFormPage() {
               rows={Math.max(5, Math.min(20, Math.ceil(charData.description.length / 80)))}
               required
               value={charData.description}
-              maxLength={MAX_DESCRIPTION_LENGTH}
               placeholder="描述角色的特质、背景和说话风格。例如：文艺复兴时期的剧作家，语言华丽，喜欢用隐喻。"
               onChange={e => handleChange('description', e.target.value)}
               style={{
@@ -1160,7 +1182,7 @@ export default function CharacterFormPage() {
                 resize: 'vertical',
               }}
             />
-            <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+            <small className="position-absolute" style={{ top: 0, right: 0, color: charData.description.length > MAX_DESCRIPTION_LENGTH ? '#dc2626' : '#6c757d' }}>
               {charData.description.length}/{MAX_DESCRIPTION_LENGTH}
             </small>
             <small style={{ display: 'block', color: isAdvancedDescription ? '#b45309' : '#9ca3af', marginBottom: 6, fontSize: '0.8rem', fontWeight: isAdvancedDescription ? 600 : 400 }}>
@@ -1176,7 +1198,7 @@ export default function CharacterFormPage() {
               <span>
                 开场白
                 <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
-                <small className="text-muted" style={{ marginLeft: 8, fontSize: '0.85rem', fontWeight: 400 }}>
+                <small style={{ marginLeft: 8, fontSize: '0.85rem', fontWeight: 400, color: greetingSlotsUsed > MAX_GREETINGS ? '#dc2626' : '#6c757d' }}>
                   {greetingSlotsUsed}/{MAX_GREETINGS} 条
                 </small>
               </span>
@@ -1209,7 +1231,6 @@ export default function CharacterFormPage() {
                     }
                   }}
                   value={g}
-                  maxLength={MAX_GREETING_LENGTH}
                   onInput={e => autoResizeTextarea(e.target)}
                   onChange={e => {
                     const updated = [...charData.greetings];
@@ -1243,7 +1264,7 @@ export default function CharacterFormPage() {
                 >
                   <i className="bi bi-trash"></i>
                 </button>
-                <small className="text-muted" style={{ minWidth: 45, textAlign: 'right', lineHeight: 2.2 }}>
+                <small style={{ minWidth: 45, textAlign: 'right', lineHeight: 2.2, color: g.length > MAX_GREETING_LENGTH ? '#dc2626' : '#6c757d' }}>
                   {g.length}/{MAX_GREETING_LENGTH}
                 </small>
               </div>
@@ -1297,66 +1318,37 @@ export default function CharacterFormPage() {
             <TagRecommendations
               currentTags={charData.tags}
               onAddTag={tag => handleChange('tags', [...charData.tags, tag])}
-              sourceText={[charData.name, charData.tagline, charData.description, ...charData.sample]}
+              sourceText={[charData.name, charData.tagline, charData.description, charData.sample]}
               maxTags={MAX_TAGS}
             />
           </div>
 
           {/* Sample Dialogue */}
           <div className="mb-4">
-            <div className="d-flex align-items-center justify-content-between mb-2">
-              <label className="form-label fw-bold mb-0" style={{ color: '#232323' }}>
-                示例对话（可选） <small className="text-muted">{charData.sample.filter(message => message.trim()).length}/{EXAMPLE_MESSAGE_COUNT}条</small>
-              </label>
-              {charData.sample.length < EXAMPLE_MESSAGE_COUNT && (
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{ backgroundColor: '#eee9ff', borderColor: '#d8ccff', color: '#4b3b70' }}
-                  onClick={() => handleChange('sample', [...charData.sample, ''])}
-                >
-                  <i className="bi bi-plus-lg me-1"></i>
-                  添加
-                </button>
-              )}
-            </div>
-            {charData.sample.map((message, index) => (
-              <div className="position-relative mb-3" key={index}>
-                <textarea
-                  className="form-control"
-                  rows={Math.max(3, Math.min(8, Math.ceil(message.length / 80)))}
-                  value={message}
-                  maxLength={MAX_SAMPLE_LENGTH}
-                  placeholder={`{{user}}：你好，很高兴认识你。\n{{char}}：我也很高兴认识你。`}
-                  onChange={e => handleChange('sample', charData.sample.map((message, messageIndex) => (
-                    messageIndex === index ? e.target.value : message
-                  )))}
-                  style={{
-                    background: '#f5f6fa',
-                    color: '#18191a',
-                    border: '1.5px solid #e9ecef',
-                    borderRadius: 16,
-                    fontSize: '1.08rem',
-                    padding: '0.7rem 1.2rem',
-                    boxShadow: 'none',
-                    outline: 'none',
-                    paddingRight: '3rem',
-                    resize: 'vertical',
-                  }}
-                />
-                <small className="text-muted position-absolute" style={{ top: 0, right: 8 }}>
-                  {message.length}/{MAX_SAMPLE_LENGTH}
-                </small>
-                <button
-                  type="button"
-                  className="btn btn-outline-danger btn-sm mt-2"
-                  onClick={() => handleChange('sample', charData.sample.filter((_, messageIndex) => messageIndex !== index))}
-                >
-                  <i className="bi bi-trash me-1"></i>
-                  移除
-                </button>
-              </div>
-            ))}
+            <label className="form-label fw-bold" style={{ color: '#232323' }}>
+              示例对话（可选）
+            </label>
+            <textarea
+              className="form-control"
+              rows={Math.max(3, Math.min(12, Math.ceil(charData.sample.length / 100)))}
+              value={charData.sample}
+              placeholder={`{{user}}：你好，很高兴认识你。\n{{char}}：我也很高兴认识你。`}
+              onChange={e => handleChange('sample', e.target.value)}
+              style={{
+                background: '#f5f6fa',
+                color: '#18191a',
+                border: '1.5px solid #e9ecef',
+                borderRadius: 16,
+                fontSize: '1.08rem',
+                padding: '0.7rem 1.2rem',
+                boxShadow: 'none',
+                outline: 'none',
+                resize: 'vertical',
+              }}
+            />
+            <small style={{ color: charData.sample.length > MAX_SAMPLE_LENGTH ? '#dc2626' : '#6c757d' }}>
+              {charData.sample.length}/{MAX_SAMPLE_LENGTH}
+            </small>
           </div>
 
           {/* Model & Context Window — available to all users */}
@@ -1859,9 +1851,8 @@ export default function CharacterFormPage() {
                     className="form-control"
                     rows={4}
                     value={appealReason}
-                    maxLength={1000}
-                    placeholder="请描述您对内容的修改，以及申诉理由…"
                     onChange={e => setAppealReason(e.target.value)}
+                    placeholder="请描述您对内容的修改，以及申诉理由…"
 
                     style={{
                       background: '#fffbeb',
@@ -1872,7 +1863,9 @@ export default function CharacterFormPage() {
                       resize: 'vertical',
                     }}
                   />
-                  <small className="text-muted">{appealReason.length}/1000</small>
+                  <small style={{ color: appealReason.length > MAX_APPEAL_REASON_LENGTH ? '#dc2626' : '#6c757d' }}>
+                    {appealReason.length}/{MAX_APPEAL_REASON_LENGTH}
+                  </small>
                 </>
               )}
             </div>

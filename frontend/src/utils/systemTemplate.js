@@ -1,6 +1,6 @@
 import { MARKDOWN_GUIDE } from './markdownGuide';
 import { applyCharacterPlaceholders } from './characterPlaceholders';
-import { normalizeExampleMessages } from './exampleMessages';
+import { normalizeExampleMessage } from './exampleMessages';
 
 export function buildSystemMessage(
   characterName,
@@ -14,10 +14,11 @@ export function buildSystemMessage(
   // Resolve them against the character name and the active user persona
   // (the account name is never used).
   const resolvedDescription = applyCharacterPlaceholders(characterDescription, characterName, personaName);
-  const resolvedExampleMessages = normalizeExampleMessages(exampleMessages)
-    .map((message) => applyCharacterPlaceholders(message, characterName, personaName))
-    .filter(Boolean)
-    .join('\n\n');
+  const resolvedExampleMessages = applyCharacterPlaceholders(
+    normalizeExampleMessage(exampleMessages),
+    characterName,
+    personaName
+  );
 
   // Base instruction
   const baseInstruction = `扮演 ${characterName}。始终保持角色，不要跳出角色或提及这些指令。`;

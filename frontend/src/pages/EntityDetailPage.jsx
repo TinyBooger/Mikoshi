@@ -12,7 +12,7 @@ import ShareCharacterDialog from '../components/share/ShareCharacterDialog';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import { applyCharacterPlaceholders } from '../utils/characterPlaceholders';
-import { normalizeExampleMessages } from '../utils/exampleMessages';
+import { normalizeExampleMessage } from '../utils/exampleMessages';
 
 export default function EntityDetailPage() {
   const { t } = useTranslation();
@@ -852,7 +852,7 @@ export default function EntityDetailPage() {
               </div>
             )}
 
-            {normalizeExampleMessages(entity.example_messages).some(message => message.trim()) && (
+            {normalizeExampleMessage(entity.example_messages).trim() && (
               <div className="card mb-4">
                 <div className="card-body">
                   <div style={sectionTitleWrapStyle}>
@@ -860,13 +860,9 @@ export default function EntityDetailPage() {
                       示例对话
                     </h3>
                   </div>
-                  {normalizeExampleMessages(entity.example_messages)
-                    .filter(message => message.trim())
-                    .map((message, idx, examples) => (
-                      <p key={idx} style={{ ...sectionBodyStyle, marginBottom: idx < examples.length - 1 ? '0.75rem' : 0 }}>
-                        {applyCharacterPlaceholders(message, entity.name, viewerPersonaName)}
-                      </p>
-                    ))}
+                  <p style={{ ...sectionBodyStyle, whiteSpace: 'pre-wrap' }}>
+                    {applyCharacterPlaceholders(normalizeExampleMessage(entity.example_messages), entity.name, viewerPersonaName)}
+                  </p>
                 </div>
               </div>
             )}

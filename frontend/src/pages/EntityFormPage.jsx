@@ -56,6 +56,7 @@ export default function EntityFormPage() {
   const MAX_DESC_LENGTH = entityConfig.maxDescLength;
   const MAX_INTRO_LENGTH = entityConfig.maxIntroLength;
   const MAX_TAGS = entityConfig.maxTags;
+  const MAX_APPEAL_REASON_LENGTH = 1000;
 
   const { sessionToken, userData } = useContext(AuthContext);
 
@@ -292,6 +293,27 @@ export default function EntityFormPage() {
     if (!sessionToken) {
       toast.show('您需要登录才能操作。', { type: 'error' });
       navigate("/");
+      return;
+    }
+
+    if (entityData.name.length > MAX_NAME_LENGTH) {
+      toast.show(`名称超过字数限制（最多 ${MAX_NAME_LENGTH} 字）`, { type: 'error' });
+      return;
+    }
+    if (entityData.intro.length > MAX_INTRO_LENGTH) {
+      toast.show(`简介超过字数限制（最多 ${MAX_INTRO_LENGTH} 字）`, { type: 'error' });
+      return;
+    }
+    if (entityData.description.length > MAX_DESC_LENGTH) {
+      toast.show(`描述超过字数限制（最多 ${MAX_DESC_LENGTH} 字）`, { type: 'error' });
+      return;
+    }
+    if (entityType === 'scene' && !isImprovisingGreeting && entityData.greeting.length > MAX_GREETING_LENGTH) {
+      toast.show(`开场白超过字数限制（最多 ${MAX_GREETING_LENGTH} 字）`, { type: 'error' });
+      return;
+    }
+    if (isAppealMode && appealReason.length > MAX_APPEAL_REASON_LENGTH) {
+      toast.show(`申诉理由超过字数限制（最多 ${MAX_APPEAL_REASON_LENGTH} 字）`, { type: 'error' });
       return;
     }
 
@@ -673,7 +695,6 @@ export default function EntityFormPage() {
               className="form-control"
               required
               value={entityData.name}
-              maxLength={MAX_NAME_LENGTH}
               placeholder={entityType === 'scene' ? '例如："霓虹小巷"' : ''}
               onChange={e => handleChange('name', e.target.value)}
               style={{
@@ -688,7 +709,7 @@ export default function EntityFormPage() {
                 paddingRight: '3rem',
               }}
             />
-            <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+            <small className="position-absolute" style={{ top: 0, right: 0, color: entityData.name.length > MAX_NAME_LENGTH ? '#dc2626' : '#6c757d' }}>
               {entityData.name.length}/{MAX_NAME_LENGTH}
             </small>
           </div>
@@ -703,7 +724,6 @@ export default function EntityFormPage() {
               className="form-control"
               rows={Math.max(1, Math.min(3, Math.ceil(entityData.intro.length / 80)))}
               value={entityData.intro}
-              maxLength={MAX_INTRO_LENGTH}
               placeholder=""
               onChange={e => handleChange('intro', e.target.value)}
               style={{
@@ -719,7 +739,7 @@ export default function EntityFormPage() {
                 resize: 'vertical',
               }}
             />
-            <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+            <small className="position-absolute" style={{ top: 0, right: 0, color: entityData.intro.length > MAX_INTRO_LENGTH ? '#dc2626' : '#6c757d' }}>
               {entityData.intro.length}/{MAX_INTRO_LENGTH}
             </small>
           </div>
@@ -735,7 +755,6 @@ export default function EntityFormPage() {
               className="form-control"
               rows={Math.max(5, Math.min(20, Math.ceil(entityData.description.length / 80)))}
               value={entityData.description}
-              maxLength={MAX_DESC_LENGTH}
               placeholder={entityType === 'scene' ? '描述该场景的背景、氛围和故事。例如：雨夜的赛博朋克后街，招牌闪烁。' : ''}
               onChange={e => handleChange('description', e.target.value)}
               style={{
@@ -751,7 +770,7 @@ export default function EntityFormPage() {
                 resize: 'vertical',
               }}
             />
-            <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+            <small className="position-absolute" style={{ top: 0, right: 0, color: entityData.description.length > MAX_DESC_LENGTH ? '#dc2626' : '#6c757d' }}>
               {entityData.description.length}/{MAX_DESC_LENGTH}
             </small>
           </div>
@@ -778,7 +797,6 @@ export default function EntityFormPage() {
                 className="form-control"
                 rows={3}
                 value={isImprovisingGreeting ? '' : entityData.greeting}
-                maxLength={MAX_GREETING_LENGTH}
                 onChange={e => handleChange('greeting', e.target.value)}
                 disabled={isImprovisingGreeting}
                 placeholder={isImprovisingGreeting ? '系统将自动生成动态开场白。' : ''}
@@ -795,7 +813,7 @@ export default function EntityFormPage() {
                   resize: 'vertical',
                 }}
               />
-              <small className="text-muted position-absolute" style={{ top: 0, right: 0 }}>
+              <small className="position-absolute" style={{ top: 0, right: 0, color: entityData.greeting.length > MAX_GREETING_LENGTH ? '#dc2626' : '#6c757d' }}>
                 {entityData.greeting.length}/{MAX_GREETING_LENGTH}
               </small>
             </div>
@@ -932,7 +950,6 @@ export default function EntityFormPage() {
                     className="form-control"
                     rows={4}
                     value={appealReason}
-                    maxLength={1000}
                     placeholder="请描述您对内容的修改，以及申诉理由…"
                     onChange={e => setAppealReason(e.target.value)}
                     required={isAppealMode && !hasPendingAppeal}
@@ -945,7 +962,9 @@ export default function EntityFormPage() {
                       resize: 'vertical',
                     }}
                   />
-                  <small className="text-muted">{appealReason.length}/1000</small>
+                  <small style={{ color: appealReason.length > MAX_APPEAL_REASON_LENGTH ? '#dc2626' : '#6c757d' }}>
+                    {appealReason.length}/{MAX_APPEAL_REASON_LENGTH}
+                  </small>
                 </>
               )}
             </div>

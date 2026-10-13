@@ -142,19 +142,8 @@ def _join_greetings_for_moderation(greetings_list: list[str]) -> str:
     return " | ".join(g for g in greetings_list if g != "[IMPROVISE_GREETING]")
 
 
-def _parse_example_messages(raw: str) -> list[str]:
-    try:
-        messages = json.loads(raw) if raw else []
-    except (json.JSONDecodeError, TypeError):
-        messages = [raw] if raw else []
-    if isinstance(messages, str):
-        messages = [messages]
-    if not isinstance(messages, list) or len(messages) > 3:
-        raise HTTPException(status_code=400, detail="示例对话最多为 3 条文本")
-    if any(not isinstance(message, str) for message in messages):
-        raise HTTPException(status_code=400, detail="每条示例对话必须是文本")
-    normalized = [normalize_line_endings(message).strip() for message in messages]
-    return normalized
+def _parse_example_messages(raw: str) -> str:
+    return normalize_line_endings(raw or "").strip()
 
 
 @router.post("/api/create-character")
@@ -194,7 +183,7 @@ async def create_character(
 
     # Parse greetings from JSON string
     greetings_list = _parse_greetings(greetings)
-    example_messages_list = _parse_example_messages(sample_dialogue)
+    example_messages_text = _parse_example_messages(sample_dialogue)
 
     text_safe, needs_text_review, blocked_field, blocked_label, blocked_sub_label, blocked_keywords, review_field, review_label = moderate_form_payload_with_review({
         "name": name,
@@ -202,7 +191,7 @@ async def create_character(
         "tagline": tagline,
         "tags": tags,
         "greeting": _join_greetings_for_moderation(greetings_list),
-        "sample_dialogue": "\n".join(example_messages_list),
+        "sample_dialogue": example_messages_text,
         "forked_from_name": forked_from_name,
     })
     if not text_safe:
@@ -222,7 +211,7 @@ async def create_character(
     description = normalize_line_endings(description).strip()
     context_label = derive_context_label(description)
 
-    error = validate_character_fields(name, description, tagline, greetings_list, example_messages_list, tags)
+    error = validate_character_fields(name, description, tagline, greetings_list, example_messages_text, tags)
     if error:
         raise HTTPException(status_code=400, detail=error)
 
@@ -258,7 +247,7 @@ async def create_character(
         tagline=normalize_line_endings(tagline).strip(),
         tags=tags,
         greetings=greetings_list,
-        example_messages=example_messages_list,
+        example_messages=example_messages_text,
         context_label=context_label,
         model=chat_config["model"],
         temperature=chat_config["temperature"],
@@ -420,7 +409,7 @@ async def update_character(
 
     # Parse greetings from JSON string
     greetings_list = _parse_greetings(greetings)
-    example_messages_list = _parse_example_messages(sample_dialogue)
+    example_messages_text = _parse_example_messages(sample_dialogue)
 
     text_safe, needs_text_review, blocked_field, blocked_label, blocked_sub_label, blocked_keywords, review_field, review_label = moderate_form_payload_with_review({
         "name": name,
@@ -428,7 +417,7 @@ async def update_character(
         "tagline": tagline,
         "tags": tags,
         "greeting": _join_greetings_for_moderation(greetings_list),
-        "sample_dialogue": "\n".join(example_messages_list),
+        "sample_dialogue": example_messages_text,
     })
     if not text_safe:
         detail_parts = [f"Text rejected by content moderation ({blocked_field}: {blocked_label})"]
@@ -447,7 +436,7 @@ async def update_character(
     description = normalize_line_endings(description).strip()
     context_label = derive_context_label(description)
     
-    error = validate_character_fields(name, description, tagline, greetings_list, example_messages_list, tags)
+    error = validate_character_fields(name, description, tagline, greetings_list, example_messages_text, tags)
     if error:
         raise HTTPException(status_code=400, detail=error)
     
@@ -467,7 +456,7 @@ async def update_character(
     char.tagline = normalize_line_endings(tagline).strip()
     char.tags = tags
     char.greetings = greetings_list
-    char.example_messages = example_messages_list
+    char.example_messages = example_messages_text
     char.context_label = context_label
     chat_config = parse_character_chat_config(
         model=model,

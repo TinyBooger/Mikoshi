@@ -10,7 +10,7 @@ backend/venv/
 **/__pycache__/
 frontend/node_modules/
 backend/static/images/
-backend/logs/
+backend/logs/*
 frontend/public/wallpapers/*
 frontend/Mikoshi.env
 backend/migrations/

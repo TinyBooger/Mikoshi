@@ -2,13 +2,10 @@ from utils.text_normalization import normalize_line_endings
 
 
 def validate_example_messages(example_messages):
-    if not isinstance(example_messages, list) or len(example_messages) > 3:
-        return "示例对话最多为 3 条"
-    for message in example_messages:
-        if not isinstance(message, str):
-            return "每条示例对话必须是文本"
-        if len(normalize_line_endings(message)) > 400:
-            return "单条示例对话过长（最多 400 字）"
+    if not isinstance(example_messages, str):
+        return "示例对话必须是文本"
+    if len(normalize_line_endings(example_messages)) > 2000:
+        return "示例对话过长（最多 2,000 字）"
     return None
 
 

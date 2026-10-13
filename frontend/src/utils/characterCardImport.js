@@ -1,5 +1,3 @@
-import { EXAMPLE_MESSAGE_COUNT, EXAMPLE_MESSAGE_MAX_LENGTH } from './exampleMessages';
-
 export const CHARACTER_CARD_IMPORT_MAX_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_IMAGE_PIXELS = 16_000_000;
 const MAX_IMAGE_DIMENSION = 4096;
@@ -104,39 +102,6 @@ const normalizePlaceholders = (text) => text
   .replace(/\{\{\s*char\s*\}\}/gi, '{{char}}')
   .replace(/\{\{\s*user\s*\}\}/gi, '{{user}}');
 
-const trimExampleAtTurnBoundary = (text) => {
-  if (text.length <= EXAMPLE_MESSAGE_MAX_LENGTH) return text;
-  const speakerPattern = /^\s*\{\{\s*(char|user)\s*\}\}\s*:/gim;
-  const speakers = [];
-  let match;
-  while ((match = speakerPattern.exec(text)) !== null) {
-    speakers.push({ role: match[1].toLowerCase(), start: match.index });
-  }
-
-  if (speakers.length) {
-    let lastCompleteTurnEnd = -1;
-    speakers.forEach((speaker, index) => {
-      if (speaker.role !== 'char') return;
-      const nextSpeaker = speakers[index + 1];
-      const turnEnd = nextSpeaker ? nextSpeaker.start : text.length;
-      if (turnEnd <= EXAMPLE_MESSAGE_MAX_LENGTH) lastCompleteTurnEnd = turnEnd;
-    });
-    return lastCompleteTurnEnd > 0 ? text.slice(0, lastCompleteTurnEnd).trim() : '';
-  }
-
-  const lastLineBreak = text.lastIndexOf('\n', EXAMPLE_MESSAGE_MAX_LENGTH);
-  return text.slice(0, lastLineBreak > 0 ? lastLineBreak : EXAMPLE_MESSAGE_MAX_LENGTH).trim();
-};
-
-const parseExampleMessages = (value) => {
-  if (typeof value !== 'string') return [];
-  return value
-    .split(/<START>/i)
-    .map((example) => trimExampleAtTurnBoundary(normalizePlaceholders(example.trim())))
-    .filter(Boolean)
-    .slice(0, EXAMPLE_MESSAGE_COUNT);
-};
-
 export const parseCharacterCard = (card) => {
   if (!card || typeof card !== 'object' || Array.isArray(card)) {
     throw new Error('角色卡 JSON 格式无效。');
@@ -160,7 +125,6 @@ export const parseCharacterCard = (card) => {
   const name = typeof data.name === 'string' ? data.name.trim() : '';
   const originalDescription = typeof data.description === 'string' ? data.description.trim() : '';
   if (!name) throw new Error('角色卡名称不能为空。');
-  if (name.length > 50) throw new Error('角色卡名称超过当前支持的 50 个字符上限。');
   if (!originalDescription) throw new Error('角色卡描述不能为空。');
 
   const descriptionParts = [normalizePlaceholders(originalDescription)];
@@ -169,9 +133,6 @@ export const parseCharacterCard = (card) => {
   if (personality) descriptionParts.push(`Personality:\n${personality}`);
   if (scenario) descriptionParts.push(`Scenario:\n${scenario}`);
   const description = descriptionParts.join('\n\n');
-  if (description.length > 15000) {
-    throw new Error('合并后的角色设定超过 15,000 个字符，无法导入。');
-  }
 
   const alternateGreetings = Array.isArray(data.alternate_greetings)
     ? data.alternate_greetings.filter((greeting) => typeof greeting === 'string')
@@ -180,30 +141,23 @@ export const parseCharacterCard = (card) => {
     ...(typeof data.first_mes === 'string' ? [data.first_mes] : []),
     ...alternateGreetings,
   ].map((greeting) => normalizePlaceholders(greeting.trim())).filter(Boolean);
-  if (greetings.length > 20) {
-    throw new Error('角色卡开场白超过当前支持的 20 条上限。');
-  }
-  if (greetings.some((greeting) => greeting.length > 3000)) {
-    throw new Error('角色卡中的开场白超过当前支持的 3,000 个字符上限。');
-  }
-
   const rawTags = Array.isArray(data.tags) ? data.tags : [];
-  const tags = [...new Set(rawTags
+  const normalizedTags = [...new Set(rawTags
     .filter((tag) => typeof tag === 'string')
     .map((tag) => tag.trim().toLowerCase())
     .filter(Boolean))];
-  if (tags.length > 20) {
-    throw new Error('角色卡标签超过当前支持的 20 个上限。');
-  }
+  const tagsWereTrimmed = normalizedTags.length > 20;
+  const tags = normalizedTags.slice(0, 20);
 
   return {
     name,
     description,
-    tagline: typeof data.creator_notes === 'string' ? data.creator_notes.trim().slice(0, 255) : '',
+    tagline: typeof data.creator_notes === 'string' ? data.creator_notes.trim() : '',
     tags,
     greetings,
-    sample: parseExampleMessages(data.mes_example),
+    sample: typeof data.mes_example === 'string' ? normalizePlaceholders(data.mes_example) : '',
     hasCharacterBook: !!data.character_book,
+    tagsWereTrimmed,
   };
 };
 

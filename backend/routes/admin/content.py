@@ -25,7 +25,7 @@ class CharacterUpdate(BaseModel):
     description: Optional[str] = None
     tagline: Optional[str] = None
     greetings: Optional[List[str]] = None
-    example_messages: Optional[List[str]] = None
+    example_messages: Optional[str] = None
     tags: Optional[List[str]] = None
     is_public: Optional[bool] = None
     is_forkable: Optional[bool] = None

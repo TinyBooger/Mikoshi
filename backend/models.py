@@ -11,12 +11,7 @@ class Character(Base):
     # Merged persona + long_description ("角色设定"). 15000-char limit is
     # enforced in utils/validators.py.
     description = Column(Text, nullable=False, default="")
-    example_messages = Column(
-        JSONB,
-        nullable=False,
-        default=list,
-        server_default=text("'[]'::jsonb"),
-    )
+    example_messages = Column(Text, nullable=False, default="", server_default=text("''"))
     context_label = Column(String(20), nullable=False, default="standard")
     tagline = Column(String(255), default="")  # 50 words fits ~255 chars
     tags = Column(ARRAY(Text), default=list)   # array of strings
