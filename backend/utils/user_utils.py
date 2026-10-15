@@ -285,7 +285,13 @@ def _add_months(dt: datetime, months: int) -> datetime:
     return dt.replace(year=target_year, month=target_month, day=min(dt.day, last_day))
 
 
-def upgrade_to_pro(user: User, db: Session, duration_months: int = 1, duration_days: int | None = None) -> User:
+def upgrade_to_pro(
+    user: User,
+    db: Session,
+    duration_months: int = 1,
+    duration_days: int | None = None,
+    commit: bool = True,
+) -> User:
     """
     Upgrade a user to Pro status.
 
@@ -320,8 +326,11 @@ def upgrade_to_pro(user: User, db: Session, duration_months: int = 1, duration_d
     user.is_pro = True
     user.pro_expire_date = new_expire
     
-    db.commit()
-    db.refresh(user)
+    if commit:
+        db.commit()
+        db.refresh(user)
+    else:
+        db.flush()
     
     return user
 

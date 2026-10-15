@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useContext } from "react";
+import { useNavigate } from "react-router";
 import { AuthContext } from "../../components/AuthProvider";
 import PaginationBar from "../../components/PaginationBar";
 
 export default function ProblemReportsPage() {
+  const navigate = useNavigate();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -341,6 +343,24 @@ export default function ProblemReportsPage() {
                         <i className="bi bi-chat-left-text me-1"></i>
                         Edit public reply
                       </button>
+                      {report.user_id && (
+                        <button
+                          className="btn btn-sm btn-outline-primary"
+                          onClick={() => navigate("/admin/user-messages", {
+                            state: {
+                              recipient: {
+                                id: report.user_id,
+                                email: report.user_email,
+                              },
+                              reportId: report.id,
+                            },
+                          })}
+                          title="Send a private inbox message to the reporter"
+                        >
+                          <i className="bi bi-envelope me-1"></i>
+                          Message reporter
+                        </button>
+                      )}
                       <button
                         className="btn btn-sm btn-outline-secondary"
                         onClick={() => handleAdminNotesChange(report)}

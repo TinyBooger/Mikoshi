@@ -4,6 +4,7 @@
 - Full CRUD for users, characters, scenes, and more.
 - Audit log viewing and management.
 - Error log dashboard for monitoring and resolution.
+- **User Messages** lets admins search for a user and send a private inbox message using custom text or the issue-report thank-you template. The template provides selectable Pro gifts (1, 3, 6, or 12 months) and credit gifts (100, 500, 1,000, 2,000, 8,000, or 15,000 credits). Selected rewards are granted when the message is sent; Pro gifts use the same calendar-month extension behavior as the User panel. Problem Reports also links directly to a message for the report submitter.
 
 ## Database Backup & Restore
 - Use scripts in scripts/backup/ for daily/weekly backups.

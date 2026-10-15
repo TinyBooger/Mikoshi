@@ -22,6 +22,7 @@ import SearchTermsPage from './admin/pages/SearchTermsPage.jsx';
 import ProblemReportsPage from './admin/pages/ProblemReportsPage.jsx';
 import ModerationPage from './admin/pages/ModerationPage.jsx';
 import NotificationsPage from './admin/pages/NotificationsPage.jsx';
+import UserMessagesPage from './admin/pages/UserMessagesPage.jsx';
 import ErrorLogsPage from './admin/pages/ErrorLogsPage.jsx';
 import AuditLogsPage from './admin/pages/AuditLogsPage.jsx';
 import UserStatsPage from './admin/pages/UserStatsPage.jsx';
@@ -148,6 +149,7 @@ const router = createBrowserRouter([
       { path: 'problem-reports', element: <ProblemReportsPage /> },
       { path: 'moderation', element: <ModerationPage /> },
       { path: 'notifications', element: <NotificationsPage /> },
+      { path: 'user-messages', element: <UserMessagesPage /> },
       { path: 'error-logs', element: <ErrorLogsPage /> },
       { path: 'audit-logs', element: <AuditLogsPage /> },
       { path: 'user-stats', element: <UserStatsPage /> },

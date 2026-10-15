@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database import get_db
 from models import UserMessage, User, BanAppeal
+from utils.credit_wallet import credit_wallet
 from utils.audit_logger import audit_request
 from utils.session import get_current_user, get_current_admin_user
 from pydantic import BaseModel
@@ -35,6 +36,7 @@ class AdminSendMessageRequest(BaseModel):
     title: str
     body: str
     extra: Optional[dict] = {}
+    reward: Optional[dict] = None
 
 
 # ──────────────────────────────────────────────
@@ -199,6 +201,33 @@ def admin_send_message(
     if not target:
         raise HTTPException(status_code=404, detail="Target user not found")
 
+    reward = payload.reward
+    if reward is not None:
+        reward_type = reward.get("type") if isinstance(reward, dict) else None
+        if reward_type not in ("pro", "credits"):
+            raise HTTPException(status_code=400, detail="Reward type must be 'pro' or 'credits'")
+        amount = reward.get("amount")
+        allowed_amounts = (
+            {1, 3, 6, 12}
+            if reward_type == "pro"
+            else {100, 500, 1000, 2000, 8000, 15000}
+        )
+        if isinstance(amount, bool) or not isinstance(amount, int) or amount not in allowed_amounts:
+            raise HTTPException(status_code=400, detail="Invalid reward amount")
+
+        if reward_type == "pro":
+            from utils.user_utils import upgrade_to_pro
+
+            upgrade_to_pro(target, db, duration_months=amount, commit=False)
+        else:
+            credit_wallet(
+                db,
+                user_id=target.id,
+                credits=amount,
+                source="admin_gift",
+                metadata={"admin_id": current_admin.id, "reason": "issue_report_thank_you"},
+            )
+
     msg = UserMessage(
         user_id=payload.user_id,
         msg_type=payload.msg_type,
@@ -211,6 +240,19 @@ def admin_send_message(
     db.commit()
     db.refresh(msg)
 
+    if reward:
+        audit_request(
+            request,
+            action="admin_grant_pro" if reward["type"] == "pro" else "admin_grant_credits",
+            user_id=target.id,
+            metadata={
+                "admin_id": current_admin.id,
+                "amount": reward["amount"],
+                "message_id": msg.id,
+                "reason": "issue_report_thank_you",
+            },
+        )
+
     audit_request(
         request,
         action="admin_send_message",
@@ -220,6 +262,7 @@ def admin_send_message(
             "msg_type": payload.msg_type,
             "message_id": msg.id,
             "title": payload.title,
+            "reward": reward,
         },
     )
 
