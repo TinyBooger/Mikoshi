@@ -51,7 +51,7 @@ export default function SettingsPage() {
   const [searchParams] = useSearchParams();
   const urlTab = searchParams.get('tab');
   const openReportFromUrl = searchParams.get('report') === '1';
-  const validSections = ['account', 'orderHistory', 'language', 'help'];
+  const validSections = ['account', 'orderHistory', 'language', 'help', 'reports'];
   const initialSection = validSections.includes(urlTab) ? urlTab : (openReportFromUrl ? 'help' : 'account');
 
   const [activeSection, setActiveSection] = useState(initialSection);
@@ -89,6 +89,10 @@ export default function SettingsPage() {
   const [lang, setLang] = useState('zh');
   const [showProblemReport, setShowProblemReport] = useState(openReportFromUrl);
   const [isCompact, setIsCompact] = useState(window.innerWidth < 992);
+  const [myReports, setMyReports] = useState([]);
+  const [myReportsLoading, setMyReportsLoading] = useState(false);
+  const [myReportsError, setMyReportsError] = useState('');
+  const [myReportsRefreshKey, setMyReportsRefreshKey] = useState(0);
 
   const baseButtonStyle = {
     borderRadius: '0.65rem',
@@ -180,6 +184,37 @@ export default function SettingsPage() {
       setLang('zh');
     }
   }, [i18n]);
+
+  React.useEffect(() => {
+    if (activeSection !== 'reports' || !sessionToken) return undefined;
+
+    let cancelled = false;
+    const loadMyReports = async () => {
+      setMyReportsLoading(true);
+      setMyReportsError('');
+      try {
+        const response = await fetch(`${window.API_BASE_URL}/api/problem-reports/mine`, {
+          headers: { Authorization: sessionToken },
+        });
+        if (!response.ok) {
+          throw new Error(`Request failed (${response.status})`);
+        }
+        const reports = await response.json();
+        if (!cancelled) setMyReports(reports);
+      } catch (error) {
+        console.error('Error fetching my problem reports:', error);
+        if (!cancelled) setMyReportsError('加载问题报告失败，请稍后重试。');
+      } finally {
+        if (!cancelled) setMyReportsLoading(false);
+      }
+    };
+
+    loadMyReports();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSection, sessionToken, myReportsRefreshKey]);
+
   if (!userData) return null;
 
   const handleLangToggle = (newLang) => {
@@ -552,6 +587,22 @@ export default function SettingsPage() {
               >
                 帮助
               </button>
+              <button
+                onClick={() => setActiveSection('reports')}
+                style={getNavButtonStyle(activeSection === 'reports')}
+                onMouseEnter={(e) => {
+                  if (activeSection !== 'reports') {
+                    e.currentTarget.style.background = '#f8f7fc';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeSection !== 'reports') {
+                    e.currentTarget.style.background = 'transparent';
+                  }
+                }}
+              >
+                问题进度
+              </button>
             </nav>
           </div>
 
@@ -923,8 +974,97 @@ export default function SettingsPage() {
                   <AppButton onClick={() => setShowProblemReport(true)}>
                     <i className="bi bi-bug me-2"></i>问题报告 / Bug反馈
                   </AppButton>
+                  <AppButton variant="secondary" onClick={() => setActiveSection('reports')}>
+                    <i className="bi bi-clipboard-check me-2"></i>查看问题进度
+                  </AppButton>
                 </section>
               </>
+            )}
+
+            {activeSection === 'reports' && (
+              <section style={sectionCardStyle}>
+                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                  <div>
+                    <h4 className="mb-1">我的问题报告</h4>
+                    <p className="text-muted mb-0">查看已提交问题的处理状态和回复。</p>
+                  </div>
+                  <AppButton
+                    variant="secondary"
+                    onClick={() => setMyReportsRefreshKey((key) => key + 1)}
+                    disabled={myReportsLoading}
+                  >
+                    <i className="bi bi-arrow-clockwise me-2"></i>刷新
+                  </AppButton>
+                </div>
+
+                {myReportsLoading ? (
+                  <div className="text-center py-4" role="status">
+                    <div className="spinner-border text-secondary" />
+                    <span className="visually-hidden">正在加载</span>
+                  </div>
+                ) : myReportsError ? (
+                  <div className="alert alert-danger mb-0">
+                    {myReportsError}
+                    <button
+                      className="btn btn-sm btn-outline-danger ms-2"
+                      onClick={() => setMyReportsRefreshKey((key) => key + 1)}
+                    >
+                      重试
+                    </button>
+                  </div>
+                ) : myReports.length === 0 ? (
+                  <div className="text-center py-4">
+                    <p className="text-muted mb-3">您还没有提交问题报告。</p>
+                    <AppButton onClick={() => setActiveSection('help')}>前往提交问题</AppButton>
+                  </div>
+                ) : (
+                  <div className="d-flex flex-column gap-3">
+                    {myReports.map((report) => {
+                      const statusLabels = {
+                        pending: '待处理',
+                        'in-progress': '处理中',
+                        resolved: '已解决',
+                        closed: '已关闭',
+                      };
+                      const statusClasses = {
+                        pending: 'bg-warning text-dark',
+                        'in-progress': 'bg-info text-dark',
+                        resolved: 'bg-success',
+                        closed: 'bg-secondary',
+                      };
+                      return (
+                        <article key={report.id} className="border rounded-3 p-3">
+                          <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                            <div className="fw-semibold">
+                              报告 #{report.id}
+                              {report.reason && (
+                                <span className="text-muted fw-normal ms-2">
+                                  {report.reason.replace(/_/g, ' ')}
+                                </span>
+                              )}
+                            </div>
+                            <span className={`badge ${statusClasses[report.status] || 'bg-secondary'}`}>
+                              {statusLabels[report.status] || report.status}
+                            </span>
+                          </div>
+                          <div className="small text-muted mb-2">
+                            提交时间：{new Date(report.created_time).toLocaleString()}
+                          </div>
+                          <p className="mb-2" style={{ whiteSpace: 'pre-wrap' }}>
+                            {report.description || '（未填写描述）'}
+                          </p>
+                          {report.user_note && (
+                            <div className="alert alert-info mb-0 py-2">
+                              <strong>处理回复：</strong>
+                              <span style={{ whiteSpace: 'pre-wrap' }}> {report.user_note}</span>
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
             )}
 
             {/* Language Settings Section */}

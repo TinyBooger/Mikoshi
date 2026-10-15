@@ -38,12 +38,12 @@ export default function ProblemReportsPage() {
     fetchReports(filterStatus === 'all' ? null : filterStatus);
   }, [sessionToken, filterStatus]);
 
-  const handleStatusChange = async (reportId, newStatus, adminNotes = '') => {
+  const handleStatusChange = async (reportId, newStatus, publicReply) => {
     try {
       const formData = new FormData();
       formData.append('status', newStatus);
-      if (adminNotes) {
-        formData.append('admin_notes', adminNotes);
+      if (publicReply !== undefined) {
+        formData.append('user_note', publicReply);
       }
 
       const response = await fetch(`${window.API_BASE_URL}/api/problem-reports/${reportId}/status`, {
@@ -64,6 +64,68 @@ export default function ProblemReportsPage() {
     } catch (err) {
       console.error('Error updating status:', err);
       alert('Failed to update status');
+    }
+  };
+
+  const handleUserNoteChange = async (report) => {
+    const note = prompt(
+      'User-facing note (visible to the reporter; leave blank to clear):',
+      report.user_note || ''
+    );
+    if (note === null) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('user_note', note);
+      const response = await fetch(`${window.API_BASE_URL}/api/problem-reports/${report.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': sessionToken,
+        },
+        body: formData
+      });
+
+      if (response.ok) {
+        alert('User-facing note updated successfully');
+        fetchReports(filterStatus === 'all' ? null : filterStatus);
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.detail || 'Failed to update note'}`);
+      }
+    } catch (err) {
+      console.error('Error updating user-facing note:', err);
+      alert('Failed to update user-facing note');
+    }
+  };
+
+  const handleAdminNotesChange = async (report) => {
+    const notes = prompt(
+      'Private admin notes (not visible to the reporter; leave blank to clear):',
+      report.admin_notes || ''
+    );
+    if (notes === null) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('admin_notes', notes);
+      const response = await fetch(`${window.API_BASE_URL}/api/problem-reports/${report.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': sessionToken,
+        },
+        body: formData
+      });
+
+      if (response.ok) {
+        alert('Private admin notes updated successfully');
+        fetchReports(filterStatus === 'all' ? null : filterStatus);
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.detail || 'Failed to update admin notes'}`);
+      }
+    } catch (err) {
+      console.error('Error updating private admin notes:', err);
+      alert('Failed to update private admin notes');
     }
   };
 
@@ -192,7 +254,12 @@ export default function ProblemReportsPage() {
                     </div>
                     {report.admin_notes && (
                       <small className="text-muted d-block mt-1">
-                        <strong>Notes:</strong> {report.admin_notes}
+                        <strong>Admin notes (private):</strong> {report.admin_notes}
+                      </small>
+                    )}
+                    {report.user_note && (
+                      <small className="text-muted d-block mt-1">
+                        <strong>Reply to user:</strong> {report.user_note}
                       </small>
                     )}
                   </td>
@@ -249,8 +316,16 @@ export default function ProblemReportsPage() {
                         value={report.status}
                         onChange={(e) => {
                           const newStatus = e.target.value;
-                          const notes = prompt('Add admin notes (optional):');
-                          handleStatusChange(report.id, newStatus, notes || '');
+                          if (newStatus === 'resolved' && report.status !== 'resolved') {
+                            const reply = prompt(
+                              'A public reply is required to resolve this report:',
+                              report.user_note || ''
+                            );
+                            if (reply === null) return;
+                            handleStatusChange(report.id, newStatus, reply.trim());
+                            return;
+                          }
+                          handleStatusChange(report.id, newStatus);
                         }}
                       >
                         <option value="pending">Pending</option>
@@ -258,6 +333,22 @@ export default function ProblemReportsPage() {
                         <option value="resolved">Resolved</option>
                         <option value="closed">Closed</option>
                       </select>
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => handleUserNoteChange(report)}
+                        title="This note is visible to the reporter"
+                      >
+                        <i className="bi bi-chat-left-text me-1"></i>
+                        Edit public reply
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => handleAdminNotesChange(report)}
+                        title="Private; not visible to the reporter"
+                      >
+                        <i className="bi bi-journal-text me-1"></i>
+                        Edit private notes
+                      </button>
                       <button
                         className="btn btn-sm btn-outline-danger"
                         onClick={() => handleDelete(report.id)}

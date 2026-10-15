@@ -246,9 +246,19 @@ class ProblemReportOut(BaseModel):
     created_time: Any
     resolved_time: Optional[Any] = None
     admin_notes: Optional[str] = None
+    user_note: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+class ProblemReportUserOut(BaseModel):
+    id: int
+    description: str
+    reason: Optional[str] = None
+    status: str
+    created_time: Any
+    resolved_time: Optional[Any] = None
+    user_note: Optional[str] = None
     
     class Config:
         from_attributes = True

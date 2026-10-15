@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, R
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from database import get_db
-from models import ProblemReport, User
-from schemas import ProblemReportCreate, ProblemReportOut
+from models import ProblemReport, User, UserMessage
+from schemas import ProblemReportCreate, ProblemReportOut, ProblemReportUserOut
 from utils.audit_logger import audit_request
+from utils.email_utils import BRAND_NAME
 from utils.session import get_current_user, get_current_admin_user
 from utils.content_review_queue import enqueue_character_review
 from typing import List, Optional
@@ -76,6 +77,35 @@ def create_problem_report(
     return problem_report
 
 
+@router.get("/mine", response_model=List[ProblemReportUserOut])
+def get_my_problem_reports(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get the signed-in user's general issue reports and their public responses."""
+    reports = (
+        db.query(ProblemReport)
+        .filter(
+            ProblemReport.user_id == current_user.id,
+            ProblemReport.target_type.is_(None),
+        )
+        .order_by(desc(ProblemReport.created_time))
+        .all()
+    )
+    return [
+        {
+            "id": report.id,
+            "description": report.description,
+            "reason": report.reason,
+            "status": report.status,
+            "created_time": report.created_time,
+            "resolved_time": report.resolved_time,
+            "user_note": report.user_note,
+        }
+        for report in reports
+    ]
+
+
 @router.get("", response_model=List[ProblemReportOut])
 def get_problem_reports(
     status: Optional[str] = None,
@@ -98,8 +128,9 @@ def get_problem_reports(
 def update_problem_report_status(
     report_id: int,
     request: Request,
-    status: str = Form(...),
+    status: Optional[str] = Form(None),
     admin_notes: Optional[str] = Form(None),
+    user_note: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_admin_user)
 ):
@@ -108,15 +139,52 @@ def update_problem_report_status(
     
     if not report:
         raise HTTPException(status_code=404, detail="Problem report not found")
-    
-    report.status = status
+
+    if status is None and admin_notes is None and user_note is None:
+        raise HTTPException(status_code=400, detail="No report updates provided")
+
+    previous_status = report.status
+    resolving = status == "resolved" and previous_status != "resolved"
+
+    if resolving:
+        if user_note is None:
+            raise HTTPException(
+                status_code=400,
+                detail="A public reply step is required when resolving a problem report",
+            )
+        if not report.user_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot notify the reporter because their account is unavailable",
+            )
+
+    if status is not None:
+        if status not in ["pending", "in-progress", "resolved", "closed"]:
+            raise HTTPException(status_code=400, detail="Invalid problem report status")
+        report.status = status
     
     if admin_notes is not None:
         report.admin_notes = admin_notes
+
+    if user_note is not None:
+        report.user_note = user_note
     
-    if status in ["resolved", "closed"]:
-        report.resolved_time = datetime.now(UTC)
-    
+    if status is not None and status != previous_status:
+        if status in ["resolved", "closed"]:
+            report.resolved_time = datetime.now(UTC)
+        else:
+            report.resolved_time = None
+
+    if resolving and user_note.strip():
+        db.add(UserMessage(
+            user_id=report.user_id,
+            msg_type="system",
+            title=f"{BRAND_NAME}问题报告 #{report.id} 已解决",
+            body=user_note.strip(),
+            extra={"problem_report_id": report.id},
+            created_by=current_admin.id,
+        ))
+
     db.commit()
     db.refresh(report)
 
@@ -127,8 +195,9 @@ def update_problem_report_status(
         metadata={
             "report_id": report_id,
             "reporter_id": report.user_id,
-            "status": status,
+            "status": report.status,
             "admin_notes": admin_notes,
+            "user_note": user_note,
         },
     )
 

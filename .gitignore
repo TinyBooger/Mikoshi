@@ -6,6 +6,7 @@ backend/venv/
 
 # Ignore editor settings
 .vscode/
+.github/
 
 **/__pycache__/
 frontend/node_modules/
@@ -13,7 +14,10 @@ backend/static/images/
 backend/logs/*
 frontend/public/wallpapers/*
 frontend/Mikoshi.env
-backend/migrations/
+backend/migrations/*
+!backend/migrations/add_problem_report_user_note.sql
+
+backend/tests/
 
 nginx/conf.d/mikoshi.conf.backup
 nginx/yubandao.com_nginx/

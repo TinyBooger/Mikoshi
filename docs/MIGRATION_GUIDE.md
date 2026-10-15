@@ -13,6 +13,7 @@ Major database migrations and implementation changes for Mikoshi. Run migrations
 - Invitation codes
 - Character setting merge (`characters.persona` + `characters.long_description` → `characters.description`, see `backend/migrations/migration5.sql`)
 - Non-unique character and persona names (see `backend/migrations/migration6.sql`)
+- Reporter-facing problem report replies (`backend/migrations/add_problem_report_user_note.sql`)
 - Other SQL/Python migrations as needed
 
 ## Chat History Migration

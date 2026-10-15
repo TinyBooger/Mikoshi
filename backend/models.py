@@ -348,6 +348,7 @@ class ProblemReport(Base):
     created_time = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     resolved_time = Column(DateTime(timezone=True), nullable=True)
     admin_notes = Column(Text, nullable=True)
+    user_note = Column(Text, nullable=True)
     action_taken = Column(String(30), nullable=True)  # warn | upload_ban | full_ban | shadow_ban | unban | ignore | keep | hide | delete
     resolved_by = Column(String, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
