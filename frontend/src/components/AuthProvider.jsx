@@ -306,6 +306,32 @@ export function AuthProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionToken]);
 
+  useEffect(() => {
+    const resetAt = Date.parse(userData?.next_free_daily_reset_at || '');
+    if (!sessionToken || !Number.isFinite(resetAt)) return undefined;
+
+    const refreshAfterReset = () => {
+      if (Date.now() >= resetAt) {
+        fetchUserData({ silent: true });
+      }
+    };
+    const timeoutId = window.setTimeout(
+      refreshAfterReset,
+      Math.max(0, resetAt - Date.now()) + 1000
+    );
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshAfterReset();
+    };
+
+    window.addEventListener('focus', refreshAfterReset);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener('focus', refreshAfterReset);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchUserData, sessionToken, userData?.next_free_daily_reset_at]);
+
   return (
     <AuthContext.Provider value={{
       userData,
