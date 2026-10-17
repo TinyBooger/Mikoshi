@@ -1,6 +1,6 @@
 import './i18n';
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import App from './App.jsx';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -21,12 +21,32 @@ window.API_BASE_URL = envApiBaseUrl && envApiBaseUrl.trim() !== ""
 // Initialize error logging with global handlers
 errorLogger.init();
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <AuthProvider>
-      <ToastProvider>
-        <App />
-      </ToastProvider>
-    </AuthProvider>
-  </React.StrictMode>
-);
+const rootElement = document.getElementById('root');
+const prerenderDataElement = document.getElementById('prerender-data');
+const initialBrowseData = prerenderDataElement
+  ? JSON.parse(prerenderDataElement.textContent)
+  : null;
+
+if (initialBrowseData && window.location.pathname === '/') {
+  window.__PRERENDER_DATA__ = initialBrowseData;
+  hydrateRoot(
+    rootElement,
+    <React.StrictMode>
+      <AuthProvider initialState={{ sessionToken: null, userData: null, loading: false }}>
+        <ToastProvider>
+          <App initialBrowseData={initialBrowseData} />
+        </ToastProvider>
+      </AuthProvider>
+    </React.StrictMode>
+  );
+} else {
+  createRoot(rootElement).render(
+    <React.StrictMode>
+      <AuthProvider>
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </AuthProvider>
+    </React.StrictMode>
+  );
+}

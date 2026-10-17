@@ -9,7 +9,11 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { userData } = useContext(AuthContext);
-  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 640 : false));
+  const isPrerenderHydration =
+    typeof window !== 'undefined' && Boolean(window.__PRERENDER_DATA__);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && !isPrerenderHydration && window.innerWidth < 640
+  );
   const [isCreatorHovered, setIsCreatorHovered] = useState(false);
   const [isCardHovered, setIsCardHovered] = useState(false);
   const [isAdvancedBadgeHovered, setIsAdvancedBadgeHovered] = useState(false);
@@ -26,6 +30,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     const handleResize = () => setIsMobile(window.innerWidth < 640);
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -92,8 +97,12 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
       ? creator_name.profile_pic || creator_name.avatar || creator_name.avatar_picture
       : null);
 
+  const creatorAvatarBase =
+    typeof window !== 'undefined' && !window.__PRERENDER_DATA__ && window.API_BASE_URL
+      ? window.API_BASE_URL.replace(/\/$/, '')
+      : '';
   const creatorAvatar = creatorAvatarRaw
-    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(creatorAvatarRaw).replace(/^\//, '')}`
+    ? `${creatorAvatarBase}/${String(creatorAvatarRaw).replace(/^\//, '')}`
     : defaultAvatar;
 
   const clickSuppressed = disableClick;
@@ -353,7 +362,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
           )}
         </div>
         <img
-          src={picture ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(picture).replace(/^\//, '')}` : defaultPicture}
+          src={picture ? `${creatorAvatarBase}/${String(picture).replace(/^\//, '')}` : defaultPicture}
           alt={name}
           onError={(event) => {
             event.currentTarget.onerror = null;

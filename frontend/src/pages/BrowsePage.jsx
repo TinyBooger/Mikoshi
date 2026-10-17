@@ -17,7 +17,7 @@ import logo from '../assets/images/logo.png';
 import textLogo from '../assets/images/logo_text.png';
 
 
-function BrowsePage() {
+function BrowsePage({ initialData = null }) {
   const { t } = useTranslation();
   const { userData, sessionToken, loading } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -60,15 +60,22 @@ function BrowsePage() {
     return SUBTABS.some((tab) => tab.key === sub) ? sub : 'popular';
   }, [location.pathname, activeMainTab]);
 
-  const [entities, setEntities] = useState([]);
+  const hasInitialEntities = Array.isArray(initialData?.items);
+  const initialEntities = hasInitialEntities ? initialData.items : [];
+  const initialPageSize = initialData?.page_size || 20;
+  const [entities, setEntities] = useState(initialEntities);
   const [activeTopTab, setActiveTopTab] = useState('recommended');
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!hasInitialEntities);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [pageSize, setPageSize] = useState(20);
-  const [hasMore, setHasMore] = useState(true);
+  const [total, setTotal] = useState(initialData?.total || 0);
+  const [pageSize, setPageSize] = useState(initialPageSize);
+  const [hasMore, setHasMore] = useState(
+    hasInitialEntities && initialData.total > 0
+      ? initialPageSize < initialData.total
+      : !hasInitialEntities
+  );
 
   // Following feed state
   const [feedEntities, setFeedEntities] = useState([]);
@@ -80,7 +87,12 @@ function BrowsePage() {
   const feedLoadMoreRef = useRef(null);
 
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const isPrerenderHydration =
+    typeof window !== 'undefined' && Boolean(window.__PRERENDER_DATA__);
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window !== 'undefined' && !isPrerenderHydration ? window.innerWidth : 1200
+  );
+  const [mounted, setMounted] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showUpdateNotification, setShowUpdateNotification] = useState(false);
@@ -91,6 +103,7 @@ function BrowsePage() {
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchHistory, setSearchHistory] = useState(() => {
+    if (typeof window === 'undefined' || window.__PRERENDER_DATA__) return [];
     try { return JSON.parse(localStorage.getItem('sidebar_search_history') || '[]'); }
     catch { return []; }
   });
@@ -121,12 +134,26 @@ function BrowsePage() {
   const gooTrailRef = useRef(null);
   const previousMainTabIndexRef = useRef(0);
   const [pillTranslatePercent, setPillTranslatePercent] = useState(0);
+  const initialFetchKeyRef = useRef(
+    hasInitialEntities ? `${activeMainTab}:${activeSubTab}:` : null
+  );
 
   useEffect(() => {
+    setMounted(true);
     const handleResize = () => setViewportWidth(window.innerWidth);
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!isPrerenderHydration) return;
+    try {
+      setSearchHistory(JSON.parse(localStorage.getItem('sidebar_search_history') || '[]'));
+    } catch {
+      setSearchHistory([]);
+    }
+  }, [isPrerenderHydration]);
 
   useEffect(() => {
     let timer;
@@ -389,6 +416,12 @@ function BrowsePage() {
 
   // Fetch data
   useEffect(() => {
+    const fetchKey = `${activeMainTab}:${activeSubTab}:${sessionToken || ''}`;
+    if (initialFetchKeyRef.current === fetchKey) {
+      initialFetchKeyRef.current = null;
+      return;
+    }
+
     if (page === 1) {
       setIsLoading(true);
     } else {
@@ -550,7 +583,7 @@ function BrowsePage() {
       )}
 
       {/* Login notice banner for unauthenticated users — portal to body to stay fixed */}
-      {!userData && !loading && ReactDOM.createPortal(
+      {mounted && !userData && !loading && ReactDOM.createPortal(
         <div
           style={{
             position: 'fixed',

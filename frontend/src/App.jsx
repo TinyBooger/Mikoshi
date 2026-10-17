@@ -1,4 +1,4 @@
-import React, { useContext, useRef } from 'react';
+import React, { createContext, useContext, useMemo, useRef } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider, useLocation } from 'react-router';
 import AdminApp from './admin/AdminApp.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
@@ -40,6 +40,8 @@ import CreditTopUpPage from './pages/CreditTopUpPage.jsx';
 import PackagePaymentPage from './pages/PackagePaymentPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
+export const InitialBrowseDataContext = createContext(null);
+
 function AppRootLayout() {
   const { loading } = useContext(AuthContext);
   if (loading) {
@@ -71,9 +73,10 @@ function PublicOnlyPage({ children }) {
 
 function RootIndexPage() {
   const { userData, loading } = useContext(AuthContext);
+  const initialBrowseData = useContext(InitialBrowseDataContext);
   if (loading) return null; // or a spinner if you prefer
   // Show BrowsePage as landing page for unauthenticated users
-  return userData ? <Navigate to="/browse" replace /> : <BrowsePage />;
+  return userData ? <Navigate to="/browse" replace /> : <BrowsePage initialData={initialBrowseData} />;
 }
 
 function KeyedChatPage() {
@@ -82,7 +85,7 @@ function KeyedChatPage() {
   return <ChatPage key={characterKey} />;
 }
 
-const router = createBrowserRouter([
+export const routes = [
   {
     path: '/',
     element: <AppRootLayout />,
@@ -160,8 +163,17 @@ const router = createBrowserRouter([
     path: '*',
     element: <NotFoundPage />,
   },
-]);
+];
 
-export default function App() {
-  return <RouterProvider router={router} />;
+export default function App({ router: suppliedRouter, initialBrowseData = null }) {
+  const router = useMemo(
+    () => suppliedRouter || createBrowserRouter(routes),
+    [suppliedRouter]
+  );
+
+  return (
+    <InitialBrowseDataContext.Provider value={initialBrowseData}>
+      <RouterProvider router={router} />
+    </InitialBrowseDataContext.Provider>
+  );
 }

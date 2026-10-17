@@ -9,12 +9,17 @@ import { useState } from 'react';
  *   className: optional className
  */
 function PageWrapper({ children, style = {}, className = '' }) {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
+  const isPrerenderHydration =
+    typeof window !== 'undefined' && Boolean(window.__PRERENDER_DATA__);
+  const [isMobile, setIsMobile] = useState(
+    () => !isPrerenderHydration && typeof window !== 'undefined' && window.innerWidth < 600
+  );
 
   React.useEffect(() => {
     function handleResize() {
       setIsMobile(window.innerWidth < 600);
     }
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);

@@ -35,10 +35,17 @@ function getDeviceFingerprint() {
 }
 
 
-export function AuthProvider({ children }) {
-  const [sessionToken, setSessionToken] = useState(() => localStorage.getItem('sessionToken'));
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({ children, initialState = null }) {
+  const [sessionToken, setSessionToken] = useState(() => {
+    if (initialState) return initialState.sessionToken;
+    try {
+      return typeof window === 'undefined' ? null : localStorage.getItem('sessionToken');
+    } catch {
+      return null;
+    }
+  });
+  const [userData, setUserData] = useState(initialState?.userData ?? null);
+  const [loading, setLoading] = useState(initialState?.loading ?? true);
   const [error, setError] = useState(null);
   const { t } = useTranslation();
 
@@ -302,7 +309,19 @@ export function AuthProvider({ children }) {
 
   // Fetch user data on mount or when sessionToken changes
   useEffect(() => {
-    fetchUserData();
+    if (initialState) {
+      let storedToken = null;
+      try {
+        storedToken = localStorage.getItem('sessionToken');
+      } catch {
+        storedToken = null;
+      }
+      if (storedToken !== sessionToken) {
+        setSessionToken(storedToken);
+        return;
+      }
+    }
+    fetchUserData({ silent: Boolean(initialState && sessionToken) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionToken]);
 

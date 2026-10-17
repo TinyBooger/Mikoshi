@@ -44,9 +44,19 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [homeIconFocused, setHomeIconFocused] = useState(false);
   const [searchHistory, setSearchHistory] = useState(() => {
+    if (typeof window === 'undefined' || window.__PRERENDER_DATA__) return [];
     try { return JSON.parse(localStorage.getItem('sidebar_search_history') || '[]'); }
     catch { return []; }
   });
+
+  useEffect(() => {
+    if (!window.__PRERENDER_DATA__) return;
+    try {
+      setSearchHistory(JSON.parse(localStorage.getItem('sidebar_search_history') || '[]'));
+    } catch {
+      setSearchHistory([]);
+    }
+  }, []);
 
   const addToHistory = (term) => {
     setSearchHistory(prev => {

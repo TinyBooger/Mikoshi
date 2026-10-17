@@ -12,7 +12,10 @@ export default function Layout() {
   const location = useLocation();
   
   // Initialize sidebarVisible based on viewport size
-  const initialMobile = window.innerWidth < 768;
+  const isPrerenderHydration =
+    typeof window !== 'undefined' && Boolean(window.__PRERENDER_DATA__);
+  const initialMobile =
+    !isPrerenderHydration && typeof window !== 'undefined' && window.innerWidth < 768;
   const [isMobile, setIsMobile] = useState(initialMobile);
   const [sidebarVisible, setSidebarVisible] = useState(!initialMobile);
   const lastIsMobile = useRef(initialMobile);
@@ -72,6 +75,7 @@ export default function Layout() {
         lastIsMobile.current = mobile;
       }, 100);
     };
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => {
       window.removeEventListener('resize', handleResize);
@@ -261,7 +265,7 @@ export default function Layout() {
           />
         </main>
       </div>
-      {!sidebarVisible && createPortal(
+      {!sidebarVisible && typeof document !== 'undefined' && createPortal(
         <button
           type="button"
           onClick={handleToggleSidebar}
