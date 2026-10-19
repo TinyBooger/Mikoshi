@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { cancelVoiceRecording, startVoiceRecording, stopVoiceRecording } from '../utils/voiceRecorder';
 
-const SILENCE_TIMEOUT_MS = 5000;
+const SILENCE_TIMEOUT_MS = 15000;
 const VOICE_ACTIVITY_THRESHOLD = 0.02;
 
 /**
