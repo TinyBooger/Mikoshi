@@ -435,7 +435,7 @@ def get_personas_created(
     sort: str = Query("recent"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -449,7 +449,7 @@ def get_personas_created(
             .filter(Persona.creator_id == userId)
         )
         if not current_user or current_user.id != userId:
-            query = query.filter(Persona.is_public == True)
+            query = query.filter(Persona.is_public == True, Persona.moderation_status.is_(None))
     else:
         if not current_user:
             return PersonaListOut(items=[], total=0, page=1, page_size=0, short=False)

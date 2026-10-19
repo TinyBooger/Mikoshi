@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useContext, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import React, { useEffect, useState, useContext } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
+import FloatingLoginReminder from '../components/FloatingLoginReminder';
 import { useToast } from '../components/ToastProvider';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
@@ -18,9 +19,9 @@ export default function EntityDetailPage() {
   const { t } = useTranslation();
   const { type, id } = useParams();
   const navigate = useNavigate();
-  const { sessionToken, userData, loading: authLoading } = useContext(AuthContext);
+  const location = useLocation();
+  const { sessionToken, userData } = useContext(AuthContext);
   const toast = useToast();
-  const gateTriggeredRef = useRef(false);
   const isProUser = !!userData?.is_pro;
   
   const [entity, setEntity] = useState(null);
@@ -56,7 +57,7 @@ export default function EntityDetailPage() {
 
   // Fetch entity data
   useEffect(() => {
-    if (!sessionToken || !id) {
+    if (!id) {
       navigate('/');
       return;
     }
@@ -72,7 +73,7 @@ export default function EntityDetailPage() {
     }
 
     fetch(endpoint, {
-      headers: { 'Authorization': sessionToken }
+      headers: sessionToken ? { Authorization: sessionToken } : {},
     })
       .then(res => {
         if (!res.ok) {
@@ -91,16 +92,9 @@ export default function EntityDetailPage() {
       });
   }, [type, id, sessionToken, navigate]);
 
-  // Gate: the detail page is only available for your own content or forkable/open-source content.
-  // If reached directly (e.g., via URL), go back with a toast explaining why.
-  useEffect(() => {
-    if (!entity || authLoading || gateTriggeredRef.current) return;
-    const isOwn = Boolean(userData?.id && entity.creator_id && String(userData.id) === String(entity.creator_id));
-    if (isOwn || entity.is_forkable) return;
-    gateTriggeredRef.current = true;
-    toast.show('此角色为不允许二创角色，无法查看详情', { type: 'error' });
-    navigate(-1);
-  }, [entity, userData, authLoading, navigate, toast]);
+  const requireLogin = () => {
+    navigate('/login', { state: { from: location.pathname + location.search } });
+  };
 
   // Check if user has liked this entity
   useEffect(() => {
@@ -158,6 +152,10 @@ export default function EntityDetailPage() {
   }, [entity?.creator_id, sessionToken, userData]);
 
   const handleFollowToggle = async () => {
+    if (!sessionToken) {
+      requireLogin();
+      return;
+    }
     if (!entity?.creator_id || followLoading) return;
     setFollowLoading(true);
     try {
@@ -173,7 +171,11 @@ export default function EntityDetailPage() {
   };
 
   const handleLike = async () => {
-    if (!entity || !sessionToken) return;
+    if (!sessionToken) {
+      requireLogin();
+      return;
+    }
+    if (!entity) return;
 
     const prevLiked = liked;
     const prevLikes = typeof entity.likes === 'number' ? entity.likes : 0;
@@ -332,6 +334,7 @@ export default function EntityDetailPage() {
 
   return (
     <PageWrapper>
+      <FloatingLoginReminder />
       <div 
         className="container py-4"
         style={{
@@ -520,11 +523,11 @@ export default function EntityDetailPage() {
                   </p>
                 )}
                 {/* Follow button — visible when not the owner */}
-                {!isOwner && sessionToken && entity.creator_id && (
+                {!isOwner && entity.creator_id && (
                   <div style={{ marginTop: '8px' }}>
                     <button
-                      onClick={handleFollowToggle}
-                      disabled={followLoading}
+                      onClick={sessionToken ? handleFollowToggle : requireLogin}
+                      disabled={!!sessionToken && followLoading}
                       style={{
                         padding: '0.28rem 0.9rem',
                         fontSize: '0.78rem',
@@ -535,13 +538,13 @@ export default function EntityDetailPage() {
                         backdropFilter: 'blur(6px)',
                         WebkitBackdropFilter: 'blur(6px)',
                         color: isFollowing ? '#a09abf' : '#736B92',
-                        cursor: followLoading ? 'default' : 'pointer',
-                        opacity: followLoading ? 0.5 : 1,
+                        cursor: sessionToken && followLoading ? 'default' : 'pointer',
+                        opacity: sessionToken && followLoading ? 0.5 : 1,
                         transition: 'background 0.18s ease, color 0.18s ease',
                         whiteSpace: 'nowrap',
                       }}
                       onMouseEnter={e => {
-                        if (followLoading) return;
+                        if (sessionToken && followLoading) return;
                         e.currentTarget.style.background = isFollowing ? 'rgba(200,193,225,0.32)' : 'rgba(200,193,225,0.78)';
                       }}
                       onMouseLeave={e => {
@@ -586,10 +589,10 @@ export default function EntityDetailPage() {
                     style={{ pointerEvents: 'none' }}
                   />
                 </button>
-                {!isOwner && sessionToken && (
+                {!isOwner && (
                   <button
                     type="button"
-                    onClick={() => setShowProblemReport(true)}
+                    onClick={sessionToken ? () => setShowProblemReport(true) : requireLogin}
                     title="举报"
                     aria-label="举报"
                     onMouseEnter={() => setReportIconHovered(true)}

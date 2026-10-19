@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useContext, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import ImageCropModal from '../components/ImageCropModal';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
+import FloatingLoginReminder from '../components/FloatingLoginReminder';
 import { useToast } from '../components/ToastProvider';
 
 import EntityCard from '../components/EntityCard';
@@ -18,6 +19,7 @@ import { formatCompactTokenCount, formatCreditCount } from '../utils/creditDispl
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const MAX_NAME_LENGTH = 50;
   const TAB_TYPES = {
     CREATED: 'Created',
@@ -51,7 +53,7 @@ export default function ProfilePage() {
     invite: TAB_TYPES.INVITE_CODE,
   };
   // Tabs that only exist on your own profile.
-  const OWN_ONLY_TABS = [TAB_TYPES.MY_PERSONAS, TAB_TYPES.CHAT_HISTORY, TAB_TYPES.INVITE_CODE];
+  const OWN_ONLY_TABS = [TAB_TYPES.LIKED, TAB_TYPES.MY_PERSONAS, TAB_TYPES.CHAT_HISTORY, TAB_TYPES.INVITE_CODE];
   // Subtabs offered per tab (also used to validate ?sub=).
   const SUBTABS_FOR_TAB = {
     [TAB_TYPES.CREATED]: [SUBTAB_TYPES.CHARACTERS, SUBTAB_TYPES.SCENES, SUBTAB_TYPES.PERSONAS],
@@ -77,6 +79,9 @@ export default function ProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { userData, sessionToken, refreshUserData } = useContext(AuthContext);
   const toast = useToast();
+  const requireLogin = () => {
+    navigate('/login', { state: { from: location.pathname + location.search } });
+  };
 
   // Determine if this is the current user's own profile
   const isOwnProfile = !profileUserId || (userData && String(userData.id) === String(profileUserId));
@@ -231,7 +236,11 @@ export default function ProfilePage() {
   }, [isOwnProfile, sessionToken, profileUserId]);
 
   const handleFollowToggle = async () => {
-    if (!sessionToken || !profileUserId || followLoading) return;
+    if (!sessionToken) {
+      requireLogin();
+      return;
+    }
+    if (!profileUserId || followLoading) return;
     setFollowLoading(true);
     try {
       const method = isFollowing ? 'DELETE' : 'POST';
@@ -1552,6 +1561,7 @@ export default function ProfilePage() {
 
   return (
     <PageWrapper>
+      <FloatingLoginReminder />
       <style>{`
         @keyframes statDeltaFloat {
           0%   { transform: translateY(-50%) scale(0.65); opacity: 0; }
@@ -1652,17 +1662,19 @@ export default function ProfilePage() {
                         flexShrink: 0,
                         cursor: 'default',
                       }}
-                      title={formattedProExpireDate
-                        ? `${'Pro 到期时间'}: ${formattedProExpireDate}`
-                        : 'Pro 会员永久有效'}
+                      title={!isOwnProfile
+                        ? 'Pro 会员'
+                        : formattedProExpireDate
+                          ? `Pro 到期时间: ${formattedProExpireDate}`
+                          : 'Pro 会员永久有效'}
                     >
                       PRO
                     </span>
                   )}
-                  {!isOwnProfile && sessionToken && (
+                  {!isOwnProfile && (
                     <button
-                      onClick={handleFollowToggle}
-                      disabled={followLoading}
+                      onClick={sessionToken ? handleFollowToggle : requireLogin}
+                      disabled={!!sessionToken && followLoading}
                       style={{
                         padding: '0.28rem 0.9rem',
                         fontSize: '0.78rem',
@@ -1673,13 +1685,13 @@ export default function ProfilePage() {
                         backdropFilter: 'blur(6px)',
                         WebkitBackdropFilter: 'blur(6px)',
                         color: isFollowing ? '#a09abf' : '#736B92',
-                        cursor: followLoading ? 'default' : 'pointer',
-                        opacity: followLoading ? 0.5 : 1,
+                        cursor: sessionToken && followLoading ? 'default' : 'pointer',
+                        opacity: sessionToken && followLoading ? 0.5 : 1,
                         transition: 'background 0.18s ease, color 0.18s ease',
                         whiteSpace: 'nowrap',
                       }}
                       onMouseEnter={e => {
-                        if (followLoading) return;
+                        if (sessionToken && followLoading) return;
                         e.currentTarget.style.background = isFollowing ? 'rgba(200,193,225,0.32)' : 'rgba(200,193,225,0.78)';
                       }}
                       onMouseLeave={e => {
@@ -1689,10 +1701,10 @@ export default function ProfilePage() {
                       {isFollowing ? '取消关注' : '关注'}
                     </button>
                   )}
-                  {!isOwnProfile && sessionToken && (
+                  {!isOwnProfile && (
                     <button
                       type="button"
-                      onClick={() => setShowReportUser(true)}
+                      onClick={sessionToken ? () => setShowReportUser(true) : requireLogin}
                       title={'举报此用户'}
                       aria-label={'举报此用户'}
                       onMouseEnter={() => setReportIconHovered(true)}

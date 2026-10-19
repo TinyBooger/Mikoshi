@@ -170,6 +170,19 @@ class UserOut(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class PublicUserProfileOut(BaseModel):
+    id: str
+    name: Optional[str] = None
+    profile_pic: Optional[str] = None
+    bio: Optional[str] = None
+    pro_active: bool = False
+
+    class Config:
+        from_attributes = True
+
+
 class SceneListOut(BaseModel):
     items: List[SceneOut]
     total: int

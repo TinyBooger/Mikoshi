@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Body, Request
-from schemas import UserOut, UserListOut, CharacterOut, SceneOut, PersonaOut
+from schemas import UserOut, UserListOut, CharacterOut, SceneOut, PersonaOut, PublicUserProfileOut
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, Character, Scene, Persona, Tag, UserLikedCharacter, UserLikedScene, UserLikedPersona, UserCreditWalletLedger, UserFollow
@@ -8,7 +8,7 @@ from utils.audit_logger import audit_request
 from utils.local_storage_utils import save_image
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
-from utils.user_utils import build_user_response, enrich_user_with_character_count
+from utils.user_utils import build_user_response, enrich_user_with_character_count, is_pro_active
 from utils.validators import validate_account_fields
 from utils.sms_utils import send_verification_code, verify_code
 from utils.email_utils import (
@@ -305,16 +305,22 @@ def unfollow_user(
 
 # --- Single User Endpoints (comes AFTER specific routes above) ---
 
-@router.get("/api/user/{user_id}", response_model=UserOut)
+@router.get("/api/user/{user_id}", response_model=PublicUserProfileOut)
 def get_user_by_id(user_id: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    return build_user_response(user, db)
+    return {
+        "id": user.id,
+        "name": user.name,
+        "profile_pic": user.profile_pic,
+        "bio": user.bio,
+        "pro_active": is_pro_active(user),
+    }
 
 # Add alias for plural endpoint for frontend compatibility
-@router.get("/api/users/{user_id}", response_model=UserOut)
+@router.get("/api/users/{user_id}", response_model=PublicUserProfileOut)
 def get_user_by_id_alias(user_id: str, db: Session = Depends(get_db)):
     return get_user_by_id(user_id, db)
 

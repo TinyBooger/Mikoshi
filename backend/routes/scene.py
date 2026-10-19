@@ -142,7 +142,7 @@ def get_scenes_created(
     sort: str = Query("recent"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -156,7 +156,7 @@ def get_scenes_created(
             .filter(Scene.creator_id == userId)
         )
         if not current_user or current_user.id != userId:
-            query = query.filter(Scene.is_public == True)
+            query = query.filter(Scene.is_public == True, Scene.moderation_status.is_(None))
     else:
         if not current_user:
             return SceneListOut(items=[], total=0, page=1, page_size=0, short=False)
@@ -272,7 +272,7 @@ def get_recommended_scenes(
 
 # Read single Scene
 @router.get("/api/scenes/{scene_id}", response_model=SceneOut)
-def get_scene(scene_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_scene(scene_id: int, current_user: User = Depends(get_optional_current_user), db: Session = Depends(get_db)):
     row = (
         db.query(Scene, User.profile_pic.label("creator_profile_pic"))
         .outerjoin(User, Scene.creator_id == User.id)

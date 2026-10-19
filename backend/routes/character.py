@@ -580,7 +580,7 @@ def get_characters(search: str = None, db: Session = Depends(get_db)):
 
 
 @router.get("/api/character/{character_id}", response_model=CharacterOut)
-def get_character(character_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_character(character_id: int, current_user: User = Depends(get_optional_current_user), db: Session = Depends(get_db)):
     row = (
         db.query(Character, User.profile_pic.label("creator_profile_pic"))
         .outerjoin(User, Character.creator_id == User.id)
@@ -795,7 +795,7 @@ def get_user_created_characters(
     sort: str = Query("recent"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -810,7 +810,7 @@ def get_user_created_characters(
         )
         # If viewing another user's creations, show only public
         if not current_user or current_user.id != userId:
-            query = query.filter(Character.is_public == True)
+            query = query.filter(Character.is_public == True, Character.moderation_status.is_(None))
     else:
         if not current_user:
             return CharacterListOut(items=[], total=0, page=1, page_size=0, short=False)
