@@ -1818,7 +1818,7 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {!isMobile && (
+              {!isMobile && isOwnProfile && (
               <div style={{ marginTop: 12, width: '100%', maxWidth: 640 }}>
                 <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 6 }}>
                   <span
@@ -1901,7 +1901,7 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {isMobile && (
+            {isMobile && isOwnProfile && (
               <div style={{ flex: '1 1 100%', width: '100%', marginTop: 2 }}>
                 <div style={{ width: '100%', maxWidth: '100%' }}>
                   <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 6 }}>
