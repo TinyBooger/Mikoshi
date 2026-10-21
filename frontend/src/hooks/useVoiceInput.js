@@ -18,7 +18,7 @@ const VOICE_ACTIVITY_THRESHOLD = 0.02;
  * @param {string}   params.input        - current chat input value
  * @param {function} params.setInput     - setter for the chat input value
  * @param {object}   params.toast        - toast provider (from useToast)
- * @returns {{ isRecording, isTranscribing, recordingLevel, handleVoiceToggle, closeVoiceConnection }}
+ * @returns {{ isRecording, isTranscribing, recordingLevel, handleVoiceToggle, stopVoiceInput, closeVoiceConnection }}
  */
 export function useVoiceInput({ sessionToken, input, setInput, toast }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -30,6 +30,7 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
   const voicePartialRef = useRef('');
   const silenceTimeoutRef = useRef(null);
   const recordingActiveRef = useRef(false);
+  const voiceSessionIdRef = useRef(0);
 
   const clearSilenceTimeout = () => {
     if (silenceTimeoutRef.current !== null) {
@@ -47,6 +48,7 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
 
   async function finishRecording() {
     if (!recordingActiveRef.current) return;
+    const voiceSessionId = voiceSessionIdRef.current;
     recordingActiveRef.current = false;
     clearSilenceTimeout();
 
@@ -55,6 +57,7 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
       socket.send(JSON.stringify({ type: 'stop' }));
     }
     await stopVoiceRecording();
+    if (voiceSessionId !== voiceSessionIdRef.current) return;
     setIsRecording(false);
     setRecordingLevel(0);
     setIsTranscribing(true);
@@ -66,6 +69,7 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
    * without re-running their cleanup on every render.
    */
   const closeVoiceConnection = useCallback(() => {
+    voiceSessionIdRef.current += 1;
     recordingActiveRef.current = false;
     clearSilenceTimeout();
     cancelVoiceRecording();
@@ -73,12 +77,22 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
     voiceSocketRef.current = null;
   }, []);
 
+  const stopVoiceInput = useCallback(() => {
+    closeVoiceConnection();
+    setIsRecording(false);
+    setIsTranscribing(false);
+    setRecordingLevel(0);
+  }, [closeVoiceConnection]);
+
   // Voice-to-text: record audio and transcribe it into the input field.
   const handleVoiceToggle = async () => {
     if (isRecording) {
       await finishRecording();
       return;
     }
+
+    const voiceSessionId = voiceSessionIdRef.current + 1;
+    voiceSessionIdRef.current = voiceSessionId;
     try {
       const apiUrl = new URL(window.API_BASE_URL || window.location.origin);
       const protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -89,12 +103,16 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
       voicePartialRef.current = '';
 
       await new Promise((resolve, reject) => {
+        let isReady = false;
         socket.onopen = () => {
+          if (voiceSessionId !== voiceSessionIdRef.current) return;
           socket.send(JSON.stringify({ token: sessionToken }));
         };
         socket.onmessage = (event) => {
+          if (voiceSessionId !== voiceSessionIdRef.current) return;
           const message = JSON.parse(event.data);
           if (message.type === 'ready') {
+            isReady = true;
             resolve();
           } else if (message.type === 'transcript') {
             if (message.is_final) {
@@ -113,24 +131,40 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
             reject(new Error(message.message || '语音识别失败，请重试。'));
           }
         };
-        socket.onerror = () => reject(new Error('无法连接语音识别服务，请重试。'));
+        socket.onerror = () => {
+          if (voiceSessionId === voiceSessionIdRef.current) {
+            reject(new Error('无法连接语音识别服务，请重试。'));
+          }
+        };
+        socket.onclose = () => {
+          if (!isReady) reject(new Error('无法连接语音识别服务，请重试。'));
+        };
       });
 
+      if (voiceSessionId !== voiceSessionIdRef.current) return;
       await startVoiceRecording(
         (frame) => {
-          if (socket.readyState === WebSocket.OPEN) socket.send(frame);
+          if (voiceSessionId === voiceSessionIdRef.current && socket.readyState === WebSocket.OPEN) {
+            socket.send(frame);
+          }
         },
         (level) => {
+          if (voiceSessionId !== voiceSessionIdRef.current) return;
           setRecordingLevel(Math.min(1, level * 12));
           if (recordingActiveRef.current && level >= VOICE_ACTIVITY_THRESHOLD) {
             resetSilenceTimeout();
           }
         },
       );
+      if (voiceSessionId !== voiceSessionIdRef.current) {
+        cancelVoiceRecording();
+        return;
+      }
       recordingActiveRef.current = true;
       resetSilenceTimeout();
       setIsRecording(true);
     } catch (err) {
+      if (voiceSessionId !== voiceSessionIdRef.current) return;
       recordingActiveRef.current = false;
       clearSilenceTimeout();
       setRecordingLevel(0);
@@ -140,5 +174,12 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
     }
   };
 
-  return { isRecording, isTranscribing, recordingLevel, handleVoiceToggle, closeVoiceConnection };
+  return {
+    isRecording,
+    isTranscribing,
+    recordingLevel,
+    handleVoiceToggle,
+    stopVoiceInput,
+    closeVoiceConnection,
+  };
 }

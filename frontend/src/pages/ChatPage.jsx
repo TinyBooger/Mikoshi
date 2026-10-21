@@ -58,7 +58,14 @@ export default function ChatPage() {
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const { isRecording, isTranscribing, recordingLevel, handleVoiceToggle, closeVoiceConnection } = useVoiceInput({
+  const {
+    isRecording,
+    isTranscribing,
+    recordingLevel,
+    handleVoiceToggle,
+    stopVoiceInput,
+    closeVoiceConnection,
+  } = useVoiceInput({
     sessionToken,
     input,
     setInput,
@@ -148,19 +155,17 @@ export default function ChatPage() {
   const isMobile = useIsMobile();
   const { showChatSettingsHint, hideChatSettingsHint } = useChatSettingsHint(isMobile);
 
-  // Cleanup: tear down the voice session and abort any ongoing streaming
-  // request. This runs on unmount AND every time `abortController` changes —
-  // the latter is deliberate (and pre-existing) so that starting or finishing
-  // a turn also drops any voice websocket left behind by a finished
-  // transcription. `closeVoiceConnection` is stable, so it is a safe dep.
+  useEffect(() => {
+    return closeVoiceConnection;
+  }, [closeVoiceConnection]);
+
   useEffect(() => {
     return () => {
-      closeVoiceConnection();
       if (abortController) {
         abortController.abort();
       }
     };
-  }, [abortController, closeVoiceConnection]);
+  }, [abortController]);
 
   const [characterId, setCharacterId] = useState(searchParams.get('character'));
   const [sceneId, setSceneId] = useState(searchParams.get('scene'));
@@ -390,6 +395,12 @@ export default function ChatPage() {
     setServerContextWindowUsage,
   });
 
+  const handleSendMessage = async (event) => {
+    event.preventDefault();
+    await stopVoiceInput();
+    await handleSend(event);
+  };
+
   // ---- Message editing, forking and branch switching ----
   const {
     handleStartEditingMessage,
@@ -504,7 +515,7 @@ export default function ChatPage() {
       }
       if (!e.shiftKey) {
         e.preventDefault();
-        handleSend(e);
+        handleSendMessage(e);
       }
     }
   };
@@ -637,7 +648,7 @@ export default function ChatPage() {
         />
 
         <ChatInputBar
-          handleSend={handleSend}
+          handleSend={handleSendMessage}
           selectedWallpaper={selectedWallpaper}
           isMobile={isMobile}
           chatContentRailStyle={chatContentRailStyle}
