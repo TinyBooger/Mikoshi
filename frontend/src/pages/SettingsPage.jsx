@@ -3,7 +3,6 @@ import OrderHistoryTab from './OrderHistoryTab.jsx';
 import PageWrapper from '../components/PageWrapper';
 import { AuthContext } from '../components/AuthProvider';
 import { useToast } from '../components/ToastProvider';
-import ConfirmModal from '../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import ProblemReportModal from '../components/ProblemReportModal';
@@ -86,6 +85,12 @@ export default function SettingsPage() {
   const [resendTimer, setResendTimer] = useState(0);
 
   const [confirmDelete, setConfirmDelete] = useState({ show: false });
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteCode, setDeleteCode] = useState('');
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [sendingDeleteCode, setSendingDeleteCode] = useState(false);
   const [lang, setLang] = useState('zh');
   const [showProblemReport, setShowProblemReport] = useState(openReportFromUrl);
   const [isCompact, setIsCompact] = useState(window.innerWidth < 992);
@@ -345,11 +350,16 @@ export default function SettingsPage() {
   };
 
   const doDeleteAccount = async () => {
+    setDeletingAccount(true);
+    setDeleteError('');
     try {
       const res = await fetch(`${window.API_BASE_URL}/api/delete-account`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': sessionToken },
-        body: JSON.stringify({ confirm: true })
+        body: JSON.stringify({
+          confirm: true,
+          ...(userData.has_password ? { password: deletePassword } : { code: deleteCode.trim() }),
+        })
       });
       const data = await res.json();
       if (res.ok) {
@@ -359,11 +369,53 @@ export default function SettingsPage() {
         // navigate to welcome
         window.location.href = '/';
       } else {
-        toast.show(data.detail || data.message || '删除账号失败', { type: 'error' });
+        const message = data.detail || data.message || '删除账号失败';
+        setDeleteError(message);
+        toast.show(message, { type: 'error' });
       }
     } catch (err) {
-      toast.show(t('common.network_error'), { type: 'error' });
+      const message = '网络错误，请检查网络连接后重试';
+      setDeleteError(message);
+      toast.show(message, { type: 'error' });
+    } finally {
+      setDeletingAccount(false);
     }
+  };
+
+  const sendDeleteVerificationCode = async () => {
+    setSendingDeleteCode(true);
+    setDeleteError('');
+    try {
+      const res = await fetch(`${window.API_BASE_URL}/api/delete-account/send-code`, {
+        method: 'POST',
+        headers: { 'Authorization': sessionToken },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || data.message || '发送验证码失败');
+      }
+      toast.show(data.message || '验证码已发送', { type: 'success' });
+    } catch (err) {
+      const message = err.message || '网络错误，请检查网络连接后重试';
+      setDeleteError(message);
+      toast.show(message, { type: 'error' });
+    } finally {
+      setSendingDeleteCode(false);
+    }
+  };
+
+  const openDeleteConfirmation = () => {
+    setDeletePassword('');
+    setDeleteCode('');
+    setDeleteConfirmed(false);
+    setDeleteError('');
+    setConfirmDelete({ show: true });
+  };
+
+  const closeDeleteConfirmation = () => {
+    if (deletingAccount) return;
+    setConfirmDelete({ show: false });
+    setDeleteError('');
   };
 
   // Phone change handlers
@@ -913,15 +965,12 @@ export default function SettingsPage() {
                   </section>
                 )}
 
-                {/* Delete Account - Danger Zone */}
+                {/* Delete Account */}
                 <section style={sectionCardStyle}>
-                  <h4 className="text-danger">危险操作</h4>
-                  <p className="text-muted">此操作将永久删除您的账号，数据无法恢复。请谨慎操作！</p>
+                  <h4>删除账号</h4>
+                  <p className="text-muted">您可以在此删除账号。删除前会要求验证身份并再次确认。</p>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <AppButton 
-                      variant="danger"
-                      onClick={() => setConfirmDelete({ show: true })}
-                    >
+                    <AppButton onClick={openDeleteConfirmation}>
                       删除账号
                     </AppButton>
                   </div>
@@ -968,7 +1017,7 @@ export default function SettingsPage() {
                     },
                     {
                       q: '如何删除账号？',
-                      a: '前往「设置 → 账号 → 危险操作」，点击「删除账号」。请注意，此操作不可逆，账号及相关数据将被永久删除。'
+                      a: '前往「设置 → 账号」，点击「删除账号」并按提示验证身份。账号及相关数据删除后无法恢复。'
                     },
                   ].map(({ q, a }, i) => (
                     <HelpFaqItem key={i} question={q} answer={a} />
@@ -1099,7 +1148,112 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-      <ConfirmModal show={confirmDelete.show} title="删除账号" message="此操作将永久删除您的账号，数据无法恢复。请谨慎操作！" onCancel={() => setConfirmDelete({ show: false })} onConfirm={() => { setConfirmDelete({ show: false }); doDeleteAccount(); }} confirmText="删除" cancelText="取消" />
+      {confirmDelete.show && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0, 0, 0, 0.4)',
+            zIndex: 2000,
+            padding: '1rem',
+          }}
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (deletingAccount || !deleteConfirmed) return;
+              if (userData.has_password ? !deletePassword : (!userData.phone_number || !deleteCode.trim())) return;
+              doDeleteAccount();
+            }}
+            style={{
+              width: '100%',
+              maxWidth: 520,
+              background: '#fff',
+              borderRadius: 12,
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ padding: '1rem', borderBottom: '1px solid #eee' }}>
+              <strong id="delete-account-title">删除账号</strong>
+            </div>
+            <div style={{ padding: '1rem', fontSize: '0.95rem', color: '#333' }}>
+              <p>删除后，您的账号及相关数据将被永久删除，且无法恢复。请在继续前备份需要保留的内容。</p>
+              {userData.has_password ? (
+                <div className="mb-3">
+                  <label htmlFor="delete-account-password" className="form-label">请输入当前密码以验证身份</label>
+                  <input
+                    id="delete-account-password"
+                    className="form-control"
+                    type="password"
+                    autoComplete="current-password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    required
+                  />
+                </div>
+              ) : userData.phone_number ? (
+                <div className="mb-3">
+                  <label htmlFor="delete-account-code" className="form-label">请输入发送到绑定手机号的验证码</label>
+                  <div className="form-text mb-2">验证码将发送至绑定手机号（尾号 {userData.phone_number.slice(-4)}）</div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                    <input
+                      id="delete-account-code"
+                      className="form-control"
+                      style={{ minWidth: 0, height: 42 }}
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      value={deleteCode}
+                      onChange={(e) => setDeleteCode(e.target.value)}
+                      required
+                    />
+                    <AppButton
+                      type="button"
+                      variant="secondary"
+                      onClick={sendDeleteVerificationCode}
+                      disabled={sendingDeleteCode}
+                      style={{ flexShrink: 0, minHeight: 42, whiteSpace: 'nowrap' }}
+                    >
+                      {sendingDeleteCode ? '发送中...' : '发送验证码'}
+                    </AppButton>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted">当前账号没有可用的验证方式。请先绑定手机号或设置密码后再试。</p>
+              )}
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <input
+                  type="checkbox"
+                  checked={deleteConfirmed}
+                  required
+                  onChange={(e) => setDeleteConfirmed(e.target.checked)}
+                  style={{ marginTop: 4 }}
+                />
+                <span>我已了解账号及相关数据将被永久删除，且无法恢复。</span>
+              </label>
+              {deleteError && <div className="text-danger mt-2" role="alert">{deleteError}</div>}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', padding: '0.75rem', borderTop: '1px solid #eee', background: '#f8f9fa' }}>
+              <AppButton type="button" variant="secondary" onClick={closeDeleteConfirmation} disabled={deletingAccount}>
+                取消
+              </AppButton>
+              <AppButton
+                type="submit"
+                disabled={deletingAccount || !deleteConfirmed || (!userData.has_password && !userData.phone_number) || (userData.has_password ? !deletePassword : !deleteCode.trim())}
+              >
+                {deletingAccount ? '正在删除...' : '确认永久删除'}
+              </AppButton>
+            </div>
+          </form>
+        </div>
+      )}
       <ProblemReportModal show={showProblemReport} onClose={() => setShowProblemReport(false)} />
     </PageWrapper>
   );

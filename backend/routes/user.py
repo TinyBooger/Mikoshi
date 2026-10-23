@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Body, Request
+from passlib.context import CryptContext
 from schemas import UserOut, UserListOut, CharacterOut, SceneOut, PersonaOut, PublicUserProfileOut
 from sqlalchemy.orm import Session
 from database import get_db
@@ -34,6 +35,7 @@ import re
 import os
 
 router = APIRouter()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # --- Browse Users Endpoints (MUST come before {user_id} route) ---
 
@@ -890,12 +892,44 @@ async def confirm_phone_change(
     }
 
 
+@router.post('/api/delete-account/send-code')
+async def send_delete_account_code(current_user: User = Depends(get_current_user)):
+    if getattr(current_user, "hashed_password", None):
+        raise HTTPException(status_code=400, detail='当前账号请使用密码验证')
+    if not current_user.phone_number:
+        raise HTTPException(status_code=400, detail='当前账号没有可用于验证的手机号')
+
+    result = await send_verification_code(current_user.phone_number)
+    if not result.get('success'):
+        raise HTTPException(status_code=400, detail=result.get('message', '验证码发送失败'))
+
+    return {
+        "message": "验证码已发送到绑定手机号",
+        "phone_hint": current_user.phone_number[-4:],
+    }
+
+
 @router.post('/api/delete-account')
 def delete_account(request: Request, payload: dict = Body(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # payload must include { confirm: true }
     confirm = payload.get('confirm') is True
     if not confirm:
         raise HTTPException(status_code=400, detail='Missing confirmation')
+
+    hashed_password = getattr(current_user, "hashed_password", None)
+    if hashed_password:
+        password = payload.get('password')
+        if not isinstance(password, str) or not password:
+            raise HTTPException(status_code=400, detail='请输入当前密码')
+        if not pwd_context.verify(password, hashed_password):
+            raise HTTPException(status_code=401, detail='当前密码不正确')
+    else:
+        code = payload.get('code')
+        if not current_user.phone_number:
+            raise HTTPException(status_code=400, detail='当前账号没有可用于验证的方式')
+        if not isinstance(code, str) or not code:
+            raise HTTPException(status_code=400, detail='请输入短信验证码')
+        if not verify_code(current_user.phone_number, code):
+            raise HTTPException(status_code=401, detail='验证码错误或已过期')
 
     # Snapshot identity before the row is gone - audit_logs.user_id has no FK
     # so the entry survives the deletion.
