@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 import os
 import json
+import logging
 import secrets
-from alibabacloud_dypnsapi20170525.client import Client as DypnsapiClient
+from alibabacloud_dysmsapi20170525.client import Client as DysmsapiClient
 from alibabacloud_tea_openapi import models as open_api_models
-from alibabacloud_dypnsapi20170525 import models as dypnsapi_models
+from alibabacloud_dysmsapi20170525 import models as dysmsapi_models
 from alibabacloud_tea_util import models as util_models
 from datetime import datetime, timedelta
 from typing import Dict
+
+logger = logging.getLogger(__name__)
 
 # 验证码缓存（生产环境建议使用Redis）
 verification_codes: Dict[str, dict] = {}
@@ -51,27 +54,36 @@ def get_dev_sms_bypass_info():
     }
 
 
-def create_sms_client() -> DypnsapiClient:
+def create_sms_client() -> DysmsapiClient:
     """
-    创建阿里云短信服务客户端
-    直接使用 AccessKey 凭证（避免 CredentialClient 凭证链的副作用：
-    1. EcsRamRoleCredentialsProvider 每实例创建一个 APScheduler 循环任务，每分钟刷新一次日志刷屏
+    Create the Aliyun Dysmsapi client using AccessKey credentials from the environment.
     """
     access_key_id = os.getenv('ALIBABA_CLOUD_ACCESS_KEY_ID')
     access_key_secret = os.getenv('ALIBABA_CLOUD_ACCESS_KEY_SECRET')
+    sign_name = os.getenv('ALIBABA_CLOUD_SMS_SIGN_NAME')
+    template_code = os.getenv('ALIBABA_CLOUD_SMS_TEMPLATE_CODE')
 
-    if not access_key_id or not access_key_secret:
+    missing = [
+        name
+        for name, value in (
+            ('ALIBABA_CLOUD_ACCESS_KEY_ID', access_key_id),
+            ('ALIBABA_CLOUD_ACCESS_KEY_SECRET', access_key_secret),
+            ('ALIBABA_CLOUD_SMS_SIGN_NAME', sign_name),
+            ('ALIBABA_CLOUD_SMS_TEMPLATE_CODE', template_code),
+        )
+        if not value
+    ]
+    if missing:
         raise RuntimeError(
-            "ALIBABA_CLOUD_ACCESS_KEY_ID and ALIBABA_CLOUD_ACCESS_KEY_SECRET "
-            "must be set in environment variables"
+            f"{', '.join(missing)} must be set in environment variables"
         )
 
     config = open_api_models.Config(
         access_key_id=access_key_id,
         access_key_secret=access_key_secret
     )
-    config.endpoint = 'dypnsapi.aliyuncs.com'
-    return DypnsapiClient(config)
+    config.endpoint = 'dysmsapi.aliyuncs.com'
+    return DysmsapiClient(config)
 
 
 async def send_verification_code(phone_number: str) -> dict:
@@ -95,57 +107,47 @@ async def send_verification_code(phone_number: str) -> dict:
                 }
         
         client = create_sms_client()
-        request = dypnsapi_models.SendSmsVerifyCodeRequest(
-            phone_number=phone_number,
-            sign_name=os.getenv('ALIBABA_CLOUD_SMS_SIGN_NAME', '恒创联众'),
-            template_code=os.getenv('ALIBABA_CLOUD_SMS_TEMPLATE_CODE', '100001'),
-            template_param='{"code":"##code##","min":"5"}',  # 验证码占位符
-            code_type=1,  # 数字验证码
-            code_length=6,  # 6位验证码
-            valid_time=300,  # 5分钟有效期
-            interval=60,  # 60秒发送间隔
-            return_verify_code=True,  # 开发环境返回验证码
-            duplicate_policy=1  # 新验证码覆盖旧验证码
+        sign_name = os.environ['ALIBABA_CLOUD_SMS_SIGN_NAME']
+        template_code = os.environ['ALIBABA_CLOUD_SMS_TEMPLATE_CODE']
+        verify_code = f'{secrets.randbelow(1_000_000):06d}'
+        request = dysmsapi_models.SendSmsRequest(
+            phone_numbers=phone_number,
+            sign_name=sign_name,
+            template_code=template_code,
+            template_param=json.dumps({'code': verify_code})
         )
-        
-        runtime = util_models.RuntimeOptions()
-        response = await client.send_sms_verify_code_with_options_async(request, runtime)
 
-        # 如果阿里云返回非OK，直接透传错误信息，方便定位签名/模板/参数问题
+        runtime = util_models.RuntimeOptions()
+        response = await client.send_sms_with_options_async(request, runtime)
+
         if response.body.code == 'OK':
-            # 存储验证码到缓存
-            verify_code = response.body.model.verify_code if response.body.model else None
             verification_codes[phone_number] = {
                 'code': verify_code,
                 'sent_at': datetime.now(),
-                'expires_at': datetime.now() + timedelta(minutes=5),
-                'biz_id': response.body.model.biz_id if response.body.model else None
+                'expires_at': datetime.now() + timedelta(minutes=5)
             }
-            
+
             result = {
                 "success": True,
                 "message": "验证码已发送"
             }
-            # 开发环境返回验证码（生产环境删除此行）
-            if verify_code:
+            if is_dev_environment():
                 result['verify_code'] = verify_code
-            
             return result
         else:
             err_code = response.body.code or 'Unknown'
             err_msg = response.body.message or 'Invalid parameters'
-            detail = getattr(response.body, 'access_denied_detail', None) or getattr(response.body, 'AccessDeniedDetail', None)
+            logger.error("Aliyun SMS request failed: %s - %s", err_code, err_msg)
             return {
                 "success": False,
-                "message": f"发送失败：{err_code} - {err_msg}",
-                "detail": detail,
+                "message": f"发送失败：{err_code} - {err_msg}"
             }
-            
-    except Exception as e:
-        print(f"SMS Error: {str(e)}")
+
+    except Exception:
+        logger.exception("Aliyun SMS request failed")
         return {
             "success": False,
-            "message": f"发送失败：{str(e)}"
+            "message": "短信发送失败，请稍后重试"
         }
 
 
