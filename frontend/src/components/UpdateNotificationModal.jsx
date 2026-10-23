@@ -45,6 +45,7 @@ export default function UpdateNotificationModal({ show, onClose }) {
   }, [visible]);
 
   const fetchActiveNotifications = async () => {
+    setLoading(true);
     try {
       const response = await fetch(`${window.API_BASE_URL}/api/notification/active`);
       const data = await response.json();
