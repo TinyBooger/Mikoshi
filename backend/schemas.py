@@ -128,6 +128,7 @@ class UserOut(BaseModel):
     id: str
     email: Optional[EmailStr] = None
     phone_number: Optional[str] = None
+    has_password: bool = False
     name: Optional[str] = None
     profile_pic: Optional[str] = None
     bio: Optional[str] = None
@@ -230,8 +231,8 @@ class VerifyPhoneExistingUserOut(BaseModel):
 class VerifyPhoneNewUserOut(BaseModel):
     status: str
     message: str
-    verified_phone_token: str
-    phone_number: str
+    session_token: str
+    user: UserOut
 
 VerifyPhoneOut = Union[VerifyPhoneExistingUserOut, VerifyPhoneNewUserOut]
 

@@ -21,8 +21,15 @@ from utils.email_utils import (
     verify_email_code,
 )
 from utils.credit_cap import get_credit_cap_info
-from utils.invitation_utils import count_today_invites, INVITATION_BONUS_CREDITS, INVITATION_MAX_PER_DAY
+from utils.invitation_utils import (
+    count_today_invites,
+    process_invitation_code,
+    track_invitation,
+    INVITATION_BONUS_CREDITS,
+    INVITATION_MAX_PER_DAY,
+)
 from sqlalchemy import func
+from datetime import datetime, UTC, timedelta
 import re
 import os
 
@@ -160,12 +167,71 @@ def get_my_invitation_code(
     """Return the current user's invitation code and stats."""
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
+    created_at = current_user.created_at
+    if created_at and created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=UTC)
+    invitation_deadline = created_at + timedelta(days=7) if created_at else None
+    invited_by = db.query(User).filter(User.id == current_user.invited_by).first() if current_user.invited_by else None
     return {
         "invitation_code": getattr(current_user, "invitation_code", None),
         "invited_count": db.query(User).filter(User.invited_by == current_user.id).count(),
         "today_count": count_today_invites(db, current_user.id),
         "bonus_credits": INVITATION_BONUS_CREDITS,
         "max_per_day": INVITATION_MAX_PER_DAY,
+        "can_accept_invitation": bool(
+            not current_user.invited_by
+            and invitation_deadline
+            and datetime.now(UTC) < invitation_deadline
+        ),
+        "invited_by_name": invited_by.name if invited_by else None,
+    }
+
+
+@router.post("/api/users/me/accept-invitation")
+def accept_invitation_code(
+    payload: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    code = str(payload.get("invitation_code") or "").strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="请输入邀请码")
+
+    inviter = db.query(User).filter(User.invitation_code == code).first()
+    if not inviter:
+        raise HTTPException(status_code=400, detail="邀请码无效")
+
+    participants = (
+        db.query(User)
+        .filter(User.id.in_([current_user.id, inviter.id]))
+        .order_by(User.id)
+        .with_for_update()
+        .populate_existing()
+        .all()
+    )
+    participants_by_id = {participant.id: participant for participant in participants}
+    user = participants_by_id.get(current_user.id)
+    inviter = participants_by_id.get(inviter.id)
+    if not user or not inviter:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.invited_by:
+        raise HTTPException(status_code=400, detail="你已经接受过邀请")
+
+    created_at = user.created_at
+    if created_at and created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=UTC)
+    if not created_at or datetime.now(UTC) >= created_at + timedelta(days=7):
+        raise HTTPException(status_code=400, detail="邀请码仅可在注册后的7天内填写")
+
+    is_valid, error = process_invitation_code(db, code, user.id)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error or "邀请码无效")
+
+    track_invitation(db, code, user)
+    db.commit()
+    return {
+        "message": f"已接受{inviter.name}邀请并获得{INVITATION_BONUS_CREDITS:g}点数奖励，对方也已获得奖励",
+        "inviter_name": inviter.name,
     }
 
 

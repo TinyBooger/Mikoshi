@@ -61,8 +61,10 @@ def change_password(request: Request, payload: dict = None, db: Session = Depend
     if payload:
         currentPassword = payload.get('currentPassword') or payload.get('current_password')
         newPassword = payload.get('newPassword') or payload.get('new_password')
-    if not currentPassword or not newPassword:
+    if not isinstance(newPassword, str) or not newPassword:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing fields")
+    if len(newPassword) < 6 or len(newPassword) > 128:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="密码长度需为6至128位")
     user_id = verify_session_token(session_token)
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
@@ -70,7 +72,7 @@ def change_password(request: Request, payload: dict = None, db: Session = Depend
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     hashed = getattr(user, 'hashed_password', None)
-    if not hashed or not pwd_context.verify(currentPassword, hashed):
+    if hashed and (not currentPassword or not pwd_context.verify(currentPassword, hashed)):
         record_audit(
             user_id=user.id,
             action="change_password_failed",

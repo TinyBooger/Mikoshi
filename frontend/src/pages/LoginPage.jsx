@@ -23,6 +23,7 @@ export default function LoginPage() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [countdown, setCountdown] = useState(0);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   // 验证码相关状态
   const captchaRef = useRef(null);
@@ -244,13 +245,12 @@ export default function LoginPage() {
     }
     
     try {
-      const result = await verifyPhone(phoneNumber, verificationCode, captchaParam);
+      const result = await verifyPhone(phoneNumber, verificationCode, captchaParam, termsAccepted);
       if (result.success) {
-        if (result.status === 'existing_user') {
-          navigate(from || '/', { replace: true });
-        } else if (result.status === 'new_user') {
-          navigate(`/sign-up?phone_token=${result.verifiedPhoneToken}&phone=${result.phoneNumber}`);
+        if (result.status === 'new_user') {
+          toast?.show('账号已创建，可在个人资料中修改昵称', { type: 'success' });
         }
+        navigate(from || '/', { replace: true });
       } else {
         const msg = result.message || '验证失败';
         setError(msg);
@@ -534,6 +534,23 @@ export default function LoginPage() {
             {captchaVerified && activeTab === 'phone' && (
               <div className="text-success small mb-2">✓ 人机验证已通过</div>
             )}
+
+            <div className="form-check mb-3">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                id="phoneTermsAccepted"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                required
+              />
+              <label className="form-check-label small" htmlFor="phoneTermsAccepted">
+                我已阅读并同意{' '}
+                <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">《用户协议》</a>
+                {' '}和{' '}
+                <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">《隐私政策》</a>
+              </label>
+            </div>
 
             <PrimaryButton
               type="submit"

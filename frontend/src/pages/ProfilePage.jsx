@@ -117,6 +117,10 @@ export default function ProfilePage() {
   const [creditBarHovered, setCreditBarHovered] = useState(false);
   const [inviteData, setInviteData] = useState(null);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [invitationInput, setInvitationInput] = useState('');
+  const [invitationSubmitting, setInvitationSubmitting] = useState(false);
+  const [invitationMessage, setInvitationMessage] = useState('');
+  const [invitationError, setInvitationError] = useState('');
 
   // Restore the initially active list's page from the URL (?page=N) so refresh keeps position
   const initialPageFromUrl = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
@@ -785,6 +789,79 @@ export default function ProfilePage() {
           padding: isMobile ? '1.25rem 1rem' : '1.75rem 1.5rem',
           textAlign: 'center',
         }}>
+          {inviteData.can_accept_invitation && (
+            <form
+              className="mb-4"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                setInvitationSubmitting(true);
+                setInvitationMessage('');
+                setInvitationError('');
+                try {
+                  const response = await fetch(`${window.API_BASE_URL}/api/users/me/accept-invitation`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: sessionToken,
+                    },
+                    body: JSON.stringify({ invitation_code: invitationInput }),
+                  });
+                  const result = await response.json();
+                  if (!response.ok) {
+                    throw new Error(getApiErrorMessage(result, '邀请码提交失败'));
+                  }
+                  setInvitationMessage(result.message);
+                  setInvitationInput('');
+                  setInviteData((previous) => ({
+                    ...previous,
+                    can_accept_invitation: false,
+                    invited_by_name: result.inviter_name,
+                  }));
+                  await refreshUserData();
+                  toast.show(result.message, { type: 'success' });
+                } catch (error) {
+                  const message = error.message || '邀请码提交失败，请稍后重试';
+                  setInvitationError(message);
+                  toast.show(message, { type: 'error' });
+                } finally {
+                  setInvitationSubmitting(false);
+                }
+              }}
+            >
+              <label className="form-label fw-semibold" htmlFor="acceptInvitationCode">
+                填写好友邀请码
+              </label>
+              <div className="d-flex gap-2">
+                <input
+                  id="acceptInvitationCode"
+                  className="form-control"
+                  value={invitationInput}
+                  onChange={(event) => setInvitationInput(event.target.value.toUpperCase())}
+                  placeholder="注册后7天内填写，仅可使用一次"
+                  maxLength={12}
+                  required
+                  style={{ textTransform: 'uppercase' }}
+                />
+                <button className="btn btn-primary text-nowrap" type="submit" disabled={invitationSubmitting}>
+                  {invitationSubmitting ? '提交中…' : '接受邀请'}
+                </button>
+              </div>
+              <small className="form-text text-muted d-block mt-1">
+                使用好友邀请码后，你和邀请人均可获得点数奖励。
+              </small>
+              {invitationError && <div className="text-danger small mt-2">{invitationError}</div>}
+            </form>
+          )}
+          {inviteData.invited_by_name && (
+            <div className="alert alert-success py-2" role="status">
+              {invitationMessage || `已接受${inviteData.invited_by_name}的邀请并获得点数奖励，对方也已获得奖励`}
+            </div>
+          )}
+          {!inviteData.can_accept_invitation && !inviteData.invited_by_name && (
+            <div className="small text-muted mb-3">
+              邀请码填写期限为注册后7天，且仅可填写一次。
+            </div>
+          )}
           {/* Icon */}
           <div style={{
             width: isMobile ? 44 : 52,
@@ -2132,6 +2209,68 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+          {isOwnProfile && displayUser && (
+            (() => {
+              const missingProfileItems = [];
+              if (!displayUser.profile_pic) missingProfileItems.push('头像');
+              if (!displayUser.bio?.trim()) missingProfileItems.push('简介');
+              const missingProfileDetails = missingProfileItems.length > 0;
+              const missingEmail = !displayUser.email;
+              if (!missingProfileDetails && !missingEmail) return null;
+
+              return (
+                <section
+                  aria-label="完善个人资料"
+                  style={{
+                    display: 'flex',
+                    alignItems: isMobile ? 'stretch' : 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 12,
+                    marginTop: 16,
+                    padding: '14px 16px',
+                    borderRadius: 14,
+                    background: 'rgba(255,255,255,0.56)',
+                    border: '1px solid rgba(115,107,146,0.14)',
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', minWidth: 0, flex: '1 1 240px' }}>
+                    <i className="bi bi-person-check" aria-hidden="true" style={{ color: '#736b92', fontSize: 18, marginTop: 1 }} />
+                    <div>
+                      <div style={{ color: '#433d5a', fontWeight: 650, fontSize: '0.9rem' }}>
+                        让你的个人主页更完整
+                      </div>
+                      <div style={{ color: '#777386', fontSize: '0.82rem', marginTop: 3, lineHeight: 1.5 }}>
+                        {missingProfileDetails && `补充${missingProfileItems.join('和')}，让大家更了解你。`}
+                        {missingProfileDetails && missingEmail && ' '}
+                        {missingEmail && '绑定邮箱也能帮助保护账号、找回密码。'}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {missingProfileDetails && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={openEditProfile}
+                      >
+                        完善资料
+                      </button>
+                    )}
+                    {missingEmail && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => navigate('/settings')}
+                      >
+                        设置邮箱
+                      </button>
+                    )}
+                  </div>
+                </section>
+              );
+            })()
+          )}
         </div>
 
         {/* ── Workstation layout: sidebar + content ── */}

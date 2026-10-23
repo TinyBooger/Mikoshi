@@ -4,6 +4,7 @@ and phone registration.
 """
 from fastapi import APIRouter, Form, HTTPException, Depends, status, Request, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from passlib.context import CryptContext
 from database import get_db
 from models import User
@@ -11,13 +12,14 @@ from schemas import AuthUserOut, VerifyPhoneOut
 from utils.session import create_session_token
 from utils.user_utils import build_user_response
 from utils.validators import validate_account_fields
-from utils.sms_utils import send_verification_code, verify_code, create_verified_phone_token, verify_phone_token, get_dev_sms_bypass_info
+from utils.sms_utils import send_verification_code, verify_code, verify_phone_token, get_dev_sms_bypass_info
 from utils.captcha_utils import verify_captcha_param
 from utils.request_utils import get_client_ip, get_device_fingerprint, update_tracking_array
 from utils.audit_logger import audit_request
 from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 from utils.invitation_utils import generate_invitation_code, process_invitation_code, track_invitation
+from utils.onboarding_nicknames import generate_onboarding_nickname
 import re
 from typing import Optional
 
@@ -57,25 +59,33 @@ async def send_sms_code(phone_number: str = Form(...)):
     return result
 
 
-# Phone number verification - returns token for new users or logs in existing users
+# Phone number verification — logs in existing users and creates new accounts
 @router.post("/api/verify-phone", response_model=VerifyPhoneOut)
 def verify_phone(
+    request: Request,
     phone_number: str = Form(...),
     verification_code: str = Form(...),
     captcha_verify_param: str = Form(None),
+    terms_accepted: bool = Form(False),
     db: Session = Depends(get_db)
 ):
     """
     验证手机号验证码
     - 首先验证人机验证码（如果提供）
     - 如果手机号已存在，直接登录返回session token
-    - 如果手机号不存在，返回verified_phone_token用于注册
+    - 如果手机号不存在，自动创建账号并登录
     
     参数：
     - phone_number: 手机号
     - verification_code: 手机验证码
     - captcha_verify_param: 人机验证码验签参数（建议必填）
     """
+    if not terms_accepted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请先阅读并同意用户协议和隐私政策"
+        )
+
     # 验证人机验证码（可选但推荐）
     if captcha_verify_param:
         try:
@@ -117,13 +127,48 @@ def verify_phone(
             "user": user_response
         }
     else:
-        # 新用户，生成验证token用于注册
-        verified_token = create_verified_phone_token(phone_number)
+        created_user = True
+        user = User(
+            id=f"phone_{phone_number}",
+            phone_number=phone_number,
+            name=generate_onboarding_nickname(),
+            email=None,
+            bio=None,
+            hashed_password="",
+            profile_pic=None,
+            invitation_code=generate_invitation_code(db),
+            last_known_ips=update_tracking_array([], get_client_ip(request)),
+            device_fingerprints=update_tracking_array([], get_device_fingerprint(request)),
+        )
+        db.add(user)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            user = db.query(User).filter(User.phone_number == phone_number).first()
+            if not user:
+                raise
+            created_user = False
+        db.refresh(user)
+        token = create_session_token(user)
+        user_response = build_user_response(user, db)
+        if created_user:
+            audit_request(
+                request,
+                action="register",
+                user_id=user.id,
+                metadata={
+                    "signup_method": "phone",
+                    "name": user.name,
+                    "phone_number": phone_number,
+                    "invitation_code": None,
+                },
+            )
         return {
-            "status": "new_user",
-            "message": "Phone verified, please complete registration",
-            "verified_phone_token": verified_token,
-            "phone_number": phone_number
+            "status": "new_user" if created_user else "existing_user",
+            "message": "Account created successfully" if created_user else "Login successful",
+            "session_token": token,
+            "user": user_response,
         }
 
 

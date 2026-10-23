@@ -206,7 +206,7 @@ export function AuthProvider({ children, initialState = null }) {
   };
 
   // Verify phone number with code
-  const verifyPhone = async (phoneNumber, code, captchaVerifyParam = null) => {
+  const verifyPhone = async (phoneNumber, code, captchaVerifyParam = null, termsAccepted = false) => {
     setLoading(true);
     setError(null);
     try {
@@ -214,6 +214,7 @@ export function AuthProvider({ children, initialState = null }) {
       if (captchaVerifyParam) {
         params.captcha_verify_param = captchaVerifyParam;
       }
+      params.terms_accepted = String(termsAccepted);
       const response = await fetch(`${window.API_BASE_URL}/api/verify-phone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -221,86 +222,21 @@ export function AuthProvider({ children, initialState = null }) {
       });
       const result = await response.json();
       if (response.ok) {
-        if (result.status === 'existing_user') {
-          // 已有用户，直接登录
+        if (result.status === 'existing_user' || result.status === 'new_user') {
           setSessionToken(result.session_token);
           localStorage.setItem('sessionToken', result.session_token);
           setUserData(result.user);
           setError(null);
-          return { success: true, status: 'existing_user' };
-        } else {
-          // 新用户，返回token用于注册
-          setError(null);
-          return { 
-            success: true, 
-            status: 'new_user',
-            verifiedPhoneToken: result.verified_phone_token,
-            phoneNumber: result.phone_number
-          };
+          return { success: true, status: result.status };
         }
+        setError('Unexpected phone verification response');
+        return { success: false, message: 'Unexpected phone verification response' };
       } else {
         setError(result.detail || 'Verification failed');
         return { success: false, message: result.detail };
       }
     } catch (err) {
       setError('Verification error');
-      return { success: false, message: 'Network error' };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Register with verified phone number
-  const registerWithPhone = async (verifiedPhoneToken, name, invitationCode, bio, email, password, profileFile) => {
-    setLoading(true);
-    setError(null);
-    try {
-      let response;
-      const fp = getDeviceFingerprint();
-      const fpHeader = fp ? { 'X-Device-Fingerprint': fp } : {};
-      if (profileFile) {
-        const formData = new FormData();
-        formData.append('verified_phone_token', verifiedPhoneToken);
-        formData.append('name', name);
-        formData.append('invitation_code', invitationCode);
-        if (bio) formData.append('bio', bio);
-        if (email) formData.append('email', email);
-        if (password) formData.append('password', password);
-        formData.append('profile_pic', profileFile);
-        response = await fetch(`${window.API_BASE_URL}/api/register-with-phone`, {
-          method: 'POST',
-          headers: { ...fpHeader },
-          body: formData
-        });
-      } else {
-        const params = { 
-          verified_phone_token: verifiedPhoneToken,
-          name, 
-          invitation_code: invitationCode, 
-          bio: bio || '' 
-        };
-        if (email) params.email = email;
-        if (password) params.password = password;
-        response = await fetch(`${window.API_BASE_URL}/api/register-with-phone`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...fpHeader },
-          body: new URLSearchParams(params)
-        });
-      }
-      const result = await response.json();
-      if (response.ok && result.token) {
-        setSessionToken(result.token);
-        localStorage.setItem('sessionToken', result.token);
-        setUserData(result.user);
-        setError(null);
-        return { success: true };
-      } else {
-        const message = getApiErrorMessage(result, 'Registration failed', t);
-        setError(message);
-        return { success: false, message };
-      }
-    } catch (err) {
-      setError('Registration error');
       return { success: false, message: 'Network error' };
     } finally {
       setLoading(false);
@@ -363,7 +299,6 @@ export function AuthProvider({ children, initialState = null }) {
       logout,
       sendVerificationCode,
       verifyPhone,
-      registerWithPhone,
       refreshUserData: fetchUserData
     }}>
       {children}

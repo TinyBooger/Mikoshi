@@ -126,15 +126,12 @@ def track_invitation(db: Session, invitation_code: str, new_user: User) -> None:
 # ---------------------------------------------------------------------------
 
 def _grant_invite_bonus(db: Session, user_id: str, counterpart_id: str, role: str) -> None:
-    """Grant bonus credits with an idempotency key.  Never raises."""
-    try:
-        credit_wallet(
-            db,
-            user_id=user_id,
-            credits=INVITATION_BONUS_CREDITS,
-            source="invitation_bonus",
-            idempotency_key=f"invite_{role}_{user_id}_{counterpart_id}",
-            metadata={"role": role, "counterpart_id": counterpart_id},
-        )
-    except Exception:
-        pass  # Non-fatal
+    """Grant bonus credits with an idempotency key."""
+    credit_wallet(
+        db,
+        user_id=user_id,
+        credits=INVITATION_BONUS_CREDITS,
+        source="invitation_bonus",
+        idempotency_key=f"invite_{role}_{user_id}_{counterpart_id}",
+        metadata={"role": role, "counterpart_id": counterpart_id},
+    )

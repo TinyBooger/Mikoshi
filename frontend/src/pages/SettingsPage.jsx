@@ -235,12 +235,16 @@ export default function SettingsPage() {
       const res = await fetch(`${window.API_BASE_URL}/api/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': sessionToken },
-        body: JSON.stringify({ currentPassword, newPassword })
+        body: JSON.stringify({
+          ...(userData.has_password ? { currentPassword } : {}),
+          newPassword,
+        })
       });
       const data = await res.json();
         if (res.ok) {
-          toast.show(data.message || '密码已更改', { type: 'info' });
+          toast.show(data.message || '密码已设置', { type: 'info' });
           setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); setShowPasswordForm(false);
+          await refreshUserData();
         } else {
           const msg = data.detail || data.message || '修改密码失败';
           setPasswordError(msg);
@@ -616,17 +620,21 @@ export default function SettingsPage() {
                   <h4>安全设置</h4>
                   {!showPasswordForm ? (
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <AppButton onClick={() => setShowPasswordForm(true)}>修改密码</AppButton>
+                      <AppButton onClick={() => setShowPasswordForm(true)}>
+                        {userData.has_password ? '修改密码' : '设置密码'}
+                      </AppButton>
                     </div>
                   ) : (
                     <form onSubmit={doChangePassword}>
-                      <div className="mb-2">
-                        <label className="form-label">当前密码</label>
-                        <input type="password" className="form-control" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
-                      </div>
+                      {userData.has_password && (
+                        <div className="mb-2">
+                          <label className="form-label">当前密码</label>
+                          <input type="password" className="form-control" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
+                        </div>
+                      )}
                       <div className="mb-2">
                         <label className="form-label">新密码</label>
-                        <input type="password" className="form-control" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
+                        <input type="password" className="form-control" value={newPassword} onChange={e => setNewPassword(e.target.value)} minLength={6} maxLength={128} required />
                       </div>
                       <div className="mb-2">
                         <label className="form-label">确认新密码</label>
@@ -636,7 +644,9 @@ export default function SettingsPage() {
                         <div className="text-danger mb-2" style={{ fontSize: '0.95rem' }}>{passwordError}</div>
                       )}
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <AppButton type="submit" disabled={changingPassword}>修改密码</AppButton>
+                        <AppButton type="submit" disabled={changingPassword}>
+                          {userData.has_password ? '修改密码' : '设置密码'}
+                        </AppButton>
                         <AppButton variant="secondary" type="button" onClick={() => { setShowPasswordForm(false); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); }}>取消</AppButton>
                       </div>
                     </form>
