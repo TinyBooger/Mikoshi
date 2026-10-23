@@ -96,10 +96,10 @@ def process_invitation_code(
     inviter = db.query(User).filter(User.invitation_code == code).first()
 
     if not inviter:
-        return False, "Invalid invitation code"
+        return False, "邀请码无效"
 
     if inviter.id == new_user_id:
-        return False, "Cannot use your own invitation code"
+        return False, "不能使用自己的邀请码"
 
     # Daily rate limit for the inviter
     today_count = count_today_invites(db, inviter.id)

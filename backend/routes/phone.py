@@ -224,12 +224,12 @@ def register_with_phone(
         if not inviter:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid invitation code"
+                detail="邀请码无效"
             )
         if inviter.id == user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot use your own invitation code"
+                detail="不能使用自己的邀请码"
             )
 
     text_safe, _, blocked_field, blocked_label, _, _, _, _ = moderate_form_payload_with_review({
