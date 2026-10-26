@@ -103,7 +103,7 @@ export default function ProUpgradePage() {
     if (window.history.length > 1) {
       navigate(-1);
     } else {
-      navigate('/browse');
+      navigate('/');
     }
   };
 

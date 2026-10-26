@@ -1,4 +1,4 @@
-import React, { createContext, lazy, Suspense, useContext, useMemo, useRef } from 'react';
+import React, { lazy, Suspense, useContext, useMemo } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider, useLocation } from 'react-router';
 import AdminRoute from './components/AdminRoute.jsx';
 import Layout from './components/Layout.jsx';
@@ -41,8 +41,6 @@ const CreditTopUpPage = lazy(() => import('./pages/CreditTopUpPage.jsx'));
 const PackagePaymentPage = lazy(() => import('./pages/PackagePaymentPage.jsx'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage.jsx'));
 
-export const InitialBrowseDataContext = createContext(null);
-
 function RouteLoadingFallback() {
   return (
     <div className="d-flex justify-content-center align-items-center p-4" role="status">
@@ -61,11 +59,8 @@ function LazyPage({ Component, ...props }) {
 }
 
 function AppRootLayout() {
-  const { loading } = useContext(AuthContext);
-  if (loading) {
-    return null; // Or a loading spinner
-  }
-  // Always render Layout so unauthenticated users can browse the site
+  // The session hint is available synchronously and background validation never
+  // blocks rendering, so the layout is always painted immediately.
   return <Layout />;
 }
 
@@ -77,24 +72,11 @@ function ProtectedPage({ children }) {
 }
 
 function PublicOnlyPage({ children }) {
-  const { userData, loading } = useContext(AuthContext);
+  const { userData } = useContext(AuthContext);
   const location = useLocation();
-  const initialized = useRef(false);
-
-  if (!loading) initialized.current = true;
-  if (!initialized.current) return null;
-
   return userData
-    ? <Navigate to={location.state?.from || '/browse'} replace />
+    ? <Navigate to={location.state?.from || '/'} replace />
     : children;
-}
-
-function RootIndexPage() {
-  const { userData, loading } = useContext(AuthContext);
-  const initialBrowseData = useContext(InitialBrowseDataContext);
-  if (loading) return null; // or a spinner if you prefer
-  // Show BrowsePage as landing page for unauthenticated users
-  return userData ? <Navigate to="/browse" replace /> : <BrowsePage initialData={initialBrowseData} />;
 }
 
 function KeyedChatPage() {
@@ -108,11 +90,8 @@ export const routes = [
     path: '/',
     element: <AppRootLayout />,
     children: [
-      { index: true, element: <RootIndexPage /> },
+      { index: true, element: <BrowsePage /> },
       { path: 'test', element: <ProtectedPage><LazyPage Component={TestPage} /></ProtectedPage> },
-      { path: 'browse', element: <BrowsePage /> },
-      { path: 'browse/:mainTab/:subTab', element: <BrowsePage /> },
-      { path: 'browse/:mainTab', element: <BrowsePage /> },
       { path: 'character/create', element: <ProtectedPage><LazyPage Component={CharacterFormPage} /></ProtectedPage> },
       { path: 'character/edit/:id', element: <ProtectedPage><LazyPage Component={CharacterFormPage} /></ProtectedPage> },
       { path: 'character/fork/:id', element: <ProtectedPage><LazyPage Component={CharacterFormPage} /></ProtectedPage> },
@@ -183,15 +162,11 @@ export const routes = [
   },
 ];
 
-export default function App({ router: suppliedRouter, initialBrowseData = null }) {
+export default function App({ router: suppliedRouter }) {
   const router = useMemo(
     () => suppliedRouter || createBrowserRouter(routes),
     [suppliedRouter]
   );
 
-  return (
-    <InitialBrowseDataContext.Provider value={initialBrowseData}>
-      <RouterProvider router={router} />
-    </InitialBrowseDataContext.Provider>
-  );
+  return <RouterProvider router={router} />;
 }

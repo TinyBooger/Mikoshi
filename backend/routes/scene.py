@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File, Query, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -17,6 +17,11 @@ from utils.collaborative_filtering import get_cf_scenes
 from datetime import datetime, UTC
 from schemas import SceneOut, SceneListOut
 from utils.user_utils import get_active_ban_type, is_upload_banned
+from utils.public_cache import (
+    PUBLIC_CACHE_HEADERS,
+    get_cached_text,
+    set_cached_text,
+)
 
 
 router = APIRouter()
@@ -191,6 +196,16 @@ def get_popular_scenes(
     current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
+    cache_key = f"public:scenes:popular:{int(short)}:{page}:{page_size}"
+    if current_user is None:
+        cached = get_cached_text(cache_key)
+        if cached is not None:
+            return Response(
+                content=cached,
+                media_type="application/json",
+                headers=PUBLIC_CACHE_HEADERS,
+            )
+
     total = db.query(Scene).filter(Scene.is_public == True).count()
     base_query = (
         db.query(Scene, User.profile_pic.label("creator_profile_pic"))
@@ -208,14 +223,25 @@ def get_popular_scenes(
             scene.creator_profile_pic = creator_profile_pic
             scene.liked = scene.id in liked_ids
             items.append(SceneOut.from_orm(scene))
-        return SceneListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
-    items = []
-    for scene, creator_profile_pic in rows:
-        scene.creator_profile_pic = creator_profile_pic
-        scene.liked = scene.id in liked_ids
-        items.append(SceneOut.from_orm(scene))
-    return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+        payload = SceneListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    else:
+        rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+        items = []
+        for scene, creator_profile_pic in rows:
+            scene.creator_profile_pic = creator_profile_pic
+            scene.liked = scene.id in liked_ids
+            items.append(SceneOut.from_orm(scene))
+        payload = SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+
+    if current_user is None:
+        serialized = payload.model_dump_json()
+        set_cached_text(cache_key, serialized)
+        return Response(
+            content=serialized,
+            media_type="application/json",
+            headers=PUBLIC_CACHE_HEADERS,
+        )
+    return payload
 
 # Recent Scenes
 @router.get("/api/scenes/recent", response_model=SceneListOut)
@@ -226,6 +252,16 @@ def get_recent_scenes(
     current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
+    cache_key = f"public:scenes:recent:{int(short)}:{page}:{page_size}"
+    if current_user is None:
+        cached = get_cached_text(cache_key)
+        if cached is not None:
+            return Response(
+                content=cached,
+                media_type="application/json",
+                headers=PUBLIC_CACHE_HEADERS,
+            )
+
     total = db.query(Scene).filter(Scene.is_public == True).count()
     base_query = (
         db.query(Scene, User.profile_pic.label("creator_profile_pic"))
@@ -243,14 +279,25 @@ def get_recent_scenes(
             scene.creator_profile_pic = creator_profile_pic
             scene.liked = scene.id in liked_ids
             items.append(SceneOut.from_orm(scene))
-        return SceneListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
-    items = []
-    for scene, creator_profile_pic in rows:
-        scene.creator_profile_pic = creator_profile_pic
-        scene.liked = scene.id in liked_ids
-        items.append(SceneOut.from_orm(scene))
-    return SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+        payload = SceneListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    else:
+        rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+        items = []
+        for scene, creator_profile_pic in rows:
+            scene.creator_profile_pic = creator_profile_pic
+            scene.liked = scene.id in liked_ids
+            items.append(SceneOut.from_orm(scene))
+        payload = SceneListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+
+    if current_user is None:
+        serialized = payload.model_dump_json()
+        set_cached_text(cache_key, serialized)
+        return Response(
+            content=serialized,
+            media_type="application/json",
+            headers=PUBLIC_CACHE_HEADERS,
+        )
+    return payload
 
 
 # Recommended Scenes (collaborative filtering)

@@ -2,27 +2,15 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ mode, isSsrBuild }) => {
+export default defineConfig(({ mode }) => {
   // Load environment variables for the current mode
   const env = loadEnv(mode, process.cwd());
-  const isProduction = env.ENVIRONMENT === 'production' || mode === 'production';
 
   // Where the dev proxy sends backend traffic.
   const proxyTarget = env.VITE_DEV_PROXY_TARGET || 'http://localhost:8000';
 
   return {
     plugins: [react()],
-    ...(isSsrBuild && {
-      build: {
-        rollupOptions: {
-          output: {
-            format: 'es',
-            entryFileNames: 'entry-server.mjs',
-            chunkFileNames: 'chunks/[name]-[hash].mjs',
-          },
-        },
-      },
-    }),
     server: {
       port: 3000,
       strictPort: true,

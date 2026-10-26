@@ -44,19 +44,10 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [homeIconFocused, setHomeIconFocused] = useState(false);
   const [searchHistory, setSearchHistory] = useState(() => {
-    if (typeof window === 'undefined' || window.__PRERENDER_DATA__) return [];
+    if (typeof window === 'undefined') return [];
     try { return JSON.parse(localStorage.getItem('sidebar_search_history') || '[]'); }
     catch { return []; }
   });
-
-  useEffect(() => {
-    if (!window.__PRERENDER_DATA__) return;
-    try {
-      setSearchHistory(JSON.parse(localStorage.getItem('sidebar_search_history') || '[]'));
-    } catch {
-      setSearchHistory([]);
-    }
-  }, []);
 
   const addToHistory = (term) => {
     setSearchHistory(prev => {
@@ -1204,8 +1195,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
           </div>
         )}
   {userData ? (
-          <div className="profile-dropdown-area position-relative">
-            <button
+          <div className="profile-dropdown-area position-relative" style={{ minHeight: 54 }}>            <button
               className={`btn border-0 w-100 d-flex align-items-center gap-3 shadow-sm rounded-4 py-2${profileOpen ? ' active' : ''}`}
               style={{ fontSize: '1rem', background: profileOpen ? '#dbeafe' : '#fff', color: '#232323', fontWeight: 700, transition: 'background 0.2s' }}
               onClick={() => setProfileOpen((v) => !v)}
@@ -1322,9 +1312,12 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
             </ul>
           </div>
         ) : (
-          <div className="text-center small py-2">
-            <button 
-              className="btn rounded-pill px-3 py-1 fw-bold shadow-sm" 
+          <div
+            className="text-center small py-2"
+            style={{ minHeight: 54, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <button
+              className="btn rounded-pill px-3 py-1 fw-bold shadow-sm"
               style={{ background: '#fff', color: '#232323', fontWeight: 700, fontSize: '0.8rem' }}
               onClick={() => {
                 handleNavigate('/login');

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form, Query, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -25,6 +25,11 @@ from schemas import CharacterOut, CharacterListOut
 from utils.content_review_queue import enqueue_character_review
 from utils.credit_cap import get_credit_cap_info
 from utils.user_utils import get_active_ban_type, is_upload_banned
+from utils.public_cache import (
+    PUBLIC_CACHE_HEADERS,
+    get_cached_text,
+    set_cached_text,
+)
 
 router = APIRouter()
 
@@ -653,6 +658,19 @@ def get_popular_characters(
     current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
+    # Anonymous responses are identical for every viewer, so they can be cached
+    # in Redis and by nginx. Authenticated requests keep the per-user `liked`
+    # flags and always go straight to the database.
+    cache_key = f"public:characters:popular:{int(short)}:{page}:{page_size}"
+    if current_user is None:
+        cached = get_cached_text(cache_key)
+        if cached is not None:
+            return Response(
+                content=cached,
+                media_type="application/json",
+                headers=PUBLIC_CACHE_HEADERS,
+            )
+
     total = db.query(Character).filter(Character.is_public == True).count()
     base_query = (
         db.query(Character, User.profile_pic.label("creator_profile_pic"))
@@ -670,14 +688,25 @@ def get_popular_characters(
             char.creator_profile_pic = creator_profile_pic
             char.liked = char.id in liked_ids
             items.append(char)
-        return CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
-    items = []
-    for char, creator_profile_pic in rows:
-        char.creator_profile_pic = creator_profile_pic
-        char.liked = char.id in liked_ids
-        items.append(char)
-    return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+        payload = CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    else:
+        rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+        items = []
+        for char, creator_profile_pic in rows:
+            char.creator_profile_pic = creator_profile_pic
+            char.liked = char.id in liked_ids
+            items.append(char)
+        payload = CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+
+    if current_user is None:
+        serialized = payload.model_dump_json()
+        set_cached_text(cache_key, serialized)
+        return Response(
+            content=serialized,
+            media_type="application/json",
+            headers=PUBLIC_CACHE_HEADERS,
+        )
+    return payload
 
 @router.get("/api/characters/recommended", response_model=CharacterListOut)
 def get_recommended_characters(
@@ -723,6 +752,16 @@ def get_recent_characters(
     current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
+    cache_key = f"public:characters:recent:{int(short)}:{page}:{page_size}"
+    if current_user is None:
+        cached = get_cached_text(cache_key)
+        if cached is not None:
+            return Response(
+                content=cached,
+                media_type="application/json",
+                headers=PUBLIC_CACHE_HEADERS,
+            )
+
     total = db.query(Character).filter(Character.is_public == True).count()
     base_query = (
         db.query(Character, User.profile_pic.label("creator_profile_pic"))
@@ -740,14 +779,25 @@ def get_recent_characters(
             char.creator_profile_pic = creator_profile_pic
             char.liked = char.id in liked_ids
             items.append(char)
-        return CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
-    items = []
-    for char, creator_profile_pic in rows:
-        char.creator_profile_pic = creator_profile_pic
-        char.liked = char.id in liked_ids
-        items.append(char)
-    return CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+        payload = CharacterListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    else:
+        rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+        items = []
+        for char, creator_profile_pic in rows:
+            char.creator_profile_pic = creator_profile_pic
+            char.liked = char.id in liked_ids
+            items.append(char)
+        payload = CharacterListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+
+    if current_user is None:
+        serialized = payload.model_dump_json()
+        set_cached_text(cache_key, serialized)
+        return Response(
+            content=serialized,
+            media_type="application/json",
+            headers=PUBLIC_CACHE_HEADERS,
+        )
+    return payload
 
 @router.get("/api/characters/following", response_model=CharacterListOut)
 def get_following_characters(

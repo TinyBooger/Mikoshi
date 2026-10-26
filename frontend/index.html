@@ -33,6 +33,24 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <!-- Web App Manifest (Android + PWA install for all platforms) -->
   <link rel="manifest" href="/manifest.json" />
+  <!-- Start the anonymous popular-list request in parallel with the JS bundle.
+       The response is token-free and cached, so this is the one place where a
+       tiny bit of server-known work beats waiting for hydration.
+       No `crossorigin` here: it must match the credentials mode of the inline
+       fetch below, otherwise the browser downloads the list twice. -->
+  <link rel="preload" as="fetch"
+        href="/api/characters/popular?short=false&page=1&page_size=20" />
+  <script>
+    try {
+      window.__POPULAR_LIST_PRELOAD__ = fetch(
+        '/api/characters/popular?short=false&page=1&page_size=20'
+      ).then(function (response) {
+        return response.ok ? response.json() : null;
+      });
+    } catch (e) {
+      /* the SPA fetches the list itself if the preload fails */
+    }
+  </script>
 </head>
 <body>
   <style>

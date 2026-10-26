@@ -7,6 +7,43 @@ import { getApiErrorMessage } from '../utils/apiErrorUtils';
 
 export const AuthContext = createContext();
 
+// Non-sensitive session hint so the header can render the signed-in state on
+// the very first paint instead of waiting for /api/users/me. It is only trusted
+// while it matches the stored session token; /me still validates in background.
+const SESSION_HINT_KEY = 'sessionHint';
+
+function readStoredToken() {
+  try {
+    return typeof window === 'undefined' ? null : localStorage.getItem('sessionToken');
+  } catch {
+    return null;
+  }
+}
+
+function readSessionHint() {
+  try {
+    const raw = localStorage.getItem(SESSION_HINT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.user || parsed.token !== readStoredToken()) return null;
+    return parsed.user;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionHint(token, user) {
+  try {
+    if (!token || !user) {
+      localStorage.removeItem(SESSION_HINT_KEY);
+      return;
+    }
+    localStorage.setItem(SESSION_HINT_KEY, JSON.stringify({ token, user }));
+  } catch {
+    // Hint is an optimisation only; storage failures are not fatal.
+  }
+}
+
 /**
  * Generate a lightweight, stable device fingerprint from browser environment signals.
  * This is intentionally simple — it is only used as a soft signal to help admins
@@ -38,14 +75,16 @@ function getDeviceFingerprint() {
 export function AuthProvider({ children, initialState = null }) {
   const [sessionToken, setSessionToken] = useState(() => {
     if (initialState) return initialState.sessionToken;
-    try {
-      return typeof window === 'undefined' ? null : localStorage.getItem('sessionToken');
-    } catch {
-      return null;
-    }
+    return readStoredToken();
   });
-  const [userData, setUserData] = useState(initialState?.userData ?? null);
-  const [loading, setLoading] = useState(initialState?.loading ?? true);
+  // Seeded synchronously from the cached hint so returning users never see the
+  // signed-out header first.
+  const [userData, setUserData] = useState(
+    () => initialState?.userData ?? (initialState ? null : readSessionHint())
+  );
+  // `loading` now only covers explicit auth actions (login/register/verify).
+  // Background validation never blocks the first paint.
+  const [loading, setLoading] = useState(initialState?.loading ?? false);
   const [error, setError] = useState(null);
   const { t } = useTranslation();
 
@@ -54,6 +93,7 @@ export function AuthProvider({ children, initialState = null }) {
     if (!sessionToken) {
       setUserData(null);
       setLoading(false);
+      writeSessionHint(null, null);
       return;
     }
     if (!silent) {
@@ -69,12 +109,17 @@ export function AuthProvider({ children, initialState = null }) {
       if (response.ok) {
         const data = await response.json();
         setUserData(data);
-      } else {
+        writeSessionHint(sessionToken, data);
+      } else if (response.status === 401 || response.status === 403) {
+        // Only an explicit auth rejection clears the session; transient errors
+        // keep the optimistic header state.
         setUserData(null);
+        setSessionToken(null);
+        writeSessionHint(null, null);
+        try { localStorage.removeItem('sessionToken'); } catch { /* ignore */ }
         setError('Failed to fetch user data');
       }
     } catch (err) {
-      setUserData(null);
       setError('Error fetching user data');
     } finally {
       if (!silent) {
@@ -101,6 +146,7 @@ export function AuthProvider({ children, initialState = null }) {
         setSessionToken(result.token);
         localStorage.setItem('sessionToken', result.token);
         setUserData(result.user);
+        writeSessionHint(result.token, result.user);
         setError(null);
         return true;
       } else {
@@ -154,6 +200,7 @@ export function AuthProvider({ children, initialState = null }) {
         setSessionToken(result.token);
         localStorage.setItem('sessionToken', result.token);
         setUserData(result.user);
+        writeSessionHint(result.token, result.user);
         setError(null);
         return true;
       } else {
@@ -179,6 +226,7 @@ export function AuthProvider({ children, initialState = null }) {
     setSessionToken(null);
     setUserData(null);
     localStorage.removeItem('sessionToken');
+    writeSessionHint(null, null);
   };
 
   // Send SMS verification code
@@ -226,6 +274,7 @@ export function AuthProvider({ children, initialState = null }) {
           setSessionToken(result.session_token);
           localStorage.setItem('sessionToken', result.session_token);
           setUserData(result.user);
+          writeSessionHint(result.session_token, result.user);
           setError(null);
           return { success: true, status: result.status };
         }
@@ -243,21 +292,10 @@ export function AuthProvider({ children, initialState = null }) {
     }
   };
 
-  // Fetch user data on mount or when sessionToken changes
+  // Validate the cached session in the background. The hint already rendered the
+  // signed-in header, so this must never block paint.
   useEffect(() => {
-    if (initialState) {
-      let storedToken = null;
-      try {
-        storedToken = localStorage.getItem('sessionToken');
-      } catch {
-        storedToken = null;
-      }
-      if (storedToken !== sessionToken) {
-        setSessionToken(storedToken);
-        return;
-      }
-    }
-    fetchUserData({ silent: Boolean(initialState && sessionToken) });
+    fetchUserData({ silent: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionToken]);
 

@@ -12,10 +12,7 @@ export default function Layout() {
   const location = useLocation();
   
   // Initialize sidebarVisible based on viewport size
-  const isPrerenderHydration =
-    typeof window !== 'undefined' && Boolean(window.__PRERENDER_DATA__);
-  const initialMobile =
-    !isPrerenderHydration && typeof window !== 'undefined' && window.innerWidth < 768;
+  const initialMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [isMobile, setIsMobile] = useState(initialMobile);
   const [sidebarVisible, setSidebarVisible] = useState(!initialMobile);
   const lastIsMobile = useRef(initialMobile);

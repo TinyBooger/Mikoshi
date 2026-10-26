@@ -3,59 +3,14 @@ import { readFile, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { renderLandingPage } from './dist/server/entry-server.mjs';
 
+// Static shell only. The HTML is identical for every visitor and does not
+// depend on the API being up, so a cold or broken backend can never stop the
+// frontend from starting.
 const frontendDir = fileURLToPath(new URL('.', import.meta.url));
 const distDir = resolve(frontendDir, 'dist');
 const indexPath = resolve(distDir, 'index.html');
-const indexTemplate = await readFile(indexPath, 'utf8');
-const apiBaseUrl = process.env.PRERENDER_API_BASE_URL || 'http://localhost:8000';
-const response = await fetch(
-  `${apiBaseUrl.replace(/\/$/, '')}/api/characters/popular?short=false&page=1&page_size=20`,
-  { signal: AbortSignal.timeout(15000) }
-);
-
-if (!response.ok) {
-  throw new Error(`Landing-page data request failed with HTTP ${response.status}`);
-}
-
-const popularCharacters = await response.json();
-if (!popularCharacters || !Array.isArray(popularCharacters.items)) {
-  throw new Error('Landing-page data request returned an invalid character list');
-}
-if (
-  !Number.isFinite(popularCharacters.total) ||
-  !Number.isFinite(popularCharacters.page_size)
-) {
-  throw new Error('Landing-page data response is missing pagination metadata');
-}
-
-const initialBrowseData = {
-  items: popularCharacters.items,
-  total: popularCharacters.total,
-  page: popularCharacters.page,
-  page_size: popularCharacters.page_size,
-  short: popularCharacters.short,
-};
-const serializedData = JSON.stringify(initialBrowseData)
-  .replace(/</g, '\\u003c')
-  .replace(/\u2028/g, '\\u2028')
-  .replace(/\u2029/g, '\\u2029');
-const renderedRoot = renderLandingPage(initialBrowseData);
-if (!indexTemplate.includes('<div id="root"></div>')) {
-  throw new Error('Built HTML does not contain the expected React root');
-}
-const renderedTemplate = indexTemplate.replace(
-  '<div id="root"></div>',
-  `<div id="root">${renderedRoot}</div>`
-);
-if (renderedTemplate === indexTemplate) {
-  throw new Error('Could not insert the pre-rendered landing page into the built HTML');
-}
-const landingPage = renderedTemplate.replace(
-  '</head>',
-  `<script id="prerender-data" type="application/json">${serializedData}</script>\n</head>`
-);
+const indexHtml = await readFile(indexPath, 'utf8');
 
 const contentTypes = {
   '.avif': 'image/avif',
@@ -98,12 +53,7 @@ async function handleRequest(request, response) {
       'Cache-Control': 'no-cache',
       'Content-Type': 'text/html; charset=utf-8',
     });
-    response.end(request.method === 'HEAD' ? undefined : landingPage);
-    return;
-  }
-
-  if (pathname === '/server' || pathname.startsWith('/server/')) {
-    response.writeHead(404).end();
+    response.end(request.method === 'HEAD' ? undefined : indexHtml);
     return;
   }
 
@@ -146,7 +96,7 @@ async function handleRequest(request, response) {
     'Cache-Control': 'no-cache',
     'Content-Type': 'text/html; charset=utf-8',
   });
-  response.end(request.method === 'HEAD' ? undefined : indexTemplate);
+  response.end(request.method === 'HEAD' ? undefined : indexHtml);
 }
 
 const server = createServer((request, response) => {

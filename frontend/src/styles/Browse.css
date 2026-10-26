@@ -1,0 +1,167 @@
+/* Layout that cannot jump: the masonry column count is pure CSS, so no React
+   state has to know the viewport width before the first paint. */
+.browse-masonry {
+  column-count: 5;
+  column-gap: 16px;
+  width: 100%;
+}
+
+.browse-masonry > * {
+  break-inside: avoid;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1200px) {
+  .browse-masonry {
+    column-count: 4;
+  }
+}
+
+@media (max-width: 992px) {
+  .browse-masonry {
+    column-count: 3;
+  }
+}
+
+@media (max-width: 767px) {
+  .browse-masonry {
+    column-count: 2;
+    column-gap: 10px;
+  }
+
+  .browse-masonry > * {
+    margin-bottom: 10px;
+  }
+}
+
+.browse-search-box {
+  width: clamp(200px, 30vw, 480px);
+  margin-left: auto;
+  position: relative;
+}
+
+/* 16px keeps iOS Safari from zooming into the field on focus. */
+.browse-search-input {
+  font-size: 0.92rem;
+}
+
+.browse-back-to-top {
+  right: 20px;
+  bottom: 32px;
+  width: 48px;
+  height: 48px;
+}
+
+@media (max-width: 767px) {
+  .browse-search-box {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .browse-search-input {
+    font-size: 16px;
+  }
+
+  .browse-back-to-top {
+    right: 12px;
+    bottom: 24px;
+    width: 42px;
+    height: 42px;
+  }
+}
+
+/* Skeletons use the same boxes as the real cards, so the grid is already at its
+   final geometry when data arrives and nothing shifts. */
+.browse-skeleton-card,
+.browse-list-skeleton-row {
+  background: #fff;
+  border: 1px solid rgba(115, 107, 146, 0.12);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.browse-skeleton-card {
+  padding-bottom: 12px;
+}
+
+.browse-skeleton-media {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: linear-gradient(100deg, #efeaf6 20%, #f7f4fb 40%, #efeaf6 60%);
+  background-size: 240% 100%;
+  animation: browseSkeletonShimmer 1.4s ease-in-out infinite;
+}
+
+.browse-skeleton-card--2 .browse-skeleton-media {
+  aspect-ratio: 1 / 1;
+}
+
+.browse-skeleton-card--3 .browse-skeleton-media {
+  aspect-ratio: 4 / 5;
+}
+
+.browse-skeleton-card--4 .browse-skeleton-media {
+  aspect-ratio: 3 / 4.4;
+}
+
+.browse-skeleton-line {
+  height: 10px;
+  margin: 10px 12px 0;
+  border-radius: 6px;
+  background: #eee9f5;
+}
+
+.browse-skeleton-line--short {
+  width: 45%;
+}
+
+.browse-list-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.browse-list-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  min-height: 76px;
+}
+
+.browse-skeleton-avatar {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 50%;
+  background: #eee9f5;
+}
+
+.browse-list-skeleton-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.browse-list-skeleton-text .browse-skeleton-line {
+  margin: 0 0 8px;
+}
+
+.browse-list-skeleton-text .browse-skeleton-line:last-child {
+  margin-bottom: 0;
+}
+
+@keyframes browseSkeletonShimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .browse-skeleton-media {
+    animation: none;
+  }
+}

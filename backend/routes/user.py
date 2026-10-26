@@ -31,6 +31,7 @@ from utils.invitation_utils import (
 )
 from sqlalchemy import func
 from datetime import datetime, UTC, timedelta
+from typing import Optional
 import re
 import os
 
@@ -281,6 +282,86 @@ def get_following_ids(
         raise HTTPException(status_code=401, detail="Not authenticated")
     rows = db.query(UserFollow.creator_id).filter(UserFollow.follower_id == current_user.id).all()
     return {"following_ids": [r.creator_id for r in rows]}
+
+
+@router.get("/api/me/interactions")
+def get_my_interactions(
+    character_ids: Optional[str] = Query(None, description="Comma-separated character IDs"),
+    scene_ids: Optional[str] = Query(None, description="Comma-separated scene IDs"),
+    persona_ids: Optional[str] = Query(None, description="Comma-separated persona IDs"),
+    include_following: bool = Query(False),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Personal overlay for public browse data.
+
+    Public lists are served anonymously and cached, so per-viewer state (liked
+    flags, followed creators) is fetched here in one small request and merged
+    into the cached cards on the client.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    def parse_ids(raw: Optional[str], label: str) -> list[int]:
+        if not raw:
+            return []
+        try:
+            values = [int(part) for part in raw.split(",") if part.strip()]
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"{label} must be comma-separated integers")
+        return values[:300]
+
+    selected_characters = parse_ids(character_ids, "character_ids")
+    selected_scenes = parse_ids(scene_ids, "scene_ids")
+    selected_personas = parse_ids(persona_ids, "persona_ids")
+
+    liked_characters = []
+    if selected_characters:
+        liked_characters = [
+            r.character_id
+            for r in db.query(UserLikedCharacter.character_id).filter(
+                UserLikedCharacter.user_id == current_user.id,
+                UserLikedCharacter.character_id.in_(selected_characters),
+            ).all()
+        ]
+
+    liked_scenes = []
+    if selected_scenes:
+        liked_scenes = [
+            r.scene_id
+            for r in db.query(UserLikedScene.scene_id).filter(
+                UserLikedScene.user_id == current_user.id,
+                UserLikedScene.scene_id.in_(selected_scenes),
+            ).all()
+        ]
+
+    liked_personas = []
+    if selected_personas:
+        liked_personas = [
+            r.persona_id
+            for r in db.query(UserLikedPersona.persona_id).filter(
+                UserLikedPersona.user_id == current_user.id,
+                UserLikedPersona.persona_id.in_(selected_personas),
+            ).all()
+        ]
+
+    following_ids = []
+    if include_following:
+        following_ids = [
+            r.creator_id
+            for r in db.query(UserFollow.creator_id).filter(
+                UserFollow.follower_id == current_user.id
+            ).all()
+        ]
+
+    return {
+        "liked": {
+            "character": liked_characters,
+            "scene": liked_scenes,
+            "persona": liked_personas,
+        },
+        "following_ids": following_ids,
+    }
 
 
 @router.get("/api/users/{target_id}/following")
@@ -553,10 +634,6 @@ def unlike_entity(
     db.commit()
     return {"likes": entity.likes}
 
-
-from typing import Optional
-
-# ...existing code...
 
 # -------------------------- Check Liked Status for Multiple Entities --------------------------
 

@@ -20,5 +20,5 @@ RUN npm run build
 # 暴露端口
 EXPOSE 3000
 
-# Generate the public landing-page snapshot and serve the SPA.
+# Serve the static SPA shell and built assets.
 CMD ["node", "server.mjs"]

@@ -9,10 +9,8 @@ import { useState } from 'react';
  *   className: optional className
  */
 function PageWrapper({ children, style = {}, className = '' }) {
-  const isPrerenderHydration =
-    typeof window !== 'undefined' && Boolean(window.__PRERENDER_DATA__);
   const [isMobile, setIsMobile] = useState(
-    () => !isPrerenderHydration && typeof window !== 'undefined' && window.innerWidth < 600
+    () => typeof window !== 'undefined' && window.innerWidth < 600
   );
 
   React.useEffect(() => {

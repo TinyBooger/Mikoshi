@@ -26,7 +26,16 @@ export default function EntityDetailPage() {
   
   const [entity, setEntity] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [liked, setLiked] = useState(false);
+  // A card that navigates here hands over the entity it already rendered, so the
+  // detail page paints its real content on the first frame and only the full
+  // record is fetched behind it.
+  const previewEntity = (() => {
+    const preview = location.state?.preview;
+    if (!preview || String(preview.id) !== String(id)) return null;
+    if (preview.type && preview.type !== type && `${preview.type}s` !== type) return null;
+    return preview;
+  })();
+  const [liked, setLiked] = useState(Boolean(previewEntity?.liked));
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
   const [isCreatorHovered, setIsCreatorHovered] = useState(false);
   const [isForkableBadgeHovered, setIsForkableBadgeHovered] = useState(false);
@@ -62,6 +71,7 @@ export default function EntityDetailPage() {
       return;
     }
 
+    setEntity(previewEntity);
     setLoading(true);
     let endpoint = '';
     if (type === 'character') {
@@ -258,7 +268,9 @@ export default function EntityDetailPage() {
     doForkNavigate();
   };
 
-  if (loading) {
+  // Only block on a spinner when there is nothing to show yet. A previewed
+  // entity keeps the page painted while the full record loads.
+  if (loading && !entity) {
     return (
       <PageWrapper>
         <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>

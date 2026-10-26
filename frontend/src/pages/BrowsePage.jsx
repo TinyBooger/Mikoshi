@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import { useNavigate, useLocation, useOutletContext } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import DiscoverMasonryCard from '../components/DiscoverMasonryCard';
 import UserCard from '../components/UserCard';
+import { useBrowseFeed, useFollowingFeed } from '../hooks/useBrowseFeed';
+import { useFollowingIds, useLikedOverlay } from '../hooks/useInteractions';
+import '../styles/Browse.css';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
 import OnboardingTour from '../components/OnboardingTour';
@@ -16,8 +20,40 @@ import { isOnboardingCompleted } from '../utils/onboarding';
 import logo from '../assets/images/logo.png';
 import textLogo from '../assets/images/logo_text.png';
 
+const SKELETON_KEYS = Array.from({ length: 10 }, (_, index) => index);
 
-function BrowsePage({ initialData = null }) {
+// Placeholders drawn with the real card geometry, so switching from skeleton to
+// data does not move anything.
+const BrowseMasonrySkeleton = () => (
+  <div className="browse-masonry" aria-hidden="true">
+    {SKELETON_KEYS.map((index) => (
+      <div key={index} className="browse-entity-card">
+        <div className={`browse-skeleton-card browse-skeleton-card--${(index % 4) + 1}`}>
+          <div className="browse-skeleton-media" />
+          <div className="browse-skeleton-line" />
+          <div className="browse-skeleton-line browse-skeleton-line--short" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const BrowseListSkeleton = () => (
+  <div className="browse-list-skeleton" aria-hidden="true">
+    {SKELETON_KEYS.slice(0, 6).map((index) => (
+      <div key={index} className="browse-list-skeleton-row">
+        <div className="browse-skeleton-avatar" />
+        <div className="browse-list-skeleton-text">
+          <div className="browse-skeleton-line" />
+          <div className="browse-skeleton-line browse-skeleton-line--short" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+
+function BrowsePage() {
   const { t } = useTranslation();
   const { userData, sessionToken, loading } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -39,81 +75,91 @@ function BrowsePage({ initialData = null }) {
     { key: 'total_rank', label: t('browse.creator_total_rank') },
     { key: 'recent_updated', label: t('browse.creator_recent_updated') },
   ];
-  const pathParts = location.pathname.split('/').filter(Boolean);
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
 
-  // State
+  // Tab state lives in the query string. `/` is a single URL that renders the
+  // same markup for everybody, and tabs are just a parameter on top of it.
   const activeMainTab = useMemo(() => {
-    if (pathParts[0] !== 'browse') return 'characters';
-    const main = pathParts[1];
+    const main = searchParams.get('tab');
     return MAIN_TABS.some((tab) => tab.key === main) ? main : 'characters';
-  }, [location.pathname]);
+  }, [searchParams]);
 
   const activeSubTab = useMemo(() => {
-    if (pathParts[0] !== 'browse') return 'popular';
-    const main = activeMainTab;
-    const sub = pathParts[2];
-    if (main === 'users') {
+    const sub = searchParams.get('sort');
+    if (activeMainTab === 'users') {
       if (USER_SORT_OPTIONS.some((option) => option.key === sub)) return sub;
       if (sub === 'recent' || sub === 'recent_hot') return 'recent_updated';
       return 'total_rank';
     }
     return SUBTABS.some((tab) => tab.key === sub) ? sub : 'popular';
-  }, [location.pathname, activeMainTab]);
+  }, [searchParams, activeMainTab]);
 
-  const hasInitialEntities = Array.isArray(initialData?.items);
-  const initialEntities = hasInitialEntities ? initialData.items : [];
-  const initialPageSize = initialData?.page_size || 20;
-  const [entities, setEntities] = useState(initialEntities);
   const [activeTopTab, setActiveTopTab] = useState('recommended');
-
-  const [isLoading, setIsLoading] = useState(!hasInitialEntities);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(initialData?.total || 0);
-  const [pageSize, setPageSize] = useState(initialPageSize);
-  const [hasMore, setHasMore] = useState(
-    hasInitialEntities && initialData.total > 0
-      ? initialPageSize < initialData.total
-      : !hasInitialEntities
-  );
-
-  // Following feed state
-  const [feedEntities, setFeedEntities] = useState([]);
-  const [isFeedLoading, setIsFeedLoading] = useState(false);
-  const [isFeedLoadingMore, setIsFeedLoadingMore] = useState(false);
-  const [feedPage, setFeedPage] = useState(1);
-  const [feedTotal, setFeedTotal] = useState(0);
-  const [feedHasMore, setFeedHasMore] = useState(true);
-  const feedLoadMoreRef = useRef(null);
-
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const isPrerenderHydration =
-    typeof window !== 'undefined' && Boolean(window.__PRERENDER_DATA__);
-  const [viewportWidth, setViewportWidth] = useState(
-    typeof window !== 'undefined' && !isPrerenderHydration ? window.innerWidth : 1200
-  );
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showUpdateNotification, setShowUpdateNotification] = useState(false);
   const [showAppealModal, setShowAppealModal] = useState(false);
-  const [followingIds, setFollowingIds] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [searchHistory, setSearchHistory] = useState(() => {
-    if (typeof window === 'undefined' || window.__PRERENDER_DATA__) return [];
-    try { return JSON.parse(localStorage.getItem('sidebar_search_history') || '[]'); }
-    catch { return []; }
+  const [searchHistory, setSearchHistory] = useState([]);
+
+  // The tab bar sizes itself in JS, so it mirrors the same CSS breakpoint
+  // instead of reading window.innerWidth during render.
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  );
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const handleChange = (event) => setIsMobile(event.matches);
+    setIsMobile(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  // Data layer. Public lists are keyed without the session token, so the same
+  // cached response serves every viewer; personal flags are a separate overlay.
+  const feed = useBrowseFeed({ tab: activeMainTab, sub: activeSubTab, token: sessionToken });
+  const followingFeed = useFollowingFeed({
+    token: sessionToken,
+    enabled: activeTopTab === 'following',
+  });
+  const followingIds = useFollowingIds({
+    token: sessionToken,
+    enabled: activeMainTab === 'users' && activeTopTab === 'recommended',
   });
 
+  const entities = feed.items;
+  const isLoading = feed.isLoading;
+  const isLoadingMore = feed.isLoadingMore;
+  const hasMore = feed.hasMore;
+
+  const feedEntities = followingFeed.items;
+  const isFeedLoading = followingFeed.isLoading;
+  const isFeedLoadingMore = followingFeed.isLoadingMore;
+  const feedHasMore = followingFeed.hasMore;
+
+  const entityType = activeMainTab.slice(0, -1);
+  const entityIds = useMemo(() => entities.map((entity) => entity.id), [entities]);
+  const { likedIds, ready: likedOverlayReady } = useLikedOverlay(entityType, entityIds, {
+    token: sessionToken,
+    enabled: activeMainTab !== 'users',
+  });
+
+  const queryClient = useQueryClient();
   const addToSearchHistory = (term) => {
-    setSearchHistory(prev => {
-      const filtered = prev.filter(h => h !== term);
-      const next = [term, ...filtered].slice(0, 5);
+    // History is written straight to storage so the initial render never has to
+    // touch localStorage.
+    try {
+      const stored = JSON.parse(localStorage.getItem('sidebar_search_history') || '[]');
+      const next = [term, ...stored.filter((entry) => entry !== term)].slice(0, 5);
       localStorage.setItem('sidebar_search_history', JSON.stringify(next));
-      return next;
-    });
+      setSearchHistory(next);
+    } catch {
+      setSearchHistory([term]);
+    }
   };
   const removeFromSearchHistory = (term) => {
     setSearchHistory(prev => {
@@ -128,30 +174,21 @@ function BrowsePage({ initialData = null }) {
   };
 
   const loadMoreRef = useRef(null);
+  const feedLoadMoreRef = useRef(null);
   const sortDropdownRef = useRef(null);
   const activePillRef = useRef(null);
   const gooTrailRef = useRef(null);
   const previousMainTabIndexRef = useRef(0);
   const [pillTranslatePercent, setPillTranslatePercent] = useState(0);
-  const initialFetchKeyRef = useRef(
-    hasInitialEntities ? `${activeMainTab}:${activeSubTab}:` : null
-  );
 
   useEffect(() => {
-    const handleResize = () => setViewportWidth(window.innerWidth);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    if (!isPrerenderHydration) return;
+    if (!searchFocused || searchHistory.length > 0) return;
     try {
       setSearchHistory(JSON.parse(localStorage.getItem('sidebar_search_history') || '[]'));
     } catch {
       setSearchHistory([]);
     }
-  }, [isPrerenderHydration]);
+  }, [searchFocused, searchHistory.length]);
 
   useEffect(() => {
     let timer;
@@ -218,8 +255,6 @@ function BrowsePage({ initialData = null }) {
     setShowSearchSuggestions(false);
   };
 
-  const masonryColumnCount = viewportWidth < 768 ? 2 : 5;
-  const isMobile = viewportWidth < 768;
   const currentSortOptions = activeMainTab === 'users' ? USER_SORT_OPTIONS : SUBTABS;
   const activeSortOption = currentSortOptions.find(option => option.key === activeSubTab);
   const sortIconMap = {
@@ -235,23 +270,6 @@ function BrowsePage({ initialData = null }) {
     : (activeSortOption?.label || t('common.sort'));
   const activeMainTabIndex = Math.max(0, MAIN_TABS.findIndex(tab => tab.key === activeMainTab));
   const isPopularSortActive = activeSubTab === 'popular';
-
-  // Distribute items by index so visual reading order is left-to-right, then next row.
-  const masonryColumns = useMemo(() => {
-    const columns = Array.from({ length: masonryColumnCount }, () => []);
-    entities.forEach((entity, index) => {
-      columns[index % masonryColumnCount].push(entity);
-    });
-    return columns;
-  }, [entities, masonryColumnCount]);
-
-  const feedMasonryColumns = useMemo(() => {
-    const columns = Array.from({ length: masonryColumnCount }, () => []);
-    feedEntities.forEach((entity, index) => {
-      columns[index % masonryColumnCount].push(entity);
-    });
-    return columns;
-  }, [feedEntities, masonryColumnCount]);
 
   useEffect(() => {
     const fromIndex = previousMainTabIndexRef.current;
@@ -322,165 +340,37 @@ function BrowsePage({ initialData = null }) {
     };
   }, [activeMainTabIndex]);
 
-  // Fetch following IDs for follow button state
-  useEffect(() => {
-    if (!sessionToken) return;
-    fetch(`${window.API_BASE_URL}/api/users/me/following-ids`, {
-      headers: { Authorization: sessionToken },
-    })
-      .then(res => res.json())
-      .then(data => setFollowingIds(new Set(data.following_ids || [])))
-      .catch(() => {});
-  }, [sessionToken]);
-
-  // Reset following feed when switching to 关注 tab
-  useEffect(() => {
-    if (activeTopTab === 'following') {
-      setFeedPage(1);
-      setFeedEntities([]);
-      setFeedTotal(0);
-      setFeedHasMore(true);
-    }
-  }, [activeTopTab]);
-
-  // Fetch following feed
-  useEffect(() => {
-    if (activeTopTab !== 'following') return;
-    if (!sessionToken) return;
-    if (feedPage === 1) {
-      setIsFeedLoading(true);
-    } else {
-      setIsFeedLoadingMore(true);
-    }
-    fetch(`${window.API_BASE_URL}/api/following/feed?page=${feedPage}&page_size=20`, {
-      headers: { Authorization: sessionToken },
-    })
-      .then(res => res.json())
-      .then(data => {
-        const incoming = data.items || [];
-        const nextTotal = data.total || 0;
-        setFeedEntities(prev => (feedPage === 1 ? incoming : [...prev, ...incoming]));
-        setFeedTotal(nextTotal);
-        setFeedHasMore(nextTotal > feedPage * 20);
-        setIsFeedLoading(false);
-        setIsFeedLoadingMore(false);
-      })
-      .catch(() => {
-        setIsFeedLoading(false);
-        setIsFeedLoadingMore(false);
-        setFeedHasMore(false);
-      });
-  }, [activeTopTab, sessionToken, feedPage]);
-
   // Infinite scroll for following feed
   useEffect(() => {
     if (activeTopTab !== 'following') return;
     if (isFeedLoading || isFeedLoadingMore || !feedHasMore) return;
     if (!feedLoadMoreRef.current) return;
     const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) setFeedPage(prev => prev + 1); },
+      (entries) => { if (entries[0].isIntersecting) followingFeed.loadMore(); },
       { rootMargin: '200px 0px' }
     );
     observer.observe(feedLoadMoreRef.current);
     return () => observer.disconnect();
   }, [activeTopTab, isFeedLoading, isFeedLoadingMore, feedHasMore]);
 
-  // Reset page when tabs change
-  useEffect(() => {
-    setPage(1);
-    setEntities([]);
-    setTotal(0);
-    setHasMore(true);
-  }, [activeMainTab, activeSubTab]);
-
-  // Navigation
+  // Navigation. Tabs live in the query string so `/` stays a single stable URL.
   const handleMainTab = (tab) => {
     const nextSubTab = tab === 'users'
       ? (USER_SORT_OPTIONS.some(option => option.key === activeSubTab) ? activeSubTab : 'total_rank')
       : (SUBTABS.some(option => option.key === activeSubTab) ? activeSubTab : 'popular');
-    navigate(`/browse/${tab}/${nextSubTab}`);
+    navigate(`/?tab=${tab}&sort=${nextSubTab}`, { replace: false });
   };
 
   const handleFollowToggle = (userId, nowFollowing) => {
-    setFollowingIds(prev => {
-      const next = new Set(prev);
-      if (nowFollowing) next.add(userId); else next.delete(userId);
-      return next;
+    queryClient.setQueryData(['interactions', 'following'], (current) => {
+      const list = Array.isArray(current) ? current : [];
+      if (nowFollowing) return list.includes(userId) ? list : [...list, userId];
+      return list.filter((value) => value !== userId);
     });
   };
   const handleSubTab = (sub) => {
-    navigate(`/browse/${activeMainTab}/${sub}`);
+    navigate(`/?tab=${activeMainTab}&sort=${sub}`);
   };
-
-  // Fetch data
-  useEffect(() => {
-    const fetchKey = `${activeMainTab}:${activeSubTab}:${sessionToken || ''}`;
-    if (initialFetchKeyRef.current === fetchKey) {
-      initialFetchKeyRef.current = null;
-      return;
-    }
-
-    if (page === 1) {
-      setIsLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
-
-    let url = '';
-    if (activeMainTab === 'characters') {
-      url = `${window.API_BASE_URL}/api/characters/${activeSubTab}`;
-    } else if (activeMainTab === 'scenes') {
-      url = `${window.API_BASE_URL}/api/scenes/${activeSubTab}`;
-    } else if (activeMainTab === 'personas') {
-      url = `${window.API_BASE_URL}/api/personas/${activeSubTab}`;
-    } else if (activeMainTab === 'users') {
-      url = `${window.API_BASE_URL}/api/users/browse`;
-    }
-    const params = new URLSearchParams({ short: 'false', page: String(page) });
-    if (activeMainTab === 'users') {
-      params.set('sort', activeSubTab);
-    }
-    const fetchUrl = `${url}?${params.toString()}`;
-    const fetchHeaders = {};
-    if (sessionToken) fetchHeaders['Authorization'] = sessionToken;
-    fetch(fetchUrl, { headers: fetchHeaders })
-      .then(res => res.json())
-      .then(data => {
-        // Expect wrapper: { items, total, page, page_size, short }
-        if (data && Array.isArray(data.items)) {
-          const incoming = data.items;
-          const nextTotal = data.total || 0;
-          const nextPageSize = data.page_size || 20;
-
-          setEntities(prev => (page === 1 ? incoming : [...prev, ...incoming]));
-          setTotal(nextTotal);
-          setPageSize(nextPageSize);
-          setHasMore(nextTotal > 0 ? (page * nextPageSize) < nextTotal : incoming.length >= nextPageSize);
-        } else if (Array.isArray(data)) { // fallback legacy list
-          setEntities(prev => (page === 1 ? data : prev));
-          setTotal(data.length);
-          setPageSize(20);
-          setHasMore(false);
-        } else {
-          if (page === 1) {
-            setEntities([]);
-            setTotal(0);
-          }
-          setHasMore(false);
-        }
-        setIsLoading(false);
-        setIsLoadingMore(false);
-      })
-      .catch(() => {
-        if (page === 1) {
-          setEntities([]);
-          setTotal(0);
-        }
-        setHasMore(false);
-        setIsLoading(false);
-        setIsLoadingMore(false);
-      });
-  }, [activeMainTab, activeSubTab, sessionToken, navigate, page]);
 
   useEffect(() => {
     if (isLoading || isLoadingMore || !hasMore) return;
@@ -490,7 +380,7 @@ function BrowsePage({ initialData = null }) {
       (entries) => {
         const entry = entries[0];
         if (entry.isIntersecting) {
-          setPage(prev => prev + 1);
+          feed.loadMore();
         }
       },
       { rootMargin: '200px 0px' }
@@ -617,7 +507,7 @@ function BrowsePage({ initialData = null }) {
           </a>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-            <div style={{ width: viewportWidth < 768 ? '100%' : 'clamp(200px, 30vw, 480px)', position: 'relative', marginLeft: viewportWidth < 768 ? 0 : 'auto' }}>
+            <div className="browse-search-box">
             <div
               className="input-group rounded-pill"
               style={{
@@ -630,8 +520,8 @@ function BrowsePage({ initialData = null }) {
             >
               <input
                 type="text"
-                className="form-control border-0 rounded-pill"
-                style={{ background: 'transparent', fontSize: viewportWidth < 768 ? '16px' : '0.92rem', paddingLeft: 14, paddingRight: 8, color: '#232323', outline: 'none', boxShadow: 'none', borderRadius: '22px 0 0 22px' }}
+                className="form-control border-0 rounded-pill browse-search-input"
+                style={{ background: 'transparent', paddingLeft: 14, paddingRight: 8, color: '#232323', outline: 'none', boxShadow: 'none', borderRadius: '22px 0 0 22px' }}
                 placeholder={t('topbar.search_placeholder')}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -1070,11 +960,7 @@ function BrowsePage({ initialData = null }) {
       <div style={{ width: '100%', margin: '0 auto' }}>
         {activeMainTab === 'users' ? (
           isLoading ? (
-            <div className="text-center my-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">{t('browse.loading')}</span>
-              </div>
-            </div>
+            <BrowseListSkeleton />
           ) : entities.length === 0 ? (
             <div className="text-center my-5">
               <div className="alert alert-info">
@@ -1101,11 +987,7 @@ function BrowsePage({ initialData = null }) {
         ) : (
           <section className="popular-characters-section">
             {isLoading ? (
-              <div className="text-center my-5">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">{t('browse.loading')}</span>
-                </div>
-              </div>
+              <BrowseMasonrySkeleton />
             ) : entities.length === 0 ? (
               <div className="text-center my-5">
                 {activeSubTab === 'recommended' ? (
@@ -1132,21 +1014,17 @@ function BrowsePage({ initialData = null }) {
                 )}
               </div>
             ) : (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: `repeat(${masonryColumnCount}, minmax(0, 1fr))`,
-                  gap: '16px',
-                  width: '100%',
-                }}
-              >
-                {masonryColumns.map((column, columnIndex) => (
-                  <div key={columnIndex} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {column.map(entity => (
-                      <div key={entity.id} className="browse-entity-card">
-                        <DiscoverMasonryCard type={activeMainTab.slice(0, -1)} entity={entity} />
-                      </div>
-                    ))}
+              <div className="browse-masonry">
+                {entities.map((entity, index) => (
+                  <div key={entity.id} className="browse-entity-card">
+                    <DiscoverMasonryCard
+                      type={entityType}
+                      entity={entity}
+                      priority={index < 4}
+                      likedOverride={
+                        sessionToken && likedOverlayReady ? likedIds.has(entity.id) : undefined
+                      }
+                    />
                   </div>
                 ))}
               </div>
@@ -1170,11 +1048,7 @@ function BrowsePage({ initialData = null }) {
       {activeTopTab === 'following' && (
         <div style={{ width: '100%' }}>
           {isFeedLoading ? (
-            <div className="text-center my-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">{t('browse.loading')}</span>
-              </div>
-            </div>
+            <BrowseMasonrySkeleton />
           ) : feedEntities.length === 0 ? (
             <div className="text-center my-5">
               <div style={{
@@ -1193,21 +1067,10 @@ function BrowsePage({ initialData = null }) {
               </div>
             </div>
           ) : (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(${masonryColumnCount}, minmax(0, 1fr))`,
-                gap: 16,
-                width: '100%',
-              }}
-            >
-              {feedMasonryColumns.map((column, columnIndex) => (
-                <div key={columnIndex} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {column.map(entity => (
-                    <div key={`${entity.type}-${entity.id}`} className="browse-entity-card">
-                      <DiscoverMasonryCard type={entity.type} entity={entity} />
-                    </div>
-                  ))}
+            <div className="browse-masonry">
+              {feedEntities.map(entity => (
+                <div key={`${entity.type}-${entity.id}`} className="browse-entity-card">
+                  <DiscoverMasonryCard type={entity.type} entity={entity} />
                 </div>
               ))}
             </div>
@@ -1230,12 +1093,9 @@ function BrowsePage({ initialData = null }) {
       <button
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         aria-label={t('common.back_to_top')}
+        className="browse-back-to-top"
         style={{
           position: 'fixed',
-          right: isMobile ? '12px' : '20px',
-          bottom: isMobile ? '24px' : '32px',
-          width: isMobile ? '42px' : '48px',
-          height: isMobile ? '42px' : '48px',
           borderRadius: '50%',
           border: 'none',
           background: '#736B92',

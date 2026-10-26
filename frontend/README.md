@@ -17,22 +17,28 @@ Current variables used by the app:
 
 See `.env.example` for a template.
 
-## Landing-page pre-rendering
+## Static shell and public-list caching
 
-The production image builds both the browser app and a React server-rendering
-entry. At container startup, `server.mjs` fetches the public popular-character
-page from the backend, renders the same `/` route as the browser app, and
-serves that HTML for `/`. The serialized character page is used by the browser
-to hydrate the existing markup before client-side navigation and interactions
-start. Other paths continue to receive the standard SPA shell.
+`npm run build` produces a browser-only bundle. `server.mjs` serves the built
+`dist/` directory as a static shell: every route receives the same
+`index.html`, which contains a `<link rel="preload" as="fetch">` plus a small
+inline script that starts the popular-character request in parallel with the JS
+bundle. Nothing is rendered at startup, so a slow or unavailable backend only
+makes the first data request slower — it can never fail the frontend start.
 
-`PRERENDER_API_BASE_URL` optionally changes the backend origin used for this
-startup snapshot. It defaults to `http://localhost:8000` for local preview;
-the production Compose service sets it to `http://backend:8000`.
-The frontend waits for a valid public character response before starting, so
-an unavailable backend is reported as a startup error rather than silently
-serving an empty landing page. A new snapshot is generated on each container
-start.
+Public lists (`/api/characters|scenes|personas/popular|recent`) are token-free
+and identical for every viewer. The backend caches them in Redis and serves
+them with `Cache-Control: public, s-maxage=30, stale-while-revalidate=300`;
+nginx adds a shared `proxy_cache` in front of the same routes. Requests that
+carry an `Authorization` header bypass that cache because they include per-user
+like flags.
+
+Personal state (liked/followed flags, credits, avatar) is a client-side overlay
+fetched after login from `GET /api/me/interactions`, so it never changes the
+cached markup and never shifts layout.
+
+`PUBLIC_CACHE_DISABLED=1` in the backend environment bypasses the Redis layer
+when debugging.
 
 ### About `Mikoshi.env`
 

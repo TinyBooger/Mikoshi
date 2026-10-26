@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, HTTPException, Form, UploadFile, File, Query
+from fastapi import APIRouter, Request, Depends, HTTPException, Form, UploadFile, File, Query, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -13,6 +13,11 @@ from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 from utils.text_normalization import normalize_line_endings
 from utils.session import get_current_user, get_optional_current_user
+from utils.public_cache import (
+    PUBLIC_CACHE_HEADERS,
+    get_cached_text,
+    set_cached_text,
+)
 
 router = APIRouter()
 
@@ -30,6 +35,16 @@ def get_popular_personas(
     current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
+    cache_key = f"public:personas:popular:{int(short)}:{page}:{page_size}"
+    if current_user is None:
+        cached = get_cached_text(cache_key)
+        if cached is not None:
+            return Response(
+                content=cached,
+                media_type="application/json",
+                headers=PUBLIC_CACHE_HEADERS,
+            )
+
     total = db.query(Persona).filter(Persona.is_public == True).count()
     base_query = (
         db.query(Persona, User.profile_pic.label("creator_profile_pic"))
@@ -50,14 +65,25 @@ def get_popular_personas(
             persona.creator_profile_pic = creator_profile_pic
             persona.liked = persona.id in liked_ids
             items.append(persona)
-        return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
-    items = []
-    for persona, creator_profile_pic in rows:
-        persona.creator_profile_pic = creator_profile_pic
-        persona.liked = persona.id in liked_ids
-        items.append(persona)
-    return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+        payload = PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    else:
+        rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+        items = []
+        for persona, creator_profile_pic in rows:
+            persona.creator_profile_pic = creator_profile_pic
+            persona.liked = persona.id in liked_ids
+            items.append(persona)
+        payload = PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+
+    if current_user is None:
+        serialized = payload.model_dump_json()
+        set_cached_text(cache_key, serialized)
+        return Response(
+            content=serialized,
+            media_type="application/json",
+            headers=PUBLIC_CACHE_HEADERS,
+        )
+    return payload
 
 # Recent Personas
 @router.get("/api/personas/recent", response_model=PersonaListOut)
@@ -68,6 +94,16 @@ def get_recent_personas(
     current_user: User = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
+    cache_key = f"public:personas:recent:{int(short)}:{page}:{page_size}"
+    if current_user is None:
+        cached = get_cached_text(cache_key)
+        if cached is not None:
+            return Response(
+                content=cached,
+                media_type="application/json",
+                headers=PUBLIC_CACHE_HEADERS,
+            )
+
     total = db.query(Persona).filter(Persona.is_public == True).count()
     base_query = (
         db.query(Persona, User.profile_pic.label("creator_profile_pic"))
@@ -88,14 +124,25 @@ def get_recent_personas(
             persona.creator_profile_pic = creator_profile_pic
             persona.liked = persona.id in liked_ids
             items.append(persona)
-        return PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
-    rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
-    items = []
-    for persona, creator_profile_pic in rows:
-        persona.creator_profile_pic = creator_profile_pic
-        persona.liked = persona.id in liked_ids
-        items.append(persona)
-    return PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+        payload = PersonaListOut(items=items, total=total, page=1, page_size=len(items), short=True)
+    else:
+        rows = base_query.offset((page - 1) * page_size).limit(page_size).all()
+        items = []
+        for persona, creator_profile_pic in rows:
+            persona.creator_profile_pic = creator_profile_pic
+            persona.liked = persona.id in liked_ids
+            items.append(persona)
+        payload = PersonaListOut(items=items, total=total, page=page, page_size=page_size, short=False)
+
+    if current_user is None:
+        serialized = payload.model_dump_json()
+        set_cached_text(cache_key, serialized)
+        return Response(
+            content=serialized,
+            media_type="application/json",
+            headers=PUBLIC_CACHE_HEADERS,
+        )
+    return payload
 
 # Recommended Personas (collaborative filtering)
 @router.get("/api/personas/recommended", response_model=PersonaListOut)

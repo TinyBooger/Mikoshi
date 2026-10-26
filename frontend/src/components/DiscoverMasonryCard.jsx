@@ -4,15 +4,31 @@ import { useNavigate } from 'react-router';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import { AuthContext } from './AuthProvider';
+import { useLikeToggle } from '../hooks/useInteractions';
+import { getCachedImageSize, rememberImageSize } from '../lib/imageSizes';
 
-export default function DiscoverMasonryCard({ type, entity, onClick, disableClick = false }) {
+function readImageIntrinsicSize(entity) {
+  const width = Number(entity?.image_width ?? entity?.picture_width);
+  const height = Number(entity?.image_height ?? entity?.picture_height);
+  if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+    return { width, height };
+  }
+  return null;
+}
+
+export default function DiscoverMasonryCard({
+  type,
+  entity,
+  onClick,
+  disableClick = false,
+  likedOverride,
+  priority = false,
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { userData } = useContext(AuthContext);
-  const isPrerenderHydration =
-    typeof window !== 'undefined' && Boolean(window.__PRERENDER_DATA__);
+  const { userData, sessionToken } = useContext(AuthContext);
   const [isMobile, setIsMobile] = useState(
-    () => typeof window !== 'undefined' && !isPrerenderHydration && window.innerWidth < 640
+    () => typeof window !== 'undefined' && window.innerWidth < 640
   );
   const [isCreatorHovered, setIsCreatorHovered] = useState(false);
   const [isCardHovered, setIsCardHovered] = useState(false);
@@ -21,11 +37,15 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
   const [isPersonaAdded, setIsPersonaAdded] = useState(() => !!(entity?.liked));
   const [isAddPersonaHovered, setIsAddPersonaHovered] = useState(false);
   const [isAddPersonaLoading, setIsAddPersonaLoading] = useState(false);
-  const [isLiked, setIsLiked] = useState(() => !!(entity?.liked));
-  const [likeCount, setLikeCount] = useState(() => typeof entity?.likes === 'number' ? entity.likes : 0);
-  const [isLikeLoading, setIsLikeLoading] = useState(false);
   const [isLikeHovered, setIsLikeHovered] = useState(false);
   const [cardTilt, setCardTilt] = useState({ x: 0, y: 0 });
+
+  const likeToggle = useLikeToggle(type, sessionToken);
+  // The overlay wins once it resolves; until then the card keeps whatever the
+  // public response said.
+  const isLiked = likedOverride !== undefined ? likedOverride : Boolean(entity?.liked);
+  const likeCount = typeof entity?.likes === 'number' ? entity.likes : 0;
+  const isLikeLoading = likeToggle.isPending;
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -98,7 +118,7 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
       : null);
 
   const creatorAvatarBase =
-    typeof window !== 'undefined' && !window.__PRERENDER_DATA__ && window.API_BASE_URL
+    typeof window !== 'undefined' && window.API_BASE_URL
       ? window.API_BASE_URL.replace(/\/$/, '')
       : '';
   const creatorAvatar = creatorAvatarRaw
@@ -106,6 +126,12 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
     : defaultAvatar;
 
   const clickSuppressed = disableClick;
+  const imageUrl = picture
+    ? `${creatorAvatarBase}/${String(picture).replace(/^\//, '')}`
+    : defaultPicture;
+  const [measuredSize, setMeasuredSize] = useState(() => getCachedImageSize(imageUrl));
+  const intrinsicSize = readImageIntrinsicSize(entity);
+  const boxSize = intrinsicSize || measuredSize;
   const isAdvancedCharacter = type === 'character' && entity?.context_label === 'advanced';
   const isOwnPersona = type === 'persona' && !!(userData && String(userData.id) === String(creator_id));
 
@@ -130,7 +156,8 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
 
   const handleViewDetail = (e) => {
     e.stopPropagation();
-    navigate(`/${type}/${id}`);
+    // Seed the detail page with the card we already render so it opens instantly.
+    navigate(`/${type}/${id}`, { state: { preview: { ...entity, type } } });
   };
 
   const handleCreatorClick = (e) => {
@@ -139,42 +166,21 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
     navigate(`/profile/${encodeURIComponent(creator_id)}`);
   };
 
-  const handleLike = async (e) => {
+  const handleLike = (e) => {
     e.stopPropagation();
-    const token = localStorage.getItem('sessionToken');
-    if (!token || isLikeLoading) return;
-    setIsLikeLoading(true);
-    try {
-      const endpoint = isLiked ? 'unlike' : 'like';
-      const res = await fetch(`${window.API_BASE_URL}/api/${endpoint}/${type}/${id}`, {
-        method: 'POST',
-        headers: { Authorization: token },
-      });
-      if (res.ok) {
-        setIsLiked(prev => !prev);
-        setLikeCount(prev => isLiked ? Math.max(0, prev - 1) : prev + 1);
-      } else if (res.status === 400) {
-        const data = await res.json().catch(() => ({}));
-        if (data?.detail?.includes('Already liked')) setIsLiked(true);
-        else if (data?.detail?.includes('not liked')) setIsLiked(false);
-      }
-    } catch (_) {
-      // silently fail
-    } finally {
-      setIsLikeLoading(false);
-    }
+    if (!sessionToken || isLikeLoading) return;
+    likeToggle.mutate({ id, nextLiked: !isLiked });
   };
 
   const handleAddPersona = async (e) => {
     e.stopPropagation();
-    const token = localStorage.getItem('sessionToken');
-    if (!token || isAddPersonaLoading || isOwnPersona) return;
+    if (!sessionToken || isAddPersonaLoading || isOwnPersona) return;
     setIsAddPersonaLoading(true);
     try {
       const endpoint = isPersonaAdded ? 'unlike' : 'like';
       const res = await fetch(`${window.API_BASE_URL}/api/${endpoint}/persona/${id}`, {
         method: 'POST',
-        headers: { Authorization: token },
+        headers: { Authorization: sessionToken },
       });
       if (res.ok) {
         setIsPersonaAdded(!isPersonaAdded);
@@ -235,6 +241,9 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
         style={{
           position: 'relative',
           width: '100%',
+          // When the record carries intrinsic image dimensions the box is
+          // reserved before the file arrives, so the masonry never reflows.
+          aspectRatio: boxSize ? `${boxSize.width} / ${boxSize.height}` : undefined,
           background: '#e9ecef',
           borderTopLeftRadius: isMobile ? '10px' : '12px',
           borderTopRightRadius: isMobile ? '10px' : '12px',
@@ -362,15 +371,35 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
           )}
         </div>
         <img
-          src={picture ? `${creatorAvatarBase}/${String(picture).replace(/^\//, '')}` : defaultPicture}
+          src={imageUrl}
           alt={name}
+          width={boxSize?.width}
+          height={boxSize?.height}
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
+          decoding="async"
+          onLoad={(event) => {
+            const { naturalWidth, naturalHeight } = event.currentTarget;
+            if (!naturalWidth || !naturalHeight) return;
+            rememberImageSize(imageUrl, naturalWidth, naturalHeight);
+            if (intrinsicSize) return;
+            if (
+              measuredSize &&
+              measuredSize.width === naturalWidth &&
+              measuredSize.height === naturalHeight
+            ) {
+              return;
+            }
+            setMeasuredSize({ width: naturalWidth, height: naturalHeight });
+          }}
           onError={(event) => {
             event.currentTarget.onerror = null;
             event.currentTarget.src = defaultPicture;
           }}
           style={{
             width: '100%',
-            height: 'auto',
+            height: boxSize ? '100%' : 'auto',
+            objectFit: boxSize ? 'cover' : undefined,
             display: 'block',
           }}
         />
@@ -452,6 +481,8 @@ export default function DiscoverMasonryCard({ type, entity, onClick, disableClic
             <img
               src={creatorAvatar}
               alt={creatorDisplay}
+              loading="lazy"
+              decoding="async"
               onError={(event) => {
                 event.currentTarget.onerror = null;
                 event.currentTarget.src = defaultAvatar;
