@@ -749,7 +749,7 @@ export default function CharacterFormPage() {
               onClick={() => cardImportInputRef.current?.click()}
             >
               <i className={`bi ${isImportingCard ? 'bi-hourglass-split' : 'bi-upload'} me-2`}></i>
-              {isImportingCard ? '正在导入角色卡…' : '导入 Character Card V2'}
+              {isImportingCard ? '正在导入角色卡…' : '导入角色卡'}
             </button>
             <small className="text-muted ms-2">支持 PNG 和 JSON，最大 20 MB</small>
             {cardImportNotice && (

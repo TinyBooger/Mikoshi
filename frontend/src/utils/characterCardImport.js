@@ -108,14 +108,14 @@ export const parseCharacterCard = (card) => {
   }
 
   let data;
-  if (card.spec === 'chara_card_v2') {
+  if (card.spec === 'chara_card_v2' || card.spec === 'chara_card_v3') {
     data = card.data;
   } else if (card.spec === undefined && typeof card.name === 'string') {
     data = card;
   } else if (typeof card.spec === 'string') {
-    throw new Error('不支持此角色卡版本，请使用 Character Card V1 或 V2。');
+    throw new Error('不支持此角色卡版本，请使用 Character Card V1、V2 或 V3。');
   } else {
-    throw new Error('文件不是有效的 Character Card V1 或 V2。');
+    throw new Error('文件不是有效的 Character Card V1、V2 或 V3。');
   }
 
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
