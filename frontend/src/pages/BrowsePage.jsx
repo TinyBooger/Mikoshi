@@ -631,29 +631,6 @@ function BrowsePage() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.28rem', paddingLeft: '0.18rem' }}>
             <button
-              onClick={() => setShowOnboarding(true)}
-              aria-label={t('onboarding.replay_tour')}
-              title={t('onboarding.replay_tour')}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                color: '#736B92',
-                fontSize: '1.1rem',
-                padding: '0.35rem 0.45rem',
-                borderRadius: 8,
-                cursor: 'pointer',
-                transition: 'background 0.16s, color 0.16s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              <i className="bi bi-play-circle" style={{ fontSize: '1.05rem' }}></i>
-            </button>
-            <button
               onClick={() => setShowUpdateNotification(true)}
               aria-label={t('topbar.updates')}
               title={t('topbar.updates')}
