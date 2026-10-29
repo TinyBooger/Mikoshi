@@ -4,7 +4,6 @@ import SecondaryButton from './SecondaryButton';
 
 import InfoCard from './InfoCard';
 import ContentReportModal from './ContentReportModal';
-import { useTranslation } from 'react-i18next';
 import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
 import ModelSelect from './ModelSelect';
 import { SIDEBAR_WIDTH, SIDEBAR_BORDER_WIDTH } from '../constants/layout';
@@ -84,7 +83,6 @@ export default function CharacterSidebar({
     setLastSavedConfig(JSON.parse(JSON.stringify(advancedChatConfig)));
     onSaveAdvancedChatConfig();
   };
-  const { t } = useTranslation();
   const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
   const SHARED_TOKEN_TIERS = [
     { value: 1024, label: '短句' },
@@ -278,8 +276,8 @@ export default function CharacterSidebar({
             <button
               type="button"
               onClick={() => onToggleCharacterSidebar()}
-              aria-label={t('topbar.hide_character_sidebar')}
-              title={t('topbar.hide_character_sidebar')}
+              aria-label="隐藏角色侧边栏"
+              title="隐藏角色侧边栏"
               style={{
                 border: 'none',
                 background: 'transparent',

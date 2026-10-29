@@ -522,7 +522,7 @@ function BrowsePage() {
                 type="text"
                 className="form-control border-0 rounded-pill browse-search-input"
                 style={{ background: 'transparent', paddingLeft: 14, paddingRight: 8, color: '#232323', outline: 'none', boxShadow: 'none', borderRadius: '22px 0 0 22px' }}
-                placeholder={t('topbar.search_placeholder')}
+                placeholder="搜索角色..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
@@ -632,8 +632,8 @@ function BrowsePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.28rem', paddingLeft: '0.18rem' }}>
             <button
               onClick={() => setShowUpdateNotification(true)}
-              aria-label={t('topbar.updates')}
-              title={t('topbar.updates')}
+              aria-label="更新"
+              title="更新"
               style={{
                 border: 'none',
                 background: 'transparent',
@@ -651,6 +651,29 @@ function BrowsePage() {
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
               <i className="bi bi-megaphone" style={{ fontSize: '1.2rem' }}></i>
+            </button>
+
+            <button
+              onClick={() => navigate('/settings?tab=help')}
+              aria-label="问题反馈"
+              title="问题反馈"
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: '#736B92',
+                fontSize: '1.2rem',
+                padding: '0.35rem 0.55rem',
+                borderRadius: 8,
+                cursor: 'pointer',
+                transition: 'background 0.16s, color 0.16s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,208,245,0.55)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <i className="bi bi-bug" style={{ fontSize: '1.2rem' }}></i>
             </button>
 
             <MessageCenter />

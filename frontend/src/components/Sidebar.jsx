@@ -35,7 +35,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { userData, setUserData, refreshUserData, sessionToken, loading } = useContext(AuthContext); // Get user data from context
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const toast = useToast();
   const isActivePro = Boolean(userData?.pro_active);
   const [query, setQuery] = useState('');
@@ -499,8 +499,8 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
           <button
             type="button"
             onClick={() => setSidebarVisible?.(false)}
-            aria-label={t('topbar.hide_sidebar')}
-            title={t('topbar.hide_sidebar')}
+            aria-label="隐藏侧边栏"
+            title="隐藏侧边栏"
             style={{
               border: 'none',
               background: 'transparent',
@@ -547,7 +547,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               boxShadow: 'none',
               borderRadius: '18px 0 0 18px',
             }}
-            placeholder={t('topbar.search_placeholder')}
+            placeholder="搜索角色..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {

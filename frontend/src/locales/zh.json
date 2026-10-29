@@ -93,15 +93,6 @@
     "and": "和",
     "done": "完成"
   },
-  "topbar": {
-    "show_sidebar": "显示侧边栏",
-    "hide_sidebar": "隐藏侧边栏",
-    "hide_character_sidebar": "隐藏角色侧边栏",
-    "search_placeholder": "搜索角色...",
-    "suggestion_count": "（{{count}}）",
-    "report_problem": "报告问题",
-    "updates": "更新"
-  },
   "auth_provider": {
     "loading": "加载中...",
     "loading_user_session": "正在加载用户会话..."

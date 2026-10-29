@@ -108,15 +108,6 @@
     "and": "and",
     "done": "Done"
   },
-  "topbar": {
-    "show_sidebar": "Show sidebar",
-    "hide_sidebar": "Hide sidebar",
-    "hide_character_sidebar": "Hide character sidebar",
-    "search_placeholder": "Search characters...",
-    "suggestion_count": "({{count}})",
-    "report_problem": "Report a problem",
-    "updates": "Updates"
-  },
   "auth_provider": {
     "loading": "Loading...",
     "loading_user_session": "Loading user session..."

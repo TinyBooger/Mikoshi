@@ -498,7 +498,7 @@ function SearchPage() {
                 type="text"
                 className="form-control border-0 rounded-pill"
                 style={{ background: 'transparent', fontSize: viewportWidth < 768 ? '16px' : '0.92rem', paddingLeft: 14, paddingRight: 8, color: '#232323', outline: 'none', boxShadow: 'none', borderRadius: '22px 0 0 22px' }}
-                placeholder={t('topbar.search_placeholder')}
+                placeholder="搜索角色..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
@@ -631,8 +631,8 @@ function SearchPage() {
             </button>
             <button
               onClick={() => setShowUpdateNotification(true)}
-              aria-label={t('topbar.updates')}
-              title={t('topbar.updates')}
+              aria-label="更新"
+              title="更新"
               style={{
                 border: 'none',
                 background: 'transparent',
@@ -654,8 +654,8 @@ function SearchPage() {
 
             <button
               onClick={() => setShowProblemReport(true)}
-              aria-label={t('topbar.report_problem')}
-              title={t('topbar.report_problem')}
+              aria-label="报告问题"
+              title="报告问题"
               style={{
                 border: 'none',
                 background: 'transparent',
