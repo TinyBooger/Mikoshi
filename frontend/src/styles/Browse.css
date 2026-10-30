@@ -1,7 +1,8 @@
-/* Layout that cannot jump: the masonry column count is pure CSS, so no React
-   state has to know the viewport width before the first paint. */
+/* Let the available width determine the masonry column count without React
+   needing to know the viewport before the first paint. */
 .browse-masonry {
-  column-count: 5;
+  column-width: 220px;
+  column-count: auto;
   column-gap: 16px;
   width: 100%;
 }
@@ -11,21 +12,23 @@
   margin-bottom: 16px;
 }
 
-@media (max-width: 1200px) {
-  .browse-masonry {
-    column-count: 4;
-  }
+.browse-entity-card {
+  width: 100%;
+  max-width: 280px;
+  margin-right: auto;
+  margin-left: auto;
+  box-sizing: border-box;
 }
 
-@media (max-width: 992px) {
+@media (max-width: 1200px) {
   .browse-masonry {
-    column-count: 3;
+    column-width: 200px;
   }
 }
 
 @media (max-width: 767px) {
   .browse-masonry {
-    column-count: 2;
+    column-width: 150px;
     column-gap: 10px;
   }
 

@@ -8,6 +8,7 @@ import PageWrapper from '../components/PageWrapper';
 import OnboardingTour from '../components/OnboardingTour';
 import UpdateNotificationModal from '../components/UpdateNotificationModal';
 import ProblemReportModal from '../components/ProblemReportModal';
+import '../styles/Browse.css';
 import textLogo from '../assets/images/logo_text.png';
 
 
@@ -180,7 +181,7 @@ function SearchPage() {
     setShowSearchSuggestions(false);
   };
 
-  const masonryColumnCount = viewportWidth < 768 ? 2 : 5;
+  const masonryColumnCount = Math.max(2, Math.floor(viewportWidth / 260));
   const isMobile = viewportWidth < 768;
   const currentSortOptions = activeMainTab === 'users' ? USER_SORT_OPTIONS : SUBTABS;
   const activeSortOption = currentSortOptions.find(option => option.key === activeSubTab);
@@ -198,7 +199,7 @@ function SearchPage() {
   const activeMainTabIndex = Math.max(0, MAIN_TABS.findIndex(tab => tab.key === activeMainTab));
   const isPopularSortActive = activeSubTab === 'popular';
 
-  // Distribute items by index so visual reading order is left-to-right, then next row.
+  // Keep the search feed masonry layout while adapting its column count to the viewport.
   const masonryColumns = useMemo(() => {
     const columns = Array.from({ length: masonryColumnCount }, () => []);
     entities.forEach((entity, index) => {
