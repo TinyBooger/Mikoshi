@@ -12,6 +12,8 @@ import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import TextButton from './TextButton';
 import { formatCompactTokenCount, formatCreditCount, getTokenQuotaLabel } from '../utils/creditDisplay.js';
+import ProblemReportBadge from './ProblemReportBadge.jsx';
+import { useUnhandledProblemReportCount } from '../hooks/useUnhandledProblemReportCount.js';
 
 /**
  * Whether a raw chat_history row belongs to the group a recent-chat entry
@@ -38,6 +40,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
   const { i18n } = useTranslation();
   const toast = useToast();
   const isActivePro = Boolean(userData?.pro_active);
+  const { totalCount: unhandledReportCount } = useUnhandledProblemReportCount();
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -1293,6 +1296,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
                       }}
                     >
                       <i className="bi bi-shield-lock me-2"></i> 管理面板
+                      <ProblemReportBadge count={unhandledReportCount} className="ms-2" />
                     </button>
                   </li>
                   <li className="dropdown-divider" style={{ borderTop: '1px solid rgba(35, 35, 35, 0.09)', margin: '0.3rem 0.4rem' }} />

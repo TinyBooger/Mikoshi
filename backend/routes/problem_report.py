@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from database import get_db
 from models import ProblemReport, User, UserMessage
 from schemas import ProblemReportCreate, ProblemReportOut, ProblemReportUserOut
@@ -104,6 +104,36 @@ def get_my_problem_reports(
         }
         for report in reports
     ]
+
+
+@router.get("/unhandled-count")
+def get_unhandled_problem_report_count(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Count pending issue reports and pending entity (moderation) reports - Admin only"""
+    issue_count = (
+        db.query(func.count(ProblemReport.id))
+        .filter(
+            ProblemReport.target_type.is_(None),
+            ProblemReport.status == "pending",
+        )
+        .scalar()
+    ) or 0
+    moderation_count = (
+        db.query(func.count(ProblemReport.id))
+        .filter(
+            ProblemReport.target_type.isnot(None),
+            ProblemReport.status == "pending",
+        )
+        .scalar()
+    ) or 0
+
+    return {
+        "unhandled_count": issue_count,
+        "moderation_count": moderation_count,
+        "total_count": issue_count + moderation_count,
+    }
 
 
 @router.get("", response_model=List[ProblemReportOut])

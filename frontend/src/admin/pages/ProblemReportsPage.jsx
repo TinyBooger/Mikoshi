@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from "react";
 import { useNavigate } from "react-router";
 import { AuthContext } from "../../components/AuthProvider";
 import PaginationBar from "../../components/PaginationBar";
+import { notifyProblemReportsUpdated } from "../../hooks/useUnhandledProblemReportCount";
 
 export default function ProblemReportsPage() {
   const navigate = useNavigate();
@@ -59,6 +60,7 @@ export default function ProblemReportsPage() {
       if (response.ok) {
         alert('Report status updated successfully');
         fetchReports(filterStatus === 'all' ? null : filterStatus);
+        notifyProblemReportsUpdated();
       } else {
         const error = await response.json();
         alert(`Error: ${error.detail || 'Failed to update status'}`);
@@ -90,6 +92,7 @@ export default function ProblemReportsPage() {
       if (response.ok) {
         alert('User-facing note updated successfully');
         fetchReports(filterStatus === 'all' ? null : filterStatus);
+        notifyProblemReportsUpdated();
       } else {
         const error = await response.json();
         alert(`Error: ${error.detail || 'Failed to update note'}`);
@@ -121,6 +124,7 @@ export default function ProblemReportsPage() {
       if (response.ok) {
         alert('Private admin notes updated successfully');
         fetchReports(filterStatus === 'all' ? null : filterStatus);
+        notifyProblemReportsUpdated();
       } else {
         const error = await response.json();
         alert(`Error: ${error.detail || 'Failed to update admin notes'}`);
@@ -147,6 +151,7 @@ export default function ProblemReportsPage() {
       if (response.ok) {
         alert('Report deleted successfully');
         fetchReports(filterStatus === 'all' ? null : filterStatus);
+        notifyProblemReportsUpdated();
       } else {
         const error = await response.json();
         alert(`Error: ${error.detail || 'Failed to delete report'}`);

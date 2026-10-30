@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext, useCallback } from 'react';
 import { Link } from 'react-router';
 import { AuthContext } from '../../components/AuthProvider';
 import PaginationBar from '../../components/PaginationBar';
+import { notifyProblemReportsUpdated } from '../../hooks/useUnhandledProblemReportCount';
 
 const TARGET_TYPE_LABELS = {
   character: 'Character',
@@ -210,6 +211,7 @@ export default function ModerationPage() {
         return;
       }
       fetchReports();
+      notifyProblemReportsUpdated();
     } catch (err) {
       console.error('Failed to apply moderation action:', err);
       alert('Failed to apply action');
@@ -364,6 +366,7 @@ export default function ModerationPage() {
       }
       setSelectedIds(new Set());
       fetchReports();
+      notifyProblemReportsUpdated();
     } catch (err) {
       console.error('Failed to apply batch action:', err);
       alert('Failed to apply batch action');

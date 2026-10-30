@@ -1,8 +1,11 @@
 import React from "react";
 import { Link } from "react-router";
+import ProblemReportBadge from "../../components/ProblemReportBadge";
+import { useUnhandledProblemReportCount } from "../../hooks/useUnhandledProblemReportCount";
 
 export default function AdminSidebar({ mobileOpen = false }) {
   const mobileStateClass = mobileOpen ? " mobile-open" : "";
+  const { issueCount, moderationCount } = useUnhandledProblemReportCount();
 
   return (
     <div className={`admin-sidebar bg-dark text-white p-3${mobileStateClass}`} style={{ minWidth: 200 }}>
@@ -14,8 +17,18 @@ export default function AdminSidebar({ mobileOpen = false }) {
         <li><Link className="nav-link text-white" to="/admin/content">Content Management</Link></li>
         <li><Link className="nav-link text-white" to="/admin/tags">Tags</Link></li>
         <li><Link className="nav-link text-white" to="/admin/search-terms">Search Keywords</Link></li>
-        <li><Link className="nav-link text-white" to="/admin/problem-reports">Problem Reports</Link></li>
-        <li><Link className="nav-link text-white" to="/admin/moderation">Moderation</Link></li>
+        <li>
+          <Link className="nav-link text-white d-flex align-items-center gap-2" to="/admin/problem-reports">
+            Problem Reports
+            <ProblemReportBadge count={issueCount} />
+          </Link>
+        </li>
+        <li>
+          <Link className="nav-link text-white d-flex align-items-center gap-2" to="/admin/moderation">
+            Moderation
+            <ProblemReportBadge count={moderationCount} />
+          </Link>
+        </li>
         <li><Link className="nav-link text-white" to="/admin/notifications">Announcements</Link></li>
         <li><Link className="nav-link text-white" to="/admin/user-messages">User Messages</Link></li>
         <li><Link className="nav-link text-white" to="/admin/error-logs">Error Logs</Link></li>
