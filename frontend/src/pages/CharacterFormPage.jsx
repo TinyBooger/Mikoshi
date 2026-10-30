@@ -103,7 +103,7 @@ export default function CharacterFormPage() {
     );
   };
   const DEFAULT_CHAT_CONFIG = {
-    model: 'qwen-plus-character',
+    model: 'deepseek-v4-flash',
     temperature: 1.3,
     top_p: 0.9,
     max_tokens: 4096,
