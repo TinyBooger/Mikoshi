@@ -43,6 +43,35 @@ export default function ChatInputBar({
   onAbort,
 }) {
   const creditLocked = isCreditLocked(creditLimits);
+  // Dev-only UI preview: append ?preview=credit-locked (or -pro-broke) to the chat URL.
+  const previewCreditLock = import.meta.env.DEV
+    ? new URLSearchParams(window.location.search).get('preview') || ''
+    : '';
+  const previewLimits = previewCreditLock === 'credit-locked-pro-broke'
+    ? {
+        cap_reached: true,
+        broke: true,
+        is_pro: true,
+        cap_scope: 'monthly',
+        credit_cap: 10000,
+        used_credits: 10000,
+        monthly_credit_usage: 10000,
+        remaining_credits: 0,
+        purchased_credit_balance: 0,
+      }
+    : previewCreditLock === 'credit-locked'
+      ? {
+          cap_reached: true,
+          broke: false,
+          is_pro: false,
+          cap_scope: 'daily',
+          credit_cap: 10,
+          used_credits: 10,
+          daily_credit_usage: 10,
+          remaining_credits: 0,
+          purchased_credit_balance: 0,
+        }
+      : null;
   const chromeSurface = getChromeSurface(selectedWallpaper?.kind);
   const [waveformSamples, setWaveformSamples] = useState(() => Array(40).fill(0.025));
   const recordingLevelRef = useRef(recordingLevel);
@@ -84,8 +113,8 @@ export default function ChatInputBar({
         {userData?.ban_type === 'full_ban' && (
           <BanBanner userData={userData} />
         )}
-        {creditLocked && (
-          <CreditLockedBanner creditLimits={creditLimits} />
+        {(creditLocked || previewLimits) && (
+          <CreditLockedBanner creditLimits={previewLimits || creditLimits} />
         )}
         {isRecording && (
           <div className="chat-voice-recording-status" role="status" aria-label="正在录音">

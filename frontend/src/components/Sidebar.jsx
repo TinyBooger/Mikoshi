@@ -1116,7 +1116,8 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
       {/* Profile / Login */}
       <div className="mt-auto px-1" style={{ fontSize: '0.8rem', flexShrink: 0 }}>
         {userData && (
-          <div className="rounded-4 mb-2" style={{ background: '#fff', border: '1px solid #eef0f3', padding: '0.45rem 0.65rem' }}>
+          <>
+          <div className="rounded-4 mb-1" style={{ background: '#fff', border: '1px solid #eef0f3', padding: '0.45rem 0.65rem' }}>
             {(() => {
               const creditScope = userData?.credit_cap_scope;
               const creditUsedRaw = Number(creditScope === 'monthly'
@@ -1196,6 +1197,31 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
               充值点数
             </button>
           </div>
+          <button
+            type="button"
+            className="btn btn-sm w-100 mb-2 d-flex align-items-center justify-content-center gap-1"
+            onClick={() => handleNavigate('/profile?tab=invite')}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = '#6d28d9';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = '#7c3aed';
+            }}
+            title="邀请好友注册，双方均可获得点数奖励"
+            style={{
+              background: 'transparent',
+              color: '#7c3aed',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              padding: '0.25rem 0.45rem',
+              border: 'none',
+              transition: 'color 0.16s ease',
+            }}
+          >
+            <i className="bi bi-gift"></i>
+            邀请好友得点数
+          </button>
+          </>
         )}
   {userData ? (
           <div className="profile-dropdown-area position-relative" style={{ minHeight: 54 }}>            <button

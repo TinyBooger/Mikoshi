@@ -180,11 +180,6 @@ export function useChatInitialization({
     const searchParamsChanged = searchParams !== prevSearchParamsRef.current;
     prevSearchParamsRef.current = searchParams;
 
-    console.trace('[searchParams effect] fired', { 
-      prev: prevSearchParamsRef.current?.toString(), 
-      next: searchParams?.toString() 
-    });
-
     if (searchParamsChanged) {
       setCharacterId(searchParams.get('character'));
       setSceneId(searchParams.get('scene'));

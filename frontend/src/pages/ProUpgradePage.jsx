@@ -119,7 +119,7 @@ export default function ProUpgradePage() {
 
   return (
     <PageWrapper title="升级为 Pro">
-      <div className="container" style={{ minHeight: '100vh', paddingTop: isMobile ? '8vh' : '15vh', paddingBottom: '3.5rem' }}>
+      <div className="container" style={{ minHeight: '100vh', paddingTop: isMobile ? '4vh' : '7vh', paddingBottom: '3.5rem' }}>
         <div className="text-center mb-5">
           <h1 className="fw-bold mb-2" style={{ fontSize: isMobile ? '1.4rem' : '2rem', color: '#111827' }}>升级为 Pro 用户</h1>
           <p className="text-muted mb-0" style={{ fontSize: isMobile ? '0.85rem' : '1rem' }}>
@@ -383,6 +383,39 @@ export default function ProUpgradePage() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="text-center" style={{ marginTop: isMobile ? 20 : 28 }}>
+          <button
+            type="button"
+            onClick={() => navigate('/profile?tab=invite')}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#ede9fe';
+              e.currentTarget.style.borderColor = '#c4b5fd';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '#f5f3ff';
+              e.currentTarget.style.borderColor = '#ddd6fe';
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#f5f3ff',
+              border: '1px solid #ddd6fe',
+              borderRadius: 999,
+              color: '#6d28d9',
+              fontWeight: 600,
+              fontSize: isMobile ? '0.76rem' : '0.84rem',
+              padding: isMobile ? '0.4rem 0.85rem' : '0.45rem 1rem',
+              cursor: 'pointer',
+              transition: 'background 0.16s ease, border-color 0.16s ease',
+            }}
+          >
+            <i className="bi bi-gift" />
+            点数不够用？邀请好友可获得额外点数
+            <i className="bi bi-arrow-right" style={{ fontSize: '0.9em' }} />
+          </button>
         </div>
       </div>
     </PageWrapper>

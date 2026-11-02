@@ -9,7 +9,7 @@ export function CreditLockedBanner({ creditLimits }) {
   const broke = !!creditLimits?.broke;
   // Broke pros (monthly quota exhausted) fall back to the free daily bucket.
   const usingDailyScope = !isPro || broke;
-  const scopeLabel = usingDailyScope ? '本日剩余点数' : '本月剩余点数';
+  const scopeLabel = usingDailyScope ? '本日免费额度' : '本月剩余点数';
   const used =
     Number(
       creditLimits?.used_credits ??
@@ -19,78 +19,99 @@ export function CreditLockedBanner({ creditLimits }) {
     ) || 0;
   const cap = Number(creditLimits?.credit_cap || 0);
 
+  const reachInfo = `${formatCreditCount(used)} / ${formatCreditCount(cap)}`;
+
+  const openTopUp = () => window.open('/credit-topup', '_blank', 'noopener,noreferrer');
+  const openProUpgrade = () => window.open('/pro-upgrade', '_blank', 'noopener,noreferrer');
+
+  const message = broke
+    ? `本月聊天点数已用尽（${reachInfo}），已切换至每日免费点数`
+    : cap > 0
+      ? `${scopeLabel}已达上限（${reachInfo}）`
+      : `${scopeLabel}已达上限，钱包点数已用尽`;
+
   return (
     <div
       style={{
         width: '100%',
         marginBottom: 8,
-        padding: '0.45rem 0.65rem',
+        padding: '0.4rem 0.65rem',
         borderRadius: 10,
-        border: '1px solid #fecaca',
-        background: '#fff1f2',
-        color: '#b91c1c',
-        fontSize: '0.74rem',
-        fontWeight: 600,
+        border: '1px solid rgba(124, 58, 237, 0.18)',
+        background: 'rgba(124, 58, 237, 0.045)',
+        fontSize: '0.72rem',
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '0.35rem 0.5rem',
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '0.4rem',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-          <span>
-            {scopeLabel}已达上限：{formatCreditCount(used)} /{' '}
-            {formatCreditCount(cap)}
-            {broke ? '，本月Pro点数已用尽，已切换至每日免费点数。' : '，'}钱包点数已用尽。
-            可{isPro ? '购买点数包' : '升级Pro或购买点数包'}继续使用。
-          </span>
-          {usingDailyScope && (
-            <span style={{ fontSize: '0.68rem', fontWeight: 500, opacity: 0.8 }}>
-              点数将于每日中午12:00重置
-            </span>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+      <i
+        className="bi bi-info-circle"
+        style={{ color: '#8b5cf6', fontSize: '0.8rem', flexShrink: 0 }}
+      />
+      <span style={{ flex: 1, minWidth: 140, color: '#6b7280', lineHeight: 1.4 }}>
+        {message}
+        {usingDailyScope && (
+          <span style={{ color: '#a1a1aa' }}> · 每日 12:00 重置</span>
+        )}
+      </span>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={openTopUp}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(124, 58, 237, 0.1)';
+            e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.4)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.3)';
+          }}
+          style={{
+            padding: '0.15rem 0.6rem',
+            borderRadius: 999,
+            border: '1px solid rgba(124, 58, 237, 0.3)',
+            background: 'transparent',
+            color: '#6d28d9',
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            lineHeight: 1.5,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            transition: 'background 0.16s ease, border-color 0.16s ease',
+          }}
+        >
+          充值点数
+        </button>
+        {!isPro && (
           <button
             type="button"
-            onClick={() => window.open('/pro-upgrade', '_blank', 'noopener,noreferrer')}
+            onClick={openProUpgrade}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#6d28d9';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '#7c3aed';
+            }}
             style={{
-              padding: '0.15rem 0.55rem',
-              borderRadius: 6,
+              padding: '0.15rem 0.6rem',
+              borderRadius: 999,
               border: 'none',
-              background: '#111827',
+              background: '#7c3aed',
               color: '#fff',
               fontSize: '0.7rem',
               fontWeight: 700,
+              lineHeight: 1.5,
               cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'background 0.16s ease',
             }}
           >
-            充值点数
+            升级 Pro
           </button>
-          {!creditLimits?.is_pro && (
-            <button
-              type="button"
-              onClick={() => window.open('/pro-upgrade', '_blank', 'noopener,noreferrer')}
-              style={{
-                padding: '0.15rem 0.55rem',
-                borderRadius: 6,
-                border: 'none',
-                background: '#b91c1c',
-                color: '#fff',
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              升级 Pro
-            </button>
-          )}
-        </div>
-      </div>
+        )}
+      </span>
     </div>
   );
 }
