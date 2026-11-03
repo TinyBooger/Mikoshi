@@ -4,11 +4,13 @@ import { Outlet, useLocation } from 'react-router';
 import Sidebar from './Sidebar.jsx';
 import { AuthContext } from './AuthProvider.jsx';
 import { useCreditTopupRefresh } from '../hooks/useCreditTopupRefresh';
+import { useAppBackButton } from '../hooks/useAppBackButton';
 import { NAV_WIDTH } from '../constants/layout';
 
 export default function Layout() {
   const { refreshUserData, sessionToken } = useContext(AuthContext);
   useCreditTopupRefresh(refreshUserData, !!sessionToken);
+  useAppBackButton();
   const location = useLocation();
   
   // Initialize sidebarVisible based on viewport size

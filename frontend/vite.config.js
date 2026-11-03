@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       strictPort: true,
-      host: 'localhost',
+      host: true,
       // Dev is same-origin, exactly like production. `VITE_API_BASE_URL` is
       // empty, so `window.API_BASE_URL` falls back to `window.location.origin`
       // and the app requests `/api/...` + `/static/...` from its own origin —
