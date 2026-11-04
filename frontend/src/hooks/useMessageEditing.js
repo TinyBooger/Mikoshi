@@ -15,6 +15,7 @@ import { copyTextToClipboard } from '../utils/clipboard';
  * @param {string}   params.sessionToken                - auth session token
  * @param {object}   params.toast                       - toast provider
  * @param {string}   params.editingMessageId            - id of the message being edited
+ * @param {string}   params.editingMessageText          - current edited message content
  * @param {function} params.setEditingMessageId         - setter for editingMessageId
  * @param {function} params.setEditingMessageText       - setter for editingMessageText
  * @param {boolean}  params.branchSelectionPending      - branch switch guard
@@ -34,6 +35,7 @@ export function useMessageEditing({
   sessionToken,
   toast,
   editingMessageId,
+  editingMessageText,
   setEditingMessageId,
   setEditingMessageText,
   branchSelectionPending,

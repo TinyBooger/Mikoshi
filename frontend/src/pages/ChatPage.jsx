@@ -419,6 +419,7 @@ export default function ChatPage() {
     sessionToken,
     toast,
     editingMessageId,
+    editingMessageText,
     setEditingMessageId,
     setEditingMessageText,
     branchSelectionPending,
