@@ -8,6 +8,7 @@ import PageWrapper from '../components/PageWrapper';
 import SidebarToggleButton from '../components/chat/SidebarToggleButton';
 import ChatMessagesList from '../components/chat/ChatMessagesList';
 import ChatInputBar from '../components/chat/ChatInputBar';
+import ChatSelectionActionBar from '../components/chat/ChatSelectionActionBar';
 import ChatModals from '../components/chat/ChatModals';
 import ShareScreenshotDialog from '../components/share/ShareScreenshotDialog';
 import ShareCharacterDialog from '../components/share/ShareCharacterDialog';
@@ -19,6 +20,7 @@ import {
   ensureMessageIds,
   MAX_PINNED_MEMORIES,
 } from '../utils/chatHelpers';
+import { MAX_SHARE_MESSAGES } from '../utils/shareData';
 import {
   SUMMARY_PREFIX,
   DEFAULT_ADVANCED_CHAT_CONFIG,
@@ -91,6 +93,9 @@ export default function ChatPage() {
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [hoveredMessageId, setHoveredMessageId] = useState(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState([]);
+  const [bulkPinning, setBulkPinning] = useState(false);
 
   // Ref for textarea auto-resize
   const textareaRef = useRef(null);
@@ -146,6 +151,11 @@ export default function ChatPage() {
     };
   };
   const [advancedChatConfig, setAdvancedChatConfig] = useState(DEFAULT_ADVANCED_CHAT_CONFIG);
+
+  useEffect(() => {
+    setSelectionMode(false);
+    setSelectedMessageIds([]);
+  }, [selectedChat?.chat_id, selectedChat?.active_branch_id]);
 
   const [characterModal, setCharacterModal] = useState({ show: false });
   const [personaModal, setPersonaModal] = useState({ show: false });
@@ -429,6 +439,75 @@ export default function ChatPage() {
     upsertChatHistoryEntryLocally,
   });
 
+  const selectableMessages = messages.filter((message) =>
+    message?.message_id
+    && (message.role === 'user' || message.role === 'assistant')
+    && typeof message.content === 'string'
+    && message.content.trim()
+  );
+  const selectedMessages = selectableMessages.filter((message) =>
+    selectedMessageIds.includes(message.message_id)
+  );
+  const selectedUnpinnedMessages = selectedMessages.filter((message) => !message.is_pinned);
+  const pinnedMessageCount = messages.filter((message) =>
+    message?.role !== 'system' && message?.is_pinned
+  ).length;
+  const allSelectedMessagesPinned = selectedMessages.length > 0
+    && selectedMessages.every((message) => message.is_pinned);
+  const pinWouldExceedLimit = !allSelectedMessagesPinned
+    && pinnedMessageCount + selectedUnpinnedMessages.length > MAX_PINNED_MEMORIES;
+
+  const handleStartMultiSelect = (messageId) => {
+    if (!messageId) return;
+    if (editingMessageId) handleCancelEditingMessage();
+    setSelectionMode(true);
+    setSelectedMessageIds([messageId]);
+  };
+
+  const handleToggleMessageSelection = (messageId) => {
+    setSelectedMessageIds((previous) => {
+      if (previous.includes(messageId)) return previous.filter((id) => id !== messageId);
+      if (previous.length >= MAX_SHARE_MESSAGES) {
+        toast.show(`最多可选择 ${MAX_SHARE_MESSAGES} 条消息分享。`, { type: 'info' });
+        return previous;
+      }
+      return [...previous, messageId];
+    });
+  };
+
+  const handleCopySelectedMessages = () => {
+    const text = selectedMessages.map((message) => message.content.trim()).join('\n\n');
+    if (text) handleCopyMessage({ content: text });
+  };
+
+  const handlePinSelectedMessages = async () => {
+    if (!selectedMessages.length || bulkPinning) return;
+    if (!selectedChat?.chat_id) {
+      toast.show('请先发送一条消息保存对话，再固定记忆。', { type: 'warning' });
+      return;
+    }
+    if (pinWouldExceedLimit) {
+      toast.show(`每个对话最多可固定 ${MAX_PINNED_MEMORIES} 条记忆。`, { type: 'warning' });
+      return;
+    }
+
+    const nextPinnedState = allSelectedMessagesPinned ? false : true;
+    const messagesToUpdate = allSelectedMessagesPinned ? selectedMessages : selectedUnpinnedMessages;
+    setBulkPinning(true);
+    try {
+      for (const message of messagesToUpdate) {
+        await handleTogglePin(message.message_id, nextPinnedState, { silentSuccess: true });
+      }
+    } finally {
+      setBulkPinning(false);
+    }
+  };
+
+  const handleExitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedMessageIds([]);
+  };
+
   // ---- Entry / greeting / chat loading ----
   const {
     initLoading,
@@ -640,6 +719,10 @@ export default function ChatPage() {
           onHoverMessage={setHoveredMessageId}
           onTogglePin={handleTogglePin}
           onCopyMessage={handleCopyMessage}
+          selectionMode={selectionMode}
+          selectedMessageIds={selectedMessageIds}
+          onStartMultiSelect={handleStartMultiSelect}
+          onToggleSelection={handleToggleMessageSelection}
           onCancelEditing={handleCancelEditingMessage}
           onSaveEditedMessage={handleSaveEditedMessage}
           onResendMessage={handleResendMessage}
@@ -648,35 +731,51 @@ export default function ChatPage() {
           onEditTextChange={setEditingMessageText}
         />
 
-        <ChatInputBar
-          handleSend={handleSendMessage}
-          selectedWallpaper={selectedWallpaper}
-          isMobile={isMobile}
-          chatContentRailStyle={chatContentRailStyle}
-          userData={userData}
-          creditLimits={creditLimits}
-          contextWindowUsage={contextWindowUsage}
-          serverContextWindowUsage={serverContextWindowUsage}
-          contextUsagePercent={contextUsagePercent}
-          pieRadius={pieRadius}
-          pieCircumference={pieCircumference}
-          pieStrokeOffset={pieStrokeOffset}
-          input={input}
-          handleInputChange={handleInputChange}
-          handleKeyDown={handleKeyDown}
-          textareaRef={textareaRef}
-          isRecording={isRecording}
-          recordingLevel={recordingLevel}
-          isTranscribing={isTranscribing}
-          handleVoiceToggle={handleVoiceToggle}
-          isStreaming={isStreaming}
-          sending={sending}
-          onAbort={() => {
-            if (abortController) {
-              abortController.abort();
-            }
-          }}
-        />
+        {selectionMode ? (
+          <ChatSelectionActionBar
+            selectedCount={selectedMessages.length}
+            pinLabel={allSelectedMessagesPinned ? '取消固定' : '固定'}
+            pinDisabled={bulkPinning || pinWouldExceedLimit || !selectedChat?.chat_id}
+            busy={bulkPinning}
+            selectedWallpaper={selectedWallpaper}
+            isMobile={isMobile}
+            chatContentRailStyle={chatContentRailStyle}
+            onCopy={handleCopySelectedMessages}
+            onPin={handlePinSelectedMessages}
+            onShare={() => setShowShareScreenshot(true)}
+            onCancel={handleExitSelectionMode}
+          />
+        ) : (
+          <ChatInputBar
+            handleSend={handleSendMessage}
+            selectedWallpaper={selectedWallpaper}
+            isMobile={isMobile}
+            chatContentRailStyle={chatContentRailStyle}
+            userData={userData}
+            creditLimits={creditLimits}
+            contextWindowUsage={contextWindowUsage}
+            serverContextWindowUsage={serverContextWindowUsage}
+            contextUsagePercent={contextUsagePercent}
+            pieRadius={pieRadius}
+            pieCircumference={pieCircumference}
+            pieStrokeOffset={pieStrokeOffset}
+            input={input}
+            handleInputChange={handleInputChange}
+            handleKeyDown={handleKeyDown}
+            textareaRef={textareaRef}
+            isRecording={isRecording}
+            recordingLevel={recordingLevel}
+            isTranscribing={isTranscribing}
+            handleVoiceToggle={handleVoiceToggle}
+            isStreaming={isStreaming}
+            sending={sending}
+            onAbort={() => {
+              if (abortController) {
+                abortController.abort();
+              }
+            }}
+          />
+        )}
       </div>
       <CharacterSidebar
         characterSidebarVisible={characterSidebarVisible}
@@ -721,7 +820,6 @@ export default function ChatPage() {
         onUnpinMemory={(messageId) => handleTogglePin(messageId, false)}
         isMobile={isMobile}
         setPersonaModalShow={() => setPersonaModal({ show: true })}
-        onOpenShareScreenshot={() => setShowShareScreenshot(true)}
         onOpenCharacterShare={() => setShowShareCharacter(true)}
       />
     </div>
@@ -757,7 +855,7 @@ export default function ChatPage() {
       <ShareScreenshotDialog
         show={showShareScreenshot}
         onClose={() => setShowShareScreenshot(false)}
-        messages={messages}
+        messages={selectedMessages}
         character={selectedCharacter}
         scene={selectedScene}
         persona={selectedPersona}

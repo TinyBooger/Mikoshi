@@ -37,6 +37,10 @@ export default function ChatMessagesList({
   onHoverMessage,
   onTogglePin,
   onCopyMessage,
+  selectionMode,
+  selectedMessageIds,
+  onStartMultiSelect,
+  onToggleSelection,
   onCancelEditing,
   onSaveEditedMessage,
   onResendMessage,
@@ -133,6 +137,10 @@ export default function ChatMessagesList({
                 onHoverMessage={onHoverMessage}
                 onTogglePin={onTogglePin}
                 onCopyMessage={onCopyMessage}
+                selectionMode={selectionMode}
+                selectedForSharing={selectedMessageIds.includes(m.message_id)}
+                onStartMultiSelect={onStartMultiSelect}
+                onToggleSelection={onToggleSelection}
                 onCancelEditing={onCancelEditing}
                 onSaveEditedMessage={onSaveEditedMessage}
                 onResendMessage={onResendMessage}

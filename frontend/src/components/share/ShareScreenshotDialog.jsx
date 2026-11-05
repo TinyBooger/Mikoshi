@@ -7,7 +7,6 @@ import { useToast } from '../ToastProvider';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import {
   buildSharePayload,
-  DEFAULT_SHARE_MESSAGE_COUNT,
   MAX_SHARE_MESSAGES,
   resolveMediaUrl,
 } from '../../utils/shareData';
@@ -16,7 +15,6 @@ import {
   DEFAULT_TEMPLATE_ID,
   SHARE_TEMPLATES,
   getShareTemplate,
-  getShareBackground,
   getAvailableBackgrounds,
   getDefaultTemplateId,
   resolveShareBackgroundId,
@@ -35,9 +33,8 @@ import fallbackUserAvatar from '../../assets/images/default-avatar.png';
 /**
  * "制作截图" dialog.
  *
- * Owns the whole share-card flow: pick which messages to include, pick a
- * template + background, preview the exact card that will be exported, then
- * download / copy / share it as a PNG.
+ * Renders the selected messages with the active chat's template and background,
+ * then lets the user copy or save the resulting PNG.
  *
  * The preview IS the export: a full-size `<ShareCard>` is laid out off-screen at
  * 1080px, rasterised with html2canvas, and the resulting PNG blob is shown in a
@@ -126,24 +123,16 @@ export default function ShareScreenshotDialog({
     [wallpaperId, characterImageUrl, wallpaperUrl],
   );
 
-  const template = getShareTemplate(templateId);
+  const template = getShareTemplate(chatTemplateId);
 
-  // Keep the chosen background usable when the conversation changes (e.g. a
-  // character with no artwork is opened after one that had some).
+  // Resolve the card's background from the current chat rather than asking the
+  // user to choose it again in the share dialog.
   const background = useMemo(() => {
-    const found = availableBackgrounds.find((bg) => bg.id === backgroundId);
-    return found || availableBackgrounds.find((bg) => bg.id === DEFAULT_BACKGROUND_ID) || availableBackgrounds[0];
-  }, [availableBackgrounds, backgroundId]);
-
-  const selectedLines = useMemo(() => {
-    const wanted = new Set(selectedIds);
-    return payload.lines.filter((line) => wanted.has(line.id));
-  }, [payload, selectedIds]);
-
-  const capturePayload = useMemo(
-    () => ({ ...payload, lines: selectedLines }),
-    [payload, selectedLines],
-  );
+    const found = availableBackgrounds.find((item) => item.id === chatBackgroundId);
+    return found || availableBackgrounds[0];
+  }, [availableBackgrounds, chatBackgroundId]);
+  const selectedLines = payload.lines;
+  const capturePayload = payload;
 
   // Content fingerprint of the card, kept as a *string* on purpose: the parent
   // hands down a fresh `messages` array on every streaming chunk, so comparing
@@ -161,25 +150,22 @@ export default function ShareScreenshotDialog({
   );
 
   const atLimit = selectedIds.length >= MAX_SHARE_MESSAGES;
+  const nonSystemCount = payload.lines.length;
+  const toggleLine = useCallback((id) => {
+    setSelectedIds((previous) => {
+      if (previous.includes(id)) return previous.filter((value) => value !== id);
+      if (previous.length >= MAX_SHARE_MESSAGES) return previous;
+      return [...previous, id];
+    });
+  }, []);
+  const selectAll = () => setSelectedIds(payload.lines.slice(-MAX_SHARE_MESSAGES).map((line) => line.id));
+  const clearAll = () => setSelectedIds([]);
 
-  // Initial state = the current chat: most recent messages selected, plus the
-  // chat's own layout and background. Applied only when the dialog opens so a
-  // mid-stream re-render never clobbers the user's own choices. Read through
-  // refs because the effect deliberately depends on `show` alone.
-  const wasOpenRef = useRef(false);
-  const linesRef = useRef([]);
-  linesRef.current = payload.lines;
-  const openDefaultsRef = useRef({ templateId: DEFAULT_TEMPLATE_ID, backgroundId: DEFAULT_BACKGROUND_ID });
-  openDefaultsRef.current = { templateId: chatTemplateId, backgroundId: chatBackgroundId };
   useEffect(() => {
-    if (show && !wasOpenRef.current) {
-      setSelectedIds(linesRef.current.slice(-DEFAULT_SHARE_MESSAGE_COUNT).map((line) => line.id));
-      setTemplateId(openDefaultsRef.current.templateId);
-      setBackgroundId(openDefaultsRef.current.backgroundId);
+    if (show) {
       setBusy(null);
       setZoomed(false);
     }
-    wasOpenRef.current = show;
   }, [show]);
 
   // Escape backs out one layer at a time: the zoom view first, then the dialog.
@@ -267,20 +253,9 @@ export default function ShareScreenshotDialog({
     return () => clearTimeout(timer);
   }, [show, renderKey, selectedLines.length, renderPreview, clearPreview]);
 
-  const toggleLine = useCallback((id) => {
-    setSelectedIds((prev) => {
-      if (prev.includes(id)) return prev.filter((value) => value !== id);
-      if (prev.length >= MAX_SHARE_MESSAGES) return prev;
-      return [...prev, id];
-    });
-  }, []);
-
-  const selectAll = () => setSelectedIds(payload.lines.slice(-MAX_SHARE_MESSAGES).map((l) => l.id));
-  const clearAll = () => setSelectedIds([]);
-
   const handleExport = useCallback(
     async (mode) => {
-      if (selectedLines.length === 0) {
+      if (payload.lines.length === 0) {
         toast.show('请至少选择一条消息', { type: 'info' });
         return;
       }
@@ -313,12 +288,10 @@ export default function ShareScreenshotDialog({
         setBusy(null);
       }
     },
-    [selectedLines.length, payload.characterName, rendering, renderError, runCapture, toast],
+    [payload.lines.length, payload.characterName, rendering, renderError, runCapture, toast],
   );
 
   if (!show) return null;
-
-  const nonSystemCount = payload.lines.length;
 
   return createPortal(
     <>
@@ -363,7 +336,7 @@ export default function ShareScreenshotDialog({
           style={{
             margin: 'auto',
             width: '100%',
-            maxWidth: isMobile ? 560 : 1120,
+            maxWidth: isMobile ? 560 : 900,
             background: '#fff',
             borderRadius: 16,
             boxShadow: '0 16px 48px rgba(0,0,0,0.28)',
@@ -402,8 +375,8 @@ export default function ShareScreenshotDialog({
               minHeight: 0,
             }}
           >
-            {/* Controls */}
-            <div style={{ width: isMobile ? '100%' : 340, flexShrink: 0, minWidth: 0 }}>
+            {/* Message selection and appearance are configured in the chat view. */}
+            <div style={{ display: 'none' }}>
               <div
                 style={{
                   display: 'flex',
@@ -759,9 +732,6 @@ export default function ShareScreenshotDialog({
             <span style={{ marginRight: 'auto', fontSize: '0.78rem', color: '#8b8b93' }}>
               已选择 {selectedLines.length} 条消息
             </span>
-            <SecondaryButton isMobile={isMobile} onClick={onClose} disabled={!!busy}>
-              取消
-            </SecondaryButton>
             <SecondaryButton
               isMobile={isMobile}
               onClick={() => handleExport('copy')}

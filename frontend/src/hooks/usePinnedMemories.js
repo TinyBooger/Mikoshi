@@ -78,7 +78,7 @@ export function usePinnedMemories({
     }
   };
 
-  const handleTogglePin = async (messageId, nextPinnedState) => {
+  const handleTogglePin = async (messageId, nextPinnedState, { silentSuccess = false } = {}) => {
     const targetMessage = messages.find((m) => m?.message_id === messageId);
     if (!targetMessage) return;
 
@@ -124,12 +124,14 @@ export function usePinnedMemories({
 
     try {
       await persistPinnedMessage(targetMessage, nextPinnedState);
-      toast.show(
-        nextPinnedState
-          ? '记忆已固定，将始终保留在上下文中。'
-          : '已从固定记忆中移除。',
-        { type: 'success' }
-      );
+      if (!silentSuccess) {
+        toast.show(
+          nextPinnedState
+            ? '记忆已固定，将始终保留在上下文中。'
+            : '已从固定记忆中移除。',
+          { type: 'success' }
+        );
+      }
     } catch (error) {
       // Rollback on failure
       setMessages((prev) => prev.map((m) => {

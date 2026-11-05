@@ -77,6 +77,10 @@ const MessageBubble = React.memo(function MessageBubble({
   onHoverMessage,
   onTogglePin,
   onCopyMessage,
+  selectionMode,
+  selectedForSharing,
+  onStartMultiSelect,
+  onToggleSelection,
   onCancelEditing,
   onSaveEditedMessage,
   onResendMessage,
@@ -150,6 +154,13 @@ const MessageBubble = React.memo(function MessageBubble({
       });
     }
     actions.push({
+      key: 'select',
+      icon: 'bi bi-list-check',
+      label: '多选消息',
+      disabled: !messageHasText,
+      onClick: () => onStartMultiSelect(m.message_id),
+    });
+    actions.push({
       key: 'pin',
       icon: m.is_pinned ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle',
       label: m.is_pinned ? '取消固定' : '固定为记忆',
@@ -182,6 +193,9 @@ const MessageBubble = React.memo(function MessageBubble({
       style={{
         display: 'flex',
         marginBottom: cleanMode ? '2.75rem' : '1.5rem',
+        paddingLeft: isMobile ? '0.5rem' : '0.85rem',
+        paddingRight: isMobile ? '0.5rem' : '0.85rem',
+        boxSizing: 'border-box',
         justifyContent: isClean ? 'center' : (m.role === 'user' ? 'flex-end' : 'flex-start'),
       }}
     >
@@ -281,7 +295,7 @@ const MessageBubble = React.memo(function MessageBubble({
                 lineHeight: isCleanAssistant ? 1.75 : 1.65,
                 minWidth: 0,
                 wordBreak: 'break-word',
-                maxWidth: bubbleMaxWidth,
+                maxWidth: selectionMode ? 'calc(100% - 38px)' : bubbleMaxWidth,
                 width: bubbleWidth,
               }}
             >
@@ -310,6 +324,26 @@ const MessageBubble = React.memo(function MessageBubble({
                 <div>{renderMessageContent(m.content, m.role)}</div>
               )}
             </div>
+            {selectionMode && (
+              <button
+                type="button"
+                onClick={() => onToggleSelection(m.message_id)}
+                disabled={!messageHasText}
+                aria-label={selectedForSharing ? '取消选择消息' : '选择消息'}
+                aria-pressed={selectedForSharing}
+                style={{
+                  ...getMessageActionButtonStyle(!messageHasText, palette),
+                  width: 40,
+                  height: 40,
+                  marginTop: isCleanAssistant ? 0 : 7,
+                  flexShrink: 0,
+                  fontSize: '1.1rem',
+                  color: selectedForSharing ? palette.accent : palette.iconColor,
+                }}
+              >
+                <i className={`bi ${selectedForSharing ? 'bi-check-square-fill' : 'bi-square'}`}></i>
+              </button>
+            )}
           </div>
 
           {/* Below-bubble action row — user: retry · pin · edit · copy / bot: copy · pin */}
@@ -352,6 +386,8 @@ const MessageBubble = React.memo(function MessageBubble({
                     发送
                   </button>
                 </>
+              ) : selectionMode ? (
+                null
               ) : (
                 belowBubbleActions.map((action) => (
                   <button
@@ -363,7 +399,7 @@ const MessageBubble = React.memo(function MessageBubble({
                     onMouseLeave={(event) => handleMessageActionMouseLeave(event, action.disabled, palette)}
                     style={{
                       ...getMessageActionButtonStyle(action.disabled, palette),
-                      opacity: hoveredMessageId === m.message_id ? 1 : 0,
+                      opacity: isMobile || hoveredMessageId === m.message_id ? 1 : 0,
                       transition: 'opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.15s ease',
                     }}
                     title={action.label}
@@ -375,6 +411,7 @@ const MessageBubble = React.memo(function MessageBubble({
               )}
               {/* Branch navigator — < X / Y > */}
               {(() => {
+                if (selectionMode) return null;
                 const nav = forkNavMap.get(m.message_id);
                 if (!nav) return null;
                 const prevIdx = (nav.currentIdx - 1 + nav.options.length) % nav.options.length;

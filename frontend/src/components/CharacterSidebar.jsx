@@ -58,7 +58,6 @@ export default function CharacterSidebar({
   isMobile = false, // allow parent to pass isMobile, default false
   setPersonaModalShow, // <-- new prop to open PersonaModal
   onOpenCharacterShare, // <-- handler for the "分享角色卡片" dialog
-  onOpenShareScreenshot // <-- handler for the "制作截图" share-card dialog
 }) {
   const [creatorHover, setCreatorHover] = React.useState(false);
   const [showFullTagline, setShowFullTagline] = React.useState(false);
@@ -67,7 +66,6 @@ export default function CharacterSidebar({
   const [activeTab, setActiveTab] = React.useState('chat');
   const [activeHintKey, setActiveHintKey] = React.useState(null);
   const [shareIconFocused, setShareIconFocused] = React.useState(false);
-  const [screenshotIconFocused, setScreenshotIconFocused] = React.useState(false);
   const [reportIconFocused, setReportIconFocused] = React.useState(false);
   const [lastSavedConfig, setLastSavedConfig] = React.useState(() =>
     JSON.parse(JSON.stringify(advancedChatConfig)),
@@ -300,30 +298,6 @@ export default function CharacterSidebar({
             </button>
             {(selectedCharacter || selectedScene) && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <button
-                  type="button"
-                  onClick={() => { if (onOpenShareScreenshot) onOpenShareScreenshot(); }}
-                  aria-label="制作截图"
-                  title="制作截图"
-                  style={{
-                    border: 'none',
-                    background: 'none',
-                    padding: 0,
-                    color: '#7c3aed',
-                    cursor: 'pointer',
-                    fontSize: '1.25rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    lineHeight: 1,
-                  }}
-                  onMouseEnter={() => setScreenshotIconFocused(true)}
-                  onMouseLeave={() => setScreenshotIconFocused(false)}
-                  onFocus={() => setScreenshotIconFocused(true)}
-                  onBlur={() => setScreenshotIconFocused(false)}
-                >
-                  <i className={`bi ${screenshotIconFocused ? 'bi-card-image' : 'bi-image'}`} style={{ pointerEvents: 'none' }}></i>
-                </button>
                 <button
                   type="button"
                   onClick={() => { if (onOpenCharacterShare) onOpenCharacterShare(); }}
