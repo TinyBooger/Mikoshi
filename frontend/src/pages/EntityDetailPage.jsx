@@ -597,8 +597,8 @@ export default function EntityDetailPage() {
                   }}
                 >
                   <i
-                    className={`bi ${shareIconHovered ? 'bi-share-fill' : 'bi-share'}`}
-                    style={{ pointerEvents: 'none' }}
+                    className="bi bi-reply-fill"
+                    style={{ pointerEvents: 'none', transform: 'scaleX(-1)' }}
                   />
                 </button>
                 {!isOwner && (

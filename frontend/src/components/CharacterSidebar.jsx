@@ -320,7 +320,10 @@ export default function CharacterSidebar({
                   onFocus={() => setShareIconFocused(true)}
                   onBlur={() => setShareIconFocused(false)}
                 >
-                  <i className={`bi ${shareIconFocused ? 'bi-share-fill' : 'bi-share'}`} style={{ pointerEvents: 'none' }}></i>
+                  <i
+                    className="bi bi-reply-fill"
+                    style={{ pointerEvents: 'none', transform: 'scaleX(-1)' }}
+                  ></i>
                 </button>
                 <button
                   type="button"
