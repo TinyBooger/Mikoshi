@@ -12,7 +12,6 @@ import ConfirmModal from '../components/ConfirmModal';
 import ShareCharacterDialog from '../components/share/ShareCharacterDialog';
 import defaultPicture from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
-import { applyCharacterPlaceholders } from '../utils/characterPlaceholders';
 import { normalizeExampleMessage } from '../utils/exampleMessages';
 
 export default function EntityDetailPage() {
@@ -300,14 +299,10 @@ export default function EntityDetailPage() {
     }
   };
 
-  // Character-authored fields may contain {{char}} / {{user}} placeholders.
-  // Resolve them with the character name and the viewer's persona name.
-  const viewerPersonaName = userData?.default_persona?.name || null;
-
   // Get description based on entity type
   let description = '';
   if (type === 'character') {
-    description = applyCharacterPlaceholders(entity.description, entity.name, viewerPersonaName) || '';
+    description = entity.description || '';
   } else if (type === 'persona') {
     description = entity.description || '';
   } else if (type === 'scene') {
@@ -845,7 +840,7 @@ export default function EntityDetailPage() {
                   </div>
                   {entity.greetings.filter(g => g !== '[IMPROVISE_GREETING]').map((g, idx) => (
                     <p key={idx} style={{ ...sectionBodyStyle, marginBottom: idx < entity.greetings.filter(g => g !== '[IMPROVISE_GREETING]').length - 1 ? '0.75rem' : 0 }}>
-                      {applyCharacterPlaceholders(g, entity.name, viewerPersonaName)}
+                      {g}
                     </p>
                   ))}
                 </div>
@@ -861,7 +856,7 @@ export default function EntityDetailPage() {
                     </h3>
                   </div>
                   <p style={sectionBodyStyle}>
-                    {applyCharacterPlaceholders(entity.greeting, entity.name, viewerPersonaName)}
+                    {entity.greeting}
                   </p>
                 </div>
               </div>
@@ -876,7 +871,7 @@ export default function EntityDetailPage() {
                     </h3>
                   </div>
                   <p style={{ ...sectionBodyStyle, whiteSpace: 'pre-wrap' }}>
-                    {applyCharacterPlaceholders(normalizeExampleMessage(entity.example_messages), entity.name, viewerPersonaName)}
+                    {normalizeExampleMessage(entity.example_messages)}
                   </p>
                 </div>
               </div>
