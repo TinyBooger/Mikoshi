@@ -106,6 +106,12 @@ const MessageBubble = React.memo(function MessageBubble({
   const exactTimestamp = formatExactMessageTimestamp(m.created_at);
   const exactTimeVisible = !!messageClock && (showExactTime || hoveredMessageId === m.message_id);
   const handleBubbleClick = (event) => {
+    if (selectionMode) {
+      if (!isInteractiveMessageTarget(event.target) && messageHasText) {
+        onToggleSelection(m.message_id);
+      }
+      return;
+    }
     if (!messageClock || isInteractiveMessageTarget(event.target)) return;
     setShowExactTime((previous) => !previous);
   };
@@ -285,6 +291,7 @@ const MessageBubble = React.memo(function MessageBubble({
               onClick={handleBubbleClick}
               style={{
                 background: bubbleBackground,
+                cursor: selectionMode && messageHasText ? 'pointer' : undefined,
                 // Clean mode has no bubble behind the reply, so its text sits
                 // straight on the surface and has to take the surface colour.
                 color: bubbleTextColor,

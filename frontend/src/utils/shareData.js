@@ -101,9 +101,9 @@ export function buildSharePayload({ character, scene, persona, userData, message
   const characterName = entity?.name || '角色';
   const personaName = persona?.name || userData?.username || userData?.nickname || '你';
   // `picture` is the entity's full portrait (立绘) and `avatar_picture` is the
-  // small round crop. The card header shows the portrait; message rows show the
-  // avatar. Each falls back to the other so neither can come up empty, and
-  // `picture` is optional on create, so plenty of entities only have an avatar.
+  // small crop. The header and message rows use the avatar; the full portrait
+  // remains available for character-art backgrounds. Each falls back to the
+  // other so neither can come up empty, and `picture` is optional on create.
   const characterImage = resolveMediaUrl(entity?.picture);
   const characterAvatar =
     resolveMediaUrl(entity?.avatar_picture) || characterImage;
@@ -142,8 +142,8 @@ export function buildSharePayload({ character, scene, persona, userData, message
     characterName,
     personaName,
     subtitle: String(subtitle || '').slice(0, 120),
-    // Full portrait — null when the entity has no artwork, which makes the card
-    // fall back to the compact avatar header.
+    // Full portrait — null when the entity has no artwork. Used for
+    // character-art backgrounds; the header uses `characterAvatar`.
     characterImage,
     characterAvatar,
     personaAvatar,

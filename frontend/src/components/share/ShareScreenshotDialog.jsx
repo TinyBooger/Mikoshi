@@ -98,8 +98,8 @@ export default function ShareScreenshotDialog({
     [character, scene, persona, userData, messages],
   );
 
-  // The `character-art` background is painted full-bleed, so it wants the
-  // portrait (立绘) rather than the small avatar crop.
+  // The `character-art` background uses the full portrait (立绘); the card
+  // header independently uses the avatar crop.
   const characterImageUrl = useMemo(() => {
     const entity = scene || character;
     return resolveMediaUrl(entity?.picture) || resolveMediaUrl(entity?.avatar_picture);

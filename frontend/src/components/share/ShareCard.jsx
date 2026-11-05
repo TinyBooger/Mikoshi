@@ -44,9 +44,6 @@ const FONT_STACK =
 const AVATAR_SIZE_HEADER = 132;
 const AVATAR_SIZE_MESSAGE = 56;
 
-/** Height of the full-portrait hero band that heads the card. */
-const HERO_HEIGHT = 470;
-
 /** Brand mark height in the watermark footer, matching the 27px wordmark. */
 const LOGO_SIZE = 44;
 
@@ -246,83 +243,7 @@ function ShareMessageBubble({ line, background }) {
   );
 }
 
-/**
- * Header built around the character's full portrait (立绘).
- *
- * The artwork is cropped to a landscape band anchored at the top, because
- * portraits are usually face-first and a centred crop would cut the head off.
- * Name + subtitle sit on a scrim at the bottom: that guarantees contrast
- * against any artwork, so the header reads the same on every palette.
- */
-function ShareHeaderPortrait({ payload }) {
-  return (
-    <div
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: HERO_HEIGHT,
-        borderRadius: 40,
-        overflow: 'hidden',
-        flexShrink: 0,
-        background: '#241c38',
-        boxShadow: '0 18px 44px rgba(28, 18, 56, 0.26)',
-      }}
-    >
-      <img
-        data-share-image="1"
-        data-share-fallback={fallbackCharacterAvatar}
-        src={payload.characterImage}
-        alt=""
-        onError={handleImageFallback(fallbackCharacterAvatar)}
-        style={{
-          display: 'block',
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          objectPosition: 'top center',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'linear-gradient(180deg, rgba(10, 7, 20, 0) 34%, rgba(10, 7, 20, 0.5) 68%, rgba(10, 7, 20, 0.87) 100%)',
-        }}
-      />
-      <div style={{ position: 'absolute', left: 40, right: 40, bottom: 34 }}>
-        <div
-          style={{
-            fontSize: 52,
-            fontWeight: 800,
-            color: '#ffffff',
-            lineHeight: 1.15,
-            letterSpacing: 1,
-            textShadow: '0 2px 14px rgba(0, 0, 0, 0.4)',
-          }}
-        >
-          {payload.characterName}
-        </div>
-        {payload.subtitle ? (
-          <div
-            style={{
-              marginTop: 12,
-              fontSize: 25,
-              lineHeight: 1.5,
-              color: 'rgba(255, 255, 255, 0.88)',
-              maxWidth: 780,
-              textShadow: '0 1px 10px rgba(0, 0, 0, 0.4)',
-            }}
-          >
-            {payload.subtitle}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-/** Fallback header: avatar tile + name + subtitle, for entities with no portrait. */
+/** Header: avatar tile + name + subtitle, consistent across every background. */
 function ShareHeaderCompact({ payload, background }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
@@ -371,9 +292,6 @@ const ShareCard = forwardRef(function ShareCard(
   const isImageBackground = background.kind === 'image';
   const MessageRenderer =
     template.id === 'bubble' ? ShareMessageBubble : ShareMessageMinimal;
-  // The portrait header is skipped when the artwork already *is* the backdrop,
-  // otherwise the same image would be painted twice on one card.
-  const showPortrait = !!payload.characterImage && background.id !== 'character-art';
   // Computed from the lines that actually render, so a card built from a
   // hand-picked selection divides on the gaps *it* shows. The default gap is the
   // mirrored backend constant, the same one the chat only overrides when the
@@ -416,13 +334,8 @@ const ShareCard = forwardRef(function ShareCard(
       ) : null}
 
       <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', flex: 1 }}>
-        {/* Header: the character's identity. A full portrait when there is one,
-            otherwise the compact avatar row. */}
-        {showPortrait ? (
-          <ShareHeaderPortrait payload={payload} />
-        ) : (
-          <ShareHeaderCompact payload={payload} background={background} />
-        )}
+        {/* Header: keep the avatar-and-copy layout independent of the backdrop. */}
+        <ShareHeaderCompact payload={payload} background={background} />
 
         <div style={{ height: 1, background: background.dividerColor, margin: '46px 0 42px' }} />
 
