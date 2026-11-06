@@ -558,6 +558,45 @@ export default function ChatPage() {
     toast,
   });
 
+  const handleImportChat = async (file) => {
+    if (!selectedCharacter?.id || !sessionToken) {
+      toast.show('请先选择角色后再导入对话。', { type: 'error' });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('character_id', String(selectedCharacter.id));
+
+      const response = await fetch(`${window.API_BASE_URL}/api/chat/import`, {
+        method: 'POST',
+        headers: { Authorization: sessionToken },
+        body: formData,
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.detail || result.error || '导入对话失败，请检查 JSONL 文件后重试。');
+      }
+
+      const importedChat = normalizeChatEntry(result);
+      if (!importedChat) {
+        throw new Error('导入成功，但服务器返回的对话数据无效。');
+      }
+
+      const activeChat = upsertChatHistoryEntryLocally(importedChat);
+      setMessages(buildDisplayMessagesForChat(activeChat, selectedCharacter, null, null));
+      pendingChatIdRef.current = null;
+      isNewChat.current = false;
+      setShowChatHistory(true);
+      refreshUserData({ silent: true });
+      toast.show('对话导入成功。', { type: 'success' });
+    } catch (error) {
+      console.error('Error importing chat:', error);
+      toast.show(error.message || '导入对话失败，请重试。', { type: 'error' });
+    }
+  };
+
   // ---- Chat history actions (rename / delete + confirm modal state) ----
   const {
     confirmModal,
@@ -798,6 +837,7 @@ export default function ChatPage() {
         loadChat={loadChat}
         showChatHistory={showChatHistory}
         setShowChatHistory={setShowChatHistory}
+        onImportChat={handleImportChat}
         initializeChat={initializeChat}
         likeEntity={likeEntity}
         unlikeEntity={unlikeEntity}

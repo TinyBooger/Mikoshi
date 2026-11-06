@@ -33,6 +33,7 @@ export default function CharacterSidebar({
   loadChat,
   showChatHistory,
   setShowChatHistory,
+  onImportChat,
   initializeChat,
   likeCharacter,
   likeEntity, // <-- add likeEntity
@@ -67,6 +68,8 @@ export default function CharacterSidebar({
   const [activeHintKey, setActiveHintKey] = React.useState(null);
   const [shareIconFocused, setShareIconFocused] = React.useState(false);
   const [reportIconFocused, setReportIconFocused] = React.useState(false);
+  const [importingChat, setImportingChat] = React.useState(false);
+  const importChatInputRef = React.useRef(null);
   const [lastSavedConfig, setLastSavedConfig] = React.useState(() =>
     JSON.parse(JSON.stringify(advancedChatConfig)),
   );
@@ -182,6 +185,18 @@ export default function CharacterSidebar({
   const toggleMenu = (chatId, e) => {
     e.stopPropagation();
     setMenuOpenId(menuOpenId === chatId ? null : chatId);
+  };
+  const handleImportChatFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !onImportChat) return;
+
+    setImportingChat(true);
+    try {
+      await onImportChat(file);
+    } finally {
+      setImportingChat(false);
+    }
   };
   // Determine entry mode based on which entity is currently selected
   // Priority: Scene > Character > None (mutually exclusive states)
@@ -879,20 +894,52 @@ export default function CharacterSidebar({
           )}
         </div>
 
-        {modeChatHistory.length > 0 && (
+        {(modeChatHistory.length > 0 || isCharacterMode) && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#2f2b3d' }}>对话历史</h6>
-              <SecondaryButton
-                type="button"
-                isMobile={isMobile}
-                onClick={() => setShowChatHistory(!showChatHistory)}
-              >
-                {showChatHistory ? '隐藏' : '显示'}
-              </SecondaryButton>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {isCharacterMode && (
+                  <>
+                    <input
+                      ref={importChatInputRef}
+                      type="file"
+                      accept=".jsonl,application/jsonl"
+                      onChange={handleImportChatFile}
+                      style={{ display: 'none' }}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary"
+                      onClick={() => importChatInputRef.current?.click()}
+                      disabled={importingChat}
+                      title="导入 JSONL 对话"
+                      aria-label="导入 JSONL 对话"
+                    >
+                      {importingChat ? (
+                        <><span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>导入中</>
+                      ) : (
+                        <><i className="bi bi-upload me-1"></i>导入</>
+                      )}
+                    </button>
+                  </>
+                )}
+                <SecondaryButton
+                  type="button"
+                  isMobile={isMobile}
+                  onClick={() => setShowChatHistory(!showChatHistory)}
+                >
+                  {showChatHistory ? '隐藏' : '显示'}
+                </SecondaryButton>
+              </div>
             </div>
             {showChatHistory && (
               <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 12, background: '#f8f7fc', padding: 8, border: '1px solid #ece9f4' }}>
+                {modeChatHistory.length === 0 && (
+                  <div style={{ padding: '0.5rem', color: '#8b859d', fontSize: '0.85rem', textAlign: 'center' }}>
+                    暂无对话记录
+                  </div>
+                )}
                 {modeChatHistory.map((chat) => (
                     <div
                       key={chat.chat_id}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Request, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Form
 from fastapi.responses import JSONResponse, StreamingResponse, Response
 from sqlalchemy.orm import Session
 from starlette.requests import ClientDisconnect
@@ -51,6 +51,8 @@ from utils.audit_logger import audit_request
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+MAX_CHAT_IMPORT_BYTES = 5 * 1024 * 1024
+MAX_CHAT_IMPORT_MESSAGES = 10000
 
 # DashScope flags input/output blocked by its content audit with this code (native
 # API spells it `DataInspectionFailed`). The raw provider text is opaque to users,
@@ -77,6 +79,69 @@ def _extract_context_summary_usage(context_info: dict | None) -> dict[str, int]:
     if not isinstance(context_info, dict):
         return normalize_usage(None)
     return normalize_usage(context_info.get("summary_usage"))
+
+
+def _parse_sillytavern_jsonl(content: str) -> list[dict]:
+    lines = [
+        (line_number, line)
+        for line_number, line in enumerate(content.splitlines(), start=1)
+        if line.strip()
+    ]
+    if not lines:
+        raise HTTPException(status_code=400, detail="The JSONL file is empty.")
+
+    try:
+        header = json.loads(lines[0][1])
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="The first JSONL line must be a valid chat header.") from exc
+
+    if not isinstance(header, dict) or not (
+        isinstance(header.get("user_name"), str) or isinstance(header.get("name"), str)
+    ):
+        raise HTTPException(status_code=400, detail="The JSONL file does not contain a valid chat header.")
+
+    user_name = header.get("user_name") or header.get("name")
+    messages = []
+    for line_number, line in lines[1:]:
+        try:
+            message = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON on line {line_number}.") from exc
+
+        if not isinstance(message, dict) or not isinstance(message.get("mes"), str):
+            raise HTTPException(status_code=400, detail=f"Invalid chat message on line {line_number}.")
+
+        content_text = message["mes"]
+        if not content_text.strip():
+            continue
+
+        is_user = message.get("is_user")
+        if not isinstance(is_user, bool):
+            message_name = message.get("name")
+            if not isinstance(message_name, str):
+                raise HTTPException(status_code=400, detail=f"Chat message on line {line_number} has no speaker.")
+            is_user = message_name == user_name
+
+        messages.append({
+            "role": "user" if is_user else "assistant",
+            "content": content_text,
+        })
+        if len(messages) > MAX_CHAT_IMPORT_MESSAGES:
+            raise HTTPException(status_code=413, detail="The chat contains too many messages to import.")
+
+    if not messages:
+        raise HTTPException(status_code=400, detail="The JSONL file contains no importable messages.")
+
+    return messages
+
+
+def _chat_import_title(filename: str | None, messages: list[dict]) -> str:
+    filename = (filename or "").replace("\\", "/").rsplit("/", 1)[-1]
+    title = filename.rsplit(".", 1)[0] if "." in filename else filename
+    title = re.sub(r"[\x00-\x1f<>:\"/\\|?*]+", " ", title).strip()
+    if title:
+        return title[:80]
+    return generate_chat_title(messages)
 
 MAX_PINNED_MEMORIES = 10
 
@@ -982,6 +1047,73 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/api/chat/import")
+async def import_chat(
+    request: Request,
+    file: UploadFile = File(...),
+    character_id: int = Form(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    filename = file.filename or ""
+    if not filename.lower().endswith(".jsonl"):
+        raise HTTPException(status_code=400, detail="Only JSONL chat files can be imported.")
+
+    content = await file.read(MAX_CHAT_IMPORT_BYTES + 1)
+    await file.close()
+    if len(content) > MAX_CHAT_IMPORT_BYTES:
+        raise HTTPException(status_code=413, detail="The chat file exceeds the 5 MB import limit.")
+
+    try:
+        decoded_content = content.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=400, detail="The JSONL file must use UTF-8 encoding.") from exc
+
+    messages = _parse_sillytavern_jsonl(decoded_content)
+
+    character = db.query(Character).filter(Character.id == character_id).first()
+    if not character:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    if character.moderation_status == "takedown" and (
+        character.creator_id != current_user.id and not current_user.is_admin
+    ):
+        raise HTTPException(status_code=404, detail="Character not found.")
+    if not character.is_public and character.moderation_status != "restricted" and (
+        character.creator_id != current_user.id and not current_user.is_admin
+    ):
+        raise HTTPException(status_code=404, detail="Character not found.")
+
+    now = datetime.now(UTC)
+    chat_id = str(uuid.uuid4())
+    entry = upsert_chat_history_entry(
+        db,
+        user_id=current_user.id,
+        chat_id=chat_id,
+        payload={
+            "character_id": character.id,
+            "character_name": character.name,
+            "character_picture": character.picture,
+            "scene_id": None,
+            "persona_id": None,
+            "title": _chat_import_title(filename, messages),
+            "messages": messages,
+            "created_at": now,
+            "last_updated": now,
+        },
+    )
+    serialized_entry = serialize_chat_history_entry(entry)
+
+    audit_request(
+        request,
+        action="import_chat",
+        user_id=current_user.id,
+        metadata={"chat_id": chat_id, "character_id": character.id, "message_count": len(messages)},
+    )
+
+    return serialized_entry
+
 
 @router.post("/api/chat/rename")
 async def rename_chat(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
