@@ -24,7 +24,8 @@ export default function InfoCard({
   showRight = true,
   leftLabel = 'Scene',
   rightLabel = 'Persona',
-  isPlaceholder = false
+  isPlaceholder = false,
+  compact = false,
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -33,7 +34,10 @@ export default function InfoCard({
   const entity = scene || character || {};
   // Determine entity type for field mapping (mutually exclusive: scene > character)
   const entityType = scene ? 'scene' : character ? 'character' : null;
-  const resolvedAvatar = entity.picture;
+  const resolvedAvatar = entity.avatar_picture || entity.picture;
+  const resolvedPortrait = entityType === 'character' && entity.picture
+    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(entity.picture).replace(/^\//, '')}`
+    : null;
   const resolvedName = entity.name;
   const resolvedCreatorName = entity.creator_name;
   const resolvedCreatorId = entity.creator_id;
@@ -66,6 +70,10 @@ export default function InfoCard({
   }, [initialLikeCount, entity.id]);
   // Local hover state for the name link to EntityDetailPage
   const [nameHover, setNameHover] = React.useState(false);
+  const [showCompactDetails, setShowCompactDetails] = React.useState(false);
+  React.useEffect(() => {
+    setShowCompactDetails(false);
+  }, [entity.id]);
   // Navigate to EntityDetailPage (:type/:id route), same as DiscoverMasonryCard's 查看详情 button.
   // Only clickable for your own characters and forkable/open-source characters; otherwise it's
   // unclickable here, and EntityDetailPage itself enforces the same gate for direct/ungated access.
@@ -76,6 +84,212 @@ export default function InfoCard({
     if (!canOpenDetail) return;
     navigate(`/${entityType}/${entity.id}`);
   };
+
+  if (compact) {
+    const likeButton = (
+      <button
+        type="button"
+        onClick={() => {
+          if (hasLiked && hasLiked[entityType]) {
+            setLikeCount((count) => Math.max(0, count - 1));
+          } else {
+            setLikeCount((count) => count + 1);
+          }
+          onLike();
+        }}
+        aria-label={`${hasLiked && hasLiked[entityType] ? 'Unlike' : 'Like'} ${resolvedName || 'character'}`}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: 0,
+          border: 0,
+          background: 'transparent',
+          color: '#777',
+          fontSize: '0.72rem',
+          cursor: 'pointer',
+        }}
+      >
+        <i
+          className={`bi ${(hasLiked && hasLiked[entityType]) ? 'bi-heart-fill' : 'bi-heart'}`}
+          style={{ color: '#e53935' }}
+        />
+        <span>{likeCount} likes</span>
+      </button>
+    );
+
+    return (
+      <div style={{ marginBottom: 0 }}>
+        {showCompactDetails && resolvedPortrait && (
+          <img
+            src={resolvedPortrait}
+            alt={`${resolvedName || 'Character'} portrait`}
+            style={{
+              display: 'block',
+              width: '100%',
+              height: 'auto',
+              marginBottom: 10,
+              borderRadius: 10,
+              objectFit: 'contain',
+            }}
+          />
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          {!(showCompactDetails && resolvedPortrait) && (
+            <img
+              src={resolvedAvatar ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(resolvedAvatar).replace(/^\//, '')}` : defaultPic}
+              alt={resolvedName || 'Avatar'}
+              title={canOpenDetail ? resolvedName : undefined}
+              onClick={canOpenDetail ? handleOpenDetail : undefined}
+              style={{
+                width: 48,
+                height: 48,
+                flexShrink: 0,
+                objectFit: 'cover',
+                borderRadius: '50%',
+                border: '2px solid #e9ecef',
+                cursor: canOpenDetail ? 'pointer' : 'default',
+              }}
+            />
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+              <div
+                onClick={canOpenDetail ? handleOpenDetail : undefined}
+                onMouseEnter={() => canOpenDetail && setNameHover(true)}
+                onMouseLeave={() => setNameHover(false)}
+                title={canOpenDetail ? resolvedName : undefined}
+                style={{
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontWeight: 700,
+                  color: nameHover ? '#5f4f8a' : '#18191a',
+                  fontSize: '0.9rem',
+                  cursor: canOpenDetail ? 'pointer' : 'default',
+                  textDecoration: nameHover ? 'underline' : 'none',
+                }}
+              >
+                {isPlaceholder ? <span style={{ color: '#bbb', fontStyle: 'italic' }}>{t('info_card.no_selection', { name: resolvedName })}</span> : resolvedName}
+              </div>
+              {(resolvedPortrait || resolvedCreatorName || resolvedTagline || resolvedTags.length > 0) && (
+                <button
+                  type="button"
+                  aria-expanded={showCompactDetails}
+                  aria-label={showCompactDetails ? '收起角色图片和详情' : '展开角色图片和详情'}
+                  title={showCompactDetails ? '收起角色图片和详情' : '展开角色图片和详情'}
+                  onClick={() => setShowCompactDetails((shown) => !shown)}
+                  style={{
+                    flexShrink: 0,
+                    marginLeft: 'auto',
+                    padding: '2px 4px',
+                    border: 0,
+                    borderRadius: 6,
+                    background: 'transparent',
+                    color: '#777',
+                    cursor: 'pointer',
+                    lineHeight: 1,
+                  }}
+                >
+                  <i className={`bi bi-chevron-${showCompactDetails ? 'up' : 'down'}`} />
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, color: '#777', fontSize: '0.72rem', lineHeight: 1.2 }}>
+              {typeof resolvedChatCount === 'number' && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <i className="bi bi-chat" />
+                  {resolvedChatCount} chats
+                </span>
+              )}
+              {onLike ? likeButton : (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <i className="bi bi-heart" style={{ color: '#e53935' }} />
+                  {likeCount} likes
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        {showCompactDetails && (
+          <div style={{ padding: resolvedPortrait ? '0.1rem 0 0' : '0.55rem 0 0 58px' }}>
+            {resolvedCreatorName && (
+              <div
+                className="d-flex align-items-center"
+                style={{
+                  gap: '0.35rem',
+                  width: '100%',
+                  maxWidth: '100%',
+                  cursor: resolvedCreatorId ? 'pointer' : 'default',
+                  padding: '0.18rem 0.55rem 0.18rem 0.3rem',
+                  borderRadius: '999px',
+                  color: creatorHover ? '#5f4f8a' : '#6c757d',
+                  background: creatorHover ? 'rgba(115, 107, 146, 0.12)' : 'transparent',
+                  transition: 'background-color 0.16s ease, color 0.16s ease',
+                  marginBottom: resolvedTagline || resolvedTags.length > 0 ? 2 : 0,
+                }}
+                title={resolvedCreatorName || '未知'}
+                onClick={onCreatorClick}
+                onMouseEnter={() => setCreatorHover && setCreatorHover(true)}
+                onMouseLeave={() => setCreatorHover && setCreatorHover(false)}
+              >
+                <img
+                  src={creatorAvatar}
+                  alt={resolvedCreatorName || ''}
+                  style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #e5e7eb' }}
+                />
+                <span
+                  style={{
+                    fontSize: '0.8rem',
+                    fontWeight: 500,
+                    lineHeight: 1.2,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    textDecoration: creatorHover ? 'underline' : 'none',
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
+                  {resolvedCreatorName}
+                </span>
+              </div>
+            )}
+            {resolvedTagline && (
+              <div style={{ color: '#888', fontStyle: 'italic', fontSize: '0.78rem', lineHeight: 1.4 }}>
+                “{resolvedTagline}”
+              </div>
+            )}
+            {resolvedTags.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: resolvedTagline ? 6 : 0 }}>
+                {resolvedTags.map((tag, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => navigate(`/search?q=${encodeURIComponent(tag)}`)}
+                    aria-label={`Search tag ${tag}`}
+                    style={{
+                      padding: '0.12rem 0.5rem',
+                      border: '1px solid #e9ecef',
+                      borderRadius: '1rem',
+                      background: '#f5f6fa',
+                      color: '#232323',
+                      fontSize: '0.68rem',
+                      lineHeight: 1.2,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>

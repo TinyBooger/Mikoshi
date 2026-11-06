@@ -70,6 +70,7 @@ export default function CharacterSidebar({
   const [reportIconFocused, setReportIconFocused] = React.useState(false);
   const [importingChat, setImportingChat] = React.useState(false);
   const importChatInputRef = React.useRef(null);
+  const wallpaperUploadInputRef = React.useRef(null);
   const [lastSavedConfig, setLastSavedConfig] = React.useState(() =>
     JSON.parse(JSON.stringify(advancedChatConfig)),
   );
@@ -370,10 +371,10 @@ export default function CharacterSidebar({
           {/* Main Entity InfoCard */}
           <div style={{
             background: '#fff',
-            borderRadius: '1.2rem',
+            borderRadius: '1rem',
             boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-            marginBottom: 18,
-            padding: '1.2rem',
+            marginBottom: 12,
+            padding: '0.8rem',
             zIndex: 1,
             position: 'relative',
           }}>
@@ -406,12 +407,58 @@ export default function CharacterSidebar({
               showFullTagline={showFullTagline}
               setShowFullTagline={setShowFullTagline}
               isPlaceholder={!selectedCharacter && !selectedScene}
+              compact
             />
 
           </div>
 
+          {/* New Chat Button */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+            <button
+              type="button"
+              onClick={() => {
+                onNewChat();
+                // Mobile: the sidebar is a full-height overlay drawer, so collapse
+                // it once a new conversation starts. Desktop keeps it in place.
+                if (isMobile && characterSidebarVisible) onToggleCharacterSidebar();
+              }}
+              className="fw-bold rounded-pill"
+              style={{
+                background: 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)',
+                color: '#5f567f',
+                border: '1px solid rgba(255, 255, 255, 0.78)',
+                boxShadow: '0 8px 16px rgba(141, 125, 176, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                fontSize: isMobile ? '0.78rem' : '0.86rem',
+                padding: isMobile ? '0.32rem 1.1rem' : '0.4rem 1.6rem',
+                letterSpacing: isMobile ? '0.12px' : '0.16px',
+                transition: 'background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'linear-gradient(180deg, rgba(246, 241, 251, 0.98) 0%, rgba(239, 233, 246, 0.92) 100%)';
+                e.currentTarget.style.color = '#554d73';
+                e.currentTarget.style.boxShadow = '0 10px 18px rgba(141, 125, 176, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.88)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)';
+                e.currentTarget.style.color = '#5f567f';
+                e.currentTarget.style.boxShadow = '0 8px 16px rgba(141, 125, 176, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <i className="bi bi-plus-circle me-2"></i> 新对话
+            </button>
+          </div>
+
           <div
             style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 5,
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
               gap: 6,
@@ -423,6 +470,7 @@ export default function CharacterSidebar({
               boxShadow: '0 8px 18px rgba(141, 125, 176, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
               backdropFilter: 'blur(8px)',
               WebkitBackdropFilter: 'blur(8px)',
+              backgroundClip: 'padding-box',
             }}
           >
             <button
@@ -598,123 +646,238 @@ export default function CharacterSidebar({
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.01em' }}>
               聊天背景
             </div>
+            {(() => {
+              const backgroundOptions = [
+                ...WALLPAPER_OPTIONS.map((option) => ({
+                  id: option.id,
+                  label: option.label,
+                  kind: 'preset',
+                  css: option.css || 'linear-gradient(135deg,#f8fafc,#e5e7eb)',
+                })),
+                ...(characterBackground?.type === 'upload' && characterBackground?.url
+                  ? [{
+                    id: 'character_upload',
+                    label: '作者上传背景',
+                    kind: 'character_upload',
+                    url: `${window.API_BASE_URL.replace(/\/$/, '')}/${String(characterBackground.url).replace(/\\/g, '/').replace(/^\//, '')}`,
+                  }]
+                  : []),
+                {
+                  id: 'character_picture',
+                  label: '角色图片',
+                  kind: 'character_picture',
+                  url: characterPicture
+                    ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(characterPicture).replace(/\\/g, '/').replace(/^\//, '')}`
+                    : null,
+                },
+                {
+                  id: 'custom_upload',
+                  label: '上传自定义',
+                  kind: 'custom_upload',
+                  url: wallpaper.id === 'custom_upload' ? wallpaper.url : null,
+                },
+              ];
+              const isPreset = WALLPAPER_OPTIONS.some(
+                (option) => option.id === resolveBackgroundPresetId(wallpaper.id),
+              );
+              const selectedId = isPreset ? resolveBackgroundPresetId(wallpaper.id) : wallpaper.id;
+              const selectedIndex = Math.max(0, backgroundOptions.findIndex((option) => option.id === selectedId));
+              const selectedOption = backgroundOptions[selectedIndex];
+              const characterPictureUrl = backgroundOptions.find((option) => option.kind === 'character_picture')?.url;
 
-            {/* Background type cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6, marginBottom: 10 }}>
-              {(() => {
-                const cards = [
-                  { type: 'preset', icon: 'bi-images', title: '预设背景' },
-                  { type: 'character_picture', icon: 'bi-person-bounding-box', title: '与角色图片相同' },
-                  { type: 'character_upload', icon: 'bi-image-alt', title: '作者上传背景', visible: !!(characterBackground?.type === 'upload' && characterBackground?.url) },
-                  { type: 'upload', icon: 'bi-cloud-upload', title: '上传自定义' },
-                ].filter(c => c.visible !== false);
-                return cards.map(card => {
-                  const isPresetId = WALLPAPER_OPTIONS.some((o) => o.id === resolveBackgroundPresetId(wallpaper.id));
-                  const actualType = ['character_picture', 'custom_upload', 'character_upload'].includes(wallpaper.id)
-                    ? wallpaper.id
-                    : (isPresetId ? 'preset' : wallpaper.id);
-                  const active = actualType === card.type;
-                  return (
-                    <button
-                      key={card.type}
-                      type="button"
-                      onClick={() => {
-                        if (card.type === 'preset') {
-                          onSetWallpaper?.({ id: 'none', url: null });
-                        } else if (card.type === 'upload') {
-                          onSetWallpaper?.({ id: 'custom_upload', url: null });
-                        } else if (card.type === 'character_upload') {
-                          const bgUrl = characterBackground?.url;
-                          if (bgUrl) {
-                            onSetWallpaper?.({ id: 'character_upload', url: `${window.API_BASE_URL.replace(/\/$/, '')}/${String(bgUrl).replace(/\\/g, '/').replace(/^\//, '')}` });
-                          }
-                        } else {
-                          const pic = characterPicture;
-                          if (pic) {
-                            onSetWallpaper?.({ id: 'character_picture', url: `${window.API_BASE_URL.replace(/\/$/, '')}/${String(pic).replace(/\\/g, '/').replace(/^\//, '')}` });
-                          }
-                        }
-                      }}
+              const selectBackground = (option) => {
+                if (option.kind === 'preset') {
+                  onSetWallpaper?.({ id: option.id, url: null });
+                } else if (option.kind === 'character_upload' && option.url) {
+                  onSetWallpaper?.({ id: option.id, url: option.url });
+                } else if (option.kind === 'character_picture' && option.url) {
+                  onSetWallpaper?.({ id: option.id, url: option.url });
+                } else if (option.kind === 'custom_upload') {
+                  if (wallpaper.id !== 'custom_upload') {
+                    onSetWallpaper?.({ id: 'custom_upload', url: null });
+                  }
+                  wallpaperUploadInputRef.current?.click();
+                }
+              };
+
+              return (
+                <>
+                  <div
+                    role="group"
+                    aria-label="选择聊天背景"
+                    style={{
+                      position: 'relative',
+                      display: 'grid',
+                      gridTemplateColumns: `repeat(${backgroundOptions.length}, minmax(0, 1fr))`,
+                      gap: 2,
+                      padding: 3,
+                      borderRadius: 12,
+                      background: '#f3f4f6',
+                      isolation: 'isolate',
+                    }}
+                  >
+                    <div
+                      aria-hidden="true"
                       style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 4,
-                        padding: '0.6rem 0.35rem',
-                        borderRadius: 10,
-                        border: active ? '2px solid #7c3aed' : '1px solid #d1d5db',
-                        background: active ? '#f5f3ff' : '#fff',
-                        cursor: 'pointer',
-                        transition: 'border 0.15s, background 0.15s',
-                        textAlign: 'center',
+                        position: 'absolute',
+                        zIndex: -1,
+                        top: 3,
+                        bottom: 3,
+                        left: 3,
+                        width: `calc((100% - 6px) / ${backgroundOptions.length})`,
+                        borderRadius: 9,
+                        background: '#fff',
+                        boxShadow: '0 1px 4px rgba(31, 41, 55, 0.16)',
+                        transform: `translateX(${selectedIndex * 100}%)`,
+                        transition: 'transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1)',
                       }}
-                    >
-                      <i
-                        className={`bi ${card.icon}`}
-                        style={{ fontSize: '1.1rem', color: active ? '#7c3aed' : '#6b7280', transition: 'color 0.15s' }}
-                      ></i>
-                      <div style={{ fontWeight: 700, fontSize: '0.7rem', color: active ? '#7c3aed' : '#232323', lineHeight: 1.2 }}>
-                        {card.title}
-                      </div>
-                    </button>
-                  );
-                });
-              })()}
-            </div>
-
-            {/* Preset grid. Every wallpaper id that is not one of the three
-                image-backed types above is a preset, so it is enough to test
-                for their absence rather than list ids that must be kept in
-                sync with WALLPAPER_OPTIONS. */}
-            {!['character_picture', 'custom_upload', 'character_upload'].includes(wallpaper.id) && (
-              <div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: 8 }}>
-                  选择预设背景
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
-                  {WALLPAPER_OPTIONS.map((option) => {
-                    const selected = resolveBackgroundPresetId(wallpaper.id) === option.id;
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => onSetWallpaper?.({ id: option.id, url: null })}
-                        style={{
-                          border: selected ? '2px solid #7c3aed' : '1px solid #e5e7eb',
-                          borderRadius: 10,
-                          background: '#fff',
-                          padding: 6,
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          transition: 'border 0.15s',
-                        }}
-                      >
-                        <div
+                    />
+                    {backgroundOptions.map((option, index) => {
+                      const selected = index === selectedIndex;
+                      const disabled = option.kind === 'character_picture' && !option.url;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          title={option.label}
+                          aria-label={option.label}
+                          aria-pressed={selected}
+                          disabled={disabled}
+                          onClick={() => selectBackground(option)}
                           style={{
-                            width: '100%',
-                            height: 52,
-                            borderRadius: 8,
-                            background: option.css || 'linear-gradient(135deg,#f8fafc,#e5e7eb)',
-                            border: '1px solid rgba(0,0,0,0.06)',
-                            marginBottom: 6,
+                            position: 'relative',
+                            zIndex: 1,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: '#9ca3af',
-                            fontSize: '0.68rem',
+                            minWidth: 0,
+                            height: 38,
+                            padding: 3,
+                            border: 0,
+                            borderRadius: 9,
+                            background: 'transparent',
+                            cursor: disabled ? 'not-allowed' : 'pointer',
+                            opacity: disabled ? 0.45 : 1,
+                            transition: 'transform 180ms ease, opacity 180ms ease',
+                            transform: selected ? 'scale(1.04)' : 'scale(1)',
                           }}
                         >
-                          {option.id === 'none' ? '默认' : ''}
-                        </div>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#111827' }}>
-                          {option.label}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                          {option.kind === 'preset' ? (
+                            <span
+                              aria-hidden="true"
+                              style={{
+                                width: 23,
+                                height: 23,
+                                borderRadius: 7,
+                                border: selected ? '2px solid #7c3aed' : '1px solid rgba(31, 41, 55, 0.14)',
+                                background: option.css,
+                                boxShadow: selected ? '0 0 0 2px rgba(124, 58, 237, 0.12)' : 'none',
+                                transition: 'border-color 180ms ease, box-shadow 180ms ease',
+                              }}
+                            />
+                          ) : option.kind === 'character_picture' ? (
+                            characterPictureUrl ? (
+                              <img
+                                src={characterPictureUrl}
+                                alt=""
+                                style={{
+                                  width: 23,
+                                  height: 23,
+                                  borderRadius: '50%',
+                                  objectFit: 'cover',
+                                  border: selected ? '2px solid #7c3aed' : '1px solid rgba(31, 41, 55, 0.14)',
+                                }}
+                              />
+                            ) : (
+                              <i className="bi bi-person-circle" aria-hidden="true" style={{ fontSize: '1.2rem', color: '#9ca3af' }} />
+                            )
+                          ) : option.url ? (
+                            <img
+                              src={option.url}
+                              alt=""
+                              style={{
+                                width: 23,
+                                height: 23,
+                                borderRadius: option.kind === 'custom_upload' ? 7 : '50%',
+                                objectFit: 'cover',
+                                border: selected ? '2px solid #7c3aed' : '1px solid rgba(31, 41, 55, 0.14)',
+                              }}
+                            />
+                          ) : (
+                            <i
+                              className="bi bi-cloud-arrow-up"
+                              aria-hidden="true"
+                              style={{ fontSize: '1rem', color: selected ? '#7c3aed' : '#6b7280' }}
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ position: 'relative', height: 36, marginTop: 7 }}>
+                    <div
+                      aria-live="polite"
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: `${((selectedIndex + 0.5) / backgroundOptions.length) * 100}%`,
+                        transform: 'translateX(-50%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 'max-content',
+                        maxWidth: '100%',
+                        minHeight: 24,
+                        padding: '0 9px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 7,
+                        background: '#fff',
+                        boxShadow: '0 2px 6px rgba(31, 41, 55, 0.08)',
+                        textAlign: 'center',
+                        color: '#6b7280',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        transition: 'left 320ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+                      }}
+                    >
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          position: 'absolute',
+                          top: -5,
+                          left: '50%',
+                          width: 8,
+                          height: 8,
+                          borderTop: '1px solid #e5e7eb',
+                          borderLeft: '1px solid #e5e7eb',
+                          background: '#fff',
+                          transform: 'translateX(-50%) rotate(45deg)',
+                        }}
+                      />
+                      {selectedOption?.label}
+                    </div>
+                  </div>
+                  <input
+                    ref={wallpaperUploadInputRef}
+                    type="file"
+                    accept="image/*"
+                    aria-label="上传聊天背景图片"
+                    style={{ display: 'none' }}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = '';
+                      if (file) {
+                        const url = URL.createObjectURL(file);
+                        onSetWallpaper?.({ id: 'custom_upload', url });
+                      }
+                    }}
+                  />
+                </>
+              );
+            })()}
 
             {/* Character upload (creator's background) */}
             {wallpaper.id === 'character_upload' && wallpaper.url && (
@@ -748,76 +911,10 @@ export default function CharacterSidebar({
                       ×
                     </button>
                   </div>
-                ) : (
-                  <label
-                    style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                      padding: '0.8rem', borderRadius: 10,
-                      border: '2px dashed #d1d5db', cursor: 'pointer',
-                      background: '#fafafa', textAlign: 'center',
-                    }}
-                  >
-                    <i className="bi bi-cloud-arrow-up" style={{ fontSize: '1.2rem', color: '#9ca3af' }}></i>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6b7280' }}>点击上传图片</div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const url = URL.createObjectURL(file);
-                          onSetWallpaper?.({ id: 'custom_upload', url });
-                        }
-                      }}
-                    />
-                  </label>
-                )}
+                ) : <div style={{ fontSize: '0.72rem', color: '#6b7280', textAlign: 'center' }}>选择图片以应用自定义背景</div>}
               </div>
             )}
           </div>
-
-        {/* New Chat Button */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
-          <button
-            type="button"
-            onClick={() => {
-              onNewChat();
-              // Mobile: the sidebar is a full-height overlay drawer, so collapse
-              // it once a new conversation starts. Desktop keeps it in place.
-              if (isMobile && characterSidebarVisible) onToggleCharacterSidebar();
-            }}
-            className="fw-bold rounded-pill"
-            style={{
-              background: 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)',
-              color: '#5f567f',
-              border: '1px solid rgba(255, 255, 255, 0.78)',
-              boxShadow: '0 8px 16px rgba(141, 125, 176, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              fontSize: isMobile ? '0.78rem' : '0.86rem',
-              padding: isMobile ? '0.32rem 1.1rem' : '0.4rem 1.6rem',
-              letterSpacing: isMobile ? '0.12px' : '0.16px',
-              transition: 'background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'linear-gradient(180deg, rgba(246, 241, 251, 0.98) 0%, rgba(239, 233, 246, 0.92) 100%)';
-              e.currentTarget.style.color = '#554d73';
-              e.currentTarget.style.boxShadow = '0 10px 18px rgba(141, 125, 176, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.88)';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)';
-              e.currentTarget.style.color = '#5f567f';
-              e.currentTarget.style.boxShadow = '0 8px 16px rgba(141, 125, 176, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            <i className="bi bi-plus-circle me-2"></i> 新对话
-          </button>
-        </div>
 
         {/* Chat History Section */}
         <div style={{ marginBottom: 16 }}>
