@@ -290,6 +290,53 @@ export default function ChatPage() {
     return nextChatEntry;
   };
 
+  const syncChatEntryAfterTurn = ({
+    metadata,
+    messages: turnMessages,
+    assistantMessage,
+    contextSummaryUpdated,
+  }) => {
+    const branchMetadata = metadata?.branch;
+    if (!metadata?.chat_id || !branchMetadata?.branch_id) return;
+
+    const cachedEntry = selectedChat?.chat_id === metadata.chat_id
+      ? selectedChat
+      : userData?.chat_history?.find((entry) => entry?.chat_id === metadata.chat_id);
+    const existingEntry = normalizeChatEntry(cachedEntry || {
+      ...metadata,
+      branches: [{ ...branchMetadata, messages: [] }],
+    });
+    const summaryPrefix = SUMMARY_PREFIX;
+    const savedMessages = (Array.isArray(turnMessages) ? turnMessages : []).filter((message) => (
+      message?.role === 'user'
+      || message?.role === 'assistant'
+      || (
+        !contextSummaryUpdated
+        && message?.role === 'system'
+        && typeof message?.content === 'string'
+        && message.content.trim().startsWith(summaryPrefix)
+      )
+    ));
+    const branchMessages = [...savedMessages, assistantMessage];
+    let branchUpdated = false;
+    const branches = existingEntry.branches.map((branch) => {
+      if (branch.branch_id !== branchMetadata.branch_id) return branch;
+      branchUpdated = true;
+      return { ...branch, ...branchMetadata, messages: branchMessages };
+    });
+    if (!branchUpdated) {
+      branches.push({ ...branchMetadata, messages: branchMessages });
+    }
+
+    upsertChatHistoryEntryLocally({
+      ...existingEntry,
+      ...metadata,
+      branches,
+      active_branch_id: metadata.active_branch_id,
+      active_context_summary: metadata.active_context_summary,
+    });
+  };
+
   const saveUserCharacterConfig = async () => {
     if (!characterId || !sessionToken) return;
     try {
@@ -368,8 +415,7 @@ export default function ChatPage() {
     pendingChatIdRef,
     applyChatLimits,
     applyCreditLimits,
-    buildDisplayMessagesForChat,
-    upsertChatHistoryEntryLocally,
+    syncChatEntryAfterTurn,
     setServerContextWindowUsage,
   });
 

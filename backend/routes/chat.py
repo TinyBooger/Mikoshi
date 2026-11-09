@@ -226,12 +226,12 @@ def _normalize_message_content(content: str | None) -> str:
     return re.sub(r"\s+", " ", content).strip()
 
 
-def _build_assistant_message(content: str, usage: dict[str, int]) -> dict:
+def _build_assistant_message(content: str, usage: dict[str, int], message_id: str) -> dict:
     return {
         "role": "assistant",
         "content": content,
         "usage": usage,
-        "message_id": generate_chat_message_id(),
+        "message_id": message_id,
         "is_pinned": False,
     }
 
@@ -252,24 +252,10 @@ def _persist_chat_history_turn(
     context_summary: dict | None = None,
     requested_branch_id: str | None,
     fork_from_message_id: str | None,
+    assistant_message_id: str,
     base_message_count: int | None = None,
-) -> ChatHistory:
-    assistant_message = _build_assistant_message(reply, response_usage)
-
-    # Once rolling-summary state is persisted, drop any legacy inline
-    # "Summary of previous conversation:" system messages from the raw stored
-    # messages so the summary text has exactly one source of truth (the
-    # chat_histories.context_summary column).
-    if context_summary:
-        full_messages = [
-            message
-            for message in full_messages
-            if not (
-                message.get("role") == "system"
-                and isinstance(message.get("content"), str)
-                and message["content"].lstrip().startswith(SUMMARY_PREFIX)
-            )
-        ]
+) -> tuple[ChatHistory, dict, bool]:
+    assistant_message = _build_assistant_message(reply, response_usage, assistant_message_id)
 
     # Re-read the freshest persisted entry within THIS session. A concurrent
     # turn may have already advanced the branch; using the request-time
@@ -289,8 +275,7 @@ def _persist_chat_history_turn(
 
     # Hardening against overlapping turns: if the client's snapshot is behind
     # the currently persisted branch, this turn is stale and must not overwrite
-    # history that already advanced past it. Reject it and return the freshest
-    # entry so the client can reconcile to the latest state.
+    # history that already advanced past it.
     if not fork_from_message_id:
         target_branch_id = requested_branch_id or get_chat_history_active_branch_id(existing_payload)
         existing_branch = get_chat_history_branch(existing_payload, target_branch_id)
@@ -304,9 +289,51 @@ def _persist_chat_history_turn(
                 current_message_count,
                 base_message_count,
             )
-            return existing_entry
+            return existing_entry, {
+                "branch_id": existing_branch.get("branch_id"),
+                "parent_branch_id": existing_branch.get("parent_branch_id"),
+                "parent_message_id": existing_branch.get("parent_message_id"),
+                "label": existing_branch.get("label"),
+                "created_at": existing_branch.get("created_at"),
+                "last_updated": existing_branch.get("last_updated"),
+            }, False
 
-    updated_messages = full_messages + [assistant_message]
+    if existing_entry and not fork_from_message_id:
+        target_branch_id = requested_branch_id or get_chat_history_active_branch_id(existing_payload)
+        existing_branch = get_chat_history_branch(existing_payload, target_branch_id)
+        existing_messages = list(existing_branch.get("messages") or [])
+        existing_message_ids = {
+            message.get("message_id")
+            for message in existing_messages
+            if isinstance(message, dict) and isinstance(message.get("message_id"), str)
+        }
+        new_user_messages = [
+            message
+            for message in full_messages
+            if isinstance(message, dict)
+            and message.get("role") == "user"
+            and isinstance(message.get("message_id"), str)
+            and message["message_id"] not in existing_message_ids
+        ]
+        updated_messages = existing_messages + new_user_messages
+    else:
+        updated_messages = list(full_messages)
+
+    # Once rolling-summary state is persisted, drop any legacy inline summary
+    # from the saved transcript so the database summary remains the source of truth.
+    if context_summary:
+        updated_messages = [
+            message
+            for message in updated_messages
+            if not (
+                isinstance(message, dict)
+                and message.get("role") == "system"
+                and isinstance(message.get("content"), str)
+                and message["content"].lstrip().startswith(SUMMARY_PREFIX)
+            )
+        ]
+
+    updated_messages.append(assistant_message)
 
     if fork_from_message_id:
         message_payload, _ = fork_chat_history_branch(
@@ -351,12 +378,21 @@ def _persist_chat_history_turn(
     if context_summary:
         payload["context_summary"] = context_summary
 
-    return upsert_chat_history_entry(
+    entry = upsert_chat_history_entry(
         db_session,
         user_id=current_user_id,
         chat_id=chat_id,
         payload=payload,
     )
+    saved_branch = get_chat_history_branch(message_payload)
+    return entry, {
+        "branch_id": saved_branch.get("branch_id"),
+        "parent_branch_id": saved_branch.get("parent_branch_id"),
+        "parent_message_id": saved_branch.get("parent_message_id"),
+        "label": saved_branch.get("label"),
+        "created_at": saved_branch.get("created_at"),
+        "last_updated": saved_branch.get("last_updated"),
+    }, True
 
 @router.websocket("/api/chat/voice-to-text/stream")
 async def voice_to_text_stream(websocket: WebSocket):
@@ -481,6 +517,13 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     full_messages = data.get("full_messages")
     character_id = data.get("character_id")
     chat_id = data.get("chat_id")
+    raw_assistant_message_id = data.get("assistant_message_id")
+    assistant_message_id = (
+        raw_assistant_message_id
+        if isinstance(raw_assistant_message_id, str)
+        and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", raw_assistant_message_id)
+        else generate_chat_message_id()
+    )
     scene_id = data.get("scene_id")
     persona_id = data.get("persona_id")
     branch_id = data.get("branch_id")
@@ -767,6 +810,8 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         else:
             context_turn_metadata["max_tokens_clamped"] = False
 
+    context_turn_metadata["summary_updated"] = bool(state_update)
+
     # Only this branch's update travels to the persist step; upsert merges it
     # branch-wise into whatever state the freshest entry already holds.
     merged_context_summary = None
@@ -848,6 +893,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     async def generate():
         accumulated_reply = ""
         current_credit_limit_info = credit_limit_info
+        saved_chat_metadata = None
         response_usage = {
             "prompt_tokens": 0,
             "completion_tokens": 0,
@@ -928,7 +974,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         usage_result.get("consumed_from_wallet", False),
                         float(usage_result.get("wallet_balance_after", 0)),
                     )
-                    entry = _persist_chat_history_turn(
+                    entry, saved_branch, turn_saved = _persist_chat_history_turn(
                         db_session,
                         current_user_id=current_user.id,
                         chat_id=chat_id,
@@ -943,9 +989,38 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         context_summary=merged_context_summary,
                         requested_branch_id=branch_id,
                         fork_from_message_id=fork_from_message_id,
+                        assistant_message_id=assistant_message_id,
                         base_message_count=base_message_count,
                     )
-                    serialized_entry = serialize_chat_history_entry(entry)
+                    active_summary = (
+                        entry.context_summary.get(saved_branch["branch_id"])
+                        if isinstance(entry.context_summary, dict)
+                        else None
+                    )
+                    saved_chat_metadata = {
+                        "chat_id": entry.chat_id,
+                        "character_id": entry.character_id,
+                        "character_name": entry.character_name,
+                        "character_picture": entry.character_picture,
+                        "scene_id": entry.scene_id,
+                        "scene_name": entry.scene_name,
+                        "scene_picture": entry.scene_picture,
+                        "persona_id": entry.persona_id,
+                        "title": entry.title,
+                        "active_branch_id": entry.active_branch_id,
+                        "branch": saved_branch,
+                        "turn_saved": turn_saved,
+                        "active_context_summary": (
+                            {
+                                "text": active_summary.get("text"),
+                                "through_message_id": active_summary.get("through_message_id"),
+                            }
+                            if isinstance(active_summary, dict)
+                            else None
+                        ),
+                        "last_updated": entry.last_updated.isoformat() if entry.last_updated else None,
+                        "created_at": entry.created_at.isoformat() if entry.created_at else None,
+                    }
                     current_credit_limit_info = get_credit_cap_info(stream_user, db_session)
                     db_session.commit()
                 finally:
@@ -1051,7 +1126,13 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             done_payload = {
                 'done': True,
                 'chat_id': chat_id,
-                'chat_title': generate_chat_title(full_messages, existing_entry.title if existing_entry else None),
+                'chat_title': (
+                    saved_chat_metadata["title"]
+                    if saved_chat_metadata
+                    else generate_chat_title(full_messages, existing_entry.title if existing_entry else None)
+                ),
+                'assistant_message_id': assistant_message_id,
+                'assistant_usage': response_usage,
                 'limits': limit_info,
                 'credit_limits': current_credit_limit_info,
                 'context_window': {
@@ -1060,9 +1141,9 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     **context_turn_metadata,
                 },
             }
-            if character_id:
-                done_payload['chat_entry'] = serialized_entry
-                done_payload['branch_id'] = serialized_entry.get('active_branch_id')
+            if saved_chat_metadata:
+                done_payload['chat_metadata'] = saved_chat_metadata
+                done_payload['branch_id'] = saved_chat_metadata["active_branch_id"]
             yield f"data: {json.dumps(done_payload)}\n\n"
 
         except ClientDisconnect:

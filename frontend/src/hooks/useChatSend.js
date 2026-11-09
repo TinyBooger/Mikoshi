@@ -37,8 +37,7 @@ import {
  * @param {object}   params.pendingChatIdRef                - reserved chat id (shared with init flow)
  * @param {function} params.applyChatLimits                 - chat limit state + toast
  * @param {function} params.applyCreditLimits               - credit limit state + toast
- * @param {function} params.buildDisplayMessagesForChat     - branch messages ⇒ display messages
- * @param {function} params.upsertChatHistoryEntryLocally   - history upsert helper
+ * @param {function} params.syncChatEntryAfterTurn         - syncs saved chat metadata into local history
  * @param {function} params.setServerContextWindowUsage     - setter for server usage
  * @returns {{ sendChatTurn: function, handleSend: function }}
  */
@@ -66,8 +65,7 @@ export function useChatSend({
   pendingChatIdRef,
   applyChatLimits,
   applyCreditLimits,
-  buildDisplayMessagesForChat,
-  upsertChatHistoryEntryLocally,
+  syncChatEntryAfterTurn,
   setServerContextWindowUsage,
 }) {
   // Monotonic counter used to invalidate superseded chat turns so a stale
@@ -128,8 +126,9 @@ export function useChatSend({
     const baseMessageCount = Array.isArray(nextMessages) ? nextMessages.length : 0;
     const controller = new AbortController();
     const assistantMessageId = generateMessageId();
+    const assistantCreatedAt = createLocalMessageTimestamp();
     setAbortController(controller);
-    setMessages(ensureMessageIds([...nextMessages, { role: 'assistant', content: '', message_id: assistantMessageId, is_pinned: false, created_at: createLocalMessageTimestamp() }]));
+    setMessages(ensureMessageIds([...nextMessages, { role: 'assistant', content: '', message_id: assistantMessageId, is_pinned: false, created_at: assistantCreatedAt }]));
 
     try {
       const response = await fetch(`${window.API_BASE_URL}/api/chat`, {
@@ -143,6 +142,7 @@ export function useChatSend({
           chat_id: chatId,
           branch_id: sourceBranchId,
           fork_from_message_id: forkFromMessageId,
+          assistant_message_id: assistantMessageId,
           base_message_count: baseMessageCount,
           scene_id: sceneOverride?.id || null,
           persona_id: personaOverride?.id || null,
@@ -257,9 +257,25 @@ export function useChatSend({
               toast.show(notice, { type: 'warning' });
             }
           }
-          if (data.chat_entry) {
-            const nextChatEntry = upsertChatHistoryEntryLocally(data.chat_entry);
-            setMessages(buildDisplayMessagesForChat(nextChatEntry, characterOverride, sceneOverride, personaOverride));
+          if (data.chat_metadata && typeof syncChatEntryAfterTurn === 'function') {
+            if (data.chat_metadata.turn_saved === false) {
+              toast.show('对话已在其他请求中更新；本次回复未保存，请重新加载对话。', { type: 'warning' });
+              refreshUserData?.({ silent: true });
+            } else {
+              syncChatEntryAfterTurn({
+                metadata: data.chat_metadata,
+                messages: nextMessages,
+                assistantMessage: {
+                  role: 'assistant',
+                  content: accumulatedReply,
+                  message_id: data.assistant_message_id || assistantMessageId,
+                  is_pinned: false,
+                  created_at: assistantCreatedAt,
+                  usage: data.assistant_usage,
+                },
+                contextSummaryUpdated: !!data.context_window?.summary_updated,
+              });
+            }
           }
         }
       };

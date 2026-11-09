@@ -533,6 +533,14 @@ def serialize_chat_history_entry(entry: ChatHistory) -> dict:
     else:
         payload = normalize_chat_history_payload(entry.messages)
     active_branch = get_chat_history_branch(payload)
+    context_summary_by_branch = getattr(entry, "context_summary", None) or {}
+    active_context_summary = (
+        context_summary_by_branch.get(active_branch.get("branch_id"))
+        if isinstance(context_summary_by_branch, dict)
+        else None
+    )
+    if not isinstance(active_context_summary, dict):
+        active_context_summary = None
     return {
         "chat_id": entry.chat_id,
         "character_id": entry.character_id,
@@ -546,6 +554,16 @@ def serialize_chat_history_entry(entry: ChatHistory) -> dict:
         "messages": active_branch.get("messages") or [],
         "branches": payload["branches"],
         "active_branch_id": payload["active_branch_id"],
+        "active_context_summary": (
+            {
+                "text": active_context_summary.get("text"),
+                "through_message_id": active_context_summary.get("through_message_id"),
+            }
+            if active_context_summary
+            and isinstance(active_context_summary.get("text"), str)
+            and active_context_summary.get("text").strip()
+            else None
+        ),
         "message_store_version": payload["version"],
         # Same threshold the prompt's time marker uses, so the conversation breaks
         # the client draws match the gaps the model is told about; sent to the
