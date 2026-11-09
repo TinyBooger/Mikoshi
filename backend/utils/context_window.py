@@ -29,6 +29,7 @@ DEFAULT_SUMMARY_MAX_TOKENS = 300
 SUMMARY_REQUEST_TOKEN_LIMIT = 12000
 SUMMARY_CHUNK_TOKEN_LIMIT = 8000
 SUMMARY_MESSAGE_TOKEN_LIMIT = 4000
+SUMMARY_MESSAGE_CHARACTER_LIMIT = 3000
 MAX_SUMMARY_CHUNKS = 64
 SUMMARY_ESTIMATE_SAFETY_FACTOR = 1.25
 CONTEXT_FALLBACK_MARKER = (
@@ -177,6 +178,18 @@ def _truncate_summary_text(text: str, max_tokens: int) -> str:
     return best
 
 
+def _truncate_summary_message(text: str) -> str:
+    normalized = _normalize_text(text)
+    if len(normalized) <= SUMMARY_MESSAGE_CHARACTER_LIMIT:
+        return normalized
+
+    marker = "[中间内容已省略]"
+    retained_chars = SUMMARY_MESSAGE_CHARACTER_LIMIT - len(marker)
+    head_chars = (retained_chars + 1) // 2
+    tail_chars = retained_chars // 2
+    return normalized[:head_chars].rstrip() + marker + normalized[-tail_chars:].lstrip()
+
+
 def _pack_summary_entries(entries: List[str], *, prefix: str = "[New messages to compress]") -> List[str]:
     chunks: List[str] = []
     current_entries = [prefix]
@@ -204,7 +217,7 @@ def _build_summary_chunks(existing_summary_text: str, old_messages: List[dict]) 
         if role not in {"user", "assistant"} or not content:
             continue
         role_label = ROLE_LABELS.get(role, role.title())
-        bounded_content = _truncate_summary_text(content, SUMMARY_MESSAGE_TOKEN_LIMIT)
+        bounded_content = _truncate_summary_message(content)
         entries.append(f"{role_label}: {bounded_content}")
 
     return _pack_summary_entries(entries)

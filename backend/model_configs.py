@@ -295,26 +295,6 @@ MODELS: List[ModelConfig] = [
         tpm=500_000,
         multiplier=1.0,
     ),
-    ModelConfig(
-        id="qwen-flash-character",
-        display_name="Qwen Flash Character",
-        pricing_tiers=[
-            PricingTier(
-                input_per_million=0.25,
-                output_per_million=1.5,
-                max_tokens=8_000,
-            ),
-        ],
-        cache_hit_price_per_million=0.05,
-        context_length=8_000,
-        max_output_tokens=4_000,
-        max_input_tokens=8_000,
-        thinking=False,
-        rpm=120,
-        tpm=500_000,
-        multiplier=0.3,
-    ),
-
 ]
 
 # -- derived lookups ----------------------------------------------------------

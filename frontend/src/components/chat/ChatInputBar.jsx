@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ContextWindowIndicator from '../ContextWindowIndicator';
 import { CreditLockedBanner, BanBanner } from '../ChatBanners';
 import { isCreditLocked } from '../../utils/creditCheck';
-import { CHAT_INPUT_BASE_HEIGHT, CHAT_INPUT_MAX_HEIGHT } from '../../utils/chatPageConstants';
+import {
+  CHAT_INPUT_BASE_HEIGHT,
+  CHAT_INPUT_MAX_HEIGHT,
+  MAX_CHAT_MESSAGE_CHARACTERS,
+} from '../../utils/chatPageConstants';
 import { getChromeSurface } from '../../utils/backgroundPresets';
 import ChatVoiceButton from './ChatVoiceButton';
 import ChatSendButton from './ChatSendButton';
@@ -50,7 +54,10 @@ export default function ChatInputBar({
   const activeDraftKeyRef = useRef(null);
   const textareaRef = useRef(null);
   const setInput = useCallback((nextInput) => {
-    const value = typeof nextInput === 'function' ? nextInput(localInputRef.current) : nextInput;
+    const nextValue = typeof nextInput === 'function' ? nextInput(localInputRef.current) : nextInput;
+    const value = typeof nextValue === 'string'
+      ? Array.from(nextValue).slice(0, MAX_CHAT_MESSAGE_CHARACTERS).join('')
+      : '';
     localInputRef.current = value;
     inputRef.current = value;
     setInputState(value);
@@ -227,6 +234,7 @@ export default function ChatInputBar({
                 appearance: 'none',
               }}
               placeholder={'输入您的消息...'}
+              maxLength={MAX_CHAT_MESSAGE_CHARACTERS * 2}
               value={input}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
