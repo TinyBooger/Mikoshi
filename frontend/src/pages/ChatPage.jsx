@@ -581,6 +581,8 @@ export default function ChatPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('character_id', String(selectedCharacter.id));
+      formData.append('model', advancedChatConfig?.model || 'deepseek-v4-flash');
+      formData.append('max_tokens', String(advancedChatConfig?.max_tokens || 4000));
 
       const response = await fetch(`${window.API_BASE_URL}/api/chat/import`, {
         method: 'POST',

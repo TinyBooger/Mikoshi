@@ -127,12 +127,7 @@ export default function ContextWindowIndicator({
           </div>
           {Number(serverContextWindowUsage?.summary_messages_count || 0) > 0 && (
             <div style={{ fontSize: '0.7rem', color: '#86efac', marginTop: 4 }}>
-              已自动整理旧消息并保留最近 2 条对话用于请求上下文。
-            </div>
-          )}
-          {Number(serverContextWindowUsage?.emergency_compaction || 0) > 0 && (
-            <div style={{ fontSize: '0.7rem', color: '#86efac', marginTop: 4 }}>
-              对话较长，已自动压缩更多旧消息以继续。
+              完整聊天记录仍保留；请求上下文优先使用较新的消息。
             </div>
           )}
           {Number(serverContextWindowUsage?.max_tokens_clamped || 0) > 0 && (

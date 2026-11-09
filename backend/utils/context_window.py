@@ -24,13 +24,13 @@ SUMMARY_SYSTEM_PROMPT = (
 
 DEFAULT_SOFT_TOKEN_LIMIT = 8000
 DEFAULT_RECENT_MESSAGE_COUNT = 2
+IMPORTED_CONTEXT_RETENTION_RATIO = 0.4
 DEFAULT_SUMMARY_MAX_TOKENS = 300
 SUMMARY_REQUEST_TOKEN_LIMIT = 12000
 SUMMARY_CHUNK_TOKEN_LIMIT = 8000
 SUMMARY_MESSAGE_TOKEN_LIMIT = 4000
 MAX_SUMMARY_CHUNKS = 64
 SUMMARY_ESTIMATE_SAFETY_FACTOR = 1.25
-CONTEXT_FALLBACK_TARGET_RATIO = 0.65
 CONTEXT_FALLBACK_MARKER = (
     "Older conversation context was omitted to fit the model context window. "
     "Continue from the remaining messages and the user's latest message."
@@ -58,40 +58,12 @@ DEFAULT_COMPACTION_TRIGGER_RATIO = 0.85
 DEFAULT_MIN_FOLD_MESSAGES = 4
 DEFAULT_MIN_FOLD_SAVING_TOKENS = 64
 
-# Fail-closed guard cushions (see estimate_guard_input). These are placeholders
-# invented to absorb estimator error, NOT derived from real error data: the
+# Fail-closed guard cushion. This is a placeholder invented to absorb
+# estimator error, NOT derived from real error data:
 # "Context estimator | mode=..." log lines in routes/chat.py record actual vs
 # estimated tokens per request so these constants can later be replaced with
 # numbers backed by the real estimation error on CJK/mixed roleplay text.
 ESTIMATOR_FULL_REQUEST_CUSHION = 1.15
-ESTIMATOR_DELTA_CUSHION = 1.35
-
-
-def estimate_guard_input(info: dict, state_update: Optional[dict]) -> int:
-    """Estimate the size of the request compaction is about to ship.
-
-    Picks the most reliable available signal (mirrors the trigger logic):
-      * a fold that advanced the cursor rebuilt the request from summary +
-        recent messages → cushion the estimate of that shaped request;
-      * no fold but a measured anchor exists → the previous exact
-        ``prompt_tokens`` plus a cushion on the estimate of only the
-        never-seen delta (the measured part needs no cushion);
-      * otherwise (first turn / legacy history) → cushion the full estimate.
-
-    ``state_update`` is the third return value of ``compact_conversation_messages``;
-    it is only ever set when the summarizer call succeeded AND the cursor
-    advanced, so a stale/dict-without-``through_message_id`` update must NOT be
-    treated as a successful fold (that is the folded-vs-not regression case).
-    """
-    measured_input = max(0, int(info.get("measured_input_tokens") or 0))
-    sent_estimate = max(0, int(info.get("sent_estimate_tokens") or 0))
-    estimated_new = max(0, int(info.get("estimated_new_tokens") or 0))
-    folded_now = isinstance(state_update, dict) and bool(state_update.get("through_message_id"))
-    if folded_now:
-        return int(ESTIMATOR_FULL_REQUEST_CUSHION * max(sent_estimate, 1))
-    if measured_input > 0:
-        return measured_input + int(ESTIMATOR_DELTA_CUSHION * estimated_new)
-    return int(ESTIMATOR_FULL_REQUEST_CUSHION * max(sent_estimate, estimated_new, 1))
 
 
 def _normalize_text(value: str) -> str:
@@ -294,12 +266,25 @@ async def _summarize_bounded_chunks(
             MAX_SUMMARY_CHUNKS,
         )
         return "", total_usage, summary_calls
+    logger.info(
+        "Conversation summary started | old_messages=%d | input_chunks=%d | has_existing_summary=%s",
+        len(old_messages),
+        len(chunks),
+        bool(existing_summary_text),
+    )
 
-    async def summarize_chunks(inputs: List[str]) -> Optional[List[str]]:
+    async def summarize_chunks(inputs: List[str], *, stage: str) -> Optional[List[str]]:
         nonlocal summary_calls
         results: List[str] = []
         for batch_start in range(0, len(inputs), 4):
             batch = inputs[batch_start:batch_start + 4]
+            logger.info(
+                "Conversation summary requests | stage=%s | chunks=%d-%d/%d",
+                stage,
+                batch_start + 1,
+                batch_start + len(batch),
+                len(inputs),
+            )
             responses = await asyncio.gather(
                 *(
                     _summarize_with_prompt(
@@ -347,11 +332,18 @@ async def _summarize_bounded_chunks(
                 return None
         return results
 
-    summaries = await summarize_chunks(chunks)
+    summaries = await summarize_chunks(chunks, stage="messages")
     if not summaries:
+        logger.warning(
+            "Conversation summary stopped | stage=messages | calls=%d | total_tokens=%d",
+            summary_calls,
+            total_usage["total_tokens"],
+        )
         return "", total_usage, summary_calls
 
+    reduction_round = 0
     while len(summaries) > 1:
+        reduction_round += 1
         entries = [
             f"[Summary of chunk {index + 1}]\n{summary}"
             for index, summary in enumerate(summaries)
@@ -360,11 +352,29 @@ async def _summarize_bounded_chunks(
             entries,
             prefix="[Summaries to combine]",
         )
-        reduced = await summarize_chunks(reduction_chunks)
+        logger.info(
+            "Conversation summary reduction | round=%d | summaries=%d | reduction_chunks=%d",
+            reduction_round,
+            len(summaries),
+            len(reduction_chunks),
+        )
+        reduced = await summarize_chunks(reduction_chunks, stage=f"reduce-{reduction_round}")
         if not reduced:
+            logger.warning(
+                "Conversation summary stopped | stage=reduce-%d | calls=%d | total_tokens=%d",
+                reduction_round,
+                summary_calls,
+                total_usage["total_tokens"],
+            )
             return "", total_usage, summary_calls
         summaries = reduced
 
+    logger.info(
+        "Conversation summary completed | calls=%d | total_tokens=%d | reduction_rounds=%d",
+        summary_calls,
+        total_usage["total_tokens"],
+        reduction_round,
+    )
     return summaries[0], total_usage, summary_calls
 
 
@@ -409,7 +419,7 @@ def trim_oldest_context_for_fallback(
     target_token_limit: int,
     context_info: Optional[dict] = None,
 ) -> tuple[List[dict], Dict[str, object]]:
-    """Trim only the model request, preserving the latest user message and transcript."""
+    """Trim oldest raw conversation messages from the request, never system messages."""
     sanitized = _sanitize_messages(messages)
     if not sanitized:
         return [], dict(context_info or {})
@@ -429,10 +439,6 @@ def trim_oldest_context_for_fallback(
         for index, message in enumerate(sanitized)
         if message["role"] != "system" and index != latest_user_index
     ]
-    removable_summary_indexes = [
-        index for index, message in enumerate(sanitized) if _is_summary_system_message(message)
-    ]
-    removal_order = [*removable_message_indexes, *removable_summary_indexes]
     removed_indexes: set[int] = set()
 
     def build_request() -> List[dict]:
@@ -451,8 +457,8 @@ def trim_oldest_context_for_fallback(
         return [*retained[:insertion_index], marker, *retained[insertion_index:]]
 
     target = max(1, int(target_token_limit))
-    for index in removal_order:
-        if _estimate_messages(build_request()) <= target:
+    for index in removable_message_indexes:
+        if estimate_request_input_tokens(build_request()) <= target:
             break
         removed_indexes.add(index)
 
@@ -464,6 +470,7 @@ def trim_oldest_context_for_fallback(
             "sent_estimate_tokens": estimated_tokens,
             "estimated_new_tokens": estimated_tokens,
             "measured_input_tokens": 0,
+            "guard_input_tokens": estimate_request_input_tokens(request_messages),
             "context_truncated": bool(removed_indexes),
             "omitted_message_count": sum(
                 1
@@ -491,6 +498,59 @@ def _estimate_messages(messages: List[dict]) -> int:
     return sum(_estimate_tokens(str(m.get("content", ""))) for m in messages)
 
 
+def build_imported_context_summary(
+    messages: List[dict],
+    *,
+    soft_token_limit: int,
+) -> Optional[dict]:
+    """Seed a cursor for imported history, keeping the newest 40% of input tokens.
+
+    Always retain at least the newest message, even if it alone exceeds the budget.
+    """
+    conversation_messages = [
+        message
+        for message in _sanitize_messages(messages)
+        if message.get("role") in {"user", "assistant"}
+    ]
+    if not conversation_messages:
+        return None
+
+    retention_limit = max(
+        1,
+        int(max(1, int(soft_token_limit)) * IMPORTED_CONTEXT_RETENTION_RATIO),
+    )
+    retained_start = len(conversation_messages)
+    retained_tokens = 0
+    for index in range(len(conversation_messages) - 1, -1, -1):
+        message_tokens = _estimate_tokens(conversation_messages[index]["content"])
+        if retained_tokens and retained_tokens + message_tokens > retention_limit:
+            break
+        retained_tokens += message_tokens
+        retained_start = index
+
+    if retained_start == 0:
+        return None
+
+    through_message_id = str(
+        conversation_messages[retained_start - 1].get("message_id") or ""
+    ).strip()
+    if not through_message_id:
+        raise ValueError("Imported messages must have IDs before setting the summary cursor")
+
+    return {
+        "text": (
+            "这是用户导入的一段较长对话。较早的未置顶消息未纳入当前上下文；"
+            "较新的消息以及任何已置顶的较早消息仍可用于对话。"
+        ),
+        "through_message_id": through_message_id,
+    }
+
+
+def estimate_request_input_tokens(messages: List[dict]) -> int:
+    """Estimate a built request with a cushion for token-estimator error."""
+    return int(ESTIMATOR_FULL_REQUEST_CUSHION * max(_estimate_messages(messages), 1))
+
+
 async def compact_conversation_messages(
     messages: List[dict],
     *,
@@ -500,7 +560,6 @@ async def compact_conversation_messages(
     summary_state: Optional[dict] = None,
     branch_id: Optional[str] = None,
     measure_only: bool = False,
-    force_compact: bool = False,
     min_fold_messages: int = DEFAULT_MIN_FOLD_MESSAGES,
     min_fold_saving_tokens: int = DEFAULT_MIN_FOLD_SAVING_TOKENS,
 ) -> Tuple[List[dict], Dict[str, object], Optional[dict]]:
@@ -656,26 +715,22 @@ async def compact_conversation_messages(
         trigger_estimate = naive_foldable_estimate
 
     should_compact = trigger_estimate >= compaction_trigger_tokens
+    if not measure_only:
+        logger.info(
+            "Context summary decision | branch=%s | trigger_tokens=%d | trigger_threshold=%d | will_compact=%s | existing_summary=%s",
+            branch_id or "default",
+            trigger_estimate,
+            compaction_trigger_tokens,
+            should_compact,
+            bool(summary_text),
+        )
 
     summary_state_update: Optional[dict] = None
     fold_candidate_tokens = 0
     fold_saving_tokens = 0
     fold_skipped_reason: Optional[str] = None
-    if not measure_only and conversation_messages and (should_compact or force_compact):
-        if force_compact:
-            # Emergency pass (routes/chat.py fail-closed rung): fold everything
-            # except the most recent turns and ignore pinning entirely — pinned
-            # messages beyond the recent window are compressed too. This runs
-            # once, only when a normal compaction still left the request over
-            # the provider's input cap.
-            tail_window = (
-                conversation_messages[cursor_index + 1 :]
-                if cursor_index is not None
-                else conversation_messages
-            )
-            recent_raw = tail_window[-effective_recent_message_count:]
-            old_messages = tail_window[:-effective_recent_message_count]
-        elif has_persisted_state:
+    if not measure_only and conversation_messages and should_compact:
+        if has_persisted_state:
             tail_unpinned = [m for m in conversation_messages[cursor_index + 1:] if id(m) not in pinned_ids]
             recent_raw = tail_unpinned[-effective_recent_message_count:]
             old_messages = tail_unpinned[:-effective_recent_message_count]
@@ -691,15 +746,23 @@ async def compact_conversation_messages(
         # call to buy back one turn, and because the cursor then sits one
         # message behind again it repeats on the very next request. Require a
         # minimum number of candidates (and a minimum reclaimable size) so a
-        # fold amortizes several turns instead. Neither gate applies to the
-        # emergency force pass: its whole purpose is to shed messages now.
+        # fold amortizes several turns instead.
         if not old_messages:
             fold_skipped_reason = "nothing_to_fold"
-        elif not force_compact:
+        else:
             if len(old_messages) < effective_min_fold_messages:
                 fold_skipped_reason = "too_few_messages"
             elif fold_candidate_tokens <= effective_min_fold_saving_tokens:
                 fold_skipped_reason = "not_worth_it"
+
+        if should_compact and fold_skipped_reason:
+            logger.info(
+                "Context summary skipped | branch=%s | reason=%s | candidate_messages=%d | candidate_tokens=%d",
+                branch_id or "default",
+                fold_skipped_reason,
+                len(old_messages),
+                fold_candidate_tokens,
+            )
 
         if old_messages and fold_skipped_reason is None:
             previous_text = summary_text
@@ -721,9 +784,15 @@ async def compact_conversation_messages(
                 fold_saving_tokens = fold_candidate_tokens - _estimate_tokens(
                     _extract_summary_body(summary_message)
                 )
-                if not force_compact and fold_saving_tokens < effective_min_fold_saving_tokens:
+                if fold_saving_tokens < effective_min_fold_saving_tokens:
                     folded_ok = False
                     fold_skipped_reason = "no_saving"
+                    logger.info(
+                        "Context summary not applied | branch=%s | reason=no_saving | candidate_tokens=%d | summary_tokens=%d",
+                        branch_id or "default",
+                        fold_candidate_tokens,
+                        _estimate_tokens(_extract_summary_body(summary_message)),
+                    )
             if folded_ok:
                 last_message_id = str(old_messages[-1].get("message_id") or "").strip()
                 resolved_index = _find_message_index(conversation_messages, last_message_id)
@@ -737,6 +806,29 @@ async def compact_conversation_messages(
                         "text": summary_text,
                         "through_message_id": last_message_id,
                     }
+                    logger.info(
+                        "Context summary applied | branch=%s | through_message_id=%s | folded_messages=%d | candidate_tokens=%d | reclaimed_tokens=%d | summary_calls=%d",
+                        branch_id or "default",
+                        last_message_id,
+                        len(old_messages),
+                        fold_candidate_tokens,
+                        fold_saving_tokens,
+                        summary_call_count,
+                    )
+            elif summary_message is None:
+                logger.warning(
+                    "Context summary not applied | branch=%s | reason=no_summary_returned | candidate_messages=%d | summary_calls=%d",
+                    branch_id or "default",
+                    len(old_messages),
+                    summary_call_count,
+                )
+            elif not folded_ok:
+                logger.info(
+                    "Context summary not applied | branch=%s | reason=summary_not_rewritten | existing_summary=%s | summary_calls=%d",
+                    branch_id or "default",
+                    bool(previous_text),
+                    summary_call_count,
+                )
 
     # Reconstruct the request the model actually sees:
     # [character card / system prompt] + [summary, if any] + raw messages that
@@ -746,10 +838,7 @@ async def compact_conversation_messages(
         compacted_messages.append({"role": "system", "content": f"{SUMMARY_PREFIX}\n{summary_text}"})
         if cursor_index is not None:
             for index, message in enumerate(conversation_messages):
-                # Normal passes keep pinned messages verbatim; an emergency
-                # force pass compressed them too, so only post-cursor messages
-                # survive the rebuild.
-                if (not force_compact and id(message) in pinned_ids) or index > cursor_index:
+                if id(message) in pinned_ids or index > cursor_index:
                     compacted_messages.append(message)
         if summary_messages_count == 0:
             summary_messages_count = 1
