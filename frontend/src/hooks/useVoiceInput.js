@@ -1,9 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { cancelVoiceRecording, startVoiceRecording, stopVoiceRecording } from '../utils/voiceRecorder';
 
-const SILENCE_TIMEOUT_MS = 15000;
-const VOICE_ACTIVITY_THRESHOLD = 0.02;
-
 /**
  * Voice-to-text: records mic audio, streams it to the backend over a
  * websocket, and writes the (partial + final) transcript into the chat input.
@@ -28,29 +25,13 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
   const voicePrefixRef = useRef('');
   const voiceTranscriptRef = useRef('');
   const voicePartialRef = useRef('');
-  const silenceTimeoutRef = useRef(null);
   const recordingActiveRef = useRef(false);
   const voiceSessionIdRef = useRef(0);
-
-  const clearSilenceTimeout = () => {
-    if (silenceTimeoutRef.current !== null) {
-      window.clearTimeout(silenceTimeoutRef.current);
-      silenceTimeoutRef.current = null;
-    }
-  };
-
-  const resetSilenceTimeout = () => {
-    clearSilenceTimeout();
-    silenceTimeoutRef.current = window.setTimeout(() => {
-      void finishRecording();
-    }, SILENCE_TIMEOUT_MS);
-  };
 
   async function finishRecording() {
     if (!recordingActiveRef.current) return;
     const voiceSessionId = voiceSessionIdRef.current;
     recordingActiveRef.current = false;
-    clearSilenceTimeout();
 
     const socket = voiceSocketRef.current;
     if (socket?.readyState === WebSocket.OPEN) {
@@ -71,7 +52,6 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
   const closeVoiceConnection = useCallback(() => {
     voiceSessionIdRef.current += 1;
     recordingActiveRef.current = false;
-    clearSilenceTimeout();
     cancelVoiceRecording();
     voiceSocketRef.current?.close();
     voiceSocketRef.current = null;
@@ -151,9 +131,6 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
         (level) => {
           if (voiceSessionId !== voiceSessionIdRef.current) return;
           setRecordingLevel(Math.min(1, level * 12));
-          if (recordingActiveRef.current && level >= VOICE_ACTIVITY_THRESHOLD) {
-            resetSilenceTimeout();
-          }
         },
       );
       if (voiceSessionId !== voiceSessionIdRef.current) {
@@ -161,12 +138,10 @@ export function useVoiceInput({ sessionToken, input, setInput, toast }) {
         return;
       }
       recordingActiveRef.current = true;
-      resetSilenceTimeout();
       setIsRecording(true);
     } catch (err) {
       if (voiceSessionId !== voiceSessionIdRef.current) return;
       recordingActiveRef.current = false;
-      clearSilenceTimeout();
       setRecordingLevel(0);
       voiceSocketRef.current?.close();
       voiceSocketRef.current = null;
