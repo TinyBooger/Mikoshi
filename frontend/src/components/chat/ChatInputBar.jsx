@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ContextWindowIndicator from '../ContextWindowIndicator';
 import { CreditLockedBanner, BanBanner } from '../ChatBanners';
 import { isCreditLocked } from '../../utils/creditCheck';
@@ -6,6 +6,9 @@ import { CHAT_INPUT_BASE_HEIGHT, CHAT_INPUT_MAX_HEIGHT } from '../../utils/chatP
 import { getChromeSurface } from '../../utils/backgroundPresets';
 import ChatVoiceButton from './ChatVoiceButton';
 import ChatSendButton from './ChatSendButton';
+import { useAutoResizeTextarea } from '../../hooks/useAutoResizeTextarea';
+import { useVoiceInput } from '../../hooks/useVoiceInput';
+import { loadChatDraft, saveChatDraft } from '../../utils/chatDraftStorage';
 import './ChatInputBar.css';
 
 /**
@@ -13,12 +16,14 @@ import './ChatInputBar.css';
  * window indicator, the auto-resizing textarea with the voice + send buttons
  * overlaid on it, and the AI disclaimer line.
  *
- * Extracted verbatim from ChatPage. `isCreditLocked(creditLimits)` is a pure
+ * `ChatPage` only supplies the current chat context and send action; draft
+ * editing stays local so keystrokes do not render the page or message list.
+ * `isCreditLocked(creditLimits)` is a pure
  * helper and used to be called four times per render (banner, textarea, voice
  * button, send button); it is hoisted to a single call here — identical output.
  */
 export default function ChatInputBar({
-  handleSend,
+  onSend,
   selectedWallpaper,
   isMobile,
   chatContentRailStyle,
@@ -30,18 +35,37 @@ export default function ChatInputBar({
   pieRadius,
   pieCircumference,
   pieStrokeOffset,
-  input,
-  handleInputChange,
-  handleKeyDown,
-  textareaRef,
-  isRecording,
-  recordingLevel,
-  isTranscribing,
-  handleVoiceToggle,
+  sessionToken,
+  toast,
+  draftStorageKey,
+  draftFallbackKey,
+  inputRef,
+  inputSetterRef,
   isStreaming,
   sending,
   onAbort,
 }) {
+  const [input, setInputState] = useState('');
+  const localInputRef = useRef(input);
+  const activeDraftKeyRef = useRef(null);
+  const textareaRef = useRef(null);
+  const setInput = useCallback((nextInput) => {
+    const value = typeof nextInput === 'function' ? nextInput(localInputRef.current) : nextInput;
+    localInputRef.current = value;
+    inputRef.current = value;
+    setInputState(value);
+  }, [inputRef]);
+  localInputRef.current = input;
+
+  const { handleInputChange } = useAutoResizeTextarea({ textareaRef, input, setInput });
+  const {
+    isRecording,
+    isTranscribing,
+    recordingLevel,
+    handleVoiceToggle,
+    stopVoiceInput,
+    closeVoiceConnection,
+  } = useVoiceInput({ sessionToken, input, setInput, toast });
   const creditLocked = isCreditLocked(creditLimits);
   // Dev-only UI preview: append ?preview=credit-locked (or -pro-broke) to the chat URL.
   const previewCreditLock = import.meta.env.DEV
@@ -81,6 +105,28 @@ export default function ChatInputBar({
   }, [recordingLevel]);
 
   useEffect(() => {
+    if (!draftStorageKey) return;
+
+    if (activeDraftKeyRef.current !== draftStorageKey) {
+      activeDraftKeyRef.current = draftStorageKey;
+      setInput(loadChatDraft(draftStorageKey, draftFallbackKey));
+      return;
+    }
+
+    saveChatDraft(draftStorageKey, input);
+  }, [draftStorageKey, draftFallbackKey, input, setInput]);
+
+  useEffect(() => {
+    inputSetterRef.current = setInput;
+    return () => {
+      if (inputSetterRef.current === setInput) {
+        inputSetterRef.current = null;
+      }
+      closeVoiceConnection();
+    };
+  }, [closeVoiceConnection, inputSetterRef, setInput]);
+
+  useEffect(() => {
     if (!isRecording) {
       setWaveformSamples(Array(40).fill(0.025));
       return undefined;
@@ -94,10 +140,23 @@ export default function ChatInputBar({
     return () => window.clearInterval(intervalId);
   }, [isRecording]);
 
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    await stopVoiceInput();
+    await onSend(event);
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' && !isMobile && !event.shiftKey) {
+      event.preventDefault();
+      handleSubmit(event);
+    }
+  };
+
   return (
     /* Input Area (no form) */
     <form
-      onSubmit={handleSend}
+      onSubmit={handleSubmit}
       style={{
         paddingTop: '0.8rem',
         paddingLeft: '1.2rem',

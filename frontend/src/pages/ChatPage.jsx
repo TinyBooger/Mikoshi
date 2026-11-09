@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useContext, useRef } from 'react';
 import { useNavigate, useSearchParams, useOutletContext } from 'react-router';
 import MarkdownMessage from '../components/MarkdownMessage';
 import { buildSystemMessage } from '../utils/systemTemplate';
@@ -32,21 +32,15 @@ import {
   normalizeChatModel,
 } from '../utils/chatConfigHelpers';
 import { getSelectedWallpaper } from '../utils/chatMessages';
-import {
-  getChatDraftStorageKeys,
-  loadChatDraft,
-  saveChatDraft,
-} from '../utils/chatDraftStorage';
+import { getChatDraftStorageKeys } from '../utils/chatDraftStorage';
 import { useCreditAndChatLimits } from '../hooks/useCreditAndChatLimits';
 import { usePinnedMemories } from '../hooks/usePinnedMemories';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useChatSettingsHint } from '../hooks/useChatSettingsHint';
-import { useAutoResizeTextarea } from '../hooks/useAutoResizeTextarea';
 import { useChatSend } from '../hooks/useChatSend';
 import { useMessageEditing } from '../hooks/useMessageEditing';
 import { useChatInitialization } from '../hooks/useChatInitialization';
 import { useChatHistoryActions } from '../hooks/useChatHistoryActions';
-import { useVoiceInput } from '../hooks/useVoiceInput';
 import { useContextWindowUsage } from '../hooks/useContextWindowUsage';
 import { useLikeEntity } from '../hooks/useLikeEntity';
 import { NAV_WIDTH, SIDEBAR_WIDTH, CHAT_CONTENT_PADDING } from '../constants/layout';
@@ -59,20 +53,13 @@ export default function ChatPage() {
   const [searchParams] = useSearchParams();
   const [likes, setLikes] = useState(0);
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const {
-    isRecording,
-    isTranscribing,
-    recordingLevel,
-    handleVoiceToggle,
-    stopVoiceInput,
-    closeVoiceConnection,
-  } = useVoiceInput({
-    sessionToken,
-    input,
-    setInput,
-    toast,
-  });
+  const inputRef = useRef('');
+  const inputSetterRef = useRef(null);
+  const setInput = useCallback((nextInput) => {
+    const value = typeof nextInput === 'function' ? nextInput(inputRef.current) : nextInput;
+    inputRef.current = value;
+    inputSetterRef.current?.(value);
+  }, []);
   const [wallpaper, setWallpaper] = useState({ id: 'none', url: null });
   const [characterBackground, setCharacterBackground] = useState(null);
   const [sending, setSending] = useState(false);
@@ -97,15 +84,12 @@ export default function ChatPage() {
   const [selectedMessageIds, setSelectedMessageIds] = useState([]);
   const [bulkPinning, setBulkPinning] = useState(false);
 
-  // Ref for textarea auto-resize
-  const textareaRef = useRef(null);
   // Ref for messages container to enable auto-scrolling
   const messagesEndRef = useRef(null);
   // Reserved chat_id for a brand-new chat whose opening greeting is still
   // streaming. Lets a message sent mid-greeting reuse the same chat instead
   // of minting a second (orphaned) chat_id on the backend.
   const pendingChatIdRef = useRef(null);
-  const activeDraftKeyRef = useRef(null);
 
   const [selectedPersona, setSelectedPersona] = useState(null);
   const [selectedScene, setSelectedScene] = useState(null);
@@ -166,10 +150,6 @@ export default function ChatPage() {
   const { showChatSettingsHint, hideChatSettingsHint } = useChatSettingsHint(isMobile);
 
   useEffect(() => {
-    return closeVoiceConnection;
-  }, [closeVoiceConnection]);
-
-  useEffect(() => {
     return () => {
       if (abortController) {
         abortController.abort();
@@ -186,18 +166,6 @@ export default function ChatPage() {
     sceneId: selectedChat?.scene_id || sceneId || searchParams.get('scene') || selectedScene?.id,
     personaId: selectedChat?.persona_id || selectedPersona?.id,
   });
-
-  useEffect(() => {
-    if (!draftKeys.activeKey) return;
-
-    if (activeDraftKeyRef.current !== draftKeys.activeKey) {
-      activeDraftKeyRef.current = draftKeys.activeKey;
-      setInput(loadChatDraft(draftKeys.activeKey, draftKeys.fallbackKey));
-      return;
-    }
-
-    saveChatDraft(draftKeys.activeKey, input);
-  }, [draftKeys.activeKey, draftKeys.fallbackKey, input]);
 
   const selectedWallpaper = getSelectedWallpaper(wallpaper);
 
@@ -382,7 +350,7 @@ export default function ChatPage() {
     refreshUserData,
     messages,
     setMessages,
-    input,
+    inputRef,
     setInput,
     draftStorageKey: draftKeys.activeKey,
     selectedChat,
@@ -407,7 +375,6 @@ export default function ChatPage() {
 
   const handleSendMessage = async (event) => {
     event.preventDefault();
-    await stopVoiceInput();
     await handleSend(event);
   };
 
@@ -618,27 +585,6 @@ export default function ChatPage() {
     setEditingChatId,
   });
 
-  // Textarea sizing: the effect inside the hook handles programmatic updates
-  // (voice transcription), the returned handler handles typing.
-  const { handleInputChange } = useAutoResizeTextarea({ textareaRef, input, setInput });
-
-  // Handle keyboard shortcuts.
-  // Desktop: Enter sends, Shift+Enter inserts a new line.
-  // Mobile: Enter inserts a new line (send via the send button), since
-  // virtual keyboards have no accessible Shift key.
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      if (isMobile) {
-        // Let the textarea's native behavior insert a newline.
-        return;
-      }
-      if (!e.shiftKey) {
-        e.preventDefault();
-        handleSendMessage(e);
-      }
-    }
-  };
-
   // Message bodies are rendered by the shared markdown renderer, which the
   // share card uses too — see `components/MarkdownMessage.jsx`. Keeping the
   // `(text, role)` signature means the memoized `MessageBubble` prop is passed
@@ -786,7 +732,6 @@ export default function ChatPage() {
           />
         ) : (
           <ChatInputBar
-            handleSend={handleSendMessage}
             selectedWallpaper={selectedWallpaper}
             isMobile={isMobile}
             chatContentRailStyle={chatContentRailStyle}
@@ -798,14 +743,13 @@ export default function ChatPage() {
             pieRadius={pieRadius}
             pieCircumference={pieCircumference}
             pieStrokeOffset={pieStrokeOffset}
-            input={input}
-            handleInputChange={handleInputChange}
-            handleKeyDown={handleKeyDown}
-            textareaRef={textareaRef}
-            isRecording={isRecording}
-            recordingLevel={recordingLevel}
-            isTranscribing={isTranscribing}
-            handleVoiceToggle={handleVoiceToggle}
+            sessionToken={sessionToken}
+            toast={toast}
+            draftStorageKey={draftKeys.activeKey}
+            draftFallbackKey={draftKeys.fallbackKey}
+            inputRef={inputRef}
+            inputSetterRef={inputSetterRef}
+            onSend={handleSendMessage}
             isStreaming={isStreaming}
             sending={sending}
             onAbort={() => {

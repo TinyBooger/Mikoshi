@@ -19,7 +19,7 @@ import {
  * @param {function} params.refreshUserData                 - silent user refresh
  * @param {array}    params.messages                        - current message list
  * @param {function} params.setMessages                     - setter for messages
- * @param {string}   params.input                           - current input value
+ * @param {object}   params.inputRef                        - current input value ref
  * @param {function} params.setInput                        - setter for the input value
  * @param {string}   params.draftStorageKey                 - local-storage key for this conversation's draft
  * @param {object}   params.selectedChat                    - current chat entry
@@ -48,7 +48,7 @@ export function useChatSend({
   refreshUserData,
   messages,
   setMessages,
-  input,
+  inputRef,
   setInput,
   draftStorageKey,
   selectedChat,
@@ -73,8 +73,6 @@ export function useChatSend({
   // Monotonic counter used to invalidate superseded chat turns so a stale
   // stream can never clobber state from a newer request.
   const chatGenerationIdRef = useRef(0);
-  const inputRef = useRef(input);
-  inputRef.current = input;
 
   const sendChatTurn = async ({
     nextMessages,
@@ -315,6 +313,7 @@ export function useChatSend({
       toast.show('已达到点数上限，暂时无法继续对话。', { type: 'warning' });
       return;
     }
+    const input = inputRef.current;
     if (sending || !input.trim() || !selectedCharacter) return;
     saveChatDraft(draftStorageKey, input);
     const updatedMessages = ensureMessageIds([...messages, { role: 'user', content: input.trim(), message_id: generateMessageId(), is_pinned: false, created_at: createLocalMessageTimestamp() }]);
