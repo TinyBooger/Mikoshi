@@ -251,6 +251,13 @@ export function useChatSend({
           }
           if (data.context_window) {
             setServerContextWindowUsage(data.context_window);
+            if (data.context_window.context_truncated) {
+              const omittedCount = Number(data.context_window.omitted_message_count || 0);
+              const notice = omittedCount > 0
+                ? `已为本次回复省略 ${omittedCount} 条较早的上下文消息；原聊天记录未更改。`
+                : '已为本次回复省略部分较早的上下文；原聊天记录未更改。';
+              toast.show(notice, { type: 'warning' });
+            }
           }
           if (data.chat_entry) {
             const nextChatEntry = upsertChatHistoryEntryLocally(data.chat_entry);

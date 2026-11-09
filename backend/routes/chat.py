@@ -38,7 +38,14 @@ import logging
 from datetime import datetime, UTC
 from models import User, Character, Scene, ChatHistory
 from utils.message_limit import can_send_user_message, increment_user_message_count
-from utils.context_window import compact_conversation_messages, DEFAULT_SOFT_TOKEN_LIMIT, SUMMARY_PREFIX, estimate_guard_input
+from utils.context_window import (
+    compact_conversation_messages,
+    CONTEXT_FALLBACK_TARGET_RATIO,
+    DEFAULT_SOFT_TOKEN_LIMIT,
+    SUMMARY_PREFIX,
+    estimate_guard_input,
+    trim_oldest_context_for_fallback,
+)
 from utils.prompt_time import apply_time_marker, normalize_time_awareness, normalize_tz_offset_minutes
 from utils.usage_utils import normalize_usage, usage_to_credits
 from utils.credit_usage_ledger import apply_credit_usage_with_wallet, apply_fixed_credit_usage_with_wallet
@@ -634,16 +641,15 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             measure_only=True,
         )
 
-    # --- Fail-closed: never ship a request the provider cannot accept. ------
+    # --- Fail-closed: never knowingly ship an oversized request. ------------
     # If compaction could not bring the request under the window (summary API
     # failure, fully pinned history, edited history), degrade gracefully
     # instead of silently sending the oversized prompt. Rungs, in order:
     #   1. shrink this turn's max_tokens to whatever room is actually left in
     #      the context window;
-    #   2. if the input alone would exceed the provider's cap, try ONE
-    #      emergency compaction pass (fold everything except the last turns,
-    #      ignoring pinning) before refusing with a hard error — for a
-    #      roleplay product a mid-scene 400 must stay a last resort.
+    #   2. make one emergency compaction pass (folding pinned history too);
+    #   3. if needed, omit oldest request-only context to leave room for this
+    #      turn. The persisted transcript is never trimmed.
     context_turn_metadata: dict[str, object] = {}
     emergency_info: dict | None = None
     pre_emergency_info: dict | None = None
@@ -666,36 +672,69 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 branch_id=summary_branch_id,
                 force_compact=True,
             )
-            emergency_guard = estimate_guard_input(emergency_info, emergency_update)
-            if emergency_guard >= provider_input_cap:
+            pre_emergency_info = prepared_context_info
+            prepared_messages = emergency_messages
+            prepared_context_info = emergency_info
+            state_update = emergency_update
+            fallback_target = int(
+                min(provider_input_cap, context_window_soft_limit)
+                * CONTEXT_FALLBACK_TARGET_RATIO
+            )
+            fallback_messages, fallback_info = trim_oldest_context_for_fallback(
+                emergency_messages,
+                target_token_limit=fallback_target,
+                context_info=emergency_info,
+            )
+            fallback_guard = int(
+                1.15 * max(int(fallback_info.get("sent_estimate_tokens") or 0), 1)
+            )
+            if fallback_info.get("context_truncated"):
+                prepared_messages = fallback_messages
+                prepared_context_info = fallback_info
+                guard_input = fallback_guard
+                context_turn_metadata["context_truncated"] = True
+                context_turn_metadata["omitted_message_count"] = int(
+                    fallback_info.get("omitted_message_count") or 0
+                )
                 logger.warning(
-                    "Context overflow refused | user=%s | chat=%s | model=%s | guard_input=%d | input_cap=%d | after emergency compaction",
+                    "Older context omitted from model request | user=%s | chat=%s | model=%s | omitted_messages=%d | guard_input=%d | target=%d",
                     current_user.id,
                     chat_id or "none",
                     chat_config["model"],
-                    emergency_guard,
+                    context_turn_metadata["omitted_message_count"],
+                    guard_input,
+                    fallback_target,
+                )
+            else:
+                guard_input = estimate_guard_input(emergency_info, emergency_update)
+
+            if guard_input >= provider_input_cap:
+                logger.warning(
+                    "Context overflow refused | user=%s | chat=%s | model=%s | guard_input=%d | input_cap=%d | after emergency compaction and request-only trimming",
+                    current_user.id,
+                    chat_id or "none",
+                    chat_config["model"],
+                    guard_input,
                     provider_input_cap,
                 )
                 return JSONResponse(
                     content={
                         "error": "CONTEXT_WINDOW_EXCEEDED",
                         "message": (
-                            f"The conversation is too long for {chat_config['model']} even after "
-                            "summarization. Start a new chat, trim older messages, or unpin "
-                            "pinned messages and try again."
+                            "The latest message and character instructions are still too large "
+                            f"for {chat_config['model']} even after older context was removed where possible. "
+                            "Shorten the latest message or character instructions and try again."
                         ),
                         "context_window": {
-                            "input_tokens": emergency_guard,
+                            "input_tokens": guard_input,
                             "input_cap": provider_input_cap,
+                            "omitted_message_count": int(
+                                fallback_info.get("omitted_message_count") or 0
+                            ),
                         },
                     },
                     status_code=400,
                 )
-            pre_emergency_info = prepared_context_info
-            prepared_messages = emergency_messages
-            prepared_context_info = emergency_info
-            state_update = emergency_update
-            guard_input = emergency_guard
             context_turn_metadata["emergency_compaction"] = True
             logger.info(
                 "Emergency compaction succeeded | user=%s | chat=%s | model=%s | guard_input=%d | input_cap=%d",

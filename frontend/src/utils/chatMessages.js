@@ -24,6 +24,9 @@ export const getChatErrorMessage = (errorPayload) => {
     }
     return errorPayload?.message || '已达到今日消息上限。';
   }
+  if (errorPayload?.error === 'CONTEXT_WINDOW_EXCEEDED') {
+    return errorPayload?.message || '当前消息仍超出模型上下文限制，请缩短内容后重试。';
+  }
   if (typeof errorPayload?.error === 'string') {
     return errorPayload.error;
   }
