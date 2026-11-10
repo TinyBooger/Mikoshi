@@ -60,7 +60,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 MAX_CHAT_IMPORT_BYTES = 5 * 1024 * 1024
 MAX_CHAT_IMPORT_MESSAGES = 10000
-MAX_CHAT_MESSAGE_CHARACTERS = 3000
 
 # DashScope flags input/output blocked by its content audit with this code (native
 # API spells it `DataInspectionFailed`). The raw provider text is opaque to users,
@@ -569,25 +568,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
     if not messages or not isinstance(messages, list):
         return JSONResponse(content={"error": "Invalid or missing messages"}, status_code=400)
-
-    latest_user_message = next(
-        (
-            message
-            for message in reversed(messages)
-            if isinstance(message, dict) and message.get("role") == "user"
-        ),
-        None,
-    )
-    latest_user_content = latest_user_message.get("content") if latest_user_message else None
-    if isinstance(latest_user_content, str) and len(latest_user_content) > MAX_CHAT_MESSAGE_CHARACTERS:
-        return JSONResponse(
-            content={
-                "error": "USER_MESSAGE_TOO_LONG",
-                "message": f"Each message can contain at most {MAX_CHAT_MESSAGE_CHARACTERS} characters.",
-                "max_characters": MAX_CHAT_MESSAGE_CHARACTERS,
-            },
-            status_code=400,
-        )
 
     if not isinstance(full_messages, list) or not full_messages:
         full_messages = messages

@@ -99,4 +99,3 @@ export const SUMMARY_PREFIX = 'Summary of previous conversation:';
 
 export const CHAT_INPUT_MAX_HEIGHT = 200;
 export const CHAT_INPUT_BASE_HEIGHT = 44;
-export const MAX_CHAT_MESSAGE_CHARACTERS = 3000;
