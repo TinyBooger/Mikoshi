@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useContext } from 'react';
 import { useSearchParams } from 'react-router';
 import { useToast } from '../components/ToastProvider';
 import { AuthContext } from '../components/AuthProvider';
+import { notifyPaymentReturn } from '../hooks/useCreditTopupRefresh';
 
 function isPaymentSuccessStatus(status) {
   return status === 'TRADE_SUCCESS' || status === 'TRADE_FINISHED';
@@ -68,19 +69,15 @@ function PaymentReturnPage() {
             : `点数充值成功！订单号：${outTradeNo}`;
           toast.show(message, { type: 'success' });
         }
-        if (outTradeNo.startsWith('WXTOPUP_')) {
-          if ('BroadcastChannel' in window) {
-            const channel = new BroadcastChannel('mikoshi-credit-topup-return');
-            channel.postMessage({ type: 'credit-topup-return', outTradeNo });
-            channel.close();
-          } else {
-            localStorage.setItem('mikoshi-credit-topup-return', String(Date.now()));
-          }
-        }
+        notifyPaymentReturn(
+          outTradeNo,
+          outTradeNo.startsWith('WXPRO_') ? 'pro-upgrade-return' : 'credit-topup-return'
+        );
       } else if (isProUpgrade) {
         if (!wasHandled) {
           toast.show(`恭喜！您已成功升级为Pro会员！订单号：${outTradeNo}`, { type: 'success' });
         }
+        notifyPaymentReturn(outTradeNo, 'pro-upgrade-return');
         verifyReturn().then((result) => {
           if (isPaymentSuccessStatus(result?.trade_status)) {
             if (refreshUserData) {
@@ -92,13 +89,7 @@ function PaymentReturnPage() {
         if (!wasHandled) {
           toast.show(`点数充值成功！订单号：${outTradeNo}`, { type: 'success' });
         }
-        if ('BroadcastChannel' in window) {
-          const channel = new BroadcastChannel('mikoshi-credit-topup-return');
-          channel.postMessage({ type: 'credit-topup-return', outTradeNo });
-          channel.close();
-        } else {
-          localStorage.setItem('mikoshi-credit-topup-return', String(Date.now()));
-        }
+        notifyPaymentReturn(outTradeNo, 'credit-topup-return');
       } else {
         if (!wasHandled) {
           toast.show(`支付成功！订单号：${outTradeNo}，金额：¥${totalAmount}`, { type: 'success' });

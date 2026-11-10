@@ -5,6 +5,16 @@ const STORAGE_KEY = 'mikoshi-credit-topup-return';
 const REFRESH_INTERVAL_MS = 5000;
 const REFRESH_DURATION_MS = 120000;
 
+export function notifyPaymentReturn(outTradeNo, type) {
+  if ('BroadcastChannel' in window) {
+    const channel = new BroadcastChannel(CHANNEL_NAME);
+    channel.postMessage({ type, outTradeNo });
+    channel.close();
+  } else {
+    localStorage.setItem(STORAGE_KEY, `${type}:${Date.now()}`);
+  }
+}
+
 export function useCreditTopupRefresh(refreshUserData, enabled = true) {
   useEffect(() => {
     if (!enabled || !refreshUserData) return undefined;
@@ -13,7 +23,7 @@ export function useCreditTopupRefresh(refreshUserData, enabled = true) {
     let channel;
     let pollingStarted = false;
 
-    const startCreditRefreshPolling = () => {
+    const startUserDataRefreshPolling = () => {
       if (pollingStarted) return;
       pollingStarted = true;
       refreshUserData({ silent: true });
@@ -29,15 +39,18 @@ export function useCreditTopupRefresh(refreshUserData, enabled = true) {
 
     const handleStorage = (event) => {
       if (event.key === STORAGE_KEY) {
-        startCreditRefreshPolling();
+        startUserDataRefreshPolling();
       }
     };
 
     if ('BroadcastChannel' in window) {
       channel = new BroadcastChannel(CHANNEL_NAME);
       channel.addEventListener('message', (event) => {
-        if (event.data?.type === 'credit-topup-return') {
-          startCreditRefreshPolling();
+        if (
+          event.data?.type === 'credit-topup-return' ||
+          event.data?.type === 'pro-upgrade-return'
+        ) {
+          startUserDataRefreshPolling();
         }
       });
     } else {
