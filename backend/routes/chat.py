@@ -775,11 +775,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 return JSONResponse(
                     content={
                         "error": "CONTEXT_WINDOW_EXCEEDED",
-                        "message": (
-                            "The latest message and character instructions are still too large "
-                            f"for {chat_config['model']} after older conversation context was removed. "
-                            "Shorten the latest message or character instructions and try again."
-                        ),
+                        "message": "您输入的消息过长。请尝试缩短消息，或切换到上下文窗口更大的模型。",
                         "context_window": {
                             "input_tokens": guard_input,
                             "input_cap": provider_input_cap,
