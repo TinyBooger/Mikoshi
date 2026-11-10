@@ -22,7 +22,7 @@ from utils.public_cache import (
 router = APIRouter()
 
 MAX_NAME_LENGTH = 50
-MAX_DESCRIPTION_LENGTH = 400
+MAX_DESCRIPTION_LENGTH = 1500
 MAX_INTRO_LENGTH = 200
 
 

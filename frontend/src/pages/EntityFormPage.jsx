@@ -37,14 +37,14 @@ export default function EntityFormPage() {
   const config = {
     persona: {
       maxNameLength: 50,
-      maxDescLength: 400,
+      maxDescLength: 1500,
       maxIntroLength: 200,
       maxTags: 20,
       apiEndpoint: 'personas',
     },
     scene: {
       maxNameLength: 50,
-      maxDescLength: 400,
+      maxDescLength: 1500,
       maxIntroLength: 100,
       maxTags: 20,
       apiEndpoint: 'scenes',
@@ -754,6 +754,7 @@ export default function EntityFormPage() {
             <textarea
               className="form-control"
               rows={Math.max(5, Math.min(20, Math.ceil(entityData.description.length / 80)))}
+              maxLength={MAX_DESC_LENGTH}
               value={entityData.description}
               placeholder={entityType === 'scene' ? '描述该场景的背景、氛围和故事。例如：雨夜的赛博朋克后街，招牌闪烁。' : ''}
               onChange={e => handleChange('description', e.target.value)}
