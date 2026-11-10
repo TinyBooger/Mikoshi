@@ -583,6 +583,10 @@ export default function ChatPage() {
       formData.append('character_id', String(selectedCharacter.id));
       formData.append('model', advancedChatConfig?.model || 'deepseek-v4-flash');
       formData.append('max_tokens', String(advancedChatConfig?.max_tokens || 4000));
+      formData.append(
+        'system_prompt',
+        buildSystemPromptMessage(selectedCharacter, null, null).content
+      );
 
       const response = await fetch(`${window.API_BASE_URL}/api/chat/import`, {
         method: 'POST',

@@ -1159,6 +1159,7 @@ async def import_chat(
     character_id: int = Form(...),
     model: str = Form("deepseek-v4-flash"),
     max_tokens: int = Form(4000),
+    system_prompt: str = Form(""),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1180,20 +1181,6 @@ async def import_chat(
     for message in messages:
         message["message_id"] = generate_chat_message_id()
 
-    import_chat_config = parse_chat_config({"model": model, "max_tokens": max_tokens})
-    import_model_config = get_model(import_chat_config["model"])
-    import_soft_token_limit = DEFAULT_SOFT_TOKEN_LIMIT
-    if import_model_config is not None:
-        import_context_budget = derive_per_turn_context_budget(
-            import_model_config,
-            requested_max_tokens=import_chat_config["max_tokens"],
-        )
-        import_soft_token_limit = int(import_context_budget["soft_token_limit"])
-    imported_context_summary = build_imported_context_summary(
-        messages,
-        soft_token_limit=import_soft_token_limit,
-    )
-
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Character not found.")
@@ -1205,6 +1192,26 @@ async def import_chat(
         character.creator_id != current_user.id and not current_user.is_admin
     ):
         raise HTTPException(status_code=404, detail="Character not found.")
+
+    import_chat_config = parse_chat_config({"model": model, "max_tokens": max_tokens})
+    import_model_config = get_model(import_chat_config["model"])
+    import_soft_token_limit = DEFAULT_SOFT_TOKEN_LIMIT
+    if import_model_config is not None:
+        import_context_budget = derive_per_turn_context_budget(
+            import_model_config,
+            requested_max_tokens=import_chat_config["max_tokens"],
+        )
+        import_soft_token_limit = int(import_context_budget["soft_token_limit"])
+    prompt_for_budget = system_prompt.strip() or "\n".join(
+        value
+        for value in (character.name, character.description, character.example_messages)
+        if value
+    )
+    imported_context_summary = build_imported_context_summary(
+        messages,
+        soft_token_limit=import_soft_token_limit,
+        system_prompt=prompt_for_budget,
+    )
 
     now = datetime.now(UTC)
     chat_id = str(uuid.uuid4())

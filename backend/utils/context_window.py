@@ -24,7 +24,6 @@ SUMMARY_SYSTEM_PROMPT = (
 
 DEFAULT_SOFT_TOKEN_LIMIT = 8000
 DEFAULT_RECENT_MESSAGE_COUNT = 2
-IMPORTED_CONTEXT_RETENTION_RATIO = 0.4
 DEFAULT_SUMMARY_MAX_TOKENS = 300
 SUMMARY_REQUEST_TOKEN_LIMIT = 12000
 SUMMARY_CHUNK_TOKEN_LIMIT = 8000
@@ -515,8 +514,9 @@ def build_imported_context_summary(
     messages: List[dict],
     *,
     soft_token_limit: int,
+    system_prompt: str = "",
 ) -> Optional[dict]:
-    """Seed a cursor for imported history, keeping the newest 40% of input tokens.
+    """Seed a cursor for imported history up to the normal compaction trigger.
 
     Always retain at least the newest message, even if it alone exceeds the budget.
     """
@@ -528,9 +528,21 @@ def build_imported_context_summary(
     if not conversation_messages:
         return None
 
+    foldable_token_budget = max(
+        1,
+        int(soft_token_limit) - _estimate_tokens(system_prompt),
+    )
+    trigger_token_limit = max(
+        1,
+        int(foldable_token_budget * DEFAULT_COMPACTION_TRIGGER_RATIO),
+    )
+    summary_text = (
+        "这是用户导入的一段较长对话。较早的未置顶消息未纳入当前上下文；"
+        "较新的消息以及任何已置顶的较早消息仍可用于对话。"
+    )
     retention_limit = max(
         1,
-        int(max(1, int(soft_token_limit)) * IMPORTED_CONTEXT_RETENTION_RATIO),
+        trigger_token_limit - _estimate_tokens(summary_text),
     )
     retained_start = len(conversation_messages)
     retained_tokens = 0
@@ -551,10 +563,7 @@ def build_imported_context_summary(
         raise ValueError("Imported messages must have IDs before setting the summary cursor")
 
     return {
-        "text": (
-            "这是用户导入的一段较长对话。较早的未置顶消息未纳入当前上下文；"
-            "较新的消息以及任何已置顶的较早消息仍可用于对话。"
-        ),
+        "text": summary_text,
         "through_message_id": through_message_id,
     }
 
