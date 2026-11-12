@@ -572,6 +572,11 @@ export default function ChatPage() {
   });
 
   const handleImportChat = async (file) => {
+    if (!file.name.toLowerCase().endsWith('.jsonl')) {
+      toast.show('仅支持导入 .jsonl 格式的对话文件。', { type: 'error' });
+      return;
+    }
+
     if (!selectedCharacter?.id || !sessionToken) {
       toast.show('请先选择角色后再导入对话。', { type: 'error' });
       return;
