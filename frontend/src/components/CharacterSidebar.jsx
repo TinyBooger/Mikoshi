@@ -1026,7 +1026,7 @@ export default function CharacterSidebar({
                     <input
                       ref={importChatInputRef}
                       type="file"
-                      accept=".jsonl,application/jsonl"
+                      accept=".jsonl,.json,.txt,application/json,application/x-ndjson,text/plain,public.json,public.text"
                       onChange={handleImportChatFile}
                       style={{ display: 'none' }}
                     />
