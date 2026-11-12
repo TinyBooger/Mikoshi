@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useContext, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useContext, useRef } from 'react';
 import { useNavigate, useSearchParams, useOutletContext } from 'react-router';
 import MarkdownMessage from '../components/MarkdownMessage';
 import { buildSystemMessage } from '../utils/systemTemplate';
@@ -86,6 +86,7 @@ export default function ChatPage() {
 
   // Ref for messages container to enable auto-scrolling
   const messagesEndRef = useRef(null);
+  const revealMessageRef = useRef(null);
   // Reserved chat_id for a brand-new chat whose opening greeting is still
   // streaming. Lets a message sent mid-greeting reuse the same chat instead
   // of minting a second (orphaned) chat_id on the backend.
@@ -245,7 +246,7 @@ export default function ChatPage() {
     applyCreditLimitsToast(limits);
   };
 
-  const buildSystemPromptMessage = (character = selectedCharacter, scene = selectedScene, persona = selectedPersona) => ({
+  const buildSystemPromptMessage = useCallback((character = selectedCharacter, scene = selectedScene, persona = selectedPersona) => ({
     role: 'system',
     content: buildSystemMessage(
       character?.name || '',
@@ -255,9 +256,9 @@ export default function ChatPage() {
       persona?.name || null,
       scene?.description || null
     )
-  });
+  }), [selectedCharacter, selectedScene, selectedPersona]);
 
-  const buildDisplayMessagesForChat = (chatEntry, character = selectedCharacter, scene = selectedScene, persona = selectedPersona) => {
+  const buildDisplayMessagesForChat = useCallback((chatEntry, character = selectedCharacter, scene = selectedScene, persona = selectedPersona) => {
     const normalizedChat = normalizeChatEntry(chatEntry);
     if (!normalizedChat) return [];
     const sys = buildSystemPromptMessage(character, scene, persona);
@@ -267,9 +268,9 @@ export default function ChatPage() {
     );
     const nonSystemMessages = branchMessages.filter((m) => m?.role !== 'system');
     return ensureMessageIds([sys, ...summarySystemMessages, ...nonSystemMessages]);
-  };
+  }, [buildSystemPromptMessage]);
 
-  const upsertChatHistoryEntryLocally = (rawChatEntry, { selectChat = true } = {}) => {
+  const upsertChatHistoryEntryLocally = useCallback((rawChatEntry, { selectChat = true } = {}) => {
     const nextChatEntry = normalizeChatEntry(rawChatEntry);
     if (!nextChatEntry) return null;
 
@@ -288,7 +289,7 @@ export default function ChatPage() {
     });
 
     return nextChatEntry;
-  };
+  }, [setSelectedChat, setUserData]);
 
   const syncChatEntryAfterTurn = ({
     metadata,
@@ -379,7 +380,10 @@ export default function ChatPage() {
   const jumpToMessage = (messageId) => {
     if (!messageId) return;
     const target = document.getElementById(`message-${messageId}`);
-    if (!target) return;
+    if (!target) {
+      revealMessageRef.current?.(messageId);
+      return;
+    }
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
     target.style.transition = 'box-shadow 0.2s ease';
     target.style.boxShadow = '0 0 0 2px rgba(24,25,26,0.25)';
@@ -452,32 +456,42 @@ export default function ChatPage() {
     upsertChatHistoryEntryLocally,
   });
 
-  const selectableMessages = messages.filter((message) =>
+  const selectableMessages = useMemo(() => messages.filter((message) =>
     message?.message_id
     && (message.role === 'user' || message.role === 'assistant')
     && typeof message.content === 'string'
     && message.content.trim()
+  ), [messages]);
+  const selectedMessages = useMemo(
+    () => selectableMessages.filter((message) => selectedMessageIds.includes(message.message_id)),
+    [selectableMessages, selectedMessageIds],
   );
-  const selectedMessages = selectableMessages.filter((message) =>
-    selectedMessageIds.includes(message.message_id)
+  const selectedUnpinnedMessages = useMemo(
+    () => selectedMessages.filter((message) => !message.is_pinned),
+    [selectedMessages],
   );
-  const selectedUnpinnedMessages = selectedMessages.filter((message) => !message.is_pinned);
-  const pinnedMessageCount = messages.filter((message) =>
-    message?.role !== 'system' && message?.is_pinned
-  ).length;
-  const allSelectedMessagesPinned = selectedMessages.length > 0
-    && selectedMessages.every((message) => message.is_pinned);
-  const pinWouldExceedLimit = !allSelectedMessagesPinned
-    && pinnedMessageCount + selectedUnpinnedMessages.length > MAX_PINNED_MEMORIES;
+  const pinnedMessageCount = useMemo(
+    () => messages.filter((message) => message?.role !== 'system' && message?.is_pinned).length,
+    [messages],
+  );
+  const allSelectedMessagesPinned = useMemo(
+    () => selectedMessages.length > 0 && selectedMessages.every((message) => message.is_pinned),
+    [selectedMessages],
+  );
+  const pinWouldExceedLimit = useMemo(
+    () => !allSelectedMessagesPinned
+      && pinnedMessageCount + selectedUnpinnedMessages.length > MAX_PINNED_MEMORIES,
+    [allSelectedMessagesPinned, pinnedMessageCount, selectedUnpinnedMessages.length],
+  );
 
-  const handleStartMultiSelect = (messageId) => {
+  const handleStartMultiSelect = useCallback((messageId) => {
     if (!messageId) return;
     if (editingMessageId) handleCancelEditingMessage();
     setSelectionMode(true);
     setSelectedMessageIds([messageId]);
-  };
+  }, [editingMessageId, handleCancelEditingMessage]);
 
-  const handleToggleMessageSelection = (messageId) => {
+  const handleToggleMessageSelection = useCallback((messageId) => {
     setSelectedMessageIds((previous) => {
       if (previous.includes(messageId)) return previous.filter((id) => id !== messageId);
       if (previous.length >= MAX_SHARE_MESSAGES) {
@@ -486,14 +500,14 @@ export default function ChatPage() {
       }
       return [...previous, messageId];
     });
-  };
+  }, [toast]);
 
-  const handleCopySelectedMessages = () => {
+  const handleCopySelectedMessages = useCallback(() => {
     const text = selectedMessages.map((message) => message.content.trim()).join('\n\n');
     if (text) handleCopyMessage({ content: text });
-  };
+  }, [selectedMessages, handleCopyMessage]);
 
-  const handlePinSelectedMessages = async () => {
+  const handlePinSelectedMessages = useCallback(async () => {
     if (!selectedMessages.length || bulkPinning) return;
     if (!selectedChat?.chat_id) {
       toast.show('请先发送一条消息保存对话，再固定记忆。', { type: 'warning' });
@@ -514,12 +528,12 @@ export default function ChatPage() {
     } finally {
       setBulkPinning(false);
     }
-  };
+  }, [selectedMessages, bulkPinning, selectedChat?.chat_id, toast, pinWouldExceedLimit, allSelectedMessagesPinned, selectedUnpinnedMessages, handleTogglePin]);
 
-  const handleExitSelectionMode = () => {
+  const handleExitSelectionMode = useCallback(() => {
     setSelectionMode(false);
     setSelectedMessageIds([]);
-  };
+  }, []);
 
   // ---- Entry / greeting / chat loading ----
   const {
@@ -653,7 +667,7 @@ export default function ChatPage() {
   // share card uses too — see `components/MarkdownMessage.jsx`. Keeping the
   // `(text, role)` signature means the memoized `MessageBubble` prop is passed
   // exactly as before.
-  const renderMessageContent = (text, role) => <MarkdownMessage content={text} role={role} />;
+  const renderMessageContent = useCallback((text, role) => <MarkdownMessage content={text} role={role} />, []);
 
   const pinnedMemories = messages
     .filter((m) => m?.role !== 'system' && m?.message_id && m?.is_pinned)
@@ -663,8 +677,11 @@ export default function ChatPage() {
       content: m.content,
       preview: getMessagePreview(m.content),
     }));
-  const activeChatBranches = normalizeChatEntry(selectedChat)?.branches || [];
-  const forkNavMap = computeForkNav(activeChatBranches, selectedChat?.active_branch_id);
+  const activeChatBranches = useMemo(() => normalizeChatEntry(selectedChat)?.branches || [], [selectedChat]);
+  const forkNavMap = useMemo(
+    () => computeForkNav(activeChatBranches, selectedChat?.active_branch_id),
+    [activeChatBranches, selectedChat?.active_branch_id],
+  );
 
   // Centered content rail — keeps messages, avatars and input fixed-width and centered
   // regardless of sidebar toggle state. Baseline when both sidebars are open:
@@ -745,6 +762,7 @@ export default function ChatPage() {
         height: 'auto',
         }}>
         <ChatMessagesList
+          key={`${selectedChat?.chat_id || 'new'}:${selectedChat?.active_branch_id || ''}`}
           chatContentRailStyle={chatContentRailStyle}
           selectedWallpaper={selectedWallpaper}
           messages={messages}
@@ -765,6 +783,7 @@ export default function ChatPage() {
           sending={sending}
           renderMessageContent={renderMessageContent}
           messagesEndRef={messagesEndRef}
+          revealMessageRef={revealMessageRef}
           onHoverMessage={setHoveredMessageId}
           onTogglePin={handleTogglePin}
           onCopyMessage={handleCopyMessage}

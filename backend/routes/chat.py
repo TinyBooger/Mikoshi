@@ -10,6 +10,9 @@ from utils.asr_utils import ASR_MODEL, ASR_SAMPLE_RATE, DASHSCOPE_API_KEY
 from utils.chat_history_utils import (
     DEFAULT_BRANCH_ID,
     fetch_chat_history_entry,
+    fetch_chat_history_branch_context,
+    chat_history_message_exists,
+    append_chat_history_turn_to_store,
     upsert_chat_history_entry,
     serialize_chat_history_entry,
     normalize_chat_history_payload,
@@ -30,6 +33,7 @@ from utils.chat_history_utils import (
     restore_chat_history_group_to_recent,
     set_chat_history_active_branch_for_entry,
     toggle_chat_history_message_pin,
+    prune_chat_history,
 )
 import uuid
 import json
@@ -250,6 +254,7 @@ def _persist_chat_history_turn(
     fork_from_message_id: str | None,
     assistant_message_id: str,
     base_message_count: int | None = None,
+    stored_turn_message: dict | None = None,
 ) -> tuple[ChatHistory, dict, bool]:
     assistant_message = _build_assistant_message(reply, response_usage, assistant_message_id)
 
@@ -258,6 +263,48 @@ def _persist_chat_history_turn(
     # snapshot would let this stale turn roll it back.
     if chat_id:
         existing_entry = fetch_chat_history_entry(db_session, current_user_id, chat_id)
+
+    if existing_entry and stored_turn_message and not fork_from_message_id:
+        target_branch_id = requested_branch_id or existing_entry.active_branch_id or DEFAULT_BRANCH_ID
+        saved_branch, turn_saved = append_chat_history_turn_to_store(
+            db_session,
+            entry=existing_entry,
+            branch_id=target_branch_id,
+            user_message=stored_turn_message,
+            assistant_message=assistant_message,
+            base_message_count=base_message_count,
+        )
+        if not turn_saved or saved_branch is None:
+            logger.warning(
+                "Stored chat turn rejected | user=%s | chat=%s | branch=%s",
+                current_user_id,
+                chat_id,
+                target_branch_id,
+            )
+            return existing_entry, saved_branch or {"branch_id": target_branch_id}, False
+
+        if character_id is not None:
+            character = db_session.query(Character).filter(Character.id == character_id).first()
+            if character:
+                existing_entry.character_id = character_id
+                existing_entry.character_name = character.name
+                existing_entry.character_picture = character.picture
+        if scene_id is not None:
+            scene = db_session.query(Scene).filter(Scene.id == scene_id).first()
+            if scene:
+                existing_entry.scene_id = scene_id
+                existing_entry.scene_name = scene.name
+                existing_entry.scene_picture = scene.picture
+        if persona_id is not None:
+            existing_entry.persona_id = persona_id
+        if context_summary:
+            merged_summary = dict(existing_entry.context_summary or {})
+            merged_summary.update(context_summary)
+            existing_entry.context_summary = merged_summary or None
+
+        prune_chat_history(db_session, current_user_id, auto_commit=False)
+        db_session.flush()
+        return existing_entry, saved_branch, True
 
     existing_payload = normalize_chat_history_payload(existing_entry.messages if existing_entry else [])
     if existing_entry:
@@ -511,6 +558,9 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     messages = data.get("messages")
     context_messages = data.get("context_messages")
     full_messages = data.get("full_messages")
+    history_mode = data.get("history_mode")
+    fork_message = data.get("fork_message")
+    turn_message = data.get("turn_message")
     character_id = data.get("character_id")
     chat_id = data.get("chat_id")
     raw_assistant_message_id = data.get("assistant_message_id")
@@ -570,6 +620,8 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
     if not isinstance(context_messages, list) or not context_messages:
         context_messages = messages
+    if history_mode == "stored_branch" and isinstance(turn_message, dict):
+        full_messages = [turn_message]
 
     if is_chat_banned(current_user):
         ban_until = getattr(current_user, "ban_until", None)
@@ -644,7 +696,9 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     if chat_id:
         existing_entry = fetch_chat_history_entry(db, current_user.id, chat_id)
         if existing_entry and (not isinstance(branch_id, str) or not branch_id.strip()):
-            branch_id = serialize_chat_history_entry(existing_entry).get("active_branch_id")
+            branch_id = existing_entry.active_branch_id
+            if not isinstance(branch_id, str) or not branch_id.strip():
+                branch_id = serialize_chat_history_entry(existing_entry).get("active_branch_id")
     if isinstance(branch_id, str):
         branch_id = branch_id.strip() or None
     else:
@@ -655,13 +709,158 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     else:
         fork_from_message_id = None
 
+    summary_state = (
+        existing_entry.context_summary
+        if existing_entry is not None and isinstance(existing_entry.context_summary, dict)
+        else None
+    )
+
+    if history_mode == "stored_branch":
+        if existing_entry is None:
+            return JSONResponse(
+                content={"error": "CHAT_HISTORY_NOT_FOUND", "message": "请重新加载对话后再发送消息。"},
+                status_code=409,
+            )
+
+        system_messages = [
+            message for message in messages
+            if isinstance(message, dict) and message.get("role") == "system"
+        ]
+
+        if fork_from_message_id:
+            serialized_entry = serialize_chat_history_entry(existing_entry)
+            history_payload = normalize_chat_history_payload({
+                "active_branch_id": serialized_entry.get("active_branch_id"),
+                "branches": serialized_entry.get("branches") or [],
+            })
+            source_branch_id = branch_id or history_payload["active_branch_id"]
+            branch_id = source_branch_id
+            source_branch = next(
+                (branch for branch in history_payload["branches"] if branch.get("branch_id") == source_branch_id),
+                None,
+            )
+            if source_branch is None:
+                return JSONResponse(
+                    content={"error": "CHAT_BRANCH_NOT_FOUND", "message": "对话分支已更新，请重新加载后重试。"},
+                    status_code=409,
+                )
+            stored_messages = [
+                message for message in source_branch.get("messages") or []
+                if isinstance(message, dict) and message.get("role") != "system"
+            ]
+            fork_index = next(
+                (
+                    index for index, message in enumerate(stored_messages)
+                    if message.get("message_id") == fork_from_message_id
+                    and message.get("role") == "user"
+                ),
+                None,
+            )
+            if fork_index is None:
+                return JSONResponse(
+                    content={"error": "FORK_MESSAGE_NOT_FOUND", "message": "无法找到要创建分支的消息，请重新加载对话。"},
+                    status_code=409,
+                )
+            if (
+                not isinstance(fork_message, dict)
+                or fork_message.get("role") != "user"
+                or not isinstance(fork_message.get("message_id"), str)
+                or not isinstance(fork_message.get("content"), str)
+                or not fork_message["content"].strip()
+            ):
+                return JSONResponse(
+                    content={"error": "INVALID_FORK_MESSAGE", "message": "无法读取要重新发送的消息，请重试。"},
+                    status_code=400,
+                )
+            stored_messages = [*stored_messages[:fork_index], fork_message]
+            full_messages = [*system_messages, *stored_messages]
+            messages = full_messages
+            context_messages = full_messages
+        elif isinstance(turn_message, dict):
+            if (
+                turn_message.get("role") != "user"
+                or not isinstance(turn_message.get("message_id"), str)
+                or not turn_message["message_id"].strip()
+                or not isinstance(turn_message.get("content"), str)
+                or not turn_message["content"].strip()
+            ):
+                return JSONResponse(
+                    content={"error": "INVALID_CHAT_TURN", "message": "无法识别新消息，请重新加载对话后重试。"},
+                    status_code=400,
+                )
+            source_branch_id = branch_id or existing_entry.active_branch_id or DEFAULT_BRANCH_ID
+            branch_id = source_branch_id
+            branch_state = summary_state.get(source_branch_id) if summary_state else None
+            source_branch, stored_messages = fetch_chat_history_branch_context(
+                db,
+                existing_entry,
+                source_branch_id,
+                branch_state,
+            )
+            if source_branch is None:
+                return JSONResponse(
+                    content={"error": "CHAT_BRANCH_NOT_FOUND", "message": "对话分支已更新，请重新加载后重试。"},
+                    status_code=409,
+                )
+            if chat_history_message_exists(
+                db,
+                entry=existing_entry,
+                branch_id=source_branch_id,
+                message_id=turn_message["message_id"],
+            ):
+                return JSONResponse(
+                    content={"error": "INVALID_CHAT_TURN", "message": "新消息已存在，请重新加载对话后重试。"},
+                    status_code=409,
+                )
+            messages = [*system_messages, *stored_messages, turn_message]
+            full_messages = [turn_message]
+            context_messages = messages
+        else:
+            serialized_entry = serialize_chat_history_entry(existing_entry)
+            history_payload = normalize_chat_history_payload({
+                "active_branch_id": serialized_entry.get("active_branch_id"),
+                "branches": serialized_entry.get("branches") or [],
+            })
+            source_branch_id = branch_id or history_payload["active_branch_id"]
+            branch_id = source_branch_id
+            source_branch = next(
+                (branch for branch in history_payload["branches"] if branch.get("branch_id") == source_branch_id),
+                None,
+            )
+            if source_branch is None:
+                return JSONResponse(
+                    content={"error": "CHAT_BRANCH_NOT_FOUND", "message": "对话分支已更新，请重新加载后重试。"},
+                    status_code=409,
+                )
+            stored_messages = [
+                message for message in source_branch.get("messages") or []
+                if isinstance(message, dict) and message.get("role") != "system"
+            ]
+            stored_message_ids = {
+                message.get("message_id")
+                for message in stored_messages
+                if isinstance(message.get("message_id"), str)
+            }
+            new_user_messages = [
+                message for message in messages
+                if isinstance(message, dict)
+                and message.get("role") == "user"
+                and message.get("message_id") not in stored_message_ids
+            ]
+            if not new_user_messages or new_user_messages[-1] is not messages[-1]:
+                return JSONResponse(
+                    content={"error": "INVALID_CHAT_TURN", "message": "无法识别新消息，请重新加载对话后重试。"},
+                    status_code=400,
+                )
+            stored_messages.extend(new_user_messages)
+            full_messages = [*system_messages, *stored_messages]
+            messages = full_messages
+            context_messages = full_messages
+
     # Generate chat_id upfront for new chats
     if not chat_id and character_id:
         chat_id = str(uuid.uuid4())
 
-    summary_state = None
-    if existing_entry is not None and existing_entry.context_summary:
-        summary_state = existing_entry.context_summary
     summary_branch_id = branch_id or DEFAULT_BRANCH_ID
 
     prepared_messages, prepared_context_info, state_update = await compact_conversation_messages(
@@ -946,6 +1145,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         fork_from_message_id=fork_from_message_id,
                         assistant_message_id=assistant_message_id,
                         base_message_count=base_message_count,
+                        stored_turn_message=(
+                            turn_message
+                            if history_mode == "stored_branch" and not fork_from_message_id
+                            else None
+                        ),
                     )
                     active_summary = (
                         entry.context_summary.get(saved_branch["branch_id"])

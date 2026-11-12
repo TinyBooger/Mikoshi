@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { normalizeChatEntry, ensureMessageIds, generateMessageId } from '../utils/chatHelpers';
 import { copyTextToClipboard } from '../utils/clipboard';
 
@@ -44,18 +45,18 @@ export function useMessageEditing({
   buildDisplayMessagesForChat,
   upsertChatHistoryEntryLocally,
 }) {
-  const handleStartEditingMessage = (message) => {
+  const handleStartEditingMessage = useCallback((message) => {
     if (!message?.message_id || message.role !== 'user' || sending) return;
     setEditingMessageId(message.message_id);
     setEditingMessageText(message.content || '');
-  };
+  }, [sending, setEditingMessageId, setEditingMessageText]);
 
-  const handleCancelEditingMessage = () => {
+  const handleCancelEditingMessage = useCallback(() => {
     setEditingMessageId(null);
     setEditingMessageText('');
-  };
+  }, [setEditingMessageId, setEditingMessageText]);
 
-  const buildForkedMessagesFromUserMessage = (messageId, replacementContent = null) => {
+  const buildForkedMessagesFromUserMessage = useCallback((messageId, replacementContent = null) => {
     const originalMessages = ensureMessageIds(messages);
     const targetIndex = originalMessages.findIndex((message) => message?.message_id === messageId);
     if (targetIndex < 0) return null;
@@ -78,9 +79,9 @@ export function useMessageEditing({
     );
 
     return { originalMessages, targetMessage, forkedMessages };
-  };
+  }, [messages]);
 
-  const handleResendMessage = async (message) => {
+  const handleResendMessage = useCallback(async (message) => {
     if (!message?.message_id || message.role !== 'user' || !selectedCharacter || !!editingMessageId || sending) return;
 
     const forkData = buildForkedMessagesFromUserMessage(message.message_id);
@@ -93,9 +94,9 @@ export function useMessageEditing({
       restoreMessagesOnError: forkData.originalMessages,
       errorMessage: '从这条消息重新发送失败，请重试。',
     });
-  };
+  }, [selectedCharacter, editingMessageId, sending, buildForkedMessagesFromUserMessage, sendChatTurn, selectedChat?.active_branch_id]);
 
-  const handleSaveEditedMessage = async () => {
+  const handleSaveEditedMessage = useCallback(async () => {
     if (!editingMessageId || !selectedCharacter || sending) return;
 
     const trimmedContent = editingMessageText.trim();
@@ -115,9 +116,9 @@ export function useMessageEditing({
       restoreMessagesOnError: forkData.originalMessages,
       errorMessage: '从该消息创建分支失败。',
     });
-  };
+  }, [editingMessageId, selectedCharacter, sending, editingMessageText, buildForkedMessagesFromUserMessage, handleCancelEditingMessage, sendChatTurn, selectedChat?.active_branch_id]);
 
-  const handleSelectBranch = async (branchId) => {
+  const handleSelectBranch = useCallback(async (branchId) => {
     if (!selectedChat?.chat_id || !branchId || branchSelectionPending) return;
 
     const normalizedChat = normalizeChatEntry(selectedChat);
@@ -165,9 +166,9 @@ export function useMessageEditing({
     } finally {
       setBranchSelectionPending(false);
     }
-  };
+  }, [selectedChat, branchSelectionPending, setBranchSelectionPending, setSelectedChat, setMessages, buildDisplayMessagesForChat, setEditingMessageId, setEditingMessageText, sessionToken, upsertChatHistoryEntryLocally, toast]);
 
-  const handleCopyMessage = async (message) => {
+  const handleCopyMessage = useCallback(async (message) => {
     const content = message?.content;
     if (typeof content !== 'string' || !content.trim()) return;
     const copied = await copyTextToClipboard(content);
@@ -176,7 +177,7 @@ export function useMessageEditing({
     } else {
       toast.show('复制失败，请手动复制。', { type: 'error' });
     }
-  };
+  }, [toast]);
 
   return {
     handleStartEditingMessage,

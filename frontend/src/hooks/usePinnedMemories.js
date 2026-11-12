@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useCallback, useContext } from 'react';
 import { useToast } from '../components/ToastProvider';
 import { AuthContext } from '../components/AuthProvider';
 import { normalizeChatEntry, updateChatEntryBranchMessages, MAX_PINNED_MEMORIES } from '../utils/chatHelpers';
@@ -24,7 +24,7 @@ export function usePinnedMemories({
 }) {
   const toast = useToast();
 
-  const syncPinnedStateInUserHistory = (chatId, messageId, isPinned) => {
+  const syncPinnedStateInUserHistory = useCallback((chatId, messageId, isPinned) => {
     if (!chatId || !messageId) return;
 
     setUserData((prev) => {
@@ -50,9 +50,9 @@ export function usePinnedMemories({
         }),
       };
     });
-  };
+  }, [setUserData]);
 
-  const persistPinnedMessage = async (message, isPinned) => {
+  const persistPinnedMessage = useCallback(async (message, isPinned) => {
     if (!selectedChat?.chat_id) return;
     if (!message?.message_id) return;
 
@@ -76,9 +76,9 @@ export function usePinnedMemories({
       const errorPayload = await response.json().catch(() => null);
       throw new Error(errorPayload?.error || 'Failed to update pinned memory');
     }
-  };
+  }, [selectedChat?.chat_id, selectedChat?.active_branch_id, sessionToken]);
 
-  const handleTogglePin = async (messageId, nextPinnedState, { silentSuccess = false } = {}) => {
+  const handleTogglePin = useCallback(async (messageId, nextPinnedState, { silentSuccess = false } = {}) => {
     const targetMessage = messages.find((m) => m?.message_id === messageId);
     if (!targetMessage) return;
 
@@ -156,7 +156,7 @@ export function usePinnedMemories({
       syncPinnedStateInUserHistory(selectedChat?.chat_id, messageId, !nextPinnedState);
       toast.show(error.message || '更新固定记忆失败。', { type: 'error' });
     }
-  };
+  }, [messages, selectedChat?.chat_id, setMessages, setSelectedChat, syncPinnedStateInUserHistory, persistPinnedMessage, toast]);
 
   return {
     handleTogglePin,

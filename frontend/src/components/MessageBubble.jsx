@@ -60,17 +60,17 @@ const isInteractiveMessageTarget = (target) => (
  */
 const MessageBubble = React.memo(function MessageBubble({
   message,
-  index,
   isMobile,
   cleanMode,
   palette,
   selectedCharacter,
   selectedPersona,
   userData,
-  editingMessageId,
+  isHovered,
+  isEditing,
+  isAnyMessageEditing,
   editingMessageText,
-  hoveredMessageId,
-  forkNavMap,
+  nav,
   branchSelectionPending,
   sending,
   renderMessageContent,
@@ -92,7 +92,7 @@ const MessageBubble = React.memo(function MessageBubble({
   const isCleanAssistant = cleanMode && m.role === 'assistant';
   const isCleanUser = cleanMode && m.role === 'user';
   const isClean = isCleanAssistant || isCleanUser;
-  const isEditingUser = editingMessageId === m.message_id && m.role === 'user';
+  const isEditingUser = isEditing && m.role === 'user';
   const editorWidth = isMobile ? '100%' : 'min(70vw, 760px)';
   const bubbleWidth = isEditingUser ? editorWidth : 'auto';
   const bubbleMaxWidth = isEditingUser ? editorWidth : '100%';
@@ -104,7 +104,7 @@ const MessageBubble = React.memo(function MessageBubble({
   const [showExactTime, setShowExactTime] = React.useState(false);
   const messageClock = formatMessageClock(m.created_at);
   const exactTimestamp = formatExactMessageTimestamp(m.created_at);
-  const exactTimeVisible = !!messageClock && (showExactTime || hoveredMessageId === m.message_id);
+  const exactTimeVisible = !!messageClock && (showExactTime || isHovered);
   const handleBubbleClick = (event) => {
     if (selectionMode) {
       if (!isInteractiveMessageTarget(event.target) && messageHasText) {
@@ -135,8 +135,8 @@ const MessageBubble = React.memo(function MessageBubble({
   // Below-bubble actions (revealed on hover). Ordering:
   //   user messages: retry → pin → edit → copy
   //   bot messages : copy → pin
-  const showEditingControls = m.role === 'user' && editingMessageId === m.message_id;
-  const busyDisabled = !!editingMessageId || sending;
+  const showEditingControls = m.role === 'user' && isEditing;
+  const busyDisabled = isAnyMessageEditing || sending;
   const messageHasText = typeof m.content === 'string' && !!m.content.trim();
   const belowBubbleActions = (() => {
     if (m.role !== 'user' && m.role !== 'assistant') return [];
@@ -194,7 +194,6 @@ const MessageBubble = React.memo(function MessageBubble({
 
   return (
     <div
-      key={m.message_id || index}
       id={m.message_id ? `message-${m.message_id}` : undefined}
       style={{
         display: 'flex',
@@ -225,6 +224,7 @@ const MessageBubble = React.memo(function MessageBubble({
         // gradient it would otherwise stay near-black and vanish.
         color: palette.textColor,
       }}
+      data-message-id={m.message_id}
       onMouseEnter={() => onHoverMessage(m.message_id)}
       onMouseLeave={() => onHoverMessage(null)}
       >
@@ -306,7 +306,7 @@ const MessageBubble = React.memo(function MessageBubble({
                 width: bubbleWidth,
               }}
             >
-              {editingMessageId === m.message_id && m.role === 'user' ? (
+              {isEditing && m.role === 'user' ? (
                 <textarea
                   value={editingMessageText}
                   onChange={(event) => onEditTextChange(event.target.value)}
@@ -406,7 +406,7 @@ const MessageBubble = React.memo(function MessageBubble({
                     onMouseLeave={(event) => handleMessageActionMouseLeave(event, action.disabled, palette)}
                     style={{
                       ...getMessageActionButtonStyle(action.disabled, palette),
-                      opacity: isMobile || hoveredMessageId === m.message_id ? 1 : 0,
+                      opacity: isMobile || isHovered ? 1 : 0,
                       transition: 'opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.15s ease',
                     }}
                     title={action.label}
@@ -419,7 +419,6 @@ const MessageBubble = React.memo(function MessageBubble({
               {/* Branch navigator — < X / Y > */}
               {(() => {
                 if (selectionMode) return null;
-                const nav = forkNavMap.get(m.message_id);
                 if (!nav) return null;
                 const prevIdx = (nav.currentIdx - 1 + nav.options.length) % nav.options.length;
                 const nextIdx = (nav.currentIdx + 1) % nav.options.length;

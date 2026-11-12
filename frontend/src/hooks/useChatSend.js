@@ -8,6 +8,8 @@ import {
   saveChatDraft,
 } from '../utils/chatDraftStorage';
 
+const REQUEST_CONTEXT_MESSAGE_COUNT = 40;
+
 /**
  * Streaming chat turns: builds the request, consumes the SSE stream, and owns
  * the "superseded request" bookkeeping that keeps a stale stream from clobbering
@@ -123,7 +125,27 @@ export function useChatSend({
     }
 
     const requestMessages = compactMessagesForRequest(nextMessages);
-    const baseMessageCount = Array.isArray(nextMessages) ? nextMessages.length : 0;
+    const usesStoredHistory = !!selectedChat?.chat_id && selectedChat.chat_id === chatId;
+    const turnMessage = usesStoredHistory && !forkFromMessageId
+      && requestMessages[requestMessages.length - 1]?.role === 'user'
+      ? requestMessages[requestMessages.length - 1]
+      : null;
+    const requestContextMessages = usesStoredHistory
+      ? [
+        ...requestMessages.filter((message) => message.role === 'system'),
+        ...requestMessages
+          .filter((message) => message.role !== 'system' && message !== turnMessage)
+          .slice(-REQUEST_CONTEXT_MESSAGE_COUNT),
+      ]
+      : requestMessages;
+    const forkMessage = usesStoredHistory && forkFromMessageId
+      ? [...requestMessages].reverse().find((message) => (
+        message.role === 'user' && message.message_id !== forkFromMessageId
+      ))
+      : null;
+    const baseMessageCount = usesStoredHistory && Array.isArray(selectedChat.messages)
+      ? selectedChat.messages.length
+      : (Array.isArray(nextMessages) ? nextMessages.length : 0);
     const controller = new AbortController();
     const assistantMessageId = generateMessageId();
     const assistantCreatedAt = createLocalMessageTimestamp();
@@ -146,9 +168,10 @@ export function useChatSend({
           base_message_count: baseMessageCount,
           scene_id: sceneOverride?.id || null,
           persona_id: personaOverride?.id || null,
-          messages: requestMessages,
-          context_messages: nextMessages,
-          full_messages: nextMessages,
+          messages: requestContextMessages,
+          ...(usesStoredHistory ? { history_mode: 'stored_branch' } : {}),
+          ...(turnMessage ? { turn_message: turnMessage } : {}),
+          ...(forkMessage ? { fork_message: forkMessage } : {}),
           chat_config: advancedChatConfig,
           // Minutes east of UTC so the backend can stamp the user's local
           // wall clock on the request copy (prompt-only, never stored).
@@ -159,6 +182,9 @@ export function useChatSend({
       });
 
       if (!response.ok) {
+        if (response.status === 413) {
+          throw new Error('对话内容超过单次请求大小限制，请分段导入较小的对话后重试。');
+        }
         const errorPayload = await response.json().catch(() => null);
         if (errorPayload?.limits) {
           applyChatLimits(errorPayload.limits);
