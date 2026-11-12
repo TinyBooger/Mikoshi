@@ -58,8 +58,6 @@ from utils.audit_logger import audit_request
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-MAX_CHAT_IMPORT_BYTES = 5 * 1024 * 1024
-MAX_CHAT_IMPORT_MESSAGES = 10000
 
 # DashScope flags input/output blocked by its content audit with this code (native
 # API spells it `DataInspectionFailed`). The raw provider text is opaque to users,
@@ -133,8 +131,6 @@ def _parse_sillytavern_jsonl(content: str) -> list[dict]:
             "role": "user" if is_user else "assistant",
             "content": content_text,
         })
-        if len(messages) > MAX_CHAT_IMPORT_MESSAGES:
-            raise HTTPException(status_code=413, detail="The chat contains too many messages to import.")
 
     if not messages:
         raise HTTPException(status_code=400, detail="The JSONL file contains no importable messages.")
@@ -1143,10 +1139,12 @@ async def import_chat(
     if not filename.lower().endswith(".jsonl"):
         raise HTTPException(status_code=400, detail="Only JSONL chat files can be imported.")
 
-    content = await file.read(MAX_CHAT_IMPORT_BYTES + 1)
-    await file.close()
-    if len(content) > MAX_CHAT_IMPORT_BYTES:
-        raise HTTPException(status_code=413, detail="The chat file exceeds the 5 MB import limit.")
+    try:
+        content = await file.read()
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail="Unable to read the uploaded JSONL file.") from exc
+    finally:
+        await file.close()
 
     try:
         decoded_content = content.decode("utf-8-sig")

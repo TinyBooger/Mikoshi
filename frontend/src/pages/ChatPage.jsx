@@ -609,7 +609,14 @@ export default function ChatPage() {
       isNewChat.current = false;
       setShowChatHistory(true);
       refreshUserData({ silent: true });
-      toast.show('对话导入成功。', { type: 'success' });
+      if (importedChat.active_context_summary) {
+        toast.show(
+          '对话导入成功。由于对话较长，早期的对话可能未被记住，可手动使用固定消息功能固定重要内容。',
+          { type: 'warning', duration: 20000 }
+        );
+      } else {
+        toast.show('对话导入成功。', { type: 'success' });
+      }
     } catch (error) {
       console.error('Error importing chat:', error);
       toast.show(error.message || '导入对话失败，请重试。', { type: 'error' });
