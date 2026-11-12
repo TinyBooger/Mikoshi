@@ -49,6 +49,8 @@ export const normalizeChatBranch = (branch, index = 0) => {
   const branchId = typeof branch?.branch_id === 'string' && branch.branch_id.trim()
     ? branch.branch_id.trim()
     : fallbackBranchId;
+  const messages = ensureMessageIds(Array.isArray(branch?.messages) ? branch.messages : []);
+  const storedMessageCount = Number(branch?.message_count);
 
   return {
     branch_id: branchId,
@@ -63,7 +65,12 @@ export const normalizeChatBranch = (branch, index = 0) => {
       : (index === 0 ? 'Main' : `Branch ${index + 1}`),
     created_at: branch?.created_at || null,
     last_updated: branch?.last_updated || null,
-    messages: ensureMessageIds(Array.isArray(branch?.messages) ? branch.messages : []),
+    // The server may send only the newest messages of a long branch, so its
+    // count is kept instead of being derived from the messages we hold.
+    message_count: Number.isFinite(storedMessageCount)
+      ? Math.max(storedMessageCount, messages.length)
+      : messages.length,
+    messages,
   };
 };
 
@@ -103,9 +110,14 @@ export const updateChatEntryBranchMessages = (chatEntry, branchId, nextMessages,
   const branches = normalized.branches.map((branch) => {
     if (branch.branch_id !== nextBranchId) return branch;
     branchFound = true;
+    const storedMessageCount = Number(extraFields.message_count ?? branch.message_count);
     return {
       ...branch,
       ...extraFields,
+      message_count: Math.max(
+        Number.isFinite(storedMessageCount) ? storedMessageCount : 0,
+        normalizedMessages.length,
+      ),
       messages: normalizedMessages,
     };
   });
@@ -121,6 +133,7 @@ export const updateChatEntryBranchMessages = (chatEntry, branchId, nextMessages,
           parent_message_id: extraFields.parent_message_id,
           created_at: extraFields.created_at || new Date().toISOString(),
           last_updated: extraFields.last_updated || new Date().toISOString(),
+          message_count: extraFields.message_count,
           messages: normalizedMessages,
         }, branches.length),
       ];

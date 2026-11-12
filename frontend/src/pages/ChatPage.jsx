@@ -627,7 +627,6 @@ export default function ChatPage() {
       pendingChatIdRef.current = null;
       isNewChat.current = false;
       setShowChatHistory(true);
-      refreshUserData({ silent: true });
       if (importedChat.active_context_summary) {
         toast.show(
           '对话导入成功。由于对话较长，早期的对话可能未被记住，可手动使用固定消息功能固定重要内容。',

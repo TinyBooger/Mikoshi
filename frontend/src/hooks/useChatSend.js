@@ -143,8 +143,16 @@ export function useChatSend({
         message.role === 'user' && message.message_id !== forkFromMessageId
       ))
       : null;
+    const loadedBranch = usesStoredHistory && Array.isArray(selectedChat.branches)
+      ? selectedChat.branches.find((branch) => branch?.branch_id === sourceBranchId)
+      : null;
+    // A stored chat may ship only the newest slice of its transcript, so the
+    // server's own count is the baseline; the loaded length is only a floor.
+    const storedMessageCount = Number(loadedBranch?.message_count);
     const baseMessageCount = usesStoredHistory && Array.isArray(selectedChat.messages)
-      ? selectedChat.messages.length
+      ? (Number.isFinite(storedMessageCount)
+        ? Math.max(storedMessageCount, selectedChat.messages.length)
+        : selectedChat.messages.length)
       : (Array.isArray(nextMessages) ? nextMessages.length : 0);
     const controller = new AbortController();
     const assistantMessageId = generateMessageId();

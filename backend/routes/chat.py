@@ -39,6 +39,7 @@ import uuid
 import json
 import re
 import logging
+import time
 from datetime import datetime, UTC
 from models import User, Character, Scene, ChatHistory
 from utils.message_limit import can_send_user_message, increment_user_message_count
@@ -62,6 +63,11 @@ from utils.audit_logger import audit_request
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# An import can hold tens of thousands of messages; only the newest slice is sent
+# back (the client renders 80 at a time). The entry's branches carry the full
+# ``message_count`` so the client still knows how much history it is not holding.
+IMPORT_RESPONSE_MESSAGE_LIMIT = 100
 
 # DashScope flags input/output blocked by its content audit with this code (native
 # API spells it `DataInspectionFailed`). The raw provider text is opaque to users,
@@ -339,6 +345,7 @@ def _persist_chat_history_turn(
                 "label": existing_branch.get("label"),
                 "created_at": existing_branch.get("created_at"),
                 "last_updated": existing_branch.get("last_updated"),
+                "message_count": current_message_count,
             }, False
 
     if existing_entry and not fork_from_message_id:
@@ -435,6 +442,7 @@ def _persist_chat_history_turn(
         "label": saved_branch.get("label"),
         "created_at": saved_branch.get("created_at"),
         "last_updated": saved_branch.get("last_updated"),
+        "message_count": len(updated_messages),
     }, True
 
 @router.websocket("/api/chat/voice-to-text/stream")
@@ -1329,7 +1337,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
 
 @router.post("/api/chat/import")
-async def import_chat(
+def import_chat(
     request: Request,
     file: UploadFile = File(...),
     character_id: int = Form(...),
@@ -1339,25 +1347,44 @@ async def import_chat(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Declared `def` on purpose: parsing, token estimation and SQLAlchemy are all
+    # blocking work, so FastAPI must run this in the threadpool instead of the
+    # event loop, where a multi-second import would stall every other request.
     filename = file.filename or ""
     if not filename.lower().endswith(".jsonl"):
         raise HTTPException(status_code=400, detail="Only JSONL chat files can be imported.")
 
+    # Stage timings for diagnosing slow imports; the breakdown is logged once
+    # per import so the dominant cost can be identified from the log line.
+    request_started = time.perf_counter()
+    stage_started = request_started
+    stage_times: dict[str, float] = {}
+
+    def mark(stage: str) -> None:
+        nonlocal stage_started
+        now_perf = time.perf_counter()
+        stage_times[stage] = round((now_perf - stage_started) * 1000, 1)
+        stage_started = now_perf
+
     try:
-        content = await file.read()
+        content = file.file.read()
     except OSError as exc:
         raise HTTPException(status_code=400, detail="Unable to read the uploaded JSONL file.") from exc
     finally:
-        await file.close()
+        file.file.close()
+    mark("read")
 
     try:
         decoded_content = content.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
         raise HTTPException(status_code=400, detail="The JSONL file must use UTF-8 encoding.") from exc
+    mark("decode")
 
     messages = _parse_sillytavern_jsonl(decoded_content)
+    mark("parse")
     for message in messages:
         message["message_id"] = generate_chat_message_id()
+    mark("message_ids")
 
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
@@ -1370,6 +1397,7 @@ async def import_chat(
         character.creator_id != current_user.id and not current_user.is_admin
     ):
         raise HTTPException(status_code=404, detail="Character not found.")
+    mark("character")
 
     import_chat_config = parse_chat_config({"model": model, "max_tokens": max_tokens})
     import_model_config = get_model(import_chat_config["model"])
@@ -1390,6 +1418,7 @@ async def import_chat(
         soft_token_limit=import_soft_token_limit,
         system_prompt=prompt_for_budget,
     )
+    mark("summary")
 
     now = datetime.now(UTC)
     chat_id = str(uuid.uuid4())
@@ -1414,14 +1443,33 @@ async def import_chat(
         user_id=current_user.id,
         chat_id=chat_id,
         payload=payload,
+        timings=stage_times,
     )
-    serialized_entry = serialize_chat_history_entry(entry)
+    mark("db_write")
+    serialized_entry = serialize_chat_history_entry(
+        entry,
+        message_limit=IMPORT_RESPONSE_MESSAGE_LIMIT,
+    )
+    mark("serialize")
 
     audit_request(
         request,
         action="import_chat",
         user_id=current_user.id,
         metadata={"chat_id": chat_id, "character_id": character.id, "message_count": len(messages)},
+    )
+    mark("audit")
+
+    logger.info(
+        "chat import timing | chat_id=%s user=%s character=%s upload_bytes=%d messages=%d transcript_chars=%d | %s | total_ms=%.1f",
+        chat_id,
+        current_user.id,
+        character.id,
+        len(content),
+        len(messages),
+        sum(len(message.get("content") or "") for message in messages),
+        " ".join(f"{stage}={duration}ms" for stage, duration in stage_times.items()),
+        (time.perf_counter() - request_started) * 1000,
     )
 
     return serialized_entry
