@@ -1,4 +1,3 @@
-import asyncio
 import re
 import logging
 from math import ceil
@@ -26,10 +25,8 @@ DEFAULT_SOFT_TOKEN_LIMIT = 8000
 DEFAULT_RECENT_MESSAGE_COUNT = 2
 DEFAULT_SUMMARY_MAX_TOKENS = 300
 SUMMARY_REQUEST_TOKEN_LIMIT = 12000
-SUMMARY_CHUNK_TOKEN_LIMIT = 8000
 SUMMARY_MESSAGE_TOKEN_LIMIT = 4000
 SUMMARY_MESSAGE_CHARACTER_LIMIT = 3000
-MAX_SUMMARY_CHUNKS = 64
 SUMMARY_ESTIMATE_SAFETY_FACTOR = 1.25
 CONTEXT_FALLBACK_MARKER = (
     "Older conversation context was omitted to fit the model context window. "
@@ -189,39 +186,6 @@ def _truncate_summary_message(text: str) -> str:
     return normalized[:head_chars].rstrip() + marker + normalized[-tail_chars:].lstrip()
 
 
-def _pack_summary_entries(entries: List[str], *, prefix: str = "[New messages to compress]") -> List[str]:
-    chunks: List[str] = []
-    current_entries = [prefix]
-    for entry in entries:
-        candidate = "\n".join([*current_entries, entry])
-        if len(current_entries) > 1 and _estimate_tokens(candidate) > SUMMARY_CHUNK_TOKEN_LIMIT:
-            chunks.append("\n".join(current_entries))
-            current_entries = [prefix, entry]
-        else:
-            current_entries.append(entry)
-    if len(current_entries) > 1 or not chunks:
-        chunks.append("\n".join(current_entries))
-    return chunks
-
-
-def _build_summary_chunks(existing_summary_text: str, old_messages: List[dict]) -> List[str]:
-    entries: List[str] = []
-    if existing_summary_text:
-        bounded_summary = _truncate_summary_text(existing_summary_text, SUMMARY_MESSAGE_TOKEN_LIMIT)
-        entries.append(f"[Existing summary]\n{bounded_summary}")
-
-    for message in old_messages:
-        role = str(message.get("role", "")).strip().lower()
-        content = _normalize_text(str(message.get("content", "")))
-        if role not in {"user", "assistant"} or not content:
-            continue
-        role_label = ROLE_LABELS.get(role, role.title())
-        bounded_content = _truncate_summary_message(content)
-        entries.append(f"{role_label}: {bounded_content}")
-
-    return _pack_summary_entries(entries)
-
-
 def _summary_request_estimate(summary_input: str, summary_max_tokens: int) -> int:
     estimate = (
         _estimate_tokens(SUMMARY_SYSTEM_PROMPT)
@@ -231,9 +195,35 @@ def _summary_request_estimate(summary_input: str, summary_max_tokens: int) -> in
     return int(estimate * SUMMARY_ESTIMATE_SAFETY_FACTOR) + 128
 
 
-def _add_summary_usage(total: dict[str, int], usage: dict[str, int]) -> None:
-    for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
-        total[key] += int(usage.get(key, 0) or 0)
+def _build_summary_input(
+    existing_summary_text: str,
+    old_messages: List[dict],
+    *,
+    summary_max_tokens: int,
+) -> tuple[str, List[dict]]:
+    entries = ["[New messages to compress]"]
+    if existing_summary_text:
+        bounded_summary = _truncate_summary_text(existing_summary_text, SUMMARY_MESSAGE_TOKEN_LIMIT)
+        entries.append(f"[Existing summary]\n{bounded_summary}")
+
+    included_messages: List[dict] = []
+    for message in old_messages:
+        role = str(message.get("role", "")).strip().lower()
+        content = _normalize_text(str(message.get("content", "")))
+        if role not in {"user", "assistant"} or not content:
+            continue
+        role_label = ROLE_LABELS.get(role, role.title())
+        bounded_content = _truncate_summary_message(content)
+        candidate_entries = [*entries, f"{role_label}: {bounded_content}"]
+        candidate_input = "\n".join(candidate_entries)
+        if _summary_request_estimate(candidate_input, summary_max_tokens) > SUMMARY_REQUEST_TOKEN_LIMIT:
+            break
+        entries = candidate_entries
+        included_messages.append(message)
+
+    if not included_messages:
+        return "", []
+    return "\n".join(entries), included_messages
 
 
 async def _summarize_with_prompt(summary_input: str, *, summary_max_tokens: int) -> tuple[str, dict[str, int]]:
@@ -262,132 +252,39 @@ async def _summarize_with_prompt(summary_input: str, *, summary_max_tokens: int)
     return _normalize_text(content), usage
 
 
-async def _summarize_bounded_chunks(
+async def _summarize_once(
     existing_summary_text: str,
     old_messages: List[dict],
     *,
     summary_max_tokens: int,
-) -> tuple[str, dict[str, int], int]:
-    chunks = _build_summary_chunks(existing_summary_text, old_messages)
-    total_usage = normalize_usage(None)
-    summary_calls = 0
-    if len(chunks) > MAX_SUMMARY_CHUNKS:
-        logger.warning(
-            "Conversation summary requires %d chunks; maximum is %d",
-            len(chunks),
-            MAX_SUMMARY_CHUNKS,
-        )
-        return "", total_usage, summary_calls
+) -> tuple[str, dict[str, int], int, List[dict]]:
+    summary_input, included_messages = _build_summary_input(
+        existing_summary_text,
+        old_messages,
+        summary_max_tokens=summary_max_tokens,
+    )
+    if not summary_input:
+        return "", normalize_usage(None), 0, []
+
     logger.info(
-        "Conversation summary started | old_messages=%d | input_chunks=%d | has_existing_summary=%s",
+        "Conversation summary started | candidate_messages=%d | included_messages=%d | input_tokens=%d | has_existing_summary=%s",
         len(old_messages),
-        len(chunks),
+        len(included_messages),
+        _estimate_tokens(summary_input),
         bool(existing_summary_text),
     )
-
-    async def summarize_chunks(inputs: List[str], *, stage: str) -> Optional[List[str]]:
-        nonlocal summary_calls
-        results: List[str] = []
-        for batch_start in range(0, len(inputs), 4):
-            batch = inputs[batch_start:batch_start + 4]
-            logger.info(
-                "Conversation summary requests | stage=%s | chunks=%d-%d/%d",
-                stage,
-                batch_start + 1,
-                batch_start + len(batch),
-                len(inputs),
-            )
-            responses = await asyncio.gather(
-                *(
-                    _summarize_with_prompt(
-                        summary_input,
-                        summary_max_tokens=summary_max_tokens,
-                    )
-                    for summary_input in batch
-                ),
-                return_exceptions=True,
-            )
-            summary_calls += len(batch)
-            batch_failed = False
-            for offset, result in enumerate(responses):
-                chunk_number = batch_start + offset + 1
-                if isinstance(result, asyncio.CancelledError):
-                    raise result
-                if isinstance(result, BaseException):
-                    logger.warning(
-                        "Conversation summary chunk %d/%d failed: %s",
-                        chunk_number,
-                        len(inputs),
-                        result,
-                        exc_info=(type(result), result, result.__traceback__),
-                    )
-                    batch_failed = True
-                    continue
-
-                body, usage = result
-                _add_summary_usage(total_usage, usage)
-                if not body:
-                    logger.warning(
-                        "Conversation summary chunk %d/%d returned no summary",
-                        chunk_number,
-                        len(inputs),
-                    )
-                    batch_failed = True
-                else:
-                    results.append(
-                        _truncate_summary_text(
-                            body,
-                            max(64, int(summary_max_tokens)),
-                        )
-                    )
-            if batch_failed:
-                return None
-        return results
-
-    summaries = await summarize_chunks(chunks, stage="messages")
-    if not summaries:
-        logger.warning(
-            "Conversation summary stopped | stage=messages | calls=%d | total_tokens=%d",
-            summary_calls,
-            total_usage["total_tokens"],
-        )
-        return "", total_usage, summary_calls
-
-    reduction_round = 0
-    while len(summaries) > 1:
-        reduction_round += 1
-        entries = [
-            f"[Summary of chunk {index + 1}]\n{summary}"
-            for index, summary in enumerate(summaries)
-        ]
-        reduction_chunks = _pack_summary_entries(
-            entries,
-            prefix="[Summaries to combine]",
-        )
-        logger.info(
-            "Conversation summary reduction | round=%d | summaries=%d | reduction_chunks=%d",
-            reduction_round,
-            len(summaries),
-            len(reduction_chunks),
-        )
-        reduced = await summarize_chunks(reduction_chunks, stage=f"reduce-{reduction_round}")
-        if not reduced:
-            logger.warning(
-                "Conversation summary stopped | stage=reduce-%d | calls=%d | total_tokens=%d",
-                reduction_round,
-                summary_calls,
-                total_usage["total_tokens"],
-            )
-            return "", total_usage, summary_calls
-        summaries = reduced
-
-    logger.info(
-        "Conversation summary completed | calls=%d | total_tokens=%d | reduction_rounds=%d",
-        summary_calls,
-        total_usage["total_tokens"],
-        reduction_round,
+    body, usage = await _summarize_with_prompt(
+        summary_input,
+        summary_max_tokens=summary_max_tokens,
     )
-    return summaries[0], total_usage, summary_calls
+    if body:
+        body = _truncate_summary_text(body, max(64, int(summary_max_tokens)))
+    logger.info(
+        "Conversation summary completed | calls=1 | input_messages=%d | total_tokens=%d",
+        len(included_messages),
+        usage["total_tokens"],
+    )
+    return body, usage, 1, included_messages
 
 
 async def _build_summary_message(
@@ -395,15 +292,16 @@ async def _build_summary_message(
     old_messages: List[dict],
     *,
     summary_max_tokens: int,
-) -> tuple[dict | None, dict[str, int], int]:
+) -> tuple[dict | None, dict[str, int], int, List[dict]]:
     if not existing_summary_text and not old_messages:
-        return None, normalize_usage(None), 0
+        return None, normalize_usage(None), 0, []
 
     summary_body = ""
     summary_usage = normalize_usage(None)
     summary_calls = 0
+    summarized_messages: List[dict] = []
     try:
-        summary_body, summary_usage, summary_calls = await _summarize_bounded_chunks(
+        summary_body, summary_usage, summary_calls, summarized_messages = await _summarize_once(
             existing_summary_text,
             old_messages,
             summary_max_tokens=summary_max_tokens,
@@ -417,12 +315,12 @@ async def _build_summary_message(
         summary_body = existing_summary_text
 
     if not summary_body:
-        return None, summary_usage, summary_calls
+        return None, summary_usage, summary_calls, []
 
     return {
         "role": "system",
         "content": f"{SUMMARY_PREFIX}\n{summary_body}",
-    }, summary_usage, summary_calls
+    }, summary_usage, summary_calls, summarized_messages
 
 
 def trim_oldest_context_for_fallback(
@@ -788,7 +686,7 @@ async def compact_conversation_messages(
 
         if old_messages and fold_skipped_reason is None:
             previous_text = summary_text
-            summary_message, summary_usage, summary_call_count = await _build_summary_message(
+            summary_message, summary_usage, summary_call_count, summarized_messages = await _build_summary_message(
                 previous_text,
                 old_messages,
                 summary_max_tokens=effective_summary_max_tokens,
@@ -803,7 +701,8 @@ async def compact_conversation_messages(
             # as large as the messages it replaces would drop them from the
             # request without shrinking it, so the raw messages are cheaper.
             if folded_ok:
-                fold_saving_tokens = fold_candidate_tokens - _estimate_tokens(
+                summarized_candidate_tokens = _estimate_messages(summarized_messages)
+                fold_saving_tokens = summarized_candidate_tokens - _estimate_tokens(
                     _extract_summary_body(summary_message)
                 )
                 if fold_saving_tokens < effective_min_fold_saving_tokens:
@@ -812,11 +711,11 @@ async def compact_conversation_messages(
                     logger.info(
                         "Context summary not applied | branch=%s | reason=no_saving | candidate_tokens=%d | summary_tokens=%d",
                         branch_id or "default",
-                        fold_candidate_tokens,
+                        summarized_candidate_tokens,
                         _estimate_tokens(_extract_summary_body(summary_message)),
                     )
             if folded_ok:
-                last_message_id = str(old_messages[-1].get("message_id") or "").strip()
+                last_message_id = str(summarized_messages[-1].get("message_id") or "").strip()
                 resolved_index = _find_message_index(conversation_messages, last_message_id)
                 if last_message_id and resolved_index is not None:
                     summary_text = _extract_summary_body(summary_message)
@@ -832,8 +731,8 @@ async def compact_conversation_messages(
                         "Context summary applied | branch=%s | through_message_id=%s | folded_messages=%d | candidate_tokens=%d | reclaimed_tokens=%d | summary_calls=%d",
                         branch_id or "default",
                         last_message_id,
-                        len(old_messages),
-                        fold_candidate_tokens,
+                        len(summarized_messages),
+                        summarized_candidate_tokens,
                         fold_saving_tokens,
                         summary_call_count,
                     )
