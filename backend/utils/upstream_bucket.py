@@ -196,10 +196,30 @@ async def acquire_upstream(
 
         # ---- queued — wait for dispenser signal ----
         signal_key = f"{_SIGNAL_PREFIX}:{request_id}"
+        logger.info(
+            "🔀 Upstream queued | model=%s | tier=%s | req=%s | timeout_s=%.0f",
+            model_id,
+            tier,
+            request_id,
+            timeout_s,
+        )
+        queue_wait_started = time.monotonic()
         # BLPOP blocks for up to `timeout_s`; use the blocking client so the
         # read is not aborted early by the shared client's short socket timeout.
         blocking_redis = await get_blocking_redis()
         popped = await blocking_redis.blpop(signal_key, timeout=int(timeout_s))
+        waited_ms = (time.monotonic() - queue_wait_started) * 1000
+        # A release line that never appears means this wait is where the request
+        # is stuck. waited_ms well above timeout_s*1000 means the blocking read
+        # itself hung instead of honouring the command timeout.
+        logger.info(
+            "🔀 Upstream %s | model=%s | tier=%s | req=%s | waited_ms=%.1f",
+            "released" if popped is not None else "wait ended without signal",
+            model_id,
+            tier,
+            request_id,
+            waited_ms,
+        )
 
         if popped is None:
             logger.debug(

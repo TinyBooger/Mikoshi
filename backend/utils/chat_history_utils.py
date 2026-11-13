@@ -13,6 +13,11 @@ from sqlalchemy import and_, func, insert
 from sqlalchemy.orm import Session, load_only, object_session
 
 from models import ChatHistory, Character, ChatHistoryBranch, ChatHistoryMessage
+from utils.context_window import (
+    HISTORY_CONTEXT_MESSAGE_WINDOW,
+    HISTORY_TOKEN_BUDGET,
+    estimate_text_tokens,
+)
 from utils.prompt_time import MIN_GAP_SECONDS
 
 
@@ -403,8 +408,22 @@ def fetch_chat_history_branch_context(
     db: Session,
     entry: ChatHistory,
     branch_id: str,
-) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
-    """Load one branch's context without materializing its history."""
+    *,
+    token_budget: int = HISTORY_TOKEN_BUDGET,
+    message_window: int = HISTORY_CONTEXT_MESSAGE_WINDOW,
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]], int]:
+    """Load the newest slice of one branch's context without materializing its history.
+
+    A stored transcript can hold tens of thousands of messages, and a chat request
+    only needs a recent tail of it. Reading (and then sending) the whole branch
+    costs real money per turn, so this reads just the newest ``message_window``
+    rows and drops the oldest of those until the retained messages fit
+    ``token_budget``. That budget is a cost decision, deliberately far below any
+    model's context window — a 1M-token window must not become a 1M-token prompt.
+
+    Returns ``(branch, messages, omitted_count)``: ``messages`` in chronological
+    order, and how many of the branch's messages are not in it.
+    """
     _ensure_chat_history_store(db, entry)
     branch = (
         db.query(ChatHistoryBranch)
@@ -415,19 +434,44 @@ def fetch_chat_history_branch_context(
         .first()
     )
     if branch is None:
-        return None, []
+        return None, [], 0
 
-    message_query = db.query(ChatHistoryMessage).filter(
+    branch_filter = (
         ChatHistoryMessage.chat_id == entry.chat_id,
         ChatHistoryMessage.branch_id == branch_id,
     )
-    stored_messages = (
-        message_query
-        .order_by(ChatHistoryMessage.created_seq.asc(), ChatHistoryMessage.id.asc())
+    window_size = max(1, int(message_window))
+    # Newest-first so the window is the recent tail; reversed below into the
+    # chronological order the model expects.
+    window = (
+        db.query(ChatHistoryMessage)
+        .filter(*branch_filter)
+        .order_by(ChatHistoryMessage.created_seq.desc(), ChatHistoryMessage.id.desc())
+        .limit(window_size)
         .all()
     )
+    omitted_count = 0
+    if len(window) >= window_size:
+        # The window itself may be hiding older rows; report the real remainder so
+        # the client's "older context omitted" indicator stays truthful.
+        total_count = int(
+            db.query(func.count(ChatHistoryMessage.id))
+            .filter(*branch_filter)
+            .scalar()
+            or 0
+        )
+        omitted_count = max(0, total_count - len(window))
+
     messages: list[dict[str, Any]] = []
-    for item in stored_messages:
+    budget = max(1, int(token_budget))
+    used_tokens = 0
+    for position, item in enumerate(reversed(window)):
+        message_tokens = estimate_text_tokens(item.content)
+        # The newest message is always sent, even when it alone blows the budget:
+        # the fail-closed guard in routes/chat.py owns that decision.
+        if messages and used_tokens + message_tokens > budget:
+            omitted_count += len(window) - position
+            break
         message = {"role": item.role, "content": item.content}
         created_at = _display_timestamp(item.created_at)
         if created_at:
@@ -443,6 +487,7 @@ def fetch_chat_history_branch_context(
         normalized = _normalize_message(message)
         if normalized is not None:
             messages.append(normalized)
+            used_tokens += message_tokens
 
     return {
         "branch_id": branch.branch_id,
@@ -451,7 +496,7 @@ def fetch_chat_history_branch_context(
         "label": branch.label or "Branch",
         "created_at": branch.created_at.isoformat() if branch.created_at else None,
         "last_updated": branch.last_updated.isoformat() if branch.last_updated else None,
-    }, messages
+    }, messages, omitted_count
 
 
 def chat_history_message_exists(

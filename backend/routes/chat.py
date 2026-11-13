@@ -40,11 +40,16 @@ import json
 import re
 import logging
 import time
+from functools import partial
 from datetime import datetime, UTC
+
+import anyio
+
 from models import User, Character, Scene, ChatHistory
 from utils.message_limit import can_send_user_message, increment_user_message_count
 from utils.context_window import (
     DEFAULT_SOFT_TOKEN_LIMIT,
+    HISTORY_TOKEN_BUDGET,
     estimate_request_input_tokens,
     prepare_context_request,
     trim_oldest_context_for_fallback,
@@ -72,6 +77,27 @@ IMPORT_RESPONSE_MESSAGE_LIMIT = 100
 # so it is swapped for a localized message before being streamed to the client.
 _CONTENT_MODERATION_ERROR_CODE = "datainspectionfailed"  # normalized, underscore/case-insensitive
 _CONTENT_MODERATION_MESSAGE = "内容未通过内容审核，请修改后重试。"
+
+# Context shaping (sanitize + token-estimate every retained message) is CPU-bound
+# and was called inline from this async handler, so one oversized transcript froze
+# the whole worker — including health checks — and ignored client disconnects.
+# It runs on a worker thread now, and this wall-clock bound turns a pathological
+# request into a fast 504 instead of an endless one.
+CONTEXT_STAGE_TIMEOUT_SECONDS = 20.0
+
+
+class ContextStageTimeout(RuntimeError):
+    """A CPU-bound context stage exceeded CONTEXT_STAGE_TIMEOUT_SECONDS."""
+
+
+async def _run_context_stage(func, /, *args, **kwargs):
+    """Run one synchronous context-building call off the event loop, with a timeout."""
+    call = partial(func, *args, **kwargs)
+    try:
+        with anyio.fail_after(CONTEXT_STAGE_TIMEOUT_SECONDS):
+            return await anyio.to_thread.run_sync(call, abandon_on_cancel=True)
+    except TimeoutError as exc:
+        raise ContextStageTimeout(func.__name__) from exc
 
 
 def _normalize_error_code(value) -> str:
@@ -600,6 +626,21 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     if history_mode == "stored_branch" and isinstance(turn_message, dict):
         full_messages = [turn_message]
 
+    # Hang triage: a request that logs this line but never reaches the
+    # "Context prepared" line below is stuck in request building, not in the
+    # provider call.
+    request_started = time.perf_counter()
+    logger.info(
+        "💬 Chat request start | user=%s | chat=%s | model=%s | mode=%s | messages=%d | context=%d | full=%d",
+        current_user.id,
+        chat_id or "new",
+        chat_config["model"],
+        history_mode or "client",
+        len(messages),
+        len(context_messages),
+        len(full_messages),
+    )
+
     if is_chat_banned(current_user):
         ban_until = getattr(current_user, "ban_until", None)
         return JSONResponse(
@@ -669,6 +710,9 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     # Resolve the persisted entry and the active branch before the request is
     # built, because the stored branch decides which raw messages this turn sends.
     existing_entry = None
+    # Set when the branch query itself held back history because the stored
+    # transcript is longer than the per-turn token budget.
+    history_omitted_messages = 0
     if chat_id:
         existing_entry = fetch_chat_history_entry(db, current_user.id, chat_id)
         if existing_entry and (not isinstance(branch_id, str) or not branch_id.strip()):
@@ -760,15 +804,31 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 )
             source_branch_id = branch_id or existing_entry.active_branch_id or DEFAULT_BRANCH_ID
             branch_id = source_branch_id
-            source_branch, stored_messages = fetch_chat_history_branch_context(
-                db,
-                existing_entry,
-                source_branch_id,
+            # Cost target, not the model window: a 1M-token model must never turn
+            # into a 1M-token prompt just because the transcript allows it.
+            history_token_budget = min(HISTORY_TOKEN_BUDGET, context_window_soft_limit)
+            source_branch, stored_messages, history_omitted_messages = (
+                fetch_chat_history_branch_context(
+                    db,
+                    existing_entry,
+                    source_branch_id,
+                    token_budget=history_token_budget,
+                )
             )
             if source_branch is None:
                 return JSONResponse(
                     content={"error": "CHAT_BRANCH_NOT_FOUND", "message": "对话分支已更新，请重新加载后重试。"},
                     status_code=409,
+                )
+            if history_omitted_messages:
+                logger.info(
+                    "💬 Stored branch window | user=%s | chat=%s | branch=%s | budget_tokens=%d | loaded_messages=%d | omitted_messages=%d",
+                    current_user.id,
+                    chat_id or "none",
+                    source_branch_id,
+                    history_token_budget,
+                    len(stored_messages),
+                    history_omitted_messages,
                 )
             if chat_history_message_exists(
                 db,
@@ -829,11 +889,46 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     if not chat_id and character_id:
         chat_id = str(uuid.uuid4())
 
-    prepared_messages, context_window_info = prepare_context_request(
-        messages,
-        soft_token_limit=context_window_soft_limit,
-    )
+    prepare_started = time.perf_counter()
+    try:
+        prepared_messages, context_window_info = await _run_context_stage(
+            prepare_context_request,
+            messages,
+            soft_token_limit=context_window_soft_limit,
+        )
+    except ContextStageTimeout:
+        logger.error(
+            "⏱️ Context preparation timed out | user=%s | chat=%s | model=%s | messages=%d | timeout_s=%.1f",
+            current_user.id,
+            chat_id or "none",
+            chat_config["model"],
+            len(messages),
+            CONTEXT_STAGE_TIMEOUT_SECONDS,
+        )
+        return JSONResponse(
+            content={
+                "error": "CONTEXT_PREPARATION_TIMEOUT",
+                "message": "对话历史过长，处理超时。请尝试新建对话或缩短历史后重试。",
+            },
+            status_code=504,
+        )
     context_turn_metadata: dict[str, object] = {}
+    if history_omitted_messages:
+        # The branch query already held back old history, so the prompt is a
+        # truncated view of the stored transcript even if the guard trims nothing.
+        context_turn_metadata["context_truncated"] = True
+        context_turn_metadata["omitted_message_count"] = history_omitted_messages
+
+    logger.info(
+        "💬 Context prepared | user=%s | chat=%s | model=%s | prepared_messages=%d | input_tokens=%d | prepare_ms=%.1f | since_request_ms=%.1f",
+        current_user.id,
+        chat_id or "new",
+        chat_config["model"],
+        len(prepared_messages),
+        int(context_window_info.get("input_tokens") or 0),
+        (time.perf_counter() - prepare_started) * 1000,
+        (time.perf_counter() - request_started) * 1000,
+    )
 
     if not prepared_messages:
         return JSONResponse(content={"error": "Invalid messages after normalization"}, status_code=400)
@@ -855,19 +950,52 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     # prompt-only time marker. If it is too large, trim only older conversation
     # messages; system messages and the persisted transcript stay untouched.
     if provider_input_cap is not None and model_config_entry is not None:
+        # Timings here separate context shaping from the provider call: a
+        # "Context guard trimming" line with no "Context guard done" means the
+        # request never got past building its prompt.
+        guard_started = time.perf_counter()
         guard_input = estimate_request_input_tokens(prepared_messages)
         if guard_input > provider_input_cap:
-            fallback_messages, fallback_info = trim_oldest_context_for_fallback(
-                prepared_messages,
-                target_token_limit=provider_input_cap,
-                context_info=context_window_info,
+            logger.warning(
+                "⚠️ Context guard trimming | user=%s | chat=%s | model=%s | guard_input=%d | input_cap=%d | prepared_messages=%d",
+                current_user.id,
+                chat_id or "none",
+                chat_config["model"],
+                guard_input,
+                provider_input_cap,
+                len(prepared_messages),
             )
+            try:
+                fallback_messages, fallback_info = await _run_context_stage(
+                    trim_oldest_context_for_fallback,
+                    prepared_messages,
+                    target_token_limit=provider_input_cap,
+                    context_info=context_window_info,
+                )
+            except ContextStageTimeout:
+                logger.error(
+                    "⏱️ Context guard trim timed out | user=%s | chat=%s | model=%s | guard_input=%d | input_cap=%d | timeout_s=%.1f",
+                    current_user.id,
+                    chat_id or "none",
+                    chat_config["model"],
+                    guard_input,
+                    provider_input_cap,
+                    CONTEXT_STAGE_TIMEOUT_SECONDS,
+                )
+                return JSONResponse(
+                    content={
+                        "error": "CONTEXT_PREPARATION_TIMEOUT",
+                        "message": "对话历史过长，处理超时。请尝试新建对话或缩短历史后重试。",
+                    },
+                    status_code=504,
+                )
             if fallback_info.get("context_truncated"):
                 prepared_messages = fallback_messages
                 context_window_info = fallback_info
                 context_turn_metadata["context_truncated"] = True
-                context_turn_metadata["omitted_message_count"] = int(
-                    fallback_info.get("omitted_message_count") or 0
+                context_turn_metadata["omitted_message_count"] = (
+                    history_omitted_messages
+                    + int(fallback_info.get("omitted_message_count") or 0)
                 )
                 logger.warning(
                     "Older context omitted from model request | user=%s | chat=%s | model=%s | omitted_messages=%d | guard_input=%d | input_cap=%d",
@@ -926,6 +1054,18 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         else:
             context_turn_metadata["max_tokens_clamped"] = False
 
+        logger.info(
+            "💬 Context guard done | user=%s | chat=%s | model=%s | guard_input=%d | input_cap=%d | trimmed=%s | omitted=%d | guard_ms=%.1f",
+            current_user.id,
+            chat_id or "none",
+            chat_config["model"],
+            int(guard_input),
+            provider_input_cap,
+            bool(context_turn_metadata.get("context_truncated", False)),
+            int(context_turn_metadata.get("omitted_message_count") or 0),
+            (time.perf_counter() - guard_started) * 1000,
+        )
+
     character = None
     effective_character_id = character_id or (existing_entry.character_id if existing_entry else None)
     if effective_character_id:
@@ -938,17 +1078,44 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         accumulated_reply = ""
         current_credit_limit_info = credit_limit_info
         saved_chat_metadata = None
+        chunk_count = 0
+        first_chunk_logged = False
+        stream_started = time.perf_counter()
         response_usage = {
             "prompt_tokens": 0,
             "completion_tokens": 0,
             "total_tokens": 0,
         }
 
+        logger.info(
+            "💬 Stream start | user=%s | chat=%s | model=%s | assistant_message=%s | prepared_messages=%d | input_tokens=%d | since_request_ms=%.1f",
+            current_user.id,
+            chat_id or "none",
+            chat_config["model"],
+            assistant_message_id,
+            len(prepared_messages),
+            int(context_window_info.get("input_tokens") or 0),
+            (time.perf_counter() - request_started) * 1000,
+        )
+
         # --- upstream bucket (per-model RPM pacing) ---
-        if not await acquire_upstream(chat_config["model"], is_pro=bool(current_user.is_pro)):
+        upstream_started = time.perf_counter()
+        upstream_granted = await acquire_upstream(
+            chat_config["model"], is_pro=bool(current_user.is_pro)
+        )
+        logger.info(
+            "💬 Upstream slot %s | user=%s | chat=%s | model=%s | waited_ms=%.1f",
+            "granted" if upstream_granted else "busy",
+            current_user.id,
+            chat_id or "none",
+            chat_config["model"],
+            (time.perf_counter() - upstream_started) * 1000,
+        )
+        if not upstream_granted:
             yield f"data: {json.dumps({'error': 'UPSTREAM_BUSY', 'message': 'The model provider is currently at capacity. Please try again shortly.'})}\n\n"
             return
 
+        model_call_started = time.perf_counter()
         try:
             async for stream_event in stream_chat_completion_with_config(
                 prepared_messages,
@@ -969,10 +1136,30 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     continue
 
                 accumulated_reply += chunk
+                chunk_count += 1
+                if not first_chunk_logged:
+                    first_chunk_logged = True
+                    logger.info(
+                        "💬 First token | user=%s | chat=%s | model=%s | ttfb_ms=%.1f",
+                        current_user.id,
+                        chat_id or "none",
+                        chat_config["model"],
+                        (time.perf_counter() - model_call_started) * 1000,
+                    )
                 # Send each chunk as SSE
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
 
             # After streaming completes, save to database
+            logger.info(
+                "💬 Stream completed | user=%s | chat=%s | model=%s | chunks=%d | chars=%d | gen_ms=%.1f",
+                current_user.id,
+                chat_id or "none",
+                chat_config["model"],
+                chunk_count,
+                len(accumulated_reply),
+                (time.perf_counter() - model_call_started) * 1000,
+            )
+            persist_started = time.perf_counter()
             stream_credit_amount = usage_to_credits(response_usage, chat_config["model"])
             logger.info(
                 "💬 Stream credit | user=%s | chat=%s | model=%s | prompt_tokens=%d | completion_tokens=%d | total_tokens=%d | credit=%.4f | has_character=%s",
@@ -1124,15 +1311,39 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             if saved_chat_metadata:
                 done_payload['chat_metadata'] = saved_chat_metadata
                 done_payload['branch_id'] = saved_chat_metadata["active_branch_id"]
+            logger.info(
+                "💬 Stream done event | user=%s | chat=%s | model=%s | persist_ms=%.1f | total_ms=%.1f",
+                current_user.id,
+                chat_id or "none",
+                chat_config["model"],
+                (time.perf_counter() - persist_started) * 1000,
+                (time.perf_counter() - stream_started) * 1000,
+            )
             yield f"data: {json.dumps(done_payload)}\n\n"
 
         except ClientDisconnect:
+            logger.info(
+                "💬 Client disconnected mid-stream | user=%s | chat=%s | model=%s | elapsed_ms=%.1f",
+                current_user.id,
+                chat_id or "none",
+                chat_config["model"],
+                (time.perf_counter() - stream_started) * 1000,
+            )
             return
         except Exception as e:
             if _is_content_moderation_error(e):
                 logger.warning("Chat blocked by provider content moderation: %s", e)
                 yield f"data: {json.dumps({'error': _CONTENT_MODERATION_MESSAGE})}\n\n"
                 return
+            logger.warning(
+                "⚠️ Chat stream failed | user=%s | chat=%s | model=%s | chunks=%d | elapsed_ms=%.1f | error=%r",
+                current_user.id,
+                chat_id or "none",
+                chat_config["model"],
+                chunk_count,
+                (time.perf_counter() - stream_started) * 1000,
+                e,
+            )
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(
