@@ -33,14 +33,12 @@ export default function ChatMessagesList({
   timestampGapSeconds,
   editingMessageId,
   editingMessageText,
-  hoveredMessageId,
   forkNavMap,
   branchSelectionPending,
   sending,
   renderMessageContent,
   messagesEndRef,
   revealMessageRef,
-  onHoverMessage,
   onTogglePin,
   onCopyMessage,
   selectionMode,
@@ -55,6 +53,7 @@ export default function ChatMessagesList({
   onEditTextChange,
 }) {
   const nonSystem = useMemo(() => messages.filter((message) => message.role !== 'system'), [messages]);
+  const [hoveredMessageId, setHoveredMessageId] = useState(null);
   const [visibleRange, setVisibleRange] = useState(() => ({
     start: Math.max(0, nonSystem.length - INITIAL_VISIBLE_MESSAGES),
     end: nonSystem.length,
@@ -278,7 +277,7 @@ export default function ChatMessagesList({
                   branchSelectionPending={branchSelectionPending}
                   sending={sending}
                   renderMessageContent={renderMessageContent}
-                  onHoverMessage={onHoverMessage}
+                  onHoverMessage={setHoveredMessageId}
                   onTogglePin={onTogglePin}
                   onCopyMessage={onCopyMessage}
                   selectionMode={selectionMode}

@@ -80,7 +80,6 @@ export default function ChatPage() {
   const [branchSelectionPending, setBranchSelectionPending] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
-  const [hoveredMessageId, setHoveredMessageId] = useState(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState([]);
   const [bulkPinning, setBulkPinning] = useState(false);
@@ -774,14 +773,12 @@ export default function ChatPage() {
           timestampGapSeconds={selectedChat?.timestamp_gap_seconds}
           editingMessageId={editingMessageId}
           editingMessageText={editingMessageText}
-          hoveredMessageId={hoveredMessageId}
           forkNavMap={forkNavMap}
           branchSelectionPending={branchSelectionPending}
           sending={sending}
           renderMessageContent={renderMessageContent}
           messagesEndRef={messagesEndRef}
           revealMessageRef={revealMessageRef}
-          onHoverMessage={setHoveredMessageId}
           onTogglePin={handleTogglePin}
           onCopyMessage={handleCopyMessage}
           selectionMode={selectionMode}
