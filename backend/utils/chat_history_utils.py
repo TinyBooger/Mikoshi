@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 from sqlalchemy import and_, func, insert, or_
-from sqlalchemy.orm import Session, object_session
+from sqlalchemy.orm import Session, load_only, object_session
 
 from models import ChatHistory, Character, ChatHistoryBranch, ChatHistoryMessage
 from utils.prompt_time import MIN_GAP_SECONDS
@@ -847,71 +847,92 @@ def serialize_chat_history_entry(entry: ChatHistory, *, message_limit: int | Non
     }
 
 
-def fetch_user_chat_history(db: Session, user_id: str, limit: int = 30) -> List[dict]:
-    """Return the most recent visible (not hidden_from_recent) chat history entries for a user."""
-    entries = (
-        db.query(ChatHistory)
-        .filter(ChatHistory.user_id == user_id, ChatHistory.hidden_from_recent == False)  # noqa: E712
-        .order_by(ChatHistory.last_updated.desc(), ChatHistory.id.desc())
-        .limit(limit)
-        .all()
+def serialize_chat_history_metadata(
+    entry: ChatHistory,
+    *,
+    character_exists: bool | None = None,
+    character_moderation_status: str | None = None,
+) -> dict:
+    character_deleted = (
+        bool(entry.character_name)
+        if entry.character_id is None
+        else character_exists is False
+    )
+    return {
+        "chat_id": entry.chat_id,
+        "character_id": entry.character_id,
+        "character_name": entry.character_name,
+        "character_picture": entry.character_picture,
+        "scene_id": entry.scene_id,
+        "scene_name": entry.scene_name,
+        "scene_picture": entry.scene_picture,
+        "persona_id": entry.persona_id,
+        "title": entry.title,
+        "active_branch_id": entry.active_branch_id,
+        "is_pinned": bool(getattr(entry, "is_pinned", False)),
+        "hidden_from_recent": bool(getattr(entry, "hidden_from_recent", False)),
+        "last_updated": entry.last_updated.isoformat() if entry.last_updated else None,
+        "created_at": entry.created_at.isoformat() if entry.created_at else None,
+        "character_deleted": character_deleted,
+        "character_moderation_status": (
+            character_moderation_status if not character_deleted else None
+        ),
+    }
+
+
+def _chat_history_metadata_load_options():
+    return load_only(
+        ChatHistory.id,
+        ChatHistory.chat_id,
+        ChatHistory.character_id,
+        ChatHistory.character_name,
+        ChatHistory.character_picture,
+        ChatHistory.scene_id,
+        ChatHistory.scene_name,
+        ChatHistory.scene_picture,
+        ChatHistory.persona_id,
+        ChatHistory.title,
+        ChatHistory.active_branch_id,
+        ChatHistory.is_pinned,
+        ChatHistory.hidden_from_recent,
+        ChatHistory.last_updated,
+        ChatHistory.created_at,
     )
 
-    # Bulk-lookup character status to detect deletions and moderation
-    character_ids = [e.character_id for e in entries if e.character_id is not None]
-    char_status: dict[str, str | None] = {}  # character_id (as str) -> moderation_status
-    if character_ids:
-        int_ids = []
-        for cid in character_ids:
-            try:
-                int_ids.append(int(cid))
-            except (ValueError, TypeError):
-                pass
-        if int_ids:
-            rows = (
-                db.query(Character.id, Character.moderation_status)
-                .filter(Character.id.in_(int_ids))
-                .all()
-            )
-            for cid, mod_status in rows:
-                char_status[str(cid)] = mod_status  # None means normal
 
-    results = []
-    for entry in entries:
-        _ensure_chat_history_store(db, entry)
-        serialized = serialize_chat_history_entry(entry)
-        cid = str(entry.character_id) if entry.character_id is not None else None
-        if cid is None:
-            # character_id was set to NULL by ON DELETE SET NULL — character was deleted
-            # (only if there is a cached name; otherwise it was never a character chat)
-            serialized["character_deleted"] = bool(entry.character_name)
-            serialized["character_moderation_status"] = None
-        elif cid not in char_status:
-            # Shouldn't normally happen with SET NULL FK, but handle defensively
-            serialized["character_deleted"] = True
-            serialized["character_moderation_status"] = None
-        else:
-            serialized["character_deleted"] = False
-            serialized["character_moderation_status"] = char_status[cid]
-        results.append(serialized)
-
-    return results
+def fetch_user_chat_history_metadata(db: Session, user_id: str) -> List[dict]:
+    """Return lightweight metadata for every chat without loading message data."""
+    rows = (
+        db.query(ChatHistory, Character.id, Character.moderation_status)
+        .options(_chat_history_metadata_load_options())
+        .outerjoin(Character, Character.id == ChatHistory.character_id)
+        .filter(ChatHistory.user_id == user_id)
+        .order_by(ChatHistory.last_updated.desc(), ChatHistory.id.desc())
+        .all()
+    )
+    return [
+        serialize_chat_history_metadata(
+            entry,
+            character_exists=character_id is not None,
+            character_moderation_status=moderation_status,
+        )
+        for entry, character_id, moderation_status in rows
+    ]
 
 
 def fetch_user_chat_history_paginated(db: Session, user_id: str, page: int = 1, page_size: int = 20) -> dict:
-    """Return all chat history entries (including hidden) for the profile history tab, with pagination."""
+    """Return chat metadata (including hidden chats) for the profile history tab."""
     offset = (page - 1) * page_size
     query = (
         db.query(ChatHistory)
+        .options(_chat_history_metadata_load_options())
         .filter(ChatHistory.user_id == user_id)
         .order_by(ChatHistory.last_updated.desc(), ChatHistory.id.desc())
     )
     total = query.count()
     entries = query.offset(offset).limit(page_size).all()
-    for entry in entries:
-        _ensure_chat_history_store(db, entry)
     return {
-        "items": [serialize_chat_history_entry(entry) for entry in entries],
+        "items": [serialize_chat_history_metadata(entry) for entry in entries],
         "total": total,
         "page": page,
         "page_size": page_size,

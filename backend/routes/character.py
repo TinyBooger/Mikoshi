@@ -16,7 +16,6 @@ from utils.session import get_current_user, get_optional_current_user
 from utils.local_storage_utils import save_image, delete_stored_image, copy_stored_image
 from utils.audit_logger import audit_request
 from utils.image_moderation import moderate_image_with_decision
-from utils.chat_history_utils import fetch_user_chat_history
 from utils.collaborative_filtering import get_cf_characters
 from utils.validators import validate_character_fields
 from utils.text_normalization import normalize_line_endings

@@ -8,7 +8,7 @@ from sqlalchemy import func
 
 from models import Persona, User, Character, Scene, UserLikedCharacter, UserLikedScene, UserLikedPersona
 from schemas import PersonaOut
-from utils.chat_history_utils import fetch_user_chat_history
+from utils.chat_history_utils import fetch_user_chat_history_metadata
 from utils.credit_cap import get_credit_cap_info
 
 
@@ -235,7 +235,7 @@ def build_user_response(user: User, db: Session) -> dict[str, Any]:
         "profile_pic": user.profile_pic,
         "bio": user.bio,
         "liked_tags": user.liked_tags or [],
-        "chat_history": fetch_user_chat_history(db, user.id),
+        "chat_history": fetch_user_chat_history_metadata(db, user.id),
         "views": user.views or 0,
         "likes": user.likes or 0,
         "characters_created": characters_created,

@@ -136,7 +136,7 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
     if (!userData?.chat_history) return [];
 
     // Sort pinned chats first, then by recency.
-    const sorted = [...userData.chat_history].sort(
+    const sorted = userData.chat_history.filter((chat) => !chat?.hidden_from_recent).sort(
       (a, b) => {
         const pinDelta = Number(Boolean(b?.is_pinned)) - Number(Boolean(a?.is_pinned));
         if (pinDelta !== 0) return pinDelta;

@@ -212,7 +212,7 @@ export default function CharacterSidebar({
   //   character mode → only the scene-less chats with this character (a chat
   //                    that has a scene belongs to its scene group instead)
   const modeChatHistory = React.useMemo(() => {
-    const history = userData?.chat_history || [];
+    const history = (userData?.chat_history || []).filter((chat) => !chat?.hidden_from_recent);
     let filtered;
     if (isSceneMode) {
       filtered = history.filter((chat) => String(chat.scene_id) === String(selectedScene.id));

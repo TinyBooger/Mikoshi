@@ -120,6 +120,7 @@ export function useChatInitialization({
       // scene belongs to the scene route and must not be picked up as "the most
       // recent chat with this character".
       const existingChats = userData?.chat_history?.filter(h => {
+        if (h.hidden_from_recent) return false;
         const characterMatches = String(h.character_id) === String(characterId);
         const hasScene = Boolean(h.scene_id);
         return characterMatches && !hasScene;
@@ -150,6 +151,7 @@ export function useChatInitialization({
     try {
       const fetchedData = await fetchInitialData();
       const existingChats = userData?.chat_history?.filter(h => {
+        if (h.hidden_from_recent) return false;
         const sceneMatches = String(h.scene_id) === String(sceneId);
         return sceneMatches;
       }) || [];
@@ -544,7 +546,16 @@ export function useChatInitialization({
 
   const loadChat = async (chat) => {
     try {
-      const normalizedChat = normalizeChatEntry(chat);
+      if (!chat?.chat_id) return;
+      const response = await fetch(
+        `${window.API_BASE_URL}/api/chat/history/${encodeURIComponent(chat.chat_id)}`,
+        { headers: { 'Authorization': sessionToken } }
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to load chat history (${response.status})`);
+      }
+      const fullChat = await response.json();
+      const normalizedChat = normalizeChatEntry(fullChat);
       if (!normalizedChat) return;
 
       // Update IDs from the chat entry

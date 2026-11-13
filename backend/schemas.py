@@ -124,6 +124,25 @@ class UserCharacterConfigOut(BaseModel):
 
 
 # CharacterOut model
+class ChatHistoryMetadataOut(BaseModel):
+    chat_id: str
+    character_id: Optional[int] = None
+    character_name: Optional[str] = None
+    character_picture: Optional[str] = None
+    scene_id: Optional[int] = None
+    scene_name: Optional[str] = None
+    scene_picture: Optional[str] = None
+    persona_id: Optional[int] = None
+    title: str
+    active_branch_id: Optional[str] = None
+    is_pinned: bool = False
+    hidden_from_recent: bool = False
+    last_updated: Optional[str] = None
+    created_at: Optional[str] = None
+    character_deleted: bool = False
+    character_moderation_status: Optional[str] = None
+
+
 class UserOut(BaseModel):
     id: str
     email: Optional[EmailStr] = None
@@ -133,7 +152,7 @@ class UserOut(BaseModel):
     profile_pic: Optional[str] = None
     bio: Optional[str] = None
     liked_tags: list[str] = []
-    chat_history: list[Any] = []
+    chat_history: list[ChatHistoryMetadataOut] = []
     views: int = 0
     likes: int = 0
     characters_created: int = 0

@@ -1,17 +1,15 @@
-import { useCallback, useContext } from 'react';
+import { useCallback } from 'react';
 import { useToast } from '../components/ToastProvider';
 import { AuthContext } from '../components/AuthProvider';
 import { normalizeChatEntry, updateChatEntryBranchMessages, MAX_PINNED_MEMORIES } from '../utils/chatHelpers';
 
 /**
- * Hook for pinned message/memory operations: toggle pin, sync pinned state
- * in user history, and persist to the backend.
+ * Hook for toggling pinned messages and persisting their state to the backend.
  *
  * @param {object}   selectedChat    - current chat entry
  * @param {function} setSelectedChat - setter for selectedChat
  * @param {array}    messages        - current message list
  * @param {function} setMessages     - setter for messages
- * @param {function} setUserData     - setter for userData (from AuthContext)
  * @param {string}   sessionToken    - auth session token
  */
 export function usePinnedMemories({
@@ -19,38 +17,9 @@ export function usePinnedMemories({
   setSelectedChat,
   messages,
   setMessages,
-  setUserData,
   sessionToken,
 }) {
   const toast = useToast();
-
-  const syncPinnedStateInUserHistory = useCallback((chatId, messageId, isPinned) => {
-    if (!chatId || !messageId) return;
-
-    setUserData((prev) => {
-      if (!prev?.chat_history) return prev;
-      return {
-        ...prev,
-        chat_history: prev.chat_history.map((chatEntry) => {
-          if (chatEntry.chat_id !== chatId) return chatEntry;
-          const normalizedChat = normalizeChatEntry(chatEntry);
-          if (!normalizedChat) return chatEntry;
-          const activeBranchId = normalizedChat.active_branch_id;
-          return updateChatEntryBranchMessages(
-            normalizedChat,
-            activeBranchId,
-            normalizedChat.messages.map((msg) => {
-              if (!msg || typeof msg !== 'object') return msg;
-              if (msg.message_id !== messageId) return msg;
-              return { ...msg, is_pinned: isPinned };
-            }),
-            {},
-            true
-          );
-        }),
-      };
-    });
-  }, [setUserData]);
 
   const persistPinnedMessage = useCallback(async (message, isPinned) => {
     if (!selectedChat?.chat_id) return;
@@ -120,8 +89,6 @@ export function usePinnedMemories({
       );
     });
 
-    syncPinnedStateInUserHistory(selectedChat?.chat_id, messageId, nextPinnedState);
-
     try {
       await persistPinnedMessage(targetMessage, nextPinnedState);
       if (!silentSuccess) {
@@ -153,13 +120,11 @@ export function usePinnedMemories({
           true
         );
       });
-      syncPinnedStateInUserHistory(selectedChat?.chat_id, messageId, !nextPinnedState);
       toast.show(error.message || '更新固定记忆失败。', { type: 'error' });
     }
-  }, [messages, selectedChat?.chat_id, setMessages, setSelectedChat, syncPinnedStateInUserHistory, persistPinnedMessage, toast]);
+  }, [messages, selectedChat?.chat_id, setMessages, setSelectedChat, persistPinnedMessage, toast]);
 
   return {
     handleTogglePin,
-    syncPinnedStateInUserHistory,
   };
 }

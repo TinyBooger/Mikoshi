@@ -33,6 +33,7 @@ import {
 } from '../utils/chatConfigHelpers';
 import { getSelectedWallpaper } from '../utils/chatMessages';
 import { getChatDraftStorageKeys } from '../utils/chatDraftStorage';
+import { toChatHistoryMetadata } from '../utils/chatHistoryMetadata';
 import { useCreditAndChatLimits } from '../hooks/useCreditAndChatLimits';
 import { usePinnedMemories } from '../hooks/usePinnedMemories';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -278,13 +279,14 @@ export default function ChatPage() {
       setSelectedChat(nextChatEntry);
     }
 
+    const nextChatMetadata = toChatHistoryMetadata(nextChatEntry);
     setUserData((prev) => {
       if (!prev) return prev;
       const previousHistory = Array.isArray(prev.chat_history) ? prev.chat_history : [];
       const filtered = previousHistory.filter((entry) => entry?.chat_id !== nextChatEntry.chat_id);
       return {
         ...prev,
-        chat_history: [nextChatEntry, ...filtered].slice(0, 30),
+        chat_history: [nextChatMetadata, ...filtered],
       };
     });
 
@@ -300,10 +302,10 @@ export default function ChatPage() {
     const branchMetadata = metadata?.branch;
     if (!metadata?.chat_id || !branchMetadata?.branch_id) return;
 
-    const cachedEntry = selectedChat?.chat_id === metadata.chat_id
+    const activeChat = selectedChat?.chat_id === metadata.chat_id
       ? selectedChat
-      : userData?.chat_history?.find((entry) => entry?.chat_id === metadata.chat_id);
-    const existingEntry = normalizeChatEntry(cachedEntry || {
+      : null;
+    const existingEntry = normalizeChatEntry(activeChat || {
       ...metadata,
       branches: [{ ...branchMetadata, messages: [] }],
     });
@@ -365,15 +367,11 @@ export default function ChatPage() {
     pieStrokeOffset,
   } = useContextWindowUsage({ messages, advancedChatConfig, serverContextWindowUsage });
 
-  const {
-    handleTogglePin,
-    syncPinnedStateInUserHistory,
-  } = usePinnedMemories({
+  const { handleTogglePin } = usePinnedMemories({
     selectedChat,
     setSelectedChat,
     messages,
     setMessages,
-    setUserData,
     sessionToken,
   });
 

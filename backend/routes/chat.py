@@ -1719,6 +1719,18 @@ async def get_chat_history(
     return fetch_user_chat_history_paginated(db, current_user.id, page=page, page_size=page_size)
 
 
+@router.get("/api/chat/history/{chat_id}")
+async def get_chat_history_entry(
+    chat_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    entry = fetch_chat_history_entry(db, current_user.id, chat_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    return serialize_chat_history_entry(entry)
+
+
 # NOTE: the path is kept for backward compatibility with already-deployed
 # frontend bundles; the response now contains scene groups as well as character
 # groups (each item carries `group_type`).

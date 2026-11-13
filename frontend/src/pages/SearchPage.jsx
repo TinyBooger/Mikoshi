@@ -114,7 +114,10 @@ function SearchPage() {
 
   useEffect(() => {
     let timer;
-    if (userData && (!userData.chat_history || userData.chat_history.length === 0)) {
+    const hasVisibleChatHistory = userData?.chat_history?.some(
+      (chat) => !chat?.hidden_from_recent
+    );
+    if (userData && !hasVisibleChatHistory) {
       const onboardingCompleted = localStorage.getItem('onboarding_completed');
       if (!onboardingCompleted) {
         timer = setTimeout(() => setShowOnboarding(true), 500);

@@ -192,7 +192,10 @@ function BrowsePage() {
 
   useEffect(() => {
     let timer;
-    const isNewUser = userData && (!userData.chat_history || userData.chat_history.length === 0);
+    const hasVisibleChatHistory = userData?.chat_history?.some(
+      (chat) => !chat?.hidden_from_recent
+    );
+    const isNewUser = userData && !hasVisibleChatHistory;
     // Completion is tracked per user id, so a new account on a browser that has
     // used the app before still gets the tour.
     const onboardingCompleted = isOnboardingCompleted(userData?.id);

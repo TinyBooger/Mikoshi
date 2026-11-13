@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
+import { stripChatHistoryMessages } from '../utils/chatHistoryMetadata';
 
 
 export const AuthContext = createContext();
@@ -26,7 +27,15 @@ function readSessionHint() {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed?.user || parsed.token !== readStoredToken()) return null;
-    return parsed.user;
+    const user = stripChatHistoryMessages(parsed.user);
+    if (user !== parsed.user) {
+      try {
+        localStorage.setItem(SESSION_HINT_KEY, JSON.stringify({ token: parsed.token, user }));
+      } catch {
+        // The in-memory hint is already sanitized.
+      }
+    }
+    return user;
   } catch {
     return null;
   }
@@ -38,7 +47,10 @@ function writeSessionHint(token, user) {
       localStorage.removeItem(SESSION_HINT_KEY);
       return;
     }
-    localStorage.setItem(SESSION_HINT_KEY, JSON.stringify({ token, user }));
+    localStorage.setItem(
+      SESSION_HINT_KEY,
+      JSON.stringify({ token, user: stripChatHistoryMessages(user) })
+    );
   } catch {
     // Hint is an optimisation only; storage failures are not fatal.
   }
@@ -79,9 +91,16 @@ export function AuthProvider({ children, initialState = null }) {
   });
   // Seeded synchronously from the cached hint so returning users never see the
   // signed-out header first.
-  const [userData, setUserData] = useState(
-    () => initialState?.userData ?? (initialState ? null : readSessionHint())
+  const [userData, setUserDataState] = useState(
+    () => stripChatHistoryMessages(
+      initialState?.userData ?? (initialState ? null : readSessionHint())
+    )
   );
+  const setUserData = useCallback((update) => {
+    setUserDataState((previous) => stripChatHistoryMessages(
+      typeof update === 'function' ? update(previous) : update
+    ));
+  }, []);
   // `loading` now only covers explicit auth actions (login/register/verify).
   // Background validation never blocks the first paint.
   const [loading, setLoading] = useState(initialState?.loading ?? false);
