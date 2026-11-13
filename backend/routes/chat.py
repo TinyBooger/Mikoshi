@@ -44,11 +44,9 @@ from datetime import datetime, UTC
 from models import User, Character, Scene, ChatHistory
 from utils.message_limit import can_send_user_message, increment_user_message_count
 from utils.context_window import (
-    build_imported_context_summary,
-    compact_conversation_messages,
     DEFAULT_SOFT_TOKEN_LIMIT,
-    SUMMARY_PREFIX,
     estimate_request_input_tokens,
+    prepare_context_request,
     trim_oldest_context_for_fallback,
 )
 from utils.prompt_time import apply_time_marker, normalize_time_awareness, normalize_tz_offset_minutes
@@ -88,12 +86,6 @@ def _is_content_moderation_error(exc: Exception) -> bool:
         if _normalize_error_code(code) == _CONTENT_MODERATION_ERROR_CODE:
             return True
     return _CONTENT_MODERATION_ERROR_CODE in _normalize_error_code(exc)
-
-
-def _extract_context_summary_usage(context_info: dict | None) -> dict[str, int]:
-    if not isinstance(context_info, dict):
-        return normalize_usage(None)
-    return normalize_usage(context_info.get("summary_usage"))
 
 
 def _parse_sillytavern_jsonl(content: str) -> list[dict]:
@@ -254,8 +246,6 @@ def _persist_chat_history_turn(
     full_messages: list[dict],
     reply: str,
     response_usage: dict[str, int],
-    context_window_soft_limit: int,
-    context_summary: dict | None = None,
     requested_branch_id: str | None,
     fork_from_message_id: str | None,
     assistant_message_id: str,
@@ -303,10 +293,6 @@ def _persist_chat_history_turn(
                 existing_entry.scene_picture = scene.picture
         if persona_id is not None:
             existing_entry.persona_id = persona_id
-        if context_summary:
-            merged_summary = dict(existing_entry.context_summary or {})
-            merged_summary.update(context_summary)
-            existing_entry.context_summary = merged_summary or None
 
         prune_chat_history(db_session, current_user_id, auto_commit=False)
         db_session.flush()
@@ -369,20 +355,6 @@ def _persist_chat_history_turn(
     else:
         updated_messages = list(full_messages)
 
-    # Once rolling-summary state is persisted, drop any legacy inline summary
-    # from the saved transcript so the database summary remains the source of truth.
-    if context_summary:
-        updated_messages = [
-            message
-            for message in updated_messages
-            if not (
-                isinstance(message, dict)
-                and message.get("role") == "system"
-                and isinstance(message.get("content"), str)
-                and message["content"].lstrip().startswith(SUMMARY_PREFIX)
-            )
-        ]
-
     updated_messages.append(assistant_message)
 
     if fork_from_message_id:
@@ -424,9 +396,6 @@ def _persist_chat_history_turn(
             payload["scene_picture"] = scene.picture
     if persona_id:
         payload["persona_id"] = persona_id
-
-    if context_summary:
-        payload["context_summary"] = context_summary
 
     entry = upsert_chat_history_entry(
         db_session,
@@ -597,9 +566,9 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     # completion, so reserve the requested output room before comparing input
     # size against the window. Models with an explicit input cap (e.g.
     # qwen3.7-flash: 1M advertised context but a 32k real input limit) must
-    # never be budgeted from the raw context_length — the compaction trigger
-    # would sit beyond the provider's real cap and never fire. The math lives
-    # in model_configs.derive_per_turn_context_budget (unit-tested there).
+    # never be budgeted from the raw context_length — the soft limit would sit
+    # beyond the provider's real cap. The math lives in
+    # model_configs.derive_per_turn_context_budget (unit-tested there).
     context_window_soft_limit = DEFAULT_SOFT_TOKEN_LIMIT
     provider_input_cap: int | None = None
     model_config_entry = get_model(chat_config.get("model"))
@@ -697,9 +666,8 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             headers={"Retry-After": str(max(1, rate_limit_result["reset_seconds"]))},
         )
 
-    # Resolve the persisted entry and the active branch BEFORE compacting: the
-    # per-branch rolling-summary cursor stored on the entry decides which raw
-    # messages are already folded into the summary and must be dropped here.
+    # Resolve the persisted entry and the active branch before the request is
+    # built, because the stored branch decides which raw messages this turn sends.
     existing_entry = None
     if chat_id:
         existing_entry = fetch_chat_history_entry(db, current_user.id, chat_id)
@@ -716,12 +684,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         fork_from_message_id = fork_from_message_id.strip() or None
     else:
         fork_from_message_id = None
-
-    summary_state = (
-        existing_entry.context_summary
-        if existing_entry is not None and isinstance(existing_entry.context_summary, dict)
-        else None
-    )
 
     if history_mode == "stored_branch":
         if existing_entry is None:
@@ -798,12 +760,10 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 )
             source_branch_id = branch_id or existing_entry.active_branch_id or DEFAULT_BRANCH_ID
             branch_id = source_branch_id
-            branch_state = summary_state.get(source_branch_id) if summary_state else None
             source_branch, stored_messages = fetch_chat_history_branch_context(
                 db,
                 existing_entry,
                 source_branch_id,
-                branch_state,
             )
             if source_branch is None:
                 return JSONResponse(
@@ -869,65 +829,20 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     if not chat_id and character_id:
         chat_id = str(uuid.uuid4())
 
-    summary_branch_id = branch_id or DEFAULT_BRANCH_ID
-
-    prepared_messages, prepared_context_info, state_update = await compact_conversation_messages(
+    prepared_messages, context_window_info = prepare_context_request(
         messages,
         soft_token_limit=context_window_soft_limit,
-        summary_state=summary_state,
-        branch_id=summary_branch_id,
     )
-    logger.info(
-        "Chat context summary result | user=%s | chat=%s | model=%s | branch=%s | trigger_tokens=%d | trigger_threshold=%d | fold_candidate_tokens=%d | skipped_reason=%s | summary_calls=%d | summary_updated=%s",
-        current_user.id,
-        chat_id or "new",
-        chat_config["model"],
-        summary_branch_id,
-        int(prepared_context_info.get("trigger_input_tokens") or 0),
-        int(prepared_context_info.get("compaction_trigger_tokens") or 0),
-        int(prepared_context_info.get("fold_candidate_tokens") or 0),
-        prepared_context_info.get("fold_skipped_reason") or "none",
-        int(prepared_context_info.get("summary_calls") or 0),
-        bool(state_update),
-    )
-    context_window_info = prepared_context_info
-    if context_messages != messages:
-        _, context_window_info, _ = await compact_conversation_messages(
-            context_messages,
-            soft_token_limit=context_window_soft_limit,
-            summary_state=summary_state,
-            branch_id=summary_branch_id,
-            measure_only=True,
-        )
-
     context_turn_metadata: dict[str, object] = {}
-    context_turn_metadata["summary_updated"] = bool(state_update)
-
-    # Only this branch's update travels to the persist step; upsert merges it
-    # branch-wise into whatever state the freshest entry already holds.
-    merged_context_summary = None
-    if state_update:
-        merged_context_summary = {summary_branch_id: state_update}
-
-    summary_usage = normalize_usage(None)
-    summary_usage_sources = [prepared_context_info]
-    if context_window_info is not prepared_context_info:
-        summary_usage_sources.append(context_window_info)
-    for context_info_source in summary_usage_sources:
-        source_usage = _extract_context_summary_usage(context_info_source)
-        summary_usage["prompt_tokens"] += source_usage["prompt_tokens"]
-        summary_usage["completion_tokens"] += source_usage["completion_tokens"]
-        summary_usage["total_tokens"] += source_usage["total_tokens"]
 
     if not prepared_messages:
         return JSONResponse(content={"error": "Invalid messages after normalization"}, status_code=400)
 
-    # Prompt-only time marker on the user's own message. Applied here — after
-    # compaction and to the request copy only — so the
-    # clock is current for this turn and can never reach the persisted
-    # ``full_messages`` or the client UI.  ``time_awareness`` is the per-chat
-    # switch: Pro users can turn it off, and it is forced to the default for
-    # everyone else (see the gate above).
+    # Prompt-only time marker on the user's own message. Applied here — to the
+    # request copy only — so the clock is current for this turn and can never
+    # reach the persisted ``full_messages`` or the client UI.  ``time_awareness``
+    # is the per-chat switch: Pro users can turn it off, and it is forced to the
+    # default for everyone else (see the gate above).
     apply_time_marker(
         prepared_messages,
         now=datetime.now(UTC),
@@ -936,27 +851,26 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         enabled=chat_config["time_awareness"],
     )
 
-    # Check the final request shape, including the character core, summary,
-    # and prompt-only time marker. If it is too large, trim only unsummarized
-    # conversation messages; system messages and the persisted transcript stay
-    # untouched.
+    # Check the final request shape, including the character core and the
+    # prompt-only time marker. If it is too large, trim only older conversation
+    # messages; system messages and the persisted transcript stay untouched.
     if provider_input_cap is not None and model_config_entry is not None:
         guard_input = estimate_request_input_tokens(prepared_messages)
         if guard_input > provider_input_cap:
             fallback_messages, fallback_info = trim_oldest_context_for_fallback(
                 prepared_messages,
                 target_token_limit=provider_input_cap,
-                context_info=prepared_context_info,
+                context_info=context_window_info,
             )
             if fallback_info.get("context_truncated"):
                 prepared_messages = fallback_messages
-                prepared_context_info = fallback_info
+                context_window_info = fallback_info
                 context_turn_metadata["context_truncated"] = True
                 context_turn_metadata["omitted_message_count"] = int(
                     fallback_info.get("omitted_message_count") or 0
                 )
                 logger.warning(
-                    "Older unsummarized context omitted from model request | user=%s | chat=%s | model=%s | omitted_messages=%d | guard_input=%d | input_cap=%d",
+                    "Older context omitted from model request | user=%s | chat=%s | model=%s | omitted_messages=%d | guard_input=%d | input_cap=%d",
                     current_user.id,
                     chat_id or "none",
                     chat_config["model"],
@@ -1011,38 +925,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             )
         else:
             context_turn_metadata["max_tokens_clamped"] = False
-
-    if summary_usage["total_tokens"] > 0:
-        summary_credit_amount = usage_to_credits(summary_usage, "deepseek-v4-flash")
-        logger.info(
-            "📝 Summary credit | user=%s | chat=%s | prompt_tokens=%d | completion_tokens=%d | total_tokens=%d | credit=%.4f",
-            current_user.id,
-            chat_id or "none",
-            summary_usage["prompt_tokens"],
-            summary_usage["completion_tokens"],
-            summary_usage["total_tokens"],
-            summary_credit_amount,
-        )
-        summary_usage_result = apply_credit_usage_with_wallet(
-            db,
-            user=current_user,
-            usage=summary_usage,
-            source="chat_context_summary",
-            metadata={"chat_id": chat_id},
-            credit_amount=summary_credit_amount,
-        )
-        if not summary_usage_result.get("success"):
-            return JSONResponse(
-                content=build_credit_cap_reached_payload(summary_usage_result.get("limit") or credit_limit_info),
-                status_code=429,
-            )
-        db.commit()
-        credit_limit_info = get_credit_cap_info(current_user, db)
-        logger.info(
-            "✅ Summary credit applied | user=%s | consumed_from_wallet=%s",
-            current_user.id,
-            summary_usage_result.get("consumed_from_wallet", False),
-        )
 
     character = None
     effective_character_id = character_id or (existing_entry.character_id if existing_entry else None)
@@ -1147,8 +1029,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         full_messages=full_messages,
                         reply=accumulated_reply,
                         response_usage=response_usage,
-                        context_window_soft_limit=context_window_soft_limit,
-                        context_summary=merged_context_summary,
                         requested_branch_id=branch_id,
                         fork_from_message_id=fork_from_message_id,
                         assistant_message_id=assistant_message_id,
@@ -1158,11 +1038,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             if history_mode == "stored_branch" and not fork_from_message_id
                             else None
                         ),
-                    )
-                    active_summary = (
-                        entry.context_summary.get(saved_branch["branch_id"])
-                        if isinstance(entry.context_summary, dict)
-                        else None
                     )
                     saved_chat_metadata = {
                         "chat_id": entry.chat_id,
@@ -1177,14 +1052,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                         "active_branch_id": entry.active_branch_id,
                         "branch": saved_branch,
                         "turn_saved": turn_saved,
-                        "active_context_summary": (
-                            {
-                                "text": active_summary.get("text"),
-                                "through_message_id": active_summary.get("through_message_id"),
-                            }
-                            if isinstance(active_summary, dict)
-                            else None
-                        ),
                         "last_updated": entry.last_updated.isoformat() if entry.last_updated else None,
                         "created_at": entry.created_at.isoformat() if entry.created_at else None,
                     }
@@ -1225,65 +1092,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             # the pre-call estimate in context_window_info is based only on the
             # input messages and is especially inaccurate for the
             # improvised-greeting turn where there are no prior messages to
-            # derive real usage from.
+            # derive real usage from. When request-only trimming occurred,
+            # context_window_info already describes the shape actually sent.
             actual_prompt_tokens = response_usage.get("prompt_tokens", 0)
             actual_total_tokens = response_usage.get("total_tokens", 0)
-            # Estimator-error tracking: log what the provider actually billed
-            # vs what the trigger/guard estimated, per request, so the cushion
-            # constants (ESTIMATOR_FULL_REQUEST_CUSHION / DELTA_CUSHION in
-            # utils/context_window.py) can eventually be replaced with numbers
-            # derived from real error on CJK + mixed-language roleplay text.
-            try:
-                measured_input = int(prepared_context_info.get("measured_input_tokens") or 0)
-                sent_estimate = int(prepared_context_info.get("sent_estimate_tokens") or 0)
-                new_estimate = int(prepared_context_info.get("estimated_new_tokens") or 0)
-                folded_this_turn = isinstance(state_update, dict) and bool(
-                    state_update.get("through_message_id")
-                )
-                if actual_prompt_tokens > 0:
-                    if folded_this_turn:
-                        ratio = (actual_prompt_tokens / sent_estimate) if sent_estimate > 0 else 0.0
-                        logger.info(
-                            "Context estimator | mode=folded | user=%s | model=%s | actual=%d | estimated=%d | ratio=%.3f",
-                            current_user.id,
-                            chat_config["model"],
-                            actual_prompt_tokens,
-                            sent_estimate,
-                            ratio,
-                        )
-                    elif measured_input > 0:
-                        actual_delta = max(0, actual_prompt_tokens - measured_input)
-                        ratio = (actual_delta / new_estimate) if new_estimate > 0 else 0.0
-                        logger.info(
-                            "Context estimator | mode=measured_delta | user=%s | model=%s | actual_delta=%d | estimated_delta=%d | ratio=%.3f | measured_input=%d",
-                            current_user.id,
-                            chat_config["model"],
-                            actual_delta,
-                            new_estimate,
-                            ratio,
-                            measured_input,
-                        )
-                    else:
-                        ratio = (actual_prompt_tokens / new_estimate) if new_estimate > 0 else 0.0
-                        logger.info(
-                            "Context estimator | mode=naive | user=%s | model=%s | actual=%d | estimated=%d | ratio=%.3f",
-                            current_user.id,
-                            chat_config["model"],
-                            actual_prompt_tokens,
-                            new_estimate,
-                            ratio,
-                        )
-            except Exception:
-                logger.exception("Context estimator logging failed")
-
-            # Overlay the real usage reported by the LLM response when available.
-            # When request-only trimming occurred, display the shape actually sent.
-            context_display_info = (
-                prepared_context_info
-                if context_turn_metadata.get("context_truncated")
-                else context_window_info
-            )
-            effective_context_window_info = {**context_display_info}
+            effective_context_window_info = {**context_window_info}
             if actual_prompt_tokens > 0:
                 effective_context_window_info["input_tokens"] = actual_prompt_tokens
                 if actual_total_tokens > 0:
@@ -1341,15 +1154,12 @@ def import_chat(
     request: Request,
     file: UploadFile = File(...),
     character_id: int = Form(...),
-    model: str = Form("deepseek-v4-flash"),
-    max_tokens: int = Form(4000),
-    system_prompt: str = Form(""),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Declared `def` on purpose: parsing, token estimation and SQLAlchemy are all
-    # blocking work, so FastAPI must run this in the threadpool instead of the
-    # event loop, where a multi-second import would stall every other request.
+    # Declared `def` on purpose: parsing and SQLAlchemy are both blocking work,
+    # so FastAPI must run this in the threadpool instead of the event loop,
+    # where a multi-second import would stall every other request.
     filename = file.filename or ""
     if not filename.lower().endswith(".jsonl"):
         raise HTTPException(status_code=400, detail="Only JSONL chat files can be imported.")
@@ -1399,27 +1209,6 @@ def import_chat(
         raise HTTPException(status_code=404, detail="Character not found.")
     mark("character")
 
-    import_chat_config = parse_chat_config({"model": model, "max_tokens": max_tokens})
-    import_model_config = get_model(import_chat_config["model"])
-    import_soft_token_limit = DEFAULT_SOFT_TOKEN_LIMIT
-    if import_model_config is not None:
-        import_context_budget = derive_per_turn_context_budget(
-            import_model_config,
-            requested_max_tokens=import_chat_config["max_tokens"],
-        )
-        import_soft_token_limit = int(import_context_budget["soft_token_limit"])
-    prompt_for_budget = system_prompt.strip() or "\n".join(
-        value
-        for value in (character.name, character.description, character.example_messages)
-        if value
-    )
-    imported_context_summary = build_imported_context_summary(
-        messages,
-        soft_token_limit=import_soft_token_limit,
-        system_prompt=prompt_for_budget,
-    )
-    mark("summary")
-
     now = datetime.now(UTC)
     chat_id = str(uuid.uuid4())
     payload = {
@@ -1433,10 +1222,6 @@ def import_chat(
         "created_at": now,
         "last_updated": now,
     }
-    if imported_context_summary:
-        payload["context_summary"] = {
-            DEFAULT_BRANCH_ID: imported_context_summary,
-        }
 
     entry = upsert_chat_history_entry(
         db,

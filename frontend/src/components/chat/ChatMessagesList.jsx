@@ -11,8 +11,8 @@ const LOAD_MESSAGE_BATCH = 80;
 const SCROLL_EDGE_THRESHOLD = 120;
 
 /**
- * Scrollable messages area of the chat: context-window-compaction notice,
- * the welcome card for new chats, and the list of rendered message bubbles.
+ * Scrollable messages area of the chat: the welcome card for new chats and the
+ * list of rendered message bubbles.
  *
  * Extracted verbatim from ChatPage (JSX + the small render-scoped IIFE that
  * computed `nonSystem`/`showWelcome`). `showWelcome` is now computed by the
@@ -23,7 +23,6 @@ export default function ChatMessagesList({
   selectedWallpaper,
   messages,
   showWelcome,
-  serverContextWindowUsage,
   selectedCharacter,
   selectedScene,
   selectedPersona,
@@ -213,26 +212,6 @@ export default function ChatMessagesList({
       onScroll={handleScroll}
     >
       <div style={chatContentRailStyle}>
-        {Number(serverContextWindowUsage?.summary_messages_count || 0) > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.9rem' }}>
-            <div
-              style={{
-                maxWidth: 760,
-                width: '100%',
-                textAlign: 'center',
-                fontSize: '0.78rem',
-                color: '#334155',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.75rem',
-                padding: '0.45rem 0.7rem',
-              }}
-            >
-              为控制上下文窗口已压缩。
-            </div>
-          </div>
-        )}
-
         {showWelcome && (
           <ChatWelcomeCard
             selectedCharacter={selectedCharacter}

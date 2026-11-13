@@ -307,7 +307,6 @@ export function useChatSend({
                   created_at: assistantCreatedAt,
                   usage: data.assistant_usage,
                 },
-                contextSummaryUpdated: !!data.context_window?.summary_updated,
               });
             }
           }

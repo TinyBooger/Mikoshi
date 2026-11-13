@@ -71,9 +71,6 @@ export default function CharacterSidebar({
   const [importingChat, setImportingChat] = React.useState(false);
   const importChatInputRef = React.useRef(null);
   const wallpaperUploadInputRef = React.useRef(null);
-  const activeContextSummary = typeof selectedChat?.active_context_summary?.text === 'string'
-    ? selectedChat.active_context_summary.text.trim()
-    : '';
   const [lastSavedConfig, setLastSavedConfig] = React.useState(() =>
     JSON.parse(JSON.stringify(advancedChatConfig)),
   );
@@ -940,28 +937,6 @@ export default function CharacterSidebar({
           </div>
           {showMemoryManagement && (
             <div style={{ maxHeight: 300, overflowY: 'auto', borderRadius: 12, background: '#f8f7fc', padding: 8, border: '1px solid #ece9f4' }}>
-              <div
-                style={{
-                  background: '#fff',
-                  borderRadius: 10,
-                  border: '1px solid #ece9f4',
-                  padding: '0.55rem 0.65rem',
-                  marginBottom: 8,
-                }}
-              >
-                <div style={{ fontSize: '0.76rem', color: '#475569', fontWeight: 700, marginBottom: 4 }}>
-                  自动总结
-                </div>
-                {activeContextSummary ? (
-                  <div style={{ fontSize: '0.8rem', color: '#1f2937', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
-                    {activeContextSummary}
-                  </div>
-                ) : (
-                  <div style={{ fontSize: '0.78rem', color: '#6b7280', lineHeight: 1.4 }}>
-                    当前对话还没有自动总结。长对话达到整理条件后会生成总结。
-                  </div>
-                )}
-              </div>
               {!Array.isArray(pinnedMemories) || pinnedMemories.length === 0 ? (
                 <div style={{ fontSize: '0.82rem', color: '#6b7280', padding: '0.35rem 0.5rem', lineHeight: 1.4 }}>
                   还没有固定记忆。悬停消息，点击气泡下方的图钉按钮即可固定。

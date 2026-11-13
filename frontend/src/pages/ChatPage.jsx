@@ -22,7 +22,6 @@ import {
 } from '../utils/chatHelpers';
 import { MAX_SHARE_MESSAGES } from '../utils/shareData';
 import {
-  SUMMARY_PREFIX,
   DEFAULT_ADVANCED_CHAT_CONFIG,
 } from '../utils/chatPageConstants';
 import {
@@ -263,11 +262,8 @@ export default function ChatPage() {
     if (!normalizedChat) return [];
     const sys = buildSystemPromptMessage(character, scene, persona);
     const branchMessages = Array.isArray(normalizedChat.messages) ? normalizedChat.messages : [];
-    const summarySystemMessages = branchMessages.filter(
-      (m) => m?.role === 'system' && typeof m?.content === 'string' && m.content.trim().startsWith(SUMMARY_PREFIX)
-    );
     const nonSystemMessages = branchMessages.filter((m) => m?.role !== 'system');
-    return ensureMessageIds([sys, ...summarySystemMessages, ...nonSystemMessages]);
+    return ensureMessageIds([sys, ...nonSystemMessages]);
   }, [buildSystemPromptMessage]);
 
   const upsertChatHistoryEntryLocally = useCallback((rawChatEntry, { selectChat = true } = {}) => {
@@ -296,7 +292,6 @@ export default function ChatPage() {
     metadata,
     messages: turnMessages,
     assistantMessage,
-    contextSummaryUpdated,
   }) => {
     const branchMetadata = metadata?.branch;
     if (!metadata?.chat_id || !branchMetadata?.branch_id) return;
@@ -308,16 +303,8 @@ export default function ChatPage() {
       ...metadata,
       branches: [{ ...branchMetadata, messages: [] }],
     });
-    const summaryPrefix = SUMMARY_PREFIX;
     const savedMessages = (Array.isArray(turnMessages) ? turnMessages : []).filter((message) => (
-      message?.role === 'user'
-      || message?.role === 'assistant'
-      || (
-        !contextSummaryUpdated
-        && message?.role === 'system'
-        && typeof message?.content === 'string'
-        && message.content.trim().startsWith(summaryPrefix)
-      )
+      message?.role === 'user' || message?.role === 'assistant'
     ));
     const branchMessages = [...savedMessages, assistantMessage];
     let branchUpdated = false;
@@ -335,7 +322,6 @@ export default function ChatPage() {
       ...metadata,
       branches,
       active_branch_id: metadata.active_branch_id,
-      active_context_summary: metadata.active_context_summary,
     });
   };
 
@@ -597,12 +583,6 @@ export default function ChatPage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('character_id', String(selectedCharacter.id));
-      formData.append('model', advancedChatConfig?.model || 'deepseek-v4-flash');
-      formData.append('max_tokens', String(advancedChatConfig?.max_tokens || 4000));
-      formData.append(
-        'system_prompt',
-        buildSystemPromptMessage(selectedCharacter, null, null).content
-      );
 
       const response = await fetch(`${window.API_BASE_URL}/api/chat/import`, {
         method: 'POST',
@@ -624,14 +604,7 @@ export default function ChatPage() {
       pendingChatIdRef.current = null;
       isNewChat.current = false;
       setShowChatHistory(true);
-      if (importedChat.active_context_summary) {
-        toast.show(
-          '对话导入成功。由于对话较长，早期的对话可能未被记住，可手动使用固定消息功能固定重要内容。',
-          { type: 'warning', duration: 20000 }
-        );
-      } else {
-        toast.show('对话导入成功。', { type: 'success' });
-      }
+      toast.show('对话导入成功。', { type: 'success' });
     } catch (error) {
       console.error('Error importing chat:', error);
       toast.show(error.message || '导入对话失败，请重试。', { type: 'error' });
@@ -763,7 +736,6 @@ export default function ChatPage() {
           selectedWallpaper={selectedWallpaper}
           messages={messages}
           showWelcome={showWelcome}
-          serverContextWindowUsage={serverContextWindowUsage}
           selectedCharacter={selectedCharacter}
           selectedScene={selectedScene}
           selectedPersona={selectedPersona}

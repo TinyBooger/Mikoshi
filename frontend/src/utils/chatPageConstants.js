@@ -95,7 +95,6 @@ export const DEFAULT_ADVANCED_CHAT_CONFIG = {
 
 // Sentinel used to indicate a character should have an improvising greeting
 export const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
-export const SUMMARY_PREFIX = 'Summary of previous conversation:';
 
 export const CHAT_INPUT_MAX_HEIGHT = 200;
 export const CHAT_INPUT_BASE_HEIGHT = 44;

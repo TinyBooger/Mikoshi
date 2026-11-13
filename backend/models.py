@@ -162,10 +162,6 @@ class ChatHistory(Base):
     title = Column(String(255), nullable=False)
     active_branch_id = Column(String, nullable=True)
     messages = Column(JSONB, default=[])
-    # Rolling-summary state per branch:
-    # {branch_id: {"text": str, "through_message_id": str}} — see
-    # backend/utils/context_window.py compact_conversation_messages().
-    context_summary = Column(JSONB, nullable=True, default=None)
     is_pinned = Column(Boolean, default=False, nullable=False)
     hidden_from_recent = Column(Boolean, default=False, nullable=False)
     last_updated = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

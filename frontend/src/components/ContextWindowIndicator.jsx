@@ -123,13 +123,8 @@ export default function ContextWindowIndicator({
             基于上次请求的上下文使用情况
           </div>
           <div style={{ fontSize: '0.7rem', opacity: 0.9, marginTop: 4 }}>
-            接近模型输入上限时，系统会自动整理并压缩旧消息。
+            接近模型输入上限时，本次请求会自动省略较早的消息。
           </div>
-          {Number(serverContextWindowUsage?.summary_messages_count || 0) > 0 && (
-            <div style={{ fontSize: '0.7rem', color: '#86efac', marginTop: 4 }}>
-              完整聊天记录仍保留；请求上下文优先使用较新的消息。
-            </div>
-          )}
           {Number(serverContextWindowUsage?.max_tokens_clamped || 0) > 0 && (
             <div style={{ fontSize: '0.7rem', color: '#fbbf24', marginTop: 4 }}>
               上下文接近上限，本次回复的最大长度已自动调整。

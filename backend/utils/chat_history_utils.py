@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-from sqlalchemy import and_, func, insert, or_
+from sqlalchemy import and_, func, insert
 from sqlalchemy.orm import Session, load_only, object_session
 
 from models import ChatHistory, Character, ChatHistoryBranch, ChatHistoryMessage
@@ -403,9 +403,8 @@ def fetch_chat_history_branch_context(
     db: Session,
     entry: ChatHistory,
     branch_id: str,
-    summary_state: Any = None,
 ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
-    """Load one branch's unsummarized context without materializing its history."""
+    """Load one branch's context without materializing its history."""
     _ensure_chat_history_store(db, entry)
     branch = (
         db.query(ChatHistoryBranch)
@@ -422,36 +421,6 @@ def fetch_chat_history_branch_context(
         ChatHistoryMessage.chat_id == entry.chat_id,
         ChatHistoryMessage.branch_id == branch_id,
     )
-    cursor_id = (
-        summary_state.get("through_message_id")
-        if isinstance(summary_state, dict)
-        else None
-    )
-    has_summary_text = (
-        isinstance(summary_state, dict)
-        and isinstance(summary_state.get("text"), str)
-        and bool(summary_state["text"].strip())
-    )
-    cursor = None
-    if has_summary_text and isinstance(cursor_id, str) and cursor_id:
-        cursor = (
-            db.query(ChatHistoryMessage.created_seq)
-            .filter(
-                ChatHistoryMessage.chat_id == entry.chat_id,
-                ChatHistoryMessage.branch_id == branch_id,
-                ChatHistoryMessage.message_id == cursor_id,
-            )
-            .first()
-        )
-
-    if cursor:
-        message_query = message_query.filter(
-            or_(
-                ChatHistoryMessage.is_pinned.is_(True),
-                ChatHistoryMessage.created_seq >= cursor[0],
-            )
-        )
-
     stored_messages = (
         message_query
         .order_by(ChatHistoryMessage.created_seq.asc(), ChatHistoryMessage.id.asc())
@@ -695,13 +664,12 @@ def _sync_chat_history_store(
             incoming_role = str(incoming.get("role") or "").strip().lower()
             stored_role = str(stored.role or "").strip().lower()
 
-            # System messages (the instruction prompt and context-compression
-            # summaries) are ephemeral and legitimately mutable across turns —
-            # the frontend rebuilds the instruction prompt from current character
-            # data, and summaries evolve with re-summarization. Their divergence
-            # is NOT evidence of a stale/concurrent turn, so they must not break
-            # the append-only prefix check. The instruction prompt stored at
-            # idx 0 is never read back by the client anyway.
+            # System messages (the instruction prompt) are ephemeral and
+            # legitimately mutable across turns — the frontend rebuilds the
+            # instruction prompt from current character data. Their divergence is
+            # NOT evidence of a stale/concurrent turn, so they must not break the
+            # append-only prefix check. The instruction prompt stored at idx 0 is
+            # never read back by the client anyway.
             if stored_role == "system" or incoming_role == "system":
                 continue
 
@@ -804,14 +772,6 @@ def serialize_chat_history_entry(entry: ChatHistory, *, message_limit: int | Non
                 branch["message_count"] = len(branch_messages)
                 branch["messages"] = branch_messages[-message_limit:]
     active_branch = get_chat_history_branch(payload)
-    context_summary_by_branch = getattr(entry, "context_summary", None) or {}
-    active_context_summary = (
-        context_summary_by_branch.get(active_branch.get("branch_id"))
-        if isinstance(context_summary_by_branch, dict)
-        else None
-    )
-    if not isinstance(active_context_summary, dict):
-        active_context_summary = None
     return {
         "chat_id": entry.chat_id,
         "character_id": entry.character_id,
@@ -825,16 +785,6 @@ def serialize_chat_history_entry(entry: ChatHistory, *, message_limit: int | Non
         "messages": active_branch.get("messages") or [],
         "branches": payload["branches"],
         "active_branch_id": payload["active_branch_id"],
-        "active_context_summary": (
-            {
-                "text": active_context_summary.get("text"),
-                "through_message_id": active_context_summary.get("through_message_id"),
-            }
-            if active_context_summary
-            and isinstance(active_context_summary.get("text"), str)
-            and active_context_summary.get("text").strip()
-            else None
-        ),
         "message_store_version": payload["version"],
         # Same threshold the prompt's time marker uses, so the conversation breaks
         # the client draws match the gaps the model is told about; sent to the
@@ -1347,13 +1297,6 @@ def upsert_chat_history_entry(
         "active_branch_id": payload.get("active_branch_id", normalized_payload.get("active_branch_id")),
         "last_updated": payload.get("last_updated", now),
     }
-
-    # Rolling-summary state (context compression cursor), merged branch-wise so
-    # concurrent turns on other branches never wipe each other's state.
-    if "context_summary" in payload and payload.get("context_summary") is not None:
-        existing_summary = dict(getattr(entry, "context_summary", None) or {})
-        existing_summary.update(payload.get("context_summary") or {})
-        fields["context_summary"] = existing_summary or None
 
     created_at = payload.get("created_at") or now
 
