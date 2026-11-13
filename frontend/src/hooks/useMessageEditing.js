@@ -7,12 +7,10 @@ import { copyTextToClipboard } from '../utils/clipboard';
  * switching branches, and copying content.
  *
  * @param {object}   params
- * @param {array}    params.messages                    - current message list
- * @param {function} params.setMessages                 - setter for messages
+ * @param {object}   params.chatState                   - external chat runtime store
  * @param {object}   params.selectedChat                - current chat entry
  * @param {function} params.setSelectedChat             - setter for selectedChat
  * @param {object}   params.selectedCharacter           - active character
- * @param {boolean}  params.sending                     - in-flight turn guard
  * @param {string}   params.sessionToken                - auth session token
  * @param {object}   params.toast                       - toast provider
  * @param {string}   params.editingMessageId            - id of the message being edited
@@ -27,12 +25,10 @@ import { copyTextToClipboard } from '../utils/clipboard';
  * @returns {{ handleStartEditingMessage, handleCancelEditingMessage, handleResendMessage, handleSaveEditedMessage, handleSelectBranch, handleCopyMessage }}
  */
 export function useMessageEditing({
-  messages,
-  setMessages,
+  chatState,
   selectedChat,
   setSelectedChat,
   selectedCharacter,
-  sending,
   sessionToken,
   toast,
   editingMessageId,
@@ -46,10 +42,10 @@ export function useMessageEditing({
   upsertChatHistoryEntryLocally,
 }) {
   const handleStartEditingMessage = useCallback((message) => {
-    if (!message?.message_id || message.role !== 'user' || sending) return;
+    if (!message?.message_id || message.role !== 'user' || chatState.get('sendStatus').sending) return;
     setEditingMessageId(message.message_id);
     setEditingMessageText(message.content || '');
-  }, [sending, setEditingMessageId, setEditingMessageText]);
+  }, [chatState, setEditingMessageId, setEditingMessageText]);
 
   const handleCancelEditingMessage = useCallback(() => {
     setEditingMessageId(null);
@@ -57,7 +53,7 @@ export function useMessageEditing({
   }, [setEditingMessageId, setEditingMessageText]);
 
   const buildForkedMessagesFromUserMessage = useCallback((messageId, replacementContent = null) => {
-    const originalMessages = ensureMessageIds(messages);
+    const originalMessages = ensureMessageIds(chatState.get('messages'));
     const targetIndex = originalMessages.findIndex((message) => message?.message_id === messageId);
     if (targetIndex < 0) return null;
 
@@ -79,10 +75,10 @@ export function useMessageEditing({
     );
 
     return { originalMessages, targetMessage, forkedMessages };
-  }, [messages]);
+  }, [chatState]);
 
   const handleResendMessage = useCallback(async (message) => {
-    if (!message?.message_id || message.role !== 'user' || !selectedCharacter || !!editingMessageId || sending) return;
+    if (!message?.message_id || message.role !== 'user' || !selectedCharacter || !!editingMessageId || chatState.get('sendStatus').sending) return;
 
     const forkData = buildForkedMessagesFromUserMessage(message.message_id);
     if (!forkData) return;
@@ -94,10 +90,10 @@ export function useMessageEditing({
       restoreMessagesOnError: forkData.originalMessages,
       errorMessage: '从这条消息重新发送失败，请重试。',
     });
-  }, [selectedCharacter, editingMessageId, sending, buildForkedMessagesFromUserMessage, sendChatTurn, selectedChat?.active_branch_id]);
+  }, [chatState, selectedCharacter, editingMessageId, buildForkedMessagesFromUserMessage, sendChatTurn, selectedChat?.active_branch_id]);
 
   const handleSaveEditedMessage = useCallback(async () => {
-    if (!editingMessageId || !selectedCharacter || sending) return;
+    if (!editingMessageId || !selectedCharacter || chatState.get('sendStatus').sending) return;
 
     const trimmedContent = editingMessageText.trim();
     if (!trimmedContent) {
@@ -116,7 +112,7 @@ export function useMessageEditing({
       restoreMessagesOnError: forkData.originalMessages,
       errorMessage: '从该消息创建分支失败。',
     });
-  }, [editingMessageId, selectedCharacter, sending, editingMessageText, buildForkedMessagesFromUserMessage, handleCancelEditingMessage, sendChatTurn, selectedChat?.active_branch_id]);
+  }, [chatState, editingMessageId, selectedCharacter, editingMessageText, buildForkedMessagesFromUserMessage, handleCancelEditingMessage, sendChatTurn, selectedChat?.active_branch_id]);
 
   const handleSelectBranch = useCallback(async (branchId) => {
     if (!selectedChat?.chat_id || !branchId || branchSelectionPending) return;
@@ -133,7 +129,7 @@ export function useMessageEditing({
 
     setBranchSelectionPending(true);
     setSelectedChat(nextChatEntry);
-    setMessages(buildDisplayMessagesForChat(nextChatEntry));
+    chatState.set('messages', buildDisplayMessagesForChat(nextChatEntry));
     setEditingMessageId(null);
     setEditingMessageText('');
 
@@ -157,16 +153,16 @@ export function useMessageEditing({
       const payload = await response.json();
       if (payload?.chat) {
         const updatedChat = upsertChatHistoryEntryLocally(payload.chat);
-        setMessages(buildDisplayMessagesForChat(updatedChat));
+        chatState.set('messages', buildDisplayMessagesForChat(updatedChat));
       }
     } catch (error) {
       setSelectedChat(normalizedChat);
-      setMessages(buildDisplayMessagesForChat(normalizedChat));
+      chatState.set('messages', buildDisplayMessagesForChat(normalizedChat));
       toast.show(error.message || 'Failed to switch branch.', { type: 'error' });
     } finally {
       setBranchSelectionPending(false);
     }
-  }, [selectedChat, branchSelectionPending, setBranchSelectionPending, setSelectedChat, setMessages, buildDisplayMessagesForChat, setEditingMessageId, setEditingMessageText, sessionToken, upsertChatHistoryEntryLocally, toast]);
+  }, [selectedChat, branchSelectionPending, setBranchSelectionPending, setSelectedChat, chatState, buildDisplayMessagesForChat, setEditingMessageId, setEditingMessageText, sessionToken, upsertChatHistoryEntryLocally, toast]);
 
   const handleCopyMessage = useCallback(async (message) => {
     const content = message?.content;

@@ -41,8 +41,8 @@ import { useChatSend } from '../hooks/useChatSend';
 import { useMessageEditing } from '../hooks/useMessageEditing';
 import { useChatInitialization } from '../hooks/useChatInitialization';
 import { useChatHistoryActions } from '../hooks/useChatHistoryActions';
-import { useContextWindowUsage } from '../hooks/useContextWindowUsage';
 import { useLikeEntity } from '../hooks/useLikeEntity';
+import { createChatRuntimeStore } from '../hooks/useChatRuntimeState';
 import { NAV_WIDTH, SIDEBAR_WIDTH, CHAT_CONTENT_PADDING } from '../constants/layout';
 
 export default function ChatPage() {
@@ -52,7 +52,20 @@ export default function ChatPage() {
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const [likes, setLikes] = useState(0);
-  const [messages, setMessages] = useState([]);
+  const chatStateRef = useRef(null);
+  if (!chatStateRef.current) {
+    chatStateRef.current = createChatRuntimeStore();
+  }
+  const chatState = chatStateRef.current;
+  const messages = chatState.get('messages');
+  const setMessages = useCallback(
+    (update) => chatState.setMessages(update),
+    [chatState],
+  );
+  const setServerContextWindowUsage = useCallback(
+    (update) => chatState.set('serverContextWindowUsage', update),
+    [chatState],
+  );
   const inputRef = useRef('');
   const inputSetterRef = useRef(null);
   const setInput = useCallback((nextInput) => {
@@ -62,12 +75,8 @@ export default function ChatPage() {
   }, []);
   const [wallpaper, setWallpaper] = useState({ id: 'none', url: null });
   const [characterBackground, setCharacterBackground] = useState(null);
-  const [sending, setSending] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [abortController, setAbortController] = useState(null);
-  const [chatLimits, setChatLimits] = useState(null);
+  const abortControllerRef = useRef(null);
   const [creditLimits, setCreditLimits] = useState(null);
-  const [serverContextWindowUsage, setServerContextWindowUsage] = useState(null);
   const { hasLiked, setHasLiked, likeEntity, unlikeEntity } = useLikeEntity({ sessionToken, setLikes });
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [showShareScreenshot, setShowShareScreenshot] = useState(false);
@@ -151,11 +160,9 @@ export default function ChatPage() {
 
   useEffect(() => {
     return () => {
-      if (abortController) {
-        abortController.abort();
-      }
+      abortControllerRef.current?.abort();
     };
-  }, [abortController]);
+  }, []);
 
   const [characterId, setCharacterId] = useState(searchParams.get('character'));
   const [sceneId, setSceneId] = useState(searchParams.get('scene'));
@@ -198,16 +205,6 @@ export default function ChatPage() {
     userData?.credit_reset_at,
   ]);
 
-  // Scroll to bottom when messages change.
-  // Use smooth only for the initial jump when a new message is sent;
-  // while streaming, use instant to avoid constant scroll-animation
-  // restarts that cause visible stutter on every token.
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: isStreaming ? 'instant' : 'smooth',
-    });
-  }, [messages, isStreaming]);
-
   // Scroll to bottom when the keyboard appears/disappears on mobile.
   // Keyboard detection/repositioning is centralized in Layout.jsx, which
   // dispatches a single 'layout-keyboard-adjusted' event after its DOM write.
@@ -235,7 +232,6 @@ export default function ChatPage() {
 
   const applyChatLimits = (limits) => {
     if (!limits) return;
-    setChatLimits(limits);
     applyChatLimitsToast(limits);
   };
 
@@ -344,19 +340,10 @@ export default function ChatPage() {
     }
   };
 
-  const {
-    contextWindowUsage,
-    contextUsagePercent,
-    pieRadius,
-    pieCircumference,
-    pieStrokeOffset,
-  } = useContextWindowUsage({ messages, advancedChatConfig, serverContextWindowUsage });
-
   const { handleTogglePin } = usePinnedMemories({
     selectedChat,
     setSelectedChat,
-    messages,
-    setMessages,
+    chatState,
     sessionToken,
   });
 
@@ -382,8 +369,7 @@ export default function ChatPage() {
     sessionToken,
     toast,
     refreshUserData,
-    messages,
-    setMessages,
+    chatState,
     inputRef,
     setInput,
     draftStorageKey: draftKeys.activeKey,
@@ -394,16 +380,11 @@ export default function ChatPage() {
     characterId,
     advancedChatConfig,
     creditLimits,
-    sending,
-    setSending,
-    setIsStreaming,
-    abortController,
-    setAbortController,
+    abortControllerRef,
     pendingChatIdRef,
     applyChatLimits,
     applyCreditLimits,
     syncChatEntryAfterTurn,
-    setServerContextWindowUsage,
   });
 
   const handleSendMessage = async (event) => {
@@ -420,12 +401,10 @@ export default function ChatPage() {
     handleSelectBranch,
     handleCopyMessage,
   } = useMessageEditing({
-    messages,
-    setMessages,
+    chatState,
     selectedChat,
     setSelectedChat,
     selectedCharacter,
-    sending,
     sessionToken,
     toast,
     editingMessageId,
@@ -734,7 +713,7 @@ export default function ChatPage() {
           key={`${selectedChat?.chat_id || 'new'}:${selectedChat?.active_branch_id || ''}`}
           chatContentRailStyle={chatContentRailStyle}
           selectedWallpaper={selectedWallpaper}
-          messages={messages}
+          chatState={chatState}
           showWelcome={showWelcome}
           selectedCharacter={selectedCharacter}
           selectedScene={selectedScene}
@@ -747,7 +726,6 @@ export default function ChatPage() {
           editingMessageText={editingMessageText}
           forkNavMap={forkNavMap}
           branchSelectionPending={branchSelectionPending}
-          sending={sending}
           renderMessageContent={renderMessageContent}
           messagesEndRef={messagesEndRef}
           revealMessageRef={revealMessageRef}
@@ -786,12 +764,8 @@ export default function ChatPage() {
             chatContentRailStyle={chatContentRailStyle}
             userData={userData}
             creditLimits={creditLimits}
-            contextWindowUsage={contextWindowUsage}
-            serverContextWindowUsage={serverContextWindowUsage}
-            contextUsagePercent={contextUsagePercent}
-            pieRadius={pieRadius}
-            pieCircumference={pieCircumference}
-            pieStrokeOffset={pieStrokeOffset}
+            chatState={chatState}
+            advancedChatConfig={advancedChatConfig}
             sessionToken={sessionToken}
             toast={toast}
             draftStorageKey={draftKeys.activeKey}
@@ -799,12 +773,8 @@ export default function ChatPage() {
             inputRef={inputRef}
             inputSetterRef={inputSetterRef}
             onSend={handleSendMessage}
-            isStreaming={isStreaming}
-            sending={sending}
             onAbort={() => {
-              if (abortController) {
-                abortController.abort();
-              }
+              abortControllerRef.current?.abort();
             }}
           />
         )}

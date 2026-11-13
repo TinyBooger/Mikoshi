@@ -4,6 +4,7 @@ import ChatWelcomeCard from '../ChatWelcomeCard';
 import MessageTimestampDivider from './MessageTimestampDivider';
 import { getChromeSurface, isVeiledBackground, getSurfacePalette } from '../../utils/backgroundPresets';
 import { buildTranscriptDividers } from '../../utils/chatTimestamps';
+import { useChatRuntimeValue } from '../../hooks/useChatRuntimeState';
 
 const INITIAL_VISIBLE_MESSAGES = 80;
 const MAX_VISIBLE_MESSAGES = 160;
@@ -21,7 +22,7 @@ const SCROLL_EDGE_THRESHOLD = 120;
 export default function ChatMessagesList({
   chatContentRailStyle,
   selectedWallpaper,
-  messages,
+  chatState,
   showWelcome,
   selectedCharacter,
   selectedScene,
@@ -34,7 +35,6 @@ export default function ChatMessagesList({
   editingMessageText,
   forkNavMap,
   branchSelectionPending,
-  sending,
   renderMessageContent,
   messagesEndRef,
   revealMessageRef,
@@ -51,6 +51,9 @@ export default function ChatMessagesList({
   onSelectBranch,
   onEditTextChange,
 }) {
+  const messages = useChatRuntimeValue(chatState, 'messageList');
+  const { sending } = useChatRuntimeValue(chatState, 'sendStatus');
+  const serverContextWindowUsage = useChatRuntimeValue(chatState, 'serverContextWindowUsage');
   const nonSystem = useMemo(() => messages.filter((message) => message.role !== 'system'), [messages]);
   const [hoveredMessageId, setHoveredMessageId] = useState(null);
   const [visibleRange, setVisibleRange] = useState(() => ({
@@ -58,6 +61,7 @@ export default function ChatMessagesList({
     end: nonSystem.length,
   }));
   const messagesContainerRef = useRef(null);
+  const scrollFrameRef = useRef(null);
   const pendingScrollAnchorRef = useRef(null);
   const pendingJumpMessageIdRef = useRef(null);
   const pendingBottomScrollRef = useRef(false);
@@ -78,6 +82,31 @@ export default function ChatMessagesList({
     () => buildTranscriptDividers(nonSystem, timestampGapSeconds),
     [nonSystem, timestampGapSeconds],
   );
+
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (scrollFrameRef.current !== null) {
+        cancelAnimationFrame(scrollFrameRef.current);
+      }
+      scrollFrameRef.current = requestAnimationFrame(() => {
+        scrollFrameRef.current = null;
+        messagesEndRef.current?.scrollIntoView({
+          behavior: chatState.get('sendStatus').isStreaming ? 'instant' : 'smooth',
+        });
+      });
+    };
+    const unsubscribeMessages = chatState.subscribe('messages', scrollToBottom);
+    const unsubscribeSendStatus = chatState.subscribe('sendStatus', scrollToBottom);
+    scrollToBottom();
+
+    return () => {
+      unsubscribeMessages();
+      unsubscribeSendStatus();
+      if (scrollFrameRef.current !== null) {
+        cancelAnimationFrame(scrollFrameRef.current);
+      }
+    };
+  }, [chatState, messagesEndRef]);
 
   const setScrollAnchor = useCallback((messageIndex) => {
     const message = nonSystem[messageIndex];
@@ -242,6 +271,7 @@ export default function ChatMessagesList({
                 )}
                 <MessageBubble
                   message={m}
+                  chatState={chatState}
                   isHovered={hoveredMessageId === m.message_id}
                   isEditing={isEditing}
                   isAnyMessageEditing={!!editingMessageId}

@@ -8,15 +8,13 @@ import { normalizeChatEntry, updateChatEntryBranchMessages, MAX_PINNED_MEMORIES 
  *
  * @param {object}   selectedChat    - current chat entry
  * @param {function} setSelectedChat - setter for selectedChat
- * @param {array}    messages        - current message list
- * @param {function} setMessages     - setter for messages
+ * @param {object}   chatState       - external chat runtime store
  * @param {string}   sessionToken    - auth session token
  */
 export function usePinnedMemories({
   selectedChat,
   setSelectedChat,
-  messages,
-  setMessages,
+  chatState,
   sessionToken,
 }) {
   const toast = useToast();
@@ -48,6 +46,7 @@ export function usePinnedMemories({
   }, [selectedChat?.chat_id, selectedChat?.active_branch_id, sessionToken]);
 
   const handleTogglePin = useCallback(async (messageId, nextPinnedState, { silentSuccess = false } = {}) => {
+    const messages = chatState.get('messages');
     const targetMessage = messages.find((m) => m?.message_id === messageId);
     if (!targetMessage) return;
 
@@ -68,7 +67,7 @@ export function usePinnedMemories({
     }
 
     // Optimistic update
-    setMessages((prev) => prev.map((m) => {
+    chatState.set('messages', (prev) => prev.map((m) => {
       if (!m || typeof m !== 'object') return m;
       if (m.message_id !== messageId) return m;
       return { ...m, is_pinned: nextPinnedState };
@@ -101,7 +100,7 @@ export function usePinnedMemories({
       }
     } catch (error) {
       // Rollback on failure
-      setMessages((prev) => prev.map((m) => {
+      chatState.set('messages', (prev) => prev.map((m) => {
         if (!m || typeof m !== 'object') return m;
         if (m.message_id !== messageId) return m;
         return { ...m, is_pinned: !nextPinnedState };
@@ -122,7 +121,7 @@ export function usePinnedMemories({
       });
       toast.show(error.message || '更新固定记忆失败。', { type: 'error' });
     }
-  }, [messages, selectedChat?.chat_id, setMessages, setSelectedChat, persistPinnedMessage, toast]);
+  }, [chatState, selectedChat?.chat_id, setSelectedChat, persistPinnedMessage, toast]);
 
   return {
     handleTogglePin,

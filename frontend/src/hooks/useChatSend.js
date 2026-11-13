@@ -19,8 +19,7 @@ const REQUEST_CONTEXT_MESSAGE_COUNT = 40;
  * @param {string}   params.sessionToken                    - auth session token
  * @param {object}   params.toast                           - toast provider
  * @param {function} params.refreshUserData                 - silent user refresh
- * @param {array}    params.messages                        - current message list
- * @param {function} params.setMessages                     - setter for messages
+ * @param {object}   params.chatState                       - external chat runtime store
  * @param {object}   params.inputRef                        - current input value ref
  * @param {function} params.setInput                        - setter for the input value
  * @param {string}   params.draftStorageKey                 - local-storage key for this conversation's draft
@@ -31,24 +30,18 @@ const REQUEST_CONTEXT_MESSAGE_COUNT = 40;
  * @param {string}   params.characterId                     - fallback character id
  * @param {object}   params.advancedChatConfig              - chat config sent to the API
  * @param {object}   params.creditLimits                    - credit limits (for the lock check)
- * @param {boolean}  params.sending                         - in-flight turn guard
- * @param {function} params.setSending                      - setter for `sending`
- * @param {function} params.setIsStreaming                  - setter for `isStreaming`
- * @param {object}   params.abortController                 - current controller, if any
- * @param {function} params.setAbortController              - setter for the controller
+ * @param {object}   params.abortControllerRef              - ref for the current controller
  * @param {object}   params.pendingChatIdRef                - reserved chat id (shared with init flow)
- * @param {function} params.applyChatLimits                 - chat limit state + toast
+ * @param {function} params.applyChatLimits                 - chat-limit reminder handler
  * @param {function} params.applyCreditLimits               - credit limit state + toast
  * @param {function} params.syncChatEntryAfterTurn         - syncs saved chat metadata into local history
- * @param {function} params.setServerContextWindowUsage     - setter for server usage
  * @returns {{ sendChatTurn: function, handleSend: function }}
  */
 export function useChatSend({
   sessionToken,
   toast,
   refreshUserData,
-  messages,
-  setMessages,
+  chatState,
   inputRef,
   setInput,
   draftStorageKey,
@@ -59,16 +52,11 @@ export function useChatSend({
   characterId,
   advancedChatConfig,
   creditLimits,
-  sending,
-  setSending,
-  setIsStreaming,
-  abortController,
-  setAbortController,
+  abortControllerRef,
   pendingChatIdRef,
   applyChatLimits,
   applyCreditLimits,
   syncChatEntryAfterTurn,
-  setServerContextWindowUsage,
 }) {
   // Monotonic counter used to invalidate superseded chat turns so a stale
   // stream can never clobber state from a newer request.
@@ -108,16 +96,13 @@ export function useChatSend({
     };
 
     // Cancel any in-flight turn for this chat before starting a new one.
-    if (abortController) {
-      abortController.abort();
-    }
+    abortControllerRef.current?.abort();
 
     // Claim a new generation token so any response from the cancelled request
     // (chunk, done, error, or finally) is treated as stale and ignored.
     const requestGenerationId = ++chatGenerationIdRef.current;
 
-    setSending(true);
-    setIsStreaming(true);
+    chatState.set('sendStatus', { sending: true, isStreaming: true });
 
     if (clearDraftOnComplete) {
       saveChatDraft(pendingDraftKey, draftInputToClear);
@@ -157,8 +142,8 @@ export function useChatSend({
     const controller = new AbortController();
     const assistantMessageId = generateMessageId();
     const assistantCreatedAt = createLocalMessageTimestamp();
-    setAbortController(controller);
-    setMessages(ensureMessageIds([...nextMessages, { role: 'assistant', content: '', message_id: assistantMessageId, is_pinned: false, created_at: assistantCreatedAt }]));
+    abortControllerRef.current = controller;
+    chatState.set('messages', ensureMessageIds([...nextMessages, { role: 'assistant', content: '', message_id: assistantMessageId, is_pinned: false, created_at: assistantCreatedAt }]));
 
     try {
       const response = await fetch(`${window.API_BASE_URL}/api/chat`, {
@@ -242,7 +227,7 @@ export function useChatSend({
         if (data.error) {
           const friendlyMessage = getChatErrorMessage(data);
           toast.show(friendlyMessage, { type: 'error' });
-          setMessages(ensureMessageIds(restoreMessagesOnError));
+          chatState.set('messages', ensureMessageIds(restoreMessagesOnError));
           streamFailed = true;
           if (data.credit_limits) {
             applyCreditLimits(data.credit_limits);
@@ -255,19 +240,14 @@ export function useChatSend({
 
         if (data.chunk) {
           accumulatedReply += data.chunk;
-          setMessages((prev) => {
-            const newMessages = [...prev];
-            // Spread the placeholder so the timestamp it was created with (and
-            // anything else the message carries) survives the stream.
-            newMessages[newMessages.length - 1] = {
-              ...newMessages[newMessages.length - 1],
-              role: 'assistant',
-              content: accumulatedReply,
-              message_id: assistantMessageId,
-              is_pinned: false,
-            };
-            return ensureMessageIds(newMessages);
-          });
+          chatState.updateMessage(assistantMessageId, (previousMessage) => ({
+            // Preserve the timestamp and other fields created for the placeholder.
+            ...previousMessage,
+            role: 'assistant',
+            content: accumulatedReply,
+            message_id: assistantMessageId,
+            is_pinned: false,
+          }));
         }
 
         if (data.done) {
@@ -282,7 +262,7 @@ export function useChatSend({
             refreshUserData({ silent: true });
           }
           if (data.context_window) {
-            setServerContextWindowUsage(data.context_window);
+            chatState.set('serverContextWindowUsage', data.context_window);
             if (data.context_window.context_truncated) {
               const omittedCount = Number(data.context_window.omitted_message_count || 0);
               const notice = omittedCount > 0
@@ -333,7 +313,7 @@ export function useChatSend({
         processEventPayload(pendingEventBuffer);
       }
       if ((!streamConfirmed || streamFailed) && clearDraftOnComplete) {
-        setMessages(ensureMessageIds(restoreMessagesOnError));
+        chatState.set('messages', ensureMessageIds(restoreMessagesOnError));
         restoreSentDraft();
       }
     } catch (err) {
@@ -344,14 +324,14 @@ export function useChatSend({
       if (err.name !== 'AbortError') {
         toast.show(err.message || errorMessage, { type: 'error' });
       }
-      setMessages(ensureMessageIds(restoreMessagesOnError));
+      chatState.set('messages', ensureMessageIds(restoreMessagesOnError));
       restoreSentDraft();
     } finally {
       // Only the latest request may clear sending/streaming state.
       if (requestGenerationId === chatGenerationIdRef.current) {
-        setSending(false);
-        setIsStreaming(false);
-        setAbortController(null);
+        chatState.refreshContextUsage();
+        chatState.set('sendStatus', { sending: false, isStreaming: false });
+        abortControllerRef.current = null;
       }
     }
   };
@@ -363,14 +343,15 @@ export function useChatSend({
       return;
     }
     const input = inputRef.current;
-    if (sending || !input.trim() || !selectedCharacter) return;
+    const currentMessages = chatState.get('messages');
+    if (chatState.get('sendStatus').sending || !input.trim() || !selectedCharacter) return;
     saveChatDraft(draftStorageKey, input);
-    const updatedMessages = ensureMessageIds([...messages, { role: 'user', content: input.trim(), message_id: generateMessageId(), is_pinned: false, created_at: createLocalMessageTimestamp() }]);
-    setMessages(updatedMessages);
+    const updatedMessages = ensureMessageIds([...currentMessages, { role: 'user', content: input.trim(), message_id: generateMessageId(), is_pinned: false, created_at: createLocalMessageTimestamp() }]);
+    chatState.set('messages', updatedMessages);
     await sendChatTurn({
       nextMessages: updatedMessages,
       sourceBranchId: selectedChat?.active_branch_id || null,
-      restoreMessagesOnError: messages,
+      restoreMessagesOnError: currentMessages,
       clearDraftOnComplete: true,
       draftInputToClear: input,
       draftKeyToClear: draftStorageKey,

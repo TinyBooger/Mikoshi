@@ -2,6 +2,7 @@ import React from 'react';
 import defaultPic from '../assets/images/default-picture.png';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import { formatExactMessageTimestamp, formatMessageClock } from '../utils/chatTimestamps';
+import { useChatRuntimeMessage } from '../hooks/useChatRuntimeState';
 
 const getMessageActionButtonStyle = (disabled, palette) => ({
   border: 'none',
@@ -60,6 +61,7 @@ const isInteractiveMessageTarget = (target) => (
  */
 const MessageBubble = React.memo(function MessageBubble({
   message,
+  chatState,
   isMobile,
   cleanMode,
   palette,
@@ -88,7 +90,8 @@ const MessageBubble = React.memo(function MessageBubble({
   onSelectBranch,
   onEditTextChange,
 }) {
-  const m = message;
+  const currentMessage = useChatRuntimeMessage(chatState, message?.message_id);
+  const m = currentMessage || message;
   const isCleanAssistant = cleanMode && m.role === 'assistant';
   const isCleanUser = cleanMode && m.role === 'user';
   const isClean = isCleanAssistant || isCleanUser;

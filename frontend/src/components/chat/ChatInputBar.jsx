@@ -11,8 +11,34 @@ import ChatVoiceButton from './ChatVoiceButton';
 import ChatSendButton from './ChatSendButton';
 import { useAutoResizeTextarea } from '../../hooks/useAutoResizeTextarea';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
+import { useChatRuntimeValue } from '../../hooks/useChatRuntimeState';
+import { useContextWindowUsage } from '../../hooks/useContextWindowUsage';
 import { loadChatDraft, saveChatDraft } from '../../utils/chatDraftStorage';
 import './ChatInputBar.css';
+
+function ChatContextUsageIndicator({ chatState, advancedChatConfig }) {
+  const messages = useChatRuntimeValue(chatState, 'contextUsageMessages');
+  const serverContextWindowUsage = useChatRuntimeValue(chatState, 'serverContextWindowUsage');
+  const {
+    contextWindowUsage,
+    contextUsagePercent,
+    pieRadius,
+    pieCircumference,
+    pieStrokeOffset,
+  } = useContextWindowUsage({ messages, advancedChatConfig, serverContextWindowUsage });
+
+  return (
+    <ContextWindowIndicator
+      contextWindowUsage={contextWindowUsage}
+      serverContextWindowUsage={serverContextWindowUsage}
+      contextUsagePercent={contextUsagePercent}
+      pieRadius={pieRadius}
+      pieCircumference={pieCircumference}
+      pieStrokeOffset={pieStrokeOffset}
+      inputHeight={CHAT_INPUT_BASE_HEIGHT}
+    />
+  );
+}
 
 /**
  * Bottom composer area of the chat: ban / credit-lock banners, the context
@@ -32,22 +58,17 @@ export default function ChatInputBar({
   chatContentRailStyle,
   userData,
   creditLimits,
-  contextWindowUsage,
-  serverContextWindowUsage,
-  contextUsagePercent,
-  pieRadius,
-  pieCircumference,
-  pieStrokeOffset,
+  chatState,
+  advancedChatConfig,
   sessionToken,
   toast,
   draftStorageKey,
   draftFallbackKey,
   inputRef,
   inputSetterRef,
-  isStreaming,
-  sending,
   onAbort,
 }) {
+  const { isStreaming, sending } = useChatRuntimeValue(chatState, 'sendStatus');
   const [input, setInputState] = useState('');
   const localInputRef = useRef(input);
   const activeDraftKeyRef = useRef(null);
@@ -194,14 +215,9 @@ export default function ChatInputBar({
           </div>
         )}
         <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'center' }}>
-          <ContextWindowIndicator
-            contextWindowUsage={contextWindowUsage}
-            serverContextWindowUsage={serverContextWindowUsage}
-            contextUsagePercent={contextUsagePercent}
-            pieRadius={pieRadius}
-            pieCircumference={pieCircumference}
-            pieStrokeOffset={pieStrokeOffset}
-            inputHeight={CHAT_INPUT_BASE_HEIGHT}
+          <ChatContextUsageIndicator
+            chatState={chatState}
+            advancedChatConfig={advancedChatConfig}
           />
 
           <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex', alignItems: 'center' }}>
