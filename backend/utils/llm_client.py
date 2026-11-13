@@ -1,5 +1,10 @@
 from openai import AsyncOpenAI
+import logging
 import os
+
+from model_configs import PROVIDER_DEEPSEEK, get_model
+
+logger = logging.getLogger(__name__)
 
 # Hard ceiling (seconds) on every socket operation against the model
 # providers. The SDK raises openai.APITimeoutError if a request stalls past
@@ -26,10 +31,51 @@ qwen_client = _build_client(QWEN_API_KEY, QWEN_BASE_URL)
 DEEPSEEK_DIRECT_MODELS = {"deepseek-v4-pro", "deepseek-v4-flash"}
 
 
+def _is_deepseek_model(model):
+    """``True`` when *model* is served by the DeepSeek platform.
+
+    The registry is authoritative; the fallback set only covers ids that are not
+    registered (it keeps an unknown model pinned to the provider it used to hit).
+    """
+    config = get_model(model) if isinstance(model, str) else None
+    if config is not None:
+        return config.provider == PROVIDER_DEEPSEEK
+    return isinstance(model, str) and model in DEEPSEEK_DIRECT_MODELS
+
+
 def _get_client_for_model(model):
-    if isinstance(model, str) and model in DEEPSEEK_DIRECT_MODELS:
+    if _is_deepseek_model(model):
         return client
     return qwen_client
+
+
+def _thinking_off_extra_body(model):
+    """Provider-shaped fields that disable reasoning (see model_configs).
+
+    Falling back to the DashScope shape keeps an unregistered model from
+    silently reverting to provider-default thinking.
+    """
+    config = get_model(model) if isinstance(model, str) else None
+    if config is not None:
+        return config.disable_thinking_payload() or None
+    if _is_deepseek_model(model):
+        return {"thinking": {"type": "disabled"}}
+    return {"enable_thinking": False}
+
+
+_LOGGED_THINKING_POLICY = set()
+
+
+def _log_thinking_policy_once(model, extra_body):
+    """Record the reasoning switch actually sent, once per model per process."""
+    if model in _LOGGED_THINKING_POLICY:
+        return
+    _LOGGED_THINKING_POLICY.add(model)
+    logger.info(
+        "🧠 Reasoning disabled | model=%s | provider_fields=%s",
+        model,
+        extra_body or "none (model has no thinking mode)",
+    )
 
 
 async def stream_chat_completion_with_config(
@@ -42,6 +88,8 @@ async def stream_chat_completion_with_config(
     frequency_penalty=0,
 ):
     selected_client = _get_client_for_model(model)
+    extra_body = _thinking_off_extra_body(model)
+    _log_thinking_policy_once(model, extra_body)
     stream = await selected_client.chat.completions.create(
         model=model,
         messages=messages,
@@ -52,6 +100,7 @@ async def stream_chat_completion_with_config(
         frequency_penalty=frequency_penalty,
         stream=True,
         stream_options={"include_usage": True},
+        extra_body=extra_body,
     )
 
     async for chunk in stream:

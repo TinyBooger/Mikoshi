@@ -36,6 +36,31 @@ def is_peak_time(dt: Optional[datetime] = None) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Providers
+# ---------------------------------------------------------------------------
+
+PROVIDER_DASHSCOPE = "dashscope"   # Aliyun Bailian, OpenAI-compatible endpoint
+PROVIDER_DEEPSEEK = "deepseek"     # DeepSeek platform, OpenAI-compatible endpoint
+
+# Reasoning is turned off for every model: this is a roleplay product, so a
+# chain of thought buys nothing that the character prompt does not already carry,
+# while it bills at the (several times higher) output rate, delays the first
+# visible token, and competes with the reply for ``max_tokens``.
+#
+# The switch itself is provider-specific, which is why it lives here instead of
+# in the request builder:
+#   * DashScope  — ``enable_thinking`` is a non-OpenAI field, so it must ride in
+#                  ``extra_body``. Qwen3.7 hybrid models default to thinking ON.
+#   * DeepSeek   — a top-level ``thinking`` object; ``{"type": "disabled"}`` is
+#                  required because omitting it (or omitting
+#                  ``reasoning_effort`` alongside it) enables thinking.
+DISABLE_THINKING_EXTRA_BODY: Dict[str, Dict[str, object]] = {
+    PROVIDER_DASHSCOPE: {"enable_thinking": False},
+    PROVIDER_DEEPSEEK: {"thinking": {"type": "disabled"}},
+}
+
+
+# ---------------------------------------------------------------------------
 # Per-model pricing tier (used when cost varies by input token count)
 # ---------------------------------------------------------------------------
 
@@ -97,6 +122,9 @@ class ModelConfig:
         max_input_tokens: Optional[int] = None,
         # Capabilities
         thinking: bool = False,
+        # Which platform serves this model; decides the client and the shape of
+        # provider-specific request fields (see DISABLE_THINKING_EXTRA_BODY).
+        provider: str = PROVIDER_DASHSCOPE,
         # Rate limits (RPM / TPM; None = not rate-limited by that dimension)
         rpm: Optional[int] = None,
         tpm: Optional[int] = None,
@@ -113,6 +141,7 @@ class ModelConfig:
         self.max_output_tokens = max_output_tokens
         self.max_input_tokens = max_input_tokens
         self.thinking = thinking
+        self.provider = provider
         self.rpm = rpm
         self.tpm = tpm
         self.max_concurrent = max_concurrent
@@ -147,6 +176,20 @@ class ModelConfig:
         if peak and self.peak_cache_hit_price_per_million is not None:
             return self.peak_cache_hit_price_per_million
         return self.cache_hit_price_per_million
+
+    def disable_thinking_payload(self) -> Dict[str, object]:
+        """Provider-specific request fields that turn reasoning off.
+
+        Empty when the model has no thinking mode to switch off, so a model that
+        never reasons is never sent a parameter it may reject.
+        """
+        if not self.thinking:
+            return {}
+        return dict(
+            DISABLE_THINKING_EXTRA_BODY.get(
+                self.provider, DISABLE_THINKING_EXTRA_BODY[PROVIDER_DASHSCOPE]
+            )
+        )
 
     def tokens_to_credits(
         self,
@@ -220,6 +263,7 @@ MODELS: List[ModelConfig] = [
         context_length=1_000_000,
         max_output_tokens=384_000,
         thinking=True,
+        provider=PROVIDER_DEEPSEEK,
         max_concurrent=2500,
         multiplier=1.9,
     ),
@@ -239,6 +283,7 @@ MODELS: List[ModelConfig] = [
         context_length=1_000_000,
         max_output_tokens=384_000,
         thinking=True,
+        provider=PROVIDER_DEEPSEEK,
         max_concurrent=500,
         multiplier=5.6,
     ),
