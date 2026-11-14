@@ -8,6 +8,7 @@ import PageWrapper from '../components/PageWrapper';
 import SidebarToggleButton from '../components/chat/SidebarToggleButton';
 import ChatConversationArea from '../components/chat/ChatConversationArea';
 import ChatModals from '../components/chat/ChatModals';
+import './ChatPage.css';
 import ShareScreenshotDialog from '../components/share/ShareScreenshotDialog';
 import ShareCharacterDialog from '../components/share/ShareCharacterDialog';
 import { useToast } from '../components/ToastProvider';
@@ -705,14 +706,15 @@ export default function ChatPage() {
 
   return (
     <PageWrapper>
-    <div style={{ 
+    <div
+      className="chat-page-shell"
+      style={{ 
       display: 'flex', 
       height: '100%', 
       background: '#fff', 
       minHeight: 0,
       position: 'relative',
-      width: '100%',
-      overflow: 'hidden'
+      width: '100%'
       }}>
       {!characterSidebarVisible && (
         <SidebarToggleButton
@@ -732,6 +734,10 @@ export default function ChatPage() {
         display: 'flex', 
         flexDirection: 'column', 
         minHeight: 0, 
+        // Acts as the containing block for absolutely positioned descendants so
+        // none of them can escape to the shell above and inflate its scroll
+        // range (see the `.footnotes` note in ChatBubble.css).
+        position: 'relative',
         zIndex: 1,
         // One shorthand on purpose: a gradient lives in `background-image`, so
         // pairing a `background` shorthand with a separate `backgroundImage:

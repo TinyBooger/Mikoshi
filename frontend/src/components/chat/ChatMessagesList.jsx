@@ -102,7 +102,13 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
       }
       scrollFrameRef.current = requestAnimationFrame(() => {
         scrollFrameRef.current = null;
-        messagesEndRef.current?.scrollIntoView({
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        // Scroll only the message list. `scrollIntoView` would block:'start' the
+        // sentinel against *every* scrollable ancestor, so any overflow further
+        // up the tree (see ChatPage.css) dragged the whole column off-screen.
+        container.scrollTo({
+          top: container.scrollHeight,
           behavior: chatState.get('sendStatus').isStreaming ? 'instant' : 'smooth',
         });
       });
@@ -118,7 +124,7 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
         cancelAnimationFrame(scrollFrameRef.current);
       }
     };
-  }, [chatState, messagesEndRef]);
+  }, [chatState, messagesContainerRef, messagesEndRef]);
 
   const setScrollAnchor = useCallback((messageIndex) => {
     const message = nonSystem[messageIndex];

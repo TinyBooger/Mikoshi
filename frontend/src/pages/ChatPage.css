@@ -1,0 +1,14 @@
+/* The chat shell row. It must never scroll: its children own all scrolling.
+   `overflow: hidden` still allows *programmatic* scrolling, so a stray
+   `scrollIntoView` could shift the whole column upward; `clip` forbids that
+   too. Kept behind @supports so older browsers keep the `hidden` fallback
+   instead of computing `visible`. */
+.chat-page-shell {
+  overflow: hidden;
+}
+
+@supports (overflow: clip) {
+  .chat-page-shell {
+    overflow: clip;
+  }
+}

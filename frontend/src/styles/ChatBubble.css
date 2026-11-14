@@ -214,6 +214,12 @@
  * ------------------------------------------------------------------------- */
 
 .chat-markdown .footnotes {
+  /* Containing block for the absolutely positioned `.sr-only` title below.
+     Without it that heading resolves against the nearest positioned ancestor
+     far up the tree (the chat shell), and its static position deep inside the
+     transcript becomes that ancestor's scrollable overflow — which made the
+     whole chat column jump upward once `scrollIntoView` ran. */
+  position: relative;
   margin-top: 0.9em;
   padding-top: 0.5em;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
