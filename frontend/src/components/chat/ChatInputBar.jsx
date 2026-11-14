@@ -51,12 +51,13 @@ function ChatContextUsageIndicator({ chatState, advancedChatConfig }) {
  * helper and used to be called four times per render (banner, textarea, voice
  * button, send button); it is hoisted to a single call here — identical output.
  */
-export default function ChatInputBar({
+const ChatInputBar = React.memo(function ChatInputBar({
   onSend,
   selectedWallpaper,
   isMobile,
   chatContentRailStyle,
-  userData,
+  userBanType,
+  userBanUntil,
   creditLimits,
   chatState,
   advancedChatConfig,
@@ -194,8 +195,8 @@ export default function ChatInputBar({
       }}
     >
       <div style={chatContentRailStyle}>
-        {userData?.ban_type === 'full_ban' && (
-          <BanBanner userData={userData} />
+        {userBanType === 'full_ban' && (
+          <BanBanner banUntil={userBanUntil} />
         )}
         {(creditLocked || previewLimits) && (
           <CreditLockedBanner creditLimits={previewLimits || creditLimits} />
@@ -286,4 +287,6 @@ export default function ChatInputBar({
       </div>
     </form>
   );
-}
+});
+
+export default ChatInputBar;

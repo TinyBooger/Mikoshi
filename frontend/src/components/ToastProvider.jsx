@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 const ToastContext = createContext(null);
 
@@ -23,9 +23,10 @@ export function ToastProvider({ children }) {
   }, []);
 
   const hide = useCallback((id) => setToasts(prev => prev.filter(t => t.id !== id)), []);
+  const toastActions = useMemo(() => ({ show, hide }), [show, hide]);
 
   return (
-    <ToastContext.Provider value={{ show, hide }}>
+    <ToastContext.Provider value={toastActions}>
       {children}
       <div style={styles.container} aria-live="polite" aria-atomic="true">
         {toasts.map(t => (

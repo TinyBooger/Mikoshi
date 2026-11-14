@@ -67,11 +67,12 @@ const MessageBubble = React.memo(function MessageBubble({
   palette,
   selectedCharacter,
   selectedPersona,
-  userData,
+  userProfilePicture,
   isHovered,
   isEditing,
   isAnyMessageEditing,
-  editingMessageText,
+  editingMessageTextRef,
+  editingMessageTextSetterRef,
   nav,
   branchSelectionPending,
   sending,
@@ -88,7 +89,6 @@ const MessageBubble = React.memo(function MessageBubble({
   onResendMessage,
   onStartEditing,
   onSelectBranch,
-  onEditTextChange,
 }) {
   const currentMessage = useChatRuntimeMessage(chatState, message?.message_id);
   const m = currentMessage || message;
@@ -100,6 +100,34 @@ const MessageBubble = React.memo(function MessageBubble({
   const bubbleWidth = isEditingUser ? editorWidth : 'auto';
   const bubbleMaxWidth = isEditingUser ? editorWidth : '100%';
   const cleanContentWidth = 'min(80%, 800px)';
+
+  // Edit draft state is local to the bubble (mirroring `ChatInputBar`): the page
+  // keeps the value in `editingMessageTextRef` and registers a setter here, so
+  // typing only re-renders this bubble instead of the whole chat page.
+  const [editingText, setEditingTextState] = React.useState('');
+  const editingTextRef = React.useRef('');
+  const setEditingText = React.useCallback((nextValue) => {
+    const value = typeof nextValue === 'function' ? nextValue(editingTextRef.current) : nextValue;
+    const text = typeof value === 'string' ? value : '';
+    editingTextRef.current = text;
+    if (editingMessageTextRef) editingMessageTextRef.current = text;
+    setEditingTextState(text);
+  }, [editingMessageTextRef]);
+
+  React.useLayoutEffect(() => {
+    if (!isEditingUser) return;
+    setEditingText(editingMessageTextRef?.current ?? '');
+  }, [isEditingUser, editingMessageTextRef, setEditingText]);
+
+  React.useEffect(() => {
+    if (!isEditingUser || !editingMessageTextSetterRef) return undefined;
+    editingMessageTextSetterRef.current = setEditingText;
+    return () => {
+      if (editingMessageTextSetterRef.current === setEditingText) {
+        editingMessageTextSetterRef.current = null;
+      }
+    };
+  }, [isEditingUser, editingMessageTextSetterRef, setEditingText]);
 
   // Exact time of this message, for when the minute matters but a clock under
   // every bubble does not: revealed while the bubble is hovered, or pinned by
@@ -241,8 +269,8 @@ const MessageBubble = React.memo(function MessageBubble({
             m.role === 'user'
               ? ((selectedPersona?.avatar_picture || selectedPersona?.picture)
                   ? `${window.API_BASE_URL.replace(/\/$/, '')}/${(selectedPersona.avatar_picture || selectedPersona.picture).replace(/^\//, '')}`
-                  : userData?.profile_pic
-                  ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userData.profile_pic.replace(/^\//, '')}`
+                  : userProfilePicture
+                  ? `${window.API_BASE_URL.replace(/\/$/, '')}/${userProfilePicture.replace(/^\//, '')}`
                   : defaultAvatar)
                 : ((selectedCharacter?.avatar_picture || selectedCharacter?.picture)
                   ? `${window.API_BASE_URL.replace(/\/$/, '')}/${String(selectedCharacter.avatar_picture || selectedCharacter.picture).replace(/^\//, '')}`
@@ -311,8 +339,8 @@ const MessageBubble = React.memo(function MessageBubble({
             >
               {isEditing && m.role === 'user' ? (
                 <textarea
-                  value={editingMessageText}
-                  onChange={(event) => onEditTextChange(event.target.value)}
+                  value={editingText}
+                  onChange={(event) => setEditingText(event.target.value)}
                   rows={4}
                   autoFocus
                   style={{
@@ -391,7 +419,7 @@ const MessageBubble = React.memo(function MessageBubble({
                     type="button"
                     className="btn btn-sm btn-dark"
                     onClick={onSaveEditedMessage}
-                    disabled={sending || !editingMessageText.trim()}
+                    disabled={sending || !editingText.trim()}
                   >
                     发送
                   </button>

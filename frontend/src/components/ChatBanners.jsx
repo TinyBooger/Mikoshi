@@ -119,7 +119,7 @@ export function CreditLockedBanner({ creditLimits }) {
 /**
  * Banner shown when the user is fully banned.
  */
-export function BanBanner({ userData }) {
+export function BanBanner({ banUntil }) {
   return (
     <div
       style={{
@@ -140,8 +140,8 @@ export function BanBanner({ userData }) {
       <i className="bi bi-slash-circle-fill" />
       <span>
         您的账号已被封禁，无法发送消息。
-        {userData?.ban_until &&
-          `封禁将于 ${new Date(userData.ban_until).toLocaleDateString()} 解除。`}
+        {banUntil &&
+          `封禁将于 ${new Date(banUntil).toLocaleDateString()} 解除。`}
       </span>
     </div>
   );

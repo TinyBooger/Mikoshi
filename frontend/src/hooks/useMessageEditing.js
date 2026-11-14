@@ -8,38 +8,36 @@ import { copyTextToClipboard } from '../utils/clipboard';
  *
  * @param {object}   params
  * @param {object}   params.chatState                   - external chat runtime store
- * @param {object}   params.selectedChat                - current chat entry
- * @param {function} params.setSelectedChat             - setter for selectedChat
+ * @param {object}   params.selectedChatRef             - ref to the current chat entry
+ * @param {function} params.updateSelectedChatRef       - updates the current chat without rendering the page
  * @param {object}   params.selectedCharacter           - active character
  * @param {string}   params.sessionToken                - auth session token
  * @param {object}   params.toast                       - toast provider
- * @param {string}   params.editingMessageId            - id of the message being edited
- * @param {string}   params.editingMessageText          - current edited message content
+ * @param {object}   params.editingMessageIdRef         - ref to the message id being edited
+ * @param {object}   params.editingMessageTextRef       - ref holding the current edited message content
  * @param {function} params.setEditingMessageId         - setter for editingMessageId
  * @param {function} params.setEditingMessageText       - setter for editingMessageText
- * @param {boolean}  params.branchSelectionPending      - branch switch guard
+ * @param {object}   params.branchSelectionPendingRef   - ref to the branch switch guard
  * @param {function} params.setBranchSelectionPending   - setter for the branch guard
  * @param {function} params.sendChatTurn                - streaming send (from useChatSend)
  * @param {function} params.buildDisplayMessagesForChat - branch messages ⇒ display messages
- * @param {function} params.upsertChatHistoryEntryLocally - history upsert helper
  * @returns {{ handleStartEditingMessage, handleCancelEditingMessage, handleResendMessage, handleSaveEditedMessage, handleSelectBranch, handleCopyMessage }}
  */
 export function useMessageEditing({
   chatState,
-  selectedChat,
-  setSelectedChat,
+  selectedChatRef,
+  updateSelectedChatRef,
   selectedCharacter,
   sessionToken,
   toast,
-  editingMessageId,
-  editingMessageText,
+  editingMessageIdRef,
+  editingMessageTextRef,
   setEditingMessageId,
   setEditingMessageText,
-  branchSelectionPending,
+  branchSelectionPendingRef,
   setBranchSelectionPending,
   sendChatTurn,
   buildDisplayMessagesForChat,
-  upsertChatHistoryEntryLocally,
 }) {
   const handleStartEditingMessage = useCallback((message) => {
     if (!message?.message_id || message.role !== 'user' || chatState.get('sendStatus').sending) return;
@@ -78,11 +76,12 @@ export function useMessageEditing({
   }, [chatState]);
 
   const handleResendMessage = useCallback(async (message) => {
-    if (!message?.message_id || message.role !== 'user' || !selectedCharacter || !!editingMessageId || chatState.get('sendStatus').sending) return;
+    if (!message?.message_id || message.role !== 'user' || !selectedCharacter || !!editingMessageIdRef.current || chatState.get('sendStatus').sending) return;
 
     const forkData = buildForkedMessagesFromUserMessage(message.message_id);
     if (!forkData) return;
 
+    const selectedChat = selectedChatRef.current;
     await sendChatTurn({
       nextMessages: forkData.forkedMessages,
       forkFromMessageId: message.message_id,
@@ -90,12 +89,13 @@ export function useMessageEditing({
       restoreMessagesOnError: forkData.originalMessages,
       errorMessage: '从这条消息重新发送失败，请重试。',
     });
-  }, [chatState, selectedCharacter, editingMessageId, buildForkedMessagesFromUserMessage, sendChatTurn, selectedChat?.active_branch_id]);
+  }, [chatState, selectedCharacter, editingMessageIdRef, selectedChatRef, buildForkedMessagesFromUserMessage, sendChatTurn]);
 
   const handleSaveEditedMessage = useCallback(async () => {
+    const editingMessageId = editingMessageIdRef.current;
     if (!editingMessageId || !selectedCharacter || chatState.get('sendStatus').sending) return;
 
-    const trimmedContent = editingMessageText.trim();
+    const trimmedContent = editingMessageTextRef.current.trim();
     if (!trimmedContent) {
       toast.show('消息不能为空。', { type: 'warning' });
       return;
@@ -104,6 +104,7 @@ export function useMessageEditing({
     const forkData = buildForkedMessagesFromUserMessage(editingMessageId, trimmedContent);
     if (!forkData) return;
 
+    const selectedChat = selectedChatRef.current;
     handleCancelEditingMessage();
     await sendChatTurn({
       nextMessages: forkData.forkedMessages,
@@ -112,14 +113,15 @@ export function useMessageEditing({
       restoreMessagesOnError: forkData.originalMessages,
       errorMessage: '从该消息创建分支失败。',
     });
-  }, [chatState, editingMessageId, selectedCharacter, editingMessageText, buildForkedMessagesFromUserMessage, handleCancelEditingMessage, sendChatTurn, selectedChat?.active_branch_id]);
+  }, [chatState, editingMessageIdRef, selectedCharacter, editingMessageTextRef, buildForkedMessagesFromUserMessage, handleCancelEditingMessage, sendChatTurn, selectedChatRef]);
 
   const handleSelectBranch = useCallback(async (branchId) => {
-    if (!selectedChat?.chat_id || !branchId || branchSelectionPending) return;
+    const selectedChat = selectedChatRef.current;
+    if (!selectedChat?.chat_id || !branchId || branchSelectionPendingRef.current) return false;
 
     const normalizedChat = normalizeChatEntry(selectedChat);
     const targetBranch = normalizedChat?.branches?.find((branch) => branch.branch_id === branchId);
-    if (!normalizedChat || !targetBranch) return;
+    if (!normalizedChat || !targetBranch) return false;
 
     const nextChatEntry = {
       ...normalizedChat,
@@ -128,7 +130,7 @@ export function useMessageEditing({
     };
 
     setBranchSelectionPending(true);
-    setSelectedChat(nextChatEntry);
+    updateSelectedChatRef(nextChatEntry);
     chatState.set('messages', buildDisplayMessagesForChat(nextChatEntry));
     setEditingMessageId(null);
     setEditingMessageText('');
@@ -152,17 +154,21 @@ export function useMessageEditing({
 
       const payload = await response.json();
       if (payload?.chat) {
-        const updatedChat = upsertChatHistoryEntryLocally(payload.chat);
+        const updatedChat = normalizeChatEntry(payload.chat);
+        if (!updatedChat) throw new Error('Invalid chat data returned after switching branches.');
+        updateSelectedChatRef(updatedChat);
         chatState.set('messages', buildDisplayMessagesForChat(updatedChat));
       }
+      return true;
     } catch (error) {
-      setSelectedChat(normalizedChat);
+      updateSelectedChatRef(normalizedChat);
       chatState.set('messages', buildDisplayMessagesForChat(normalizedChat));
       toast.show(error.message || 'Failed to switch branch.', { type: 'error' });
+      return false;
     } finally {
       setBranchSelectionPending(false);
     }
-  }, [selectedChat, branchSelectionPending, setBranchSelectionPending, setSelectedChat, chatState, buildDisplayMessagesForChat, setEditingMessageId, setEditingMessageText, sessionToken, upsertChatHistoryEntryLocally, toast]);
+  }, [selectedChatRef, branchSelectionPendingRef, setBranchSelectionPending, updateSelectedChatRef, chatState, buildDisplayMessagesForChat, setEditingMessageId, setEditingMessageText, sessionToken, toast]);
 
   const handleCopyMessage = useCallback(async (message) => {
     const content = message?.content;

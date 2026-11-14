@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 /**
  * Chat history actions surfaced from the sidebar: rename and delete, plus the
@@ -8,7 +8,7 @@ import { useState } from 'react';
  * @param {string}   params.sessionToken     - auth session token
  * @param {object}   params.userData         - current user (owns chat_history)
  * @param {function} params.setUserData      - setter for userData
- * @param {object}   params.selectedChat     - current chat entry
+ * @param {object}   params.selectedChatRef  - ref to the current chat entry
  * @param {function} params.setSelectedChat  - setter for selectedChat
  * @param {function} params.refreshUserData  - user refresh
  * @param {function} params.handleNewChat    - resets to a fresh chat when the
@@ -23,7 +23,7 @@ export function useChatHistoryActions({
   sessionToken,
   userData,
   setUserData,
-  selectedChat,
+  selectedChatRef,
   setSelectedChat,
   refreshUserData,
   handleNewChat,
@@ -35,7 +35,7 @@ export function useChatHistoryActions({
   // Local state for confirm modal
   const [confirmModal, setConfirmModal] = useState({ show: false, chatId: null });
 
-  const handleRename = async (chatId, currentTitle) => {
+  const handleRename = useCallback(async (chatId, currentTitle) => {
     if (!newTitle.trim()) {
       setEditingChatId(null);
       return;
@@ -58,7 +58,7 @@ export function useChatHistoryActions({
         setEditingChatId(null);
         setNewTitle('');
         // Update selected chat if it's the one being renamed
-        if (selectedChat?.chat_id === chatId) {
+        if (selectedChatRef.current?.chat_id === chatId) {
           setSelectedChat(prev => ({
             ...prev,
             title: newTitle.trim()
@@ -79,14 +79,14 @@ export function useChatHistoryActions({
     } catch (error) {
       console.error('Error renaming chat:', error);
     }
-  };
+  }, [newTitle, setEditingChatId, sessionToken, selectedChatRef, setSelectedChat, setNewTitle, userData, setUserData, refreshUserData]);
 
-  const handleDelete = async (chatId) => {
+  const handleDelete = useCallback(async (chatId) => {
     // Open confirmation modal instead of using window.confirm
     setConfirmModal({ show: true, chatId });
-  };
+  }, []);
 
-  const handleDeleteConfirmed = async () => {
+  const handleDeleteConfirmed = useCallback(async () => {
     const chatId = confirmModal.chatId;
     setConfirmModal({ show: false, chatId: null });
     try {
@@ -108,7 +108,7 @@ export function useChatHistoryActions({
           }));
         }
         // If deleted chat was the selected one, reset to new chat state
-        if (selectedChat?.chat_id === chatId) {
+        if (selectedChatRef.current?.chat_id === chatId) {
           await handleNewChat();
         }
         // Optionally refresh from backend for consistency
@@ -117,7 +117,7 @@ export function useChatHistoryActions({
     } catch (error) {
       console.error('Error deleting chat:', error);
     }
-  };
+  }, [confirmModal.chatId, sessionToken, userData, setUserData, selectedChatRef, handleNewChat, refreshUserData]);
 
   return {
     confirmModal,

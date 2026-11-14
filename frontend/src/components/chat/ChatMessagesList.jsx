@@ -19,7 +19,7 @@ const SCROLL_EDGE_THRESHOLD = 120;
  * computed `nonSystem`/`showWelcome`). `showWelcome` is now computed by the
  * parent during its own render pass — same value, same commit.
  */
-export default function ChatMessagesList({
+const ChatMessagesList = React.memo(function ChatMessagesList({
   chatContentRailStyle,
   selectedWallpaper,
   chatState,
@@ -27,12 +27,13 @@ export default function ChatMessagesList({
   selectedCharacter,
   selectedScene,
   selectedPersona,
-  userData,
+  userProfilePicture,
   isMobile,
   cleanMode,
   timestampGapSeconds,
   editingMessageId,
-  editingMessageText,
+  editingMessageTextRef,
+  editingMessageTextSetterRef,
   forkNavMap,
   branchSelectionPending,
   renderMessageContent,
@@ -49,7 +50,6 @@ export default function ChatMessagesList({
   onResendMessage,
   onStartEditing,
   onSelectBranch,
-  onEditTextChange,
 }) {
   const messages = useChatRuntimeValue(chatState, 'messageList');
   const { sending } = useChatRuntimeValue(chatState, 'sendStatus');
@@ -264,6 +264,7 @@ export default function ChatMessagesList({
           visibleMessages.map((m, visibleIndex) => {
             const i = firstVisibleIndex + visibleIndex;
             const isEditing = editingMessageId === m.message_id;
+            const nav = forkNavMap.get(m.message_id);
             return (
               <React.Fragment key={m.message_id || i}>
                 {dividers.has(i) && (
@@ -274,17 +275,18 @@ export default function ChatMessagesList({
                   chatState={chatState}
                   isHovered={hoveredMessageId === m.message_id}
                   isEditing={isEditing}
-                  isAnyMessageEditing={!!editingMessageId}
-                  nav={forkNavMap.get(m.message_id)}
+                  isAnyMessageEditing={m.role === 'user' && !!editingMessageId}
+                  nav={nav}
                   isMobile={isMobile}
                   cleanMode={cleanMode}
                   palette={palette}
                   selectedCharacter={selectedCharacter}
                   selectedPersona={selectedPersona}
-                  userData={userData}
-                  {...(isEditing ? { editingMessageText } : {})}
-                  branchSelectionPending={branchSelectionPending}
-                  sending={sending}
+                  userProfilePicture={userProfilePicture}
+                  editingMessageTextRef={editingMessageTextRef}
+                  editingMessageTextSetterRef={editingMessageTextSetterRef}
+                  branchSelectionPending={!!nav && branchSelectionPending}
+                  sending={(m.role === 'user' || !!nav) && sending}
                   renderMessageContent={renderMessageContent}
                   onHoverMessage={setHoveredMessageId}
                   onTogglePin={onTogglePin}
@@ -298,7 +300,6 @@ export default function ChatMessagesList({
                   onResendMessage={onResendMessage}
                   onStartEditing={onStartEditing}
                   onSelectBranch={onSelectBranch}
-                  onEditTextChange={onEditTextChange}
                 />
               </React.Fragment>
             );
@@ -309,4 +310,6 @@ export default function ChatMessagesList({
       </div>
     </div>
   );
-}
+});
+
+export default ChatMessagesList;

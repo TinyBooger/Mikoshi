@@ -9,10 +9,124 @@ import ModelSelect from './ModelSelect';
 import { SIDEBAR_WIDTH, SIDEBAR_BORDER_WIDTH } from '../constants/layout';
 import { WALLPAPER_OPTIONS } from '../utils/chatPageConstants';
 import { resolveBackgroundPresetId } from '../utils/backgroundPresets';
+import { getMessagePreview } from '../utils/chatHelpers';
 
+const PinnedMemoryManager = React.memo(function PinnedMemoryManager({
+  chatState,
+  selectedCharacter,
+  maxPinnedMemories,
+  onJumpToPinnedMemory,
+  onUnpinMemory,
+  isMobile,
+}) {
+  const pinnedMessagesRef = React.useRef([]);
+  const subscribe = React.useCallback(
+    (listener) => chatState.subscribe('messages', listener),
+    [chatState],
+  );
+  const getPinnedMessages = React.useCallback(() => {
+    const messages = chatState.get('messages');
+    const nextPinnedMessages = messages.filter(
+      (message) => message?.role !== 'system' && message?.message_id && message?.is_pinned,
+    );
+    const previousPinnedMessages = pinnedMessagesRef.current;
+    if (
+      nextPinnedMessages.length === previousPinnedMessages.length
+      && nextPinnedMessages.every((message, index) => message === previousPinnedMessages[index])
+    ) {
+      return previousPinnedMessages;
+    }
+    pinnedMessagesRef.current = nextPinnedMessages;
+    return nextPinnedMessages;
+  }, [chatState]);
+  const messages = React.useSyncExternalStore(subscribe, getPinnedMessages, getPinnedMessages);
+  const [showMemoryManagement, setShowMemoryManagement] = React.useState(false);
+  const pinnedMemories = React.useMemo(() => messages.map((message) => ({
+      message_id: message.message_id,
+      role: message.role,
+      content: message.content,
+      preview: getMessagePreview(message.content),
+    })), [messages]);
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#2f2b3d' }}>
+          记忆管理
+        </h6>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: '0.76rem', color: '#6b7280' }}>
+            {pinnedMemories.length}/{maxPinnedMemories}
+          </span>
+          <SecondaryButton
+            type="button"
+            isMobile={isMobile}
+            onClick={() => setShowMemoryManagement((previous) => !previous)}
+          >
+            {showMemoryManagement ? '隐藏' : '显示'}
+          </SecondaryButton>
+        </div>
+      </div>
+      {showMemoryManagement && (
+        <div style={{ maxHeight: 300, overflowY: 'auto', borderRadius: 12, background: '#f8f7fc', padding: 8, border: '1px solid #ece9f4' }}>
+          {pinnedMemories.length === 0 ? (
+            <div style={{ fontSize: '0.82rem', color: '#6b7280', padding: '0.35rem 0.5rem', lineHeight: 1.4 }}>
+              还没有固定记忆。悬停消息，点击气泡下方的图钉按钮即可固定。
+            </div>
+          ) : (
+            pinnedMemories.map((memory) => (
+              <div
+                key={memory.message_id}
+                style={{
+                  background: '#fff',
+                  borderRadius: 10,
+                  border: '1px solid #ece9f4',
+                  padding: '0.46rem 0.6rem',
+                  marginBottom: 6,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 600 }}>
+                    {memory.role === 'user' ? '你' : (selectedCharacter?.name || '助手')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onUnpinMemory?.(memory.message_id)}
+                    className="btn btn-sm btn-link p-0"
+                    style={{ fontSize: '0.72rem', color: '#b91c1c', textDecoration: 'none' }}
+                  >
+                    <i className="bi bi-pin-angle me-1"></i>
+                    取消固定
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onJumpToPinnedMemory?.(memory.message_id)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    padding: 0,
+                    fontSize: '0.8rem',
+                    color: '#1f2937',
+                    textAlign: 'left',
+                    width: '100%',
+                    lineHeight: 1.35,
+                  }}
+                  title={memory.content}
+                >
+                  {memory.preview}
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
 
 // Accept all required props for the sidebar
-export default function CharacterSidebar({
+const CharacterSidebar = React.memo(function CharacterSidebar({
   characterSidebarVisible,
   onToggleCharacterSidebar,
   onNewChat,
@@ -52,7 +166,7 @@ export default function CharacterSidebar({
   onSetWallpaper,
   characterPicture,
   characterBackground,
-  pinnedMemories,
+  chatState,
   maxPinnedMemories = 10,
   onJumpToPinnedMemory,
   onUnpinMemory,
@@ -63,7 +177,6 @@ export default function CharacterSidebar({
   const [creatorHover, setCreatorHover] = React.useState(false);
   const [showFullTagline, setShowFullTagline] = React.useState(false);
   const [showProblemReport, setShowProblemReport] = React.useState(false);
-  const [showMemoryManagement, setShowMemoryManagement] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('chat');
   const [activeHintKey, setActiveHintKey] = React.useState(null);
   const [shareIconFocused, setShareIconFocused] = React.useState(false);
@@ -916,80 +1029,14 @@ export default function CharacterSidebar({
             )}
           </div>
 
-        {/* Chat History Section */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <h6 style={{ fontWeight: 700, margin: 0, fontSize: '1.02rem', color: '#2f2b3d' }}>
-              记忆管理
-            </h6>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: '0.76rem', color: '#6b7280' }}>
-                {(Array.isArray(pinnedMemories) ? pinnedMemories.length : 0)}/{maxPinnedMemories}
-              </span>
-              <SecondaryButton
-                type="button"
-                isMobile={isMobile}
-                onClick={() => setShowMemoryManagement((prev) => !prev)}
-              >
-                {showMemoryManagement ? '隐藏' : '显示'}
-              </SecondaryButton>
-            </div>
-          </div>
-          {showMemoryManagement && (
-            <div style={{ maxHeight: 300, overflowY: 'auto', borderRadius: 12, background: '#f8f7fc', padding: 8, border: '1px solid #ece9f4' }}>
-              {!Array.isArray(pinnedMemories) || pinnedMemories.length === 0 ? (
-                <div style={{ fontSize: '0.82rem', color: '#6b7280', padding: '0.35rem 0.5rem', lineHeight: 1.4 }}>
-                  还没有固定记忆。悬停消息，点击气泡下方的图钉按钮即可固定。
-                </div>
-              ) : (
-                pinnedMemories.map((memory) => (
-                  <div
-                    key={memory.message_id}
-                    style={{
-                      background: '#fff',
-                      borderRadius: 10,
-                      border: '1px solid #ece9f4',
-                      padding: '0.46rem 0.6rem',
-                      marginBottom: 6,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 600 }}>
-                        {memory.role === 'user' ? '你' : (selectedCharacter?.name || '助手')}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => onUnpinMemory?.(memory.message_id)}
-                        className="btn btn-sm btn-link p-0"
-                        style={{ fontSize: '0.72rem', color: '#b91c1c', textDecoration: 'none' }}
-                      >
-                        <i className="bi bi-pin-angle me-1"></i>
-                        取消固定
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onJumpToPinnedMemory?.(memory.message_id)}
-                      style={{
-                        border: 'none',
-                        background: 'transparent',
-                        padding: 0,
-                        fontSize: '0.8rem',
-                        color: '#1f2937',
-                        textAlign: 'left',
-                        width: '100%',
-                        lineHeight: 1.35,
-                      }}
-                      title={memory.content}
-                    >
-                      {memory.preview}
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
+        <PinnedMemoryManager
+          chatState={chatState}
+          selectedCharacter={selectedCharacter}
+          maxPinnedMemories={maxPinnedMemories}
+          onJumpToPinnedMemory={onJumpToPinnedMemory}
+          onUnpinMemory={onUnpinMemory}
+          isMobile={isMobile}
+        />
 
         {(modeChatHistory.length > 0 || isCharacterMode) && (
           <div style={{ marginBottom: 24 }}>
@@ -1415,4 +1462,14 @@ export default function CharacterSidebar({
       />
     </>
   );
-}
+}, (previousProps, nextProps) => {
+  const previousKeys = Object.keys(previousProps);
+  const nextKeys = Object.keys(nextProps);
+  return previousKeys.length === nextKeys.length && previousKeys.every((key) => (
+    key === 'selectedChat'
+      ? previousProps.selectedChat?.chat_id === nextProps.selectedChat?.chat_id
+      : Object.is(previousProps[key], nextProps[key])
+  ));
+});
+
+export default CharacterSidebar;

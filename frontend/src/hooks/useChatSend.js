@@ -23,7 +23,7 @@ const REQUEST_CONTEXT_MESSAGE_COUNT = 40;
  * @param {object}   params.inputRef                        - current input value ref
  * @param {function} params.setInput                        - setter for the input value
  * @param {string}   params.draftStorageKey                 - local-storage key for this conversation's draft
- * @param {object}   params.selectedChat                    - current chat entry
+ * @param {object}   params.selectedChatRef                 - ref to the current chat entry
  * @param {object}   params.selectedCharacter               - active character
  * @param {object}   params.selectedScene                   - active scene
  * @param {object}   params.selectedPersona                 - active persona
@@ -45,7 +45,7 @@ export function useChatSend({
   inputRef,
   setInput,
   draftStorageKey,
-  selectedChat,
+  selectedChatRef,
   selectedCharacter,
   selectedScene,
   selectedPersona,
@@ -64,9 +64,9 @@ export function useChatSend({
 
   const sendChatTurn = async ({
     nextMessages,
-    chatId = selectedChat?.chat_id || pendingChatIdRef.current,
+    chatId = selectedChatRef.current?.chat_id || pendingChatIdRef.current,
     forkFromMessageId = null,
-    sourceBranchId = selectedChat?.active_branch_id || null,
+    sourceBranchId = selectedChatRef.current?.active_branch_id || null,
     restoreMessagesOnError = nextMessages,
     clearDraftOnComplete = false,
     draftInputToClear = '',
@@ -77,6 +77,7 @@ export function useChatSend({
     personaOverride = selectedPersona,
   }) => {
     if (!characterOverride) return;
+    const selectedChat = selectedChatRef.current;
 
     const pendingDraftKey = clearDraftOnComplete
       ? getChatDraftPendingStorageKey(draftKeyToClear)
@@ -350,7 +351,7 @@ export function useChatSend({
     chatState.set('messages', updatedMessages);
     await sendChatTurn({
       nextMessages: updatedMessages,
-      sourceBranchId: selectedChat?.active_branch_id || null,
+      sourceBranchId: selectedChatRef.current?.active_branch_id || null,
       restoreMessagesOnError: currentMessages,
       clearDraftOnComplete: true,
       draftInputToClear: input,

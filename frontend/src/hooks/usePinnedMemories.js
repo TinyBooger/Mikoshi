@@ -1,26 +1,25 @@
 import { useCallback } from 'react';
 import { useToast } from '../components/ToastProvider';
-import { AuthContext } from '../components/AuthProvider';
 import { normalizeChatEntry, updateChatEntryBranchMessages, MAX_PINNED_MEMORIES } from '../utils/chatHelpers';
 
 /**
  * Hook for toggling pinned messages and persisting their state to the backend.
  *
- * @param {object}   selectedChat    - current chat entry
- * @param {function} setSelectedChat - setter for selectedChat
+ * @param {object}   selectedChatRef - ref to the current chat entry
+ * @param {function} updateSelectedChatRef - updates the chat ref without rendering the page
  * @param {object}   chatState       - external chat runtime store
  * @param {string}   sessionToken    - auth session token
  */
 export function usePinnedMemories({
-  selectedChat,
-  setSelectedChat,
+  selectedChatRef,
+  updateSelectedChatRef,
   chatState,
   sessionToken,
 }) {
   const toast = useToast();
 
-  const persistPinnedMessage = useCallback(async (message, isPinned) => {
-    if (!selectedChat?.chat_id) return;
+  const persistPinnedMessage = useCallback(async (message, isPinned, chatSnapshot) => {
+    if (!chatSnapshot?.chat_id) return;
     if (!message?.message_id) return;
 
     const response = await fetch(`${window.API_BASE_URL}/api/chat/pin-message`, {
@@ -30,8 +29,8 @@ export function usePinnedMemories({
         'Authorization': sessionToken,
       },
       body: JSON.stringify({
-        chat_id: selectedChat.chat_id,
-        branch_id: selectedChat.active_branch_id,
+        chat_id: chatSnapshot.chat_id,
+        branch_id: chatSnapshot.active_branch_id,
         message_id: message.message_id,
         is_pinned: !!isPinned,
         message_role: message.role,
@@ -43,14 +42,15 @@ export function usePinnedMemories({
       const errorPayload = await response.json().catch(() => null);
       throw new Error(errorPayload?.error || 'Failed to update pinned memory');
     }
-  }, [selectedChat?.chat_id, selectedChat?.active_branch_id, sessionToken]);
+  }, [sessionToken]);
 
   const handleTogglePin = useCallback(async (messageId, nextPinnedState, { silentSuccess = false } = {}) => {
     const messages = chatState.get('messages');
     const targetMessage = messages.find((m) => m?.message_id === messageId);
+    const chatSnapshot = selectedChatRef.current;
     if (!targetMessage) return;
 
-    if (!selectedChat?.chat_id) {
+    if (!chatSnapshot?.chat_id) {
       toast.show('请先发送一条消息保存对话，再固定记忆。', { type: 'warning' });
       return;
     }
@@ -73,23 +73,30 @@ export function usePinnedMemories({
       return { ...m, is_pinned: nextPinnedState };
     }));
 
-    setSelectedChat((prev) => {
-      if (!prev) return prev;
-      return updateChatEntryBranchMessages(
-        prev,
-        prev.active_branch_id,
-        prev.messages.map((m) => {
-          if (!m || typeof m !== 'object') return m;
-          if (m.message_id !== messageId) return m;
-          return { ...m, is_pinned: nextPinnedState };
-        }),
-        {},
-        true
-      );
-    });
+    const updatePinnedChatEntry = (isPinned) => {
+      updateSelectedChatRef((prev) => {
+        if (!prev) return prev;
+        const normalized = normalizeChatEntry(prev);
+        const branchMessages = normalized?.branches?.find(
+          (branch) => branch.branch_id === chatSnapshot.active_branch_id,
+        )?.messages || [];
+        return updateChatEntryBranchMessages(
+          prev,
+          chatSnapshot.active_branch_id,
+          branchMessages.map((m) => {
+            if (!m || typeof m !== 'object') return m;
+            if (m.message_id !== messageId) return m;
+            return { ...m, is_pinned: isPinned };
+          }),
+          {},
+          normalized?.active_branch_id === chatSnapshot.active_branch_id,
+        );
+      });
+    };
+    updatePinnedChatEntry(nextPinnedState);
 
     try {
-      await persistPinnedMessage(targetMessage, nextPinnedState);
+      await persistPinnedMessage(targetMessage, nextPinnedState, chatSnapshot);
       if (!silentSuccess) {
         toast.show(
           nextPinnedState
@@ -100,28 +107,21 @@ export function usePinnedMemories({
       }
     } catch (error) {
       // Rollback on failure
-      chatState.set('messages', (prev) => prev.map((m) => {
-        if (!m || typeof m !== 'object') return m;
-        if (m.message_id !== messageId) return m;
-        return { ...m, is_pinned: !nextPinnedState };
-      }));
-      setSelectedChat((prev) => {
-        if (!prev) return prev;
-        return updateChatEntryBranchMessages(
-          prev,
-          prev.active_branch_id,
-          prev.messages.map((m) => {
-            if (!m || typeof m !== 'object') return m;
-            if (m.message_id !== messageId) return m;
-            return { ...m, is_pinned: !nextPinnedState };
-          }),
-          {},
-          true
-        );
-      });
+      const currentChat = selectedChatRef.current;
+      if (
+        currentChat?.chat_id === chatSnapshot.chat_id
+        && currentChat.active_branch_id === chatSnapshot.active_branch_id
+      ) {
+        chatState.set('messages', (prev) => prev.map((m) => {
+          if (!m || typeof m !== 'object') return m;
+          if (m.message_id !== messageId) return m;
+          return { ...m, is_pinned: !nextPinnedState };
+        }));
+      }
+      updatePinnedChatEntry(!nextPinnedState);
       toast.show(error.message || '更新固定记忆失败。', { type: 'error' });
     }
-  }, [chatState, selectedChat?.chat_id, setSelectedChat, persistPinnedMessage, toast]);
+  }, [chatState, selectedChatRef, updateSelectedChatRef, persistPinnedMessage, toast]);
 
   return {
     handleTogglePin,

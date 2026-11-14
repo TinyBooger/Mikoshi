@@ -6,21 +6,16 @@ import { AuthContext } from '../components/AuthProvider';
 import CharacterSidebar from '../components/CharacterSidebar';
 import PageWrapper from '../components/PageWrapper';
 import SidebarToggleButton from '../components/chat/SidebarToggleButton';
-import ChatMessagesList from '../components/chat/ChatMessagesList';
-import ChatInputBar from '../components/chat/ChatInputBar';
-import ChatSelectionActionBar from '../components/chat/ChatSelectionActionBar';
+import ChatConversationArea from '../components/chat/ChatConversationArea';
 import ChatModals from '../components/chat/ChatModals';
 import ShareScreenshotDialog from '../components/share/ShareScreenshotDialog';
 import ShareCharacterDialog from '../components/share/ShareCharacterDialog';
 import { useToast } from '../components/ToastProvider';
 import {
   normalizeChatEntry,
-  computeForkNav,
-  getMessagePreview,
   ensureMessageIds,
   MAX_PINNED_MEMORIES,
 } from '../utils/chatHelpers';
-import { MAX_SHARE_MESSAGES } from '../utils/shareData';
 import {
   DEFAULT_ADVANCED_CHAT_CONFIG,
 } from '../utils/chatPageConstants';
@@ -57,7 +52,6 @@ export default function ChatPage() {
     chatStateRef.current = createChatRuntimeStore();
   }
   const chatState = chatStateRef.current;
-  const messages = chatState.get('messages');
   const setMessages = useCallback(
     (update) => chatState.setMessages(update),
     [chatState],
@@ -80,17 +74,57 @@ export default function ChatPage() {
   const { hasLiked, setHasLiked, likeEntity, unlikeEntity } = useLikeEntity({ sessionToken, setLikes });
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [showShareScreenshot, setShowShareScreenshot] = useState(false);
+  const [selectedMessagesForShare, setSelectedMessagesForShare] = useState([]);
   const [showShareCharacter, setShowShareCharacter] = useState(false);
-  const [selectedChat, setSelectedChat] = useState(null);
+  const selectedChatRef = useRef(null);
+  const [selectedChat, setSelectedChatState] = useState(null);
+  const setSelectedChat = useCallback((update) => {
+    const previous = selectedChatRef.current;
+    const next = typeof update === 'function' ? update(previous) : update;
+    if (Object.is(previous, next)) return;
+    selectedChatRef.current = next;
+    setSelectedChatState(next);
+  }, []);
+  const updateSelectedChatRef = useCallback((update) => {
+    const previous = selectedChatRef.current;
+    const next = typeof update === 'function' ? update(previous) : update;
+    selectedChatRef.current = next;
+    return next;
+  }, []);
   const [editingChatId, setEditingChatId] = useState(null);
-  const [editingMessageId, setEditingMessageId] = useState(null);
-  const [editingMessageText, setEditingMessageText] = useState('');
-  const [branchSelectionPending, setBranchSelectionPending] = useState(false);
+  const editingMessageIdRef = useRef(null);
+  const editingMessageIdSetterRef = useRef(null);
+  const setEditingMessageId = useCallback((nextValue) => {
+    const value = typeof nextValue === 'function'
+      ? nextValue(editingMessageIdRef.current)
+      : nextValue;
+    editingMessageIdRef.current = value;
+    editingMessageIdSetterRef.current?.(value);
+  }, []);
+  // The draft lives inside the editing bubble (same pattern as the input box):
+  // the page only keeps the current value in a ref so keystrokes never render
+  // the page, and actions that need the text (save) read it from there.
+  const editingMessageTextRef = useRef('');
+  const editingMessageTextSetterRef = useRef(null);
+  const setEditingMessageText = useCallback((nextValue) => {
+    const value = typeof nextValue === 'function'
+      ? nextValue(editingMessageTextRef.current)
+      : nextValue;
+    const text = typeof value === 'string' ? value : '';
+    editingMessageTextRef.current = text;
+    editingMessageTextSetterRef.current?.(text);
+  }, []);
+  const branchSelectionPendingRef = useRef(false);
+  const branchSelectionPendingSetterRef = useRef(null);
+  const setBranchSelectionPending = useCallback((nextValue) => {
+    const value = typeof nextValue === 'function'
+      ? nextValue(branchSelectionPendingRef.current)
+      : nextValue;
+    branchSelectionPendingRef.current = !!value;
+    branchSelectionPendingSetterRef.current?.(!!value);
+  }, []);
   const [newTitle, setNewTitle] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedMessageIds, setSelectedMessageIds] = useState([]);
-  const [bulkPinning, setBulkPinning] = useState(false);
 
   // Ref for messages container to enable auto-scrolling
   const messagesEndRef = useRef(null);
@@ -145,11 +179,6 @@ export default function ChatPage() {
   };
   const [advancedChatConfig, setAdvancedChatConfig] = useState(DEFAULT_ADVANCED_CHAT_CONFIG);
 
-  useEffect(() => {
-    setSelectionMode(false);
-    setSelectedMessageIds([]);
-  }, [selectedChat?.chat_id, selectedChat?.active_branch_id]);
-
   const [characterModal, setCharacterModal] = useState({ show: false });
   const [personaModal, setPersonaModal] = useState({ show: false });
   const [initModal, setInitModal] = useState(false);
@@ -174,7 +203,7 @@ export default function ChatPage() {
     personaId: selectedChat?.persona_id || selectedPersona?.id,
   });
 
-  const selectedWallpaper = getSelectedWallpaper(wallpaper);
+  const selectedWallpaper = useMemo(() => getSelectedWallpaper(wallpaper), [wallpaper]);
 
   useEffect(() => {
     if (!userData) return;
@@ -292,8 +321,9 @@ export default function ChatPage() {
     const branchMetadata = metadata?.branch;
     if (!metadata?.chat_id || !branchMetadata?.branch_id) return;
 
-    const activeChat = selectedChat?.chat_id === metadata.chat_id
-      ? selectedChat
+    const currentChat = selectedChatRef.current;
+    const activeChat = currentChat?.chat_id === metadata.chat_id
+      ? currentChat
       : null;
     const existingEntry = normalizeChatEntry(activeChat || {
       ...metadata,
@@ -321,7 +351,7 @@ export default function ChatPage() {
     });
   };
 
-  const saveUserCharacterConfig = async () => {
+  const saveUserCharacterConfig = useCallback(async () => {
     if (!characterId || !sessionToken) return;
     try {
       const res = await fetch(`${window.API_BASE_URL}/api/user-character-config/${characterId}`, {
@@ -338,16 +368,16 @@ export default function ChatPage() {
       console.error('Error saving user config:', err);
       toast.show('配置保存失败，请重试。', { type: 'error' });
     }
-  };
+  }, [advancedChatConfig, characterId, sessionToken, toast]);
 
   const { handleTogglePin } = usePinnedMemories({
-    selectedChat,
-    setSelectedChat,
+    selectedChatRef,
+    updateSelectedChatRef,
     chatState,
     sessionToken,
   });
 
-  const jumpToMessage = (messageId) => {
+  const jumpToMessage = useCallback((messageId) => {
     if (!messageId) return;
     const target = document.getElementById(`message-${messageId}`);
     if (!target) {
@@ -360,12 +390,12 @@ export default function ChatPage() {
     window.setTimeout(() => {
       target.style.boxShadow = 'none';
     }, 1100);
-  };
+  }, []);
 
   // ---- Streaming send pipeline ----
   // Owns the abort controller, the SSE reader and the generation-token guard
   // that discards events from superseded turns.
-  const { sendChatTurn, handleSend } = useChatSend({
+  const { sendChatTurn: sendChatTurnImplementation, handleSend: handleSendImplementation } = useChatSend({
     sessionToken,
     toast,
     refreshUserData,
@@ -373,7 +403,7 @@ export default function ChatPage() {
     inputRef,
     setInput,
     draftStorageKey: draftKeys.activeKey,
-    selectedChat,
+    selectedChatRef,
     selectedCharacter,
     selectedScene,
     selectedPersona,
@@ -387,10 +417,16 @@ export default function ChatPage() {
     syncChatEntryAfterTurn,
   });
 
-  const handleSendMessage = async (event) => {
-    event.preventDefault();
-    await handleSend(event);
-  };
+  const sendChatTurnRef = useRef(sendChatTurnImplementation);
+  sendChatTurnRef.current = sendChatTurnImplementation;
+  const sendChatTurn = useCallback((options) => sendChatTurnRef.current(options), []);
+  const handleSendRef = useRef(handleSendImplementation);
+  handleSendRef.current = handleSendImplementation;
+  const handleSendMessage = useCallback((event) => handleSendRef.current(event), []);
+
+  const handleAbortSend = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
 
   // ---- Message editing, forking and branch switching ----
   const {
@@ -402,100 +438,20 @@ export default function ChatPage() {
     handleCopyMessage,
   } = useMessageEditing({
     chatState,
-    selectedChat,
-    setSelectedChat,
+    selectedChatRef,
+    updateSelectedChatRef,
     selectedCharacter,
     sessionToken,
     toast,
-    editingMessageId,
-    editingMessageText,
+    editingMessageIdRef,
+    editingMessageTextRef,
     setEditingMessageId,
     setEditingMessageText,
-    branchSelectionPending,
+    branchSelectionPendingRef,
     setBranchSelectionPending,
     sendChatTurn,
     buildDisplayMessagesForChat,
-    upsertChatHistoryEntryLocally,
   });
-
-  const selectableMessages = useMemo(() => messages.filter((message) =>
-    message?.message_id
-    && (message.role === 'user' || message.role === 'assistant')
-    && typeof message.content === 'string'
-    && message.content.trim()
-  ), [messages]);
-  const selectedMessages = useMemo(
-    () => selectableMessages.filter((message) => selectedMessageIds.includes(message.message_id)),
-    [selectableMessages, selectedMessageIds],
-  );
-  const selectedUnpinnedMessages = useMemo(
-    () => selectedMessages.filter((message) => !message.is_pinned),
-    [selectedMessages],
-  );
-  const pinnedMessageCount = useMemo(
-    () => messages.filter((message) => message?.role !== 'system' && message?.is_pinned).length,
-    [messages],
-  );
-  const allSelectedMessagesPinned = useMemo(
-    () => selectedMessages.length > 0 && selectedMessages.every((message) => message.is_pinned),
-    [selectedMessages],
-  );
-  const pinWouldExceedLimit = useMemo(
-    () => !allSelectedMessagesPinned
-      && pinnedMessageCount + selectedUnpinnedMessages.length > MAX_PINNED_MEMORIES,
-    [allSelectedMessagesPinned, pinnedMessageCount, selectedUnpinnedMessages.length],
-  );
-
-  const handleStartMultiSelect = useCallback((messageId) => {
-    if (!messageId) return;
-    if (editingMessageId) handleCancelEditingMessage();
-    setSelectionMode(true);
-    setSelectedMessageIds([messageId]);
-  }, [editingMessageId, handleCancelEditingMessage]);
-
-  const handleToggleMessageSelection = useCallback((messageId) => {
-    setSelectedMessageIds((previous) => {
-      if (previous.includes(messageId)) return previous.filter((id) => id !== messageId);
-      if (previous.length >= MAX_SHARE_MESSAGES) {
-        toast.show(`最多可选择 ${MAX_SHARE_MESSAGES} 条消息分享。`, { type: 'info' });
-        return previous;
-      }
-      return [...previous, messageId];
-    });
-  }, [toast]);
-
-  const handleCopySelectedMessages = useCallback(() => {
-    const text = selectedMessages.map((message) => message.content.trim()).join('\n\n');
-    if (text) handleCopyMessage({ content: text });
-  }, [selectedMessages, handleCopyMessage]);
-
-  const handlePinSelectedMessages = useCallback(async () => {
-    if (!selectedMessages.length || bulkPinning) return;
-    if (!selectedChat?.chat_id) {
-      toast.show('请先发送一条消息保存对话，再固定记忆。', { type: 'warning' });
-      return;
-    }
-    if (pinWouldExceedLimit) {
-      toast.show(`每个对话最多可固定 ${MAX_PINNED_MEMORIES} 条记忆。`, { type: 'warning' });
-      return;
-    }
-
-    const nextPinnedState = allSelectedMessagesPinned ? false : true;
-    const messagesToUpdate = allSelectedMessagesPinned ? selectedMessages : selectedUnpinnedMessages;
-    setBulkPinning(true);
-    try {
-      for (const message of messagesToUpdate) {
-        await handleTogglePin(message.message_id, nextPinnedState, { silentSuccess: true });
-      }
-    } finally {
-      setBulkPinning(false);
-    }
-  }, [selectedMessages, bulkPinning, selectedChat?.chat_id, toast, pinWouldExceedLimit, allSelectedMessagesPinned, selectedUnpinnedMessages, handleTogglePin]);
-
-  const handleExitSelectionMode = useCallback(() => {
-    setSelectionMode(false);
-    setSelectedMessageIds([]);
-  }, []);
 
   // ---- Entry / greeting / chat loading ----
   const {
@@ -547,7 +503,7 @@ export default function ChatPage() {
     toast,
   });
 
-  const handleImportChat = async (file) => {
+  const handleImportChat = useCallback(async (file) => {
     if (!file.name.toLowerCase().endsWith('.jsonl')) {
       toast.show('仅支持导入 .jsonl 格式的对话文件。', { type: 'error' });
       return;
@@ -588,7 +544,17 @@ export default function ChatPage() {
       console.error('Error importing chat:', error);
       toast.show(error.message || '导入对话失败，请重试。', { type: 'error' });
     }
-  };
+  }, [
+    buildDisplayMessagesForChat,
+    isNewChat,
+    pendingChatIdRef,
+    selectedCharacter,
+    sessionToken,
+    setMessages,
+    setShowChatHistory,
+    toast,
+    upsertChatHistoryEntryLocally,
+  ]);
 
   // ---- Chat history actions (rename / delete + confirm modal state) ----
   const {
@@ -601,7 +567,7 @@ export default function ChatPage() {
     sessionToken,
     userData,
     setUserData,
-    selectedChat,
+    selectedChatRef,
     setSelectedChat,
     refreshUserData,
     handleNewChat,
@@ -616,25 +582,17 @@ export default function ChatPage() {
   // `(text, role)` signature means the memoized `MessageBubble` prop is passed
   // exactly as before.
   const renderMessageContent = useCallback((text, role) => <MarkdownMessage content={text} role={role} />, []);
+  const handleShareSelection = useCallback((selectedMessages) => {
+    setSelectedMessagesForShare(selectedMessages);
+    setShowShareScreenshot(true);
+  }, []);
 
-  const pinnedMemories = messages
-    .filter((m) => m?.role !== 'system' && m?.message_id && m?.is_pinned)
-    .map((m) => ({
-      message_id: m.message_id,
-      role: m.role,
-      content: m.content,
-      preview: getMessagePreview(m.content),
-    }));
   const activeChatBranches = useMemo(() => normalizeChatEntry(selectedChat)?.branches || [], [selectedChat]);
-  const forkNavMap = useMemo(
-    () => computeForkNav(activeChatBranches, selectedChat?.active_branch_id),
-    [activeChatBranches, selectedChat?.active_branch_id],
-  );
 
   // Centered content rail — keeps messages, avatars and input fixed-width and centered
   // regardless of sidebar toggle state. Baseline when both sidebars are open:
   // left nav + character sidebar + message area side-padding on each side.
-  const chatContentRailStyle = {
+  const chatContentRailStyle = useMemo(() => ({
     width: '100%',
     maxWidth: isMobile
       ? '100%'
@@ -644,7 +602,19 @@ export default function ChatPage() {
     marginLeft: 'auto',
     marginRight: 'auto',
     boxSizing: 'border-box',
-  };
+  }), [characterSidebarVisible, isMobile]);
+  const handleResetAdvancedChatConfig = useCallback(() => {
+    setAdvancedChatConfig(normalizeAdvancedChatConfig(selectedCharacter));
+  }, [selectedCharacter]);
+  const handleUnpinMemory = useCallback((messageId) => {
+    return handleTogglePin(messageId, false);
+  }, [handleTogglePin]);
+  const handleOpenPersonaModal = useCallback(() => {
+    setPersonaModal({ show: true });
+  }, []);
+  const handleOpenCharacterShare = useCallback(() => {
+    setShowShareCharacter(true);
+  }, []);
 
   // Initialization gate: until the entry data (character/scene/persona) for
   // this chat has been fetched, show a standard centered spinner instead of a
@@ -709,8 +679,9 @@ export default function ChatPage() {
         overflow: 'hidden', 
         height: 'auto',
         }}>
-        <ChatMessagesList
-          key={`${selectedChat?.chat_id || 'new'}:${selectedChat?.active_branch_id || ''}`}
+        <ChatConversationArea
+          chatId={selectedChat?.chat_id}
+          activeBranchId={selectedChat?.active_branch_id}
           chatContentRailStyle={chatContentRailStyle}
           selectedWallpaper={selectedWallpaper}
           chatState={chatState}
@@ -718,66 +689,41 @@ export default function ChatPage() {
           selectedCharacter={selectedCharacter}
           selectedScene={selectedScene}
           selectedPersona={selectedPersona}
-          userData={userData}
+          userProfilePicture={userData?.profile_pic}
+          userBanType={userData?.ban_type}
+          userBanUntil={userData?.ban_until}
           isMobile={isMobile}
           cleanMode={advancedChatConfig?.interface_preference === 'clean'}
           timestampGapSeconds={selectedChat?.timestamp_gap_seconds}
-          editingMessageId={editingMessageId}
-          editingMessageText={editingMessageText}
-          forkNavMap={forkNavMap}
-          branchSelectionPending={branchSelectionPending}
+          branches={activeChatBranches}
+          editingMessageIdRef={editingMessageIdRef}
+          editingMessageIdSetterRef={editingMessageIdSetterRef}
+          editingMessageTextRef={editingMessageTextRef}
+          editingMessageTextSetterRef={editingMessageTextSetterRef}
+          branchSelectionPendingRef={branchSelectionPendingRef}
+          branchSelectionPendingSetterRef={branchSelectionPendingSetterRef}
           renderMessageContent={renderMessageContent}
           messagesEndRef={messagesEndRef}
           revealMessageRef={revealMessageRef}
           onTogglePin={handleTogglePin}
           onCopyMessage={handleCopyMessage}
-          selectionMode={selectionMode}
-          selectedMessageIds={selectedMessageIds}
-          onStartMultiSelect={handleStartMultiSelect}
-          onToggleSelection={handleToggleMessageSelection}
           onCancelEditing={handleCancelEditingMessage}
           onSaveEditedMessage={handleSaveEditedMessage}
           onResendMessage={handleResendMessage}
           onStartEditing={handleStartEditingMessage}
           onSelectBranch={handleSelectBranch}
-          onEditTextChange={setEditingMessageText}
+          creditLimits={creditLimits}
+          advancedChatConfig={advancedChatConfig}
+          sessionToken={sessionToken}
+          toast={toast}
+          draftStorageKey={draftKeys.activeKey}
+          draftFallbackKey={draftKeys.fallbackKey}
+          inputRef={inputRef}
+          inputSetterRef={inputSetterRef}
+          onSend={handleSendMessage}
+          onAbort={handleAbortSend}
+          onShareSelection={handleShareSelection}
         />
-
-        {selectionMode ? (
-          <ChatSelectionActionBar
-            selectedCount={selectedMessages.length}
-            pinLabel={allSelectedMessagesPinned ? '取消固定' : '固定'}
-            pinDisabled={bulkPinning || pinWouldExceedLimit || !selectedChat?.chat_id}
-            busy={bulkPinning}
-            selectedWallpaper={selectedWallpaper}
-            isMobile={isMobile}
-            chatContentRailStyle={chatContentRailStyle}
-            onCopy={handleCopySelectedMessages}
-            onPin={handlePinSelectedMessages}
-            onShare={() => setShowShareScreenshot(true)}
-            onCancel={handleExitSelectionMode}
-          />
-        ) : (
-          <ChatInputBar
-            selectedWallpaper={selectedWallpaper}
-            isMobile={isMobile}
-            chatContentRailStyle={chatContentRailStyle}
-            userData={userData}
-            creditLimits={creditLimits}
-            chatState={chatState}
-            advancedChatConfig={advancedChatConfig}
-            sessionToken={sessionToken}
-            toast={toast}
-            draftStorageKey={draftKeys.activeKey}
-            draftFallbackKey={draftKeys.fallbackKey}
-            inputRef={inputRef}
-            inputSetterRef={inputSetterRef}
-            onSend={handleSendMessage}
-            onAbort={() => {
-              abortControllerRef.current?.abort();
-            }}
-          />
-        )}
       </div>
       <CharacterSidebar
         characterSidebarVisible={characterSidebarVisible}
@@ -811,19 +757,19 @@ export default function ChatPage() {
         navigate={navigate}
         advancedChatConfig={advancedChatConfig}
         setAdvancedChatConfig={setAdvancedChatConfig}
-        onResetAdvancedChatConfig={() => setAdvancedChatConfig(normalizeAdvancedChatConfig(selectedCharacter))}
+        onResetAdvancedChatConfig={handleResetAdvancedChatConfig}
         onSaveAdvancedChatConfig={saveUserCharacterConfig}
         wallpaper={wallpaper}
         onSetWallpaper={setWallpaper}
         characterPicture={selectedCharacter?.picture}
         characterBackground={characterBackground}
-        pinnedMemories={pinnedMemories}
+        chatState={chatState}
         maxPinnedMemories={MAX_PINNED_MEMORIES}
         onJumpToPinnedMemory={jumpToMessage}
-        onUnpinMemory={(messageId) => handleTogglePin(messageId, false)}
+        onUnpinMemory={handleUnpinMemory}
         isMobile={isMobile}
-        setPersonaModalShow={() => setPersonaModal({ show: true })}
-        onOpenCharacterShare={() => setShowShareCharacter(true)}
+        setPersonaModalShow={handleOpenPersonaModal}
+        onOpenCharacterShare={handleOpenCharacterShare}
       />
     </div>
 
@@ -858,7 +804,7 @@ export default function ChatPage() {
       <ShareScreenshotDialog
         show={showShareScreenshot}
         onClose={() => setShowShareScreenshot(false)}
-        messages={selectedMessages}
+        messages={selectedMessagesForShare}
         character={selectedCharacter}
         scene={selectedScene}
         persona={selectedPersona}
