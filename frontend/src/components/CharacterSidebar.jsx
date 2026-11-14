@@ -21,14 +21,33 @@ const PinnedMemoryManager = React.memo(function PinnedMemoryManager({
 }) {
   const pinnedMessagesRef = React.useRef([]);
   const subscribe = React.useCallback(
-    (listener) => chatState.subscribe('messages', listener),
+    (listener) => {
+      const unsubscribeMessages = chatState.subscribe('messages', listener);
+      const unsubscribeStoredPins = chatState.subscribe('storedPinnedMessages', listener);
+      return () => {
+        unsubscribeMessages();
+        unsubscribeStoredPins();
+      };
+    },
     [chatState],
   );
   const getPinnedMessages = React.useCallback(() => {
     const messages = chatState.get('messages');
-    const nextPinnedMessages = messages.filter(
-      (message) => message?.role !== 'system' && message?.message_id && message?.is_pinned,
-    );
+    // Pins stored on the server but above the loaded window (the transcript
+    // opens with its newest messages only).
+    const storedPinnedMessages = chatState.get('storedPinnedMessages') || [];
+    const seenIds = new Set();
+    const nextPinnedMessages = [];
+    for (const message of messages) {
+      if (message?.role === 'system' || !message?.message_id || !message?.is_pinned) continue;
+      seenIds.add(message.message_id);
+      nextPinnedMessages.push(message);
+    }
+    for (const message of storedPinnedMessages) {
+      if (!message?.message_id || message?.role === 'system' || seenIds.has(message.message_id)) continue;
+      seenIds.add(message.message_id);
+      nextPinnedMessages.push(message);
+    }
     const previousPinnedMessages = pinnedMessagesRef.current;
     if (
       nextPinnedMessages.length === previousPinnedMessages.length

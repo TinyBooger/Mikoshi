@@ -118,6 +118,8 @@ const ChatConversationArea = React.memo(function ChatConversationArea({
   renderMessageContent,
   messagesEndRef,
   revealMessageRef,
+  hasOlderMessages,
+  onLoadOlderMessages,
   onTogglePin,
   onCopyMessage,
   onCancelEditing,
@@ -240,6 +242,8 @@ const ChatConversationArea = React.memo(function ChatConversationArea({
         renderMessageContent={renderMessageContent}
         messagesEndRef={messagesEndRef}
         revealMessageRef={revealMessageRef}
+        hasOlderMessages={hasOlderMessages}
+        onLoadOlderMessages={onLoadOlderMessages}
         onTogglePin={onTogglePin}
         onCopyMessage={onCopyMessage}
         selectionMode={selectionMode}

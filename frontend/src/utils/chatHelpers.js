@@ -51,6 +51,7 @@ export const normalizeChatBranch = (branch, index = 0) => {
     : fallbackBranchId;
   const messages = ensureMessageIds(Array.isArray(branch?.messages) ? branch.messages : []);
   const storedMessageCount = Number(branch?.message_count);
+  const oldestSeq = Number(branch?.oldest_seq);
 
   return {
     branch_id: branchId,
@@ -70,6 +71,15 @@ export const normalizeChatBranch = (branch, index = 0) => {
     message_count: Number.isFinite(storedMessageCount)
       ? Math.max(storedMessageCount, messages.length)
       : messages.length,
+    // Scrollback cursor: the server ships only the newest messages of a long
+    // branch (`has_more`), and `oldest_seq` is the seq to page before.
+    oldest_seq: Number.isFinite(oldestSeq) ? oldestSeq : null,
+    has_more: !!branch?.has_more,
+    // Pinned memories can sit far above the loaded window; the server always
+    // sends them so the memory manager stays complete.
+    pinned_messages: ensureMessageIds(
+      Array.isArray(branch?.pinned_messages) ? branch.pinned_messages : [],
+    ),
     messages,
   };
 };
@@ -190,10 +200,19 @@ export const computeForkNav = (allBranches, activeBranchId) => {
     const parentMsgIds = new Set(
       (parentBranch?.messages || []).map((m) => m?.message_id).filter(Boolean),
     );
+    // Both sides may hold only a tail of their branch, so rows below the parent's
+    // first loaded seq cannot be checked: they are shared prefix by definition and
+    // the parent simply has not paged that far, so skipping them avoids reporting
+    // a shared message as the divergence point.
+    const parentStartSeq = Number.isFinite(parentBranch?.oldest_seq) ? parentBranch.oldest_seq : 0;
+    const activeStartSeq = Number.isFinite(activeBranch.oldest_seq) ? activeBranch.oldest_seq : 0;
+    const skipAhead = Math.max(0, parentStartSeq - activeStartSeq);
+    const activeMessages = activeBranch.messages || [];
     let forkMessageId = null;
-    for (const msg of activeBranch.messages || []) {
-      if (msg?.message_id && !parentMsgIds.has(msg.message_id)) {
-        forkMessageId = msg.message_id;
+    for (let index = skipAhead; index < activeMessages.length; index += 1) {
+      const messageId = activeMessages[index]?.message_id;
+      if (messageId && !parentMsgIds.has(messageId)) {
+        forkMessageId = messageId;
         break;
       }
     }

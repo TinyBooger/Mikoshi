@@ -46,7 +46,11 @@ export function usePinnedMemories({
 
   const handleTogglePin = useCallback(async (messageId, nextPinnedState, { silentSuccess = false } = {}) => {
     const messages = chatState.get('messages');
-    const targetMessage = messages.find((m) => m?.message_id === messageId);
+    const storedPinnedMessages = chatState.get('storedPinnedMessages') || [];
+    // A pinned memory can sit above the loaded window and only be present in
+    // the server-provided pin list.
+    const targetMessage = messages.find((m) => m?.message_id === messageId)
+      || storedPinnedMessages.find((m) => m?.message_id === messageId);
     const chatSnapshot = selectedChatRef.current;
     if (!targetMessage) return;
 
@@ -56,8 +60,11 @@ export function usePinnedMemories({
     }
 
     if (nextPinnedState && !targetMessage.is_pinned) {
-      const currentPinnedCount = messages.filter((m) => m?.role !== 'system' && m?.is_pinned).length;
-      if (currentPinnedCount >= MAX_PINNED_MEMORIES) {
+      const pinnedIds = new Set([
+        ...messages.filter((m) => m?.role !== 'system' && m?.is_pinned).map((m) => m?.message_id),
+        ...storedPinnedMessages.map((m) => m?.message_id),
+      ]);
+      if (pinnedIds.size >= MAX_PINNED_MEMORIES) {
         toast.show(
           `每个对话最多可固定 ${MAX_PINNED_MEMORIES} 条记忆。`,
           { type: 'warning' }
@@ -66,29 +73,42 @@ export function usePinnedMemories({
       }
     }
 
+    const withPinnedState = (message) => {
+      if (!message || typeof message !== 'object') return message;
+      if (message.message_id !== messageId) return message;
+      return { ...message, is_pinned: nextPinnedState };
+    };
+
     // Optimistic update
-    chatState.set('messages', (prev) => prev.map((m) => {
-      if (!m || typeof m !== 'object') return m;
-      if (m.message_id !== messageId) return m;
-      return { ...m, is_pinned: nextPinnedState };
-    }));
+    chatState.set('messages', (previousMessages) => previousMessages.map(withPinnedState));
+    chatState.set('storedPinnedMessages', (previousMessages) => {
+      const list = Array.isArray(previousMessages) ? previousMessages : [];
+      if (nextPinnedState) {
+        if (list.some((m) => m?.message_id === messageId)) return list.map(withPinnedState);
+        return [...list, { ...targetMessage, is_pinned: true }];
+      }
+      return list.filter((m) => m?.message_id !== messageId);
+    });
 
     const updatePinnedChatEntry = (isPinned) => {
       updateSelectedChatRef((prev) => {
         if (!prev) return prev;
         const normalized = normalizeChatEntry(prev);
-        const branchMessages = normalized?.branches?.find(
-          (branch) => branch.branch_id === chatSnapshot.active_branch_id,
-        )?.messages || [];
+        const branch = normalized?.branches?.find(
+          (b) => b.branch_id === chatSnapshot.active_branch_id,
+        );
+        const branchMessages = branch?.messages || [];
+        const pinnedMessages = Array.isArray(branch?.pinned_messages) ? branch.pinned_messages : [];
+        const nextPinnedMessages = isPinned
+          ? (pinnedMessages.some((m) => m?.message_id === messageId)
+            ? pinnedMessages.map((m) => (m?.message_id === messageId ? { ...m, is_pinned: true } : m))
+            : [...pinnedMessages, { ...targetMessage, is_pinned: true }])
+          : pinnedMessages.filter((m) => m?.message_id !== messageId);
         return updateChatEntryBranchMessages(
           prev,
           chatSnapshot.active_branch_id,
-          branchMessages.map((m) => {
-            if (!m || typeof m !== 'object') return m;
-            if (m.message_id !== messageId) return m;
-            return { ...m, is_pinned: isPinned };
-          }),
-          {},
+          branchMessages.map(withPinnedState),
+          { pinned_messages: nextPinnedMessages },
           normalized?.active_branch_id === chatSnapshot.active_branch_id,
         );
       });
@@ -112,11 +132,19 @@ export function usePinnedMemories({
         currentChat?.chat_id === chatSnapshot.chat_id
         && currentChat.active_branch_id === chatSnapshot.active_branch_id
       ) {
-        chatState.set('messages', (prev) => prev.map((m) => {
+        chatState.set('messages', (previousMessages) => previousMessages.map((m) => {
           if (!m || typeof m !== 'object') return m;
           if (m.message_id !== messageId) return m;
           return { ...m, is_pinned: !nextPinnedState };
         }));
+        chatState.set('storedPinnedMessages', (previousMessages) => {
+          const list = Array.isArray(previousMessages) ? previousMessages : [];
+          if (!nextPinnedState) {
+            if (list.some((m) => m?.message_id === messageId)) return list;
+            return [...list, { ...targetMessage, is_pinned: true }];
+          }
+          return list.filter((m) => m?.message_id !== messageId);
+        });
       }
       updatePinnedChatEntry(!nextPinnedState);
       toast.show(error.message || '更新固定记忆失败。', { type: 'error' });

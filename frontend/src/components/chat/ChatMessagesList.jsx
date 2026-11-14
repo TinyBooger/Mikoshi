@@ -38,6 +38,8 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
   renderMessageContent,
   messagesEndRef,
   revealMessageRef,
+  hasOlderMessages,
+  onLoadOlderMessages,
   onTogglePin,
   onCopyMessage,
   selectionMode,
@@ -64,7 +66,12 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
   const pendingScrollAnchorRef = useRef(null);
   const pendingJumpMessageIdRef = useRef(null);
   const pendingBottomScrollRef = useRef(false);
+  // Set while a scrollback page is in flight: the transcript grows at the top,
+  // so the bottom-anchored auto scroll has to stay out of the way.
+  const prependInFlightRef = useRef(false);
   const previousMessageCountRef = useRef(nonSystem.length);
+  const previousFirstMessageIdRef = useRef(nonSystem[0]?.message_id || null);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const firstVisibleIndex = Math.min(visibleRange.start, nonSystem.length);
   const lastVisibleIndex = Math.min(Math.max(visibleRange.end, firstVisibleIndex), nonSystem.length);
   const visibleMessages = nonSystem.slice(firstVisibleIndex, lastVisibleIndex);
@@ -84,6 +91,12 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
 
   useEffect(() => {
     const scrollToBottom = () => {
+      if (prependInFlightRef.current) {
+        // Consumed by the page this call belongs to; a later append scrolls
+        // normally again.
+        prependInFlightRef.current = false;
+        return;
+      }
       if (scrollFrameRef.current !== null) {
         cancelAnimationFrame(scrollFrameRef.current);
       }
@@ -119,14 +132,41 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
     };
   }, [nonSystem]);
 
-  const handleLoadEarlierMessages = useCallback(() => {
-    if (firstVisibleIndex <= 0) return;
+  const handleLoadEarlierMessages = useCallback(async () => {
+    if (firstVisibleIndex > 0) {
+      // Older messages are already in memory: just widen the rendered window.
+      setScrollAnchor(firstVisibleIndex);
+      setVisibleRange((current) => ({
+        start: Math.max(0, current.start - LOAD_MESSAGE_BATCH),
+        end: Math.min(nonSystem.length, current.end),
+      }));
+      return;
+    }
+    if (!hasOlderMessages || loadingOlderMessages || !onLoadOlderMessages) return;
+
     setScrollAnchor(firstVisibleIndex);
-    setVisibleRange((current) => ({
-      start: Math.max(0, current.start - LOAD_MESSAGE_BATCH),
-      end: Math.min(nonSystem.length, current.end),
-    }));
-  }, [firstVisibleIndex, nonSystem.length, setScrollAnchor]);
+    prependInFlightRef.current = true;
+    setLoadingOlderMessages(true);
+    try {
+      await onLoadOlderMessages();
+    } finally {
+      setLoadingOlderMessages(false);
+      // The prepend notification (if any) already cleared the flag; this is
+      // only here so an empty page cannot keep swallowing auto scrolls.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          prependInFlightRef.current = false;
+        });
+      });
+    }
+  }, [
+    firstVisibleIndex,
+    hasOlderMessages,
+    loadingOlderMessages,
+    nonSystem.length,
+    onLoadOlderMessages,
+    setScrollAnchor,
+  ]);
 
   useLayoutEffect(() => {
     const anchor = pendingScrollAnchorRef.current;
@@ -184,7 +224,16 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
     previousMessageCountRef.current = nonSystem.length;
     if (nonSystem.length === previousMessageCount) return;
 
-    if (nonSystem.length > previousMessageCount) {
+    // A page loaded at the top leaves the previously first message in place, so
+    // it must not be mistaken for an appended turn (which pulls the view down).
+    const firstMessageId = nonSystem[0]?.message_id || null;
+    const previousFirstMessageId = previousFirstMessageIdRef.current;
+    previousFirstMessageIdRef.current = firstMessageId;
+    const prependedFromScrollback = !!previousFirstMessageId
+      && firstMessageId !== previousFirstMessageId
+      && nonSystem.some((message) => message?.message_id === previousFirstMessageId);
+
+    if (nonSystem.length > previousMessageCount && !prependedFromScrollback) {
       pendingBottomScrollRef.current = true;
     }
     setVisibleRange((current) => ({
@@ -232,10 +281,11 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
           </div>
         ) : (
           <>
-            {firstVisibleIndex > 0 && (
+            {(firstVisibleIndex > 0 || hasOlderMessages) && (
               <button
                 type="button"
                 onClick={handleLoadEarlierMessages}
+                disabled={loadingOlderMessages}
                 style={{
                   display: 'block',
                   margin: '0.5rem auto 1rem',
@@ -244,11 +294,12 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
                   borderRadius: '999px',
                   background: palette.bubbleChar,
                   color: palette.textColor,
-                  cursor: 'pointer',
+                  cursor: loadingOlderMessages ? 'progress' : 'pointer',
                   font: 'inherit',
+                  opacity: loadingOlderMessages ? 0.6 : 1,
                 }}
               >
-                加载更早的消息
+                {loadingOlderMessages ? '加载中…' : '加载更早的消息'}
               </button>
             )}
             {visibleMessages.map((m, visibleIndex) => {

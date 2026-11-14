@@ -8,9 +8,14 @@ from utils.session import get_current_user, verify_session_token
 from utils.llm_client import stream_chat_completion_with_config
 from utils.asr_utils import ASR_MODEL, ASR_SAMPLE_RATE, DASHSCOPE_API_KEY
 from utils.chat_history_utils import (
+    CHAT_OPEN_MESSAGE_LIMIT,
+    CHAT_OPEN_MESSAGE_LIMIT_MAX,
     DEFAULT_BRANCH_ID,
     fetch_chat_history_entry,
     fetch_chat_history_branch_context,
+    fetch_chat_history_branch_page,
+    fetch_chat_history_fork_prefix,
+    resolve_chat_history_active_branch_id,
     chat_history_message_exists,
     append_chat_history_turn_to_store,
     upsert_chat_history_entry,
@@ -323,7 +328,6 @@ def _persist_chat_history_turn(
         db_session.flush()
         return existing_entry, saved_branch, True
 
-    existing_payload = normalize_chat_history_payload(existing_entry.messages if existing_entry else [])
     if existing_entry:
         serialized_existing = serialize_chat_history_entry(existing_entry)
         existing_payload = normalize_chat_history_payload(
@@ -332,6 +336,8 @@ def _persist_chat_history_turn(
                 "branches": serialized_existing.get("branches") or [],
             }
         )
+    else:
+        existing_payload = normalize_chat_history_payload([])
 
     # Hardening against overlapping turns: if the client's snapshot is behind
     # the currently persisted branch, this turn is stale and must not overwrite
@@ -702,7 +708,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         if existing_entry and (not isinstance(branch_id, str) or not branch_id.strip()):
             branch_id = existing_entry.active_branch_id
             if not isinstance(branch_id, str) or not branch_id.strip():
-                branch_id = serialize_chat_history_entry(existing_entry).get("active_branch_id")
+                branch_id = resolve_chat_history_active_branch_id(db, existing_entry)
     if isinstance(branch_id, str):
         branch_id = branch_id.strip() or None
     else:
@@ -726,35 +732,26 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         ]
 
         if fork_from_message_id:
-            serialized_entry = serialize_chat_history_entry(existing_entry)
-            history_payload = normalize_chat_history_payload({
-                "active_branch_id": serialized_entry.get("active_branch_id"),
-                "branches": serialized_entry.get("branches") or [],
-            })
-            source_branch_id = branch_id or history_payload["active_branch_id"]
-            branch_id = source_branch_id
-            source_branch = next(
-                (branch for branch in history_payload["branches"] if branch.get("branch_id") == source_branch_id),
-                None,
+            # A fork materializes the source branch's prefix, so it needs
+            # everything up to the fork point but nothing after it.
+            source_branch_id = (
+                branch_id
+                or existing_entry.active_branch_id
+                or resolve_chat_history_active_branch_id(db, existing_entry)
             )
-            if source_branch is None:
+            branch_id = source_branch_id
+            branch_found, fork_target_role, prefix_messages = fetch_chat_history_fork_prefix(
+                db,
+                existing_entry,
+                source_branch_id,
+                message_id=fork_from_message_id,
+            )
+            if not branch_found:
                 return JSONResponse(
                     content={"error": "CHAT_BRANCH_NOT_FOUND", "message": "对话分支已更新，请重新加载后重试。"},
                     status_code=409,
                 )
-            stored_messages = [
-                message for message in source_branch.get("messages") or []
-                if isinstance(message, dict) and message.get("role") != "system"
-            ]
-            fork_index = next(
-                (
-                    index for index, message in enumerate(stored_messages)
-                    if message.get("message_id") == fork_from_message_id
-                    and message.get("role") == "user"
-                ),
-                None,
-            )
-            if fork_index is None:
+            if fork_target_role != "user":
                 return JSONResponse(
                     content={"error": "FORK_MESSAGE_NOT_FOUND", "message": "无法找到要创建分支的消息，请重新加载对话。"},
                     status_code=409,
@@ -770,7 +767,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     content={"error": "INVALID_FORK_MESSAGE", "message": "无法读取要重新发送的消息，请重试。"},
                     status_code=400,
                 )
-            stored_messages = [*stored_messages[:fork_index], fork_message]
+            stored_messages = [
+                message for message in prefix_messages
+                if isinstance(message, dict) and message.get("role") != "system"
+            ]
+            stored_messages = [*stored_messages, fork_message]
             full_messages = [*system_messages, *stored_messages]
             messages = full_messages
             context_messages = full_messages
@@ -818,6 +819,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             full_messages = [turn_message]
             context_messages = messages
         else:
+            # Legacy clients send the whole transcript instead of one
+            # ``turn_message``, so this path diffs their full list against the
+            # stored ids and rewrites the branch. Truncating the stored side would
+            # make older messages look new and re-append them, so it stays a full
+            # read; the current client never reaches it.
             serialized_entry = serialize_chat_history_entry(existing_entry)
             history_payload = normalize_chat_history_payload({
                 "active_branch_id": serialized_entry.get("active_branch_id"),
@@ -1449,7 +1455,9 @@ async def select_chat_branch(request: Request, current_user: User = Depends(get_
 
     return {
         "status": "success",
-        "chat": serialize_chat_history_entry(entry),
+        # Bounded like the initial load: switching branch re-fills the same
+        # message window, and older pages come from the paging endpoint.
+        "chat": serialize_chat_history_entry(entry, message_limit=CHAT_OPEN_MESSAGE_LIMIT),
     }
 
 
@@ -1478,7 +1486,7 @@ async def pin_chat_message(request: Request, current_user: User = Depends(get_cu
         return JSONResponse(content={"error": "Chat not found"}, status_code=404)
 
     if not isinstance(branch_id, str) or not branch_id.strip():
-        branch_id = serialize_chat_history_entry(entry).get("active_branch_id")
+        branch_id = resolve_chat_history_active_branch_id(db, entry)
     else:
         branch_id = branch_id.strip()
 
@@ -1573,13 +1581,57 @@ async def get_chat_history(
 @router.get("/api/chat/history/{chat_id}")
 async def get_chat_history_entry(
     chat_id: str,
+    limit: int = CHAT_OPEN_MESSAGE_LIMIT,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Open a chat: metadata plus only the newest `limit` messages per branch.
+
+    The chat page paints its last 50 bubbles first and asks for older pages from
+    `/api/chat/history/{chat_id}/messages` as the reader scrolls up, so sending a
+    whole multi-thousand-message transcript here was pure waste.
+    """
     entry = fetch_chat_history_entry(db, current_user.id, chat_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Chat not found")
-    return serialize_chat_history_entry(entry)
+    page_limit = max(1, min(int(limit), CHAT_OPEN_MESSAGE_LIMIT_MAX))
+    return serialize_chat_history_entry(entry, message_limit=page_limit)
+
+
+@router.get("/api/chat/history/{chat_id}/messages")
+async def get_chat_history_messages_page(
+    chat_id: str,
+    branch_id: str | None = None,
+    before_seq: int | None = None,
+    limit: int = CHAT_OPEN_MESSAGE_LIMIT,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """One page of a branch's older messages, for scrollback.
+
+    `before_seq` is the `oldest_seq` of the page (or of the open payload) the
+    client already holds; the response ends just below it so pages stay
+    contiguous. `has_more` says whether older rows remain.
+    """
+    entry = fetch_chat_history_entry(db, current_user.id, chat_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    resolved_branch_id = (
+        branch_id.strip()
+        if isinstance(branch_id, str) and branch_id.strip()
+        else resolve_chat_history_active_branch_id(db, entry)
+    )
+    page = fetch_chat_history_branch_page(
+        db,
+        entry,
+        resolved_branch_id,
+        limit=limit,
+        before_seq=before_seq,
+    )
+    if page is None:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    return page
 
 
 # NOTE: the path is kept for backward compatibility with already-deployed

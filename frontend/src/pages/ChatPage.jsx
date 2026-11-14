@@ -30,6 +30,7 @@ import { getChatDraftStorageKeys } from '../utils/chatDraftStorage';
 import { toChatHistoryMetadata } from '../utils/chatHistoryMetadata';
 import { useCreditAndChatLimits } from '../hooks/useCreditAndChatLimits';
 import { usePinnedMemories } from '../hooks/usePinnedMemories';
+import { useChatHistoryPaging } from '../hooks/useChatHistoryPaging';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useChatSettingsHint } from '../hooks/useChatSettingsHint';
 import { useChatSend } from '../hooks/useChatSend';
@@ -39,6 +40,12 @@ import { useChatHistoryActions } from '../hooks/useChatHistoryActions';
 import { useLikeEntity } from '../hooks/useLikeEntity';
 import { createChatRuntimeStore } from '../hooks/useChatRuntimeState';
 import { NAV_WIDTH, SIDEBAR_WIDTH, CHAT_CONTENT_PADDING } from '../constants/layout';
+
+// Resolves after the browser has painted the next commit: messages loaded on
+// demand only reach the DOM on the render that follows the fetch.
+const waitForNextPaint = () => new Promise((resolve) => {
+  window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
+});
 
 export default function ChatPage() {
   const { characterSidebarVisible, onToggleCharacterSidebar } = useOutletContext();
@@ -337,10 +344,24 @@ export default function ChatPage() {
     const branches = existingEntry.branches.map((branch) => {
       if (branch.branch_id !== branchMetadata.branch_id) return branch;
       branchUpdated = true;
+      // A turn appends at the tail, so the scrollback cursor of an existing
+      // branch does not move; spreading `branch` first keeps it.
       return { ...branch, ...branchMetadata, messages: branchMessages };
     });
     if (!branchUpdated) {
-      branches.push({ ...branchMetadata, messages: branchMessages });
+      // A fresh branch inherits the stored prefix, which is longer than the tail
+      // window the client sent: `message_count` from the server counts it, so the
+      // difference is what still has to be fetched before rendering from the top.
+      const branchMessageCount = Number.isFinite(branchMetadata.message_count)
+        ? branchMetadata.message_count
+        : branchMessages.length;
+      const oldestSeq = Math.max(0, branchMessageCount - branchMessages.length);
+      branches.push({
+        ...branchMetadata,
+        messages: branchMessages,
+        oldest_seq: oldestSeq,
+        has_more: oldestSeq > 0,
+      });
     }
 
     upsertChatHistoryEntryLocally({
@@ -377,11 +398,29 @@ export default function ChatPage() {
     sessionToken,
   });
 
-  const jumpToMessage = useCallback((messageId) => {
+  const { loadOlderMessages, ensureMessageLoaded, hasOlderMessages } = useChatHistoryPaging({
+    sessionToken,
+    selectedChatRef,
+    setSelectedChat,
+    chatState,
+    toast,
+  });
+
+  const jumpToMessage = useCallback(async (messageId) => {
     if (!messageId) return;
-    const target = document.getElementById(`message-${messageId}`);
-    if (!target) {
+    // Pinned memories can sit above the loaded window: page back until the
+    // message is part of the transcript before scrolling to it.
+    const loaded = await ensureMessageLoaded(messageId);
+    if (loaded) await waitForNextPaint();
+    let target = loaded ? document.getElementById(`message-${messageId}`) : null;
+    if (loaded && !target) {
+      // Loaded but outside the rendered window: ask the list to widen it.
       revealMessageRef.current?.(messageId);
+      await waitForNextPaint();
+      target = document.getElementById(`message-${messageId}`);
+    }
+    if (!target) {
+      toast.show('该消息尚未加载，请先加载更早的消息。', { type: 'info' });
       return;
     }
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -390,7 +429,7 @@ export default function ChatPage() {
     window.setTimeout(() => {
       target.style.boxShadow = 'none';
     }, 1100);
-  }, []);
+  }, [ensureMessageLoaded, toast]);
 
   // ---- Streaming send pipeline ----
   // Owns the abort controller, the SSE reader and the generation-token guard
@@ -589,6 +628,33 @@ export default function ChatPage() {
 
   const activeChatBranches = useMemo(() => normalizeChatEntry(selectedChat)?.branches || [], [selectedChat]);
 
+  // Pinned memories live in the branch payload and may sit far above the loaded
+  // window, so they are mirrored into the runtime store for the memory manager.
+  // The branch payload is frequently swapped through `selectedChatRef` without a
+  // page render (branch switch, fork), so the mirror also follows the transcript.
+  useEffect(() => {
+    const syncPinnedMessages = () => {
+      const normalized = normalizeChatEntry(selectedChatRef.current);
+      const branch = normalized
+        ? normalized.branches.find(
+          (candidate) => candidate.branch_id === normalized.active_branch_id,
+        ) || normalized.branches[0] || null
+        : null;
+      const nextPinnedMessages = (branch?.pinned_messages || []).slice(0, MAX_PINNED_MEMORIES);
+      const currentPinnedMessages = chatState.get('storedPinnedMessages');
+      const unchanged = Array.isArray(currentPinnedMessages)
+        && currentPinnedMessages.length === nextPinnedMessages.length
+        && nextPinnedMessages.every(
+          (message, index) => message?.message_id === currentPinnedMessages[index]?.message_id,
+        );
+      if (unchanged) return;
+      chatState.set('storedPinnedMessages', nextPinnedMessages);
+    };
+
+    syncPinnedMessages();
+    return chatState.subscribe('messages', syncPinnedMessages);
+  }, [chatState]);
+
   // Centered content rail — keeps messages, avatars and input fixed-width and centered
   // regardless of sidebar toggle state. Baseline when both sidebars are open:
   // left nav + character sidebar + message area side-padding on each side.
@@ -705,6 +771,8 @@ export default function ChatPage() {
           renderMessageContent={renderMessageContent}
           messagesEndRef={messagesEndRef}
           revealMessageRef={revealMessageRef}
+          hasOlderMessages={hasOlderMessages}
+          onLoadOlderMessages={loadOlderMessages}
           onTogglePin={handleTogglePin}
           onCopyMessage={handleCopyMessage}
           onCancelEditing={handleCancelEditingMessage}

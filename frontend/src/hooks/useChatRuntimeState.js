@@ -2,6 +2,10 @@ import { useCallback, useSyncExternalStore } from 'react';
 
 const createChatRuntimeState = () => ({
   messages: [],
+  // Pinned memories of the active branch as stored on the server. The loaded
+  // window may not contain them, so they are kept apart from `messages` and
+  // merged only where the pin list is built.
+  storedPinnedMessages: [],
   // The list subscribes to row structure; each bubble subscribes to its own
   // message so content chunks do not re-render the list.
   messageList: [],
@@ -13,7 +17,7 @@ const createChatRuntimeState = () => ({
 
 export function createChatRuntimeStore() {
   let state = createChatRuntimeState();
-  const listeners = new Map(['messages', 'messageList', 'contextUsageMessages', 'sendStatus', 'serverContextWindowUsage']
+  const listeners = new Map(['messages', 'messageList', 'contextUsageMessages', 'sendStatus', 'serverContextWindowUsage', 'storedPinnedMessages']
     .map((key) => [key, new Set()]));
   const messageListeners = new Map();
   let messagesById = new Map();

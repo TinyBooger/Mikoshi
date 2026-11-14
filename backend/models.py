@@ -161,7 +161,6 @@ class ChatHistory(Base):
     scene_picture = Column(String, nullable=True)
     title = Column(String(255), nullable=False)
     active_branch_id = Column(String, nullable=True)
-    messages = Column(JSONB, default=[])
     is_pinned = Column(Boolean, default=False, nullable=False)
     hidden_from_recent = Column(Boolean, default=False, nullable=False)
     last_updated = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

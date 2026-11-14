@@ -29,21 +29,25 @@ DEFAULT_BRANCH_ID = "branch_main"
 # milliseconds per chunk through a bulk insert.
 MESSAGE_INSERT_CHUNK_SIZE = 500
 
+# How much of a branch a client gets when it opens a chat. The chat page renders
+# INITIAL_VISIBLE_MESSAGES (50) bubbles first, so reading the recent tail is
+# enough to fill that view; older messages arrive page by page as the reader
+# scrolls up. Keep this equal to the frontend's INITIAL_VISIBLE_MESSAGES.
+CHAT_OPEN_MESSAGE_LIMIT = 50
+# Upper bound for a caller-supplied page size, so a bad parameter cannot turn
+# back into a full-transcript read.
+CHAT_OPEN_MESSAGE_LIMIT_MAX = 500
+
 # A stored message's ``created_at`` is only handed to the client when we know it
-# is the moment the message was actually written:
-#
-# * rows written before timestamps reached clients carry no meaningful send time,
-#   and
-# * rows a store backfill had to invent are deliberately stamped with
-#   :data:`TIMESTAMP_UNKNOWN` instead of "now" (see ``_sync_chat_history_store``),
-#   because a backfill has no idea when those messages were sent.
+# is the moment the message was actually written: rows written before timestamps
+# reached clients carry no meaningful send time (the SQL backfill that normalized
+# the old JSON blobs had to invent times for the messages it translated).
 #
 # Anything at or after :data:`TIMESTAMP_TRUSTED_FROM` is real, so the client may
 # draw its time dividers from it; older/unknown rows are serialized without a
 # timestamp, and the client hides the time instead of showing a wrong one.
 # Bump the cutoff only if a future migration invents timestamps again.
 TIMESTAMP_TRUSTED_FROM = datetime(2026, 10, 7, tzinfo=UTC)
-TIMESTAMP_UNKNOWN = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 def _as_utc(value: Optional[datetime]) -> Optional[datetime]:
@@ -299,6 +303,125 @@ def count_chat_history_messages(raw_messages: Any, branch_id: str | None = None)
     return len(get_chat_history_messages(raw_messages, branch_id))
 
 
+def _serialize_stored_message(item: ChatHistoryMessage) -> Optional[dict[str, Any]]:
+    """JSON-friendly form of one stored message."""
+    message: dict[str, Any] = {
+        "role": item.role,
+        "content": item.content,
+    }
+    # Empty for rows whose stored time is not trustworthy, so the client has
+    # nothing to render a (wrong) clock from.
+    created_at = _display_timestamp(item.created_at)
+    if created_at:
+        message["created_at"] = created_at
+    if isinstance(item.usage, dict):
+        message["usage"] = item.usage
+    if item.role in {"user", "assistant"}:
+        message["is_pinned"] = bool(item.is_pinned)
+        message["message_id"] = item.message_id or generate_chat_message_id()
+    return _normalize_message(message)
+
+
+def _branch_message_filter(entry: ChatHistory, branch_id: str) -> tuple:
+    return (
+        ChatHistoryMessage.chat_id == entry.chat_id,
+        ChatHistoryMessage.branch_id == branch_id,
+    )
+
+
+def _count_branch_messages(
+    db: Session,
+    entry: ChatHistory,
+    branch_id: str,
+    *,
+    before_seq: int | None = None,
+) -> int:
+    query = db.query(func.count(ChatHistoryMessage.id)).filter(
+        *_branch_message_filter(entry, branch_id)
+    )
+    if before_seq is not None:
+        query = query.filter(ChatHistoryMessage.created_seq < before_seq)
+    return int(query.scalar() or 0)
+
+
+def _fetch_branch_window(
+    db: Session,
+    entry: ChatHistory,
+    branch_id: str,
+    *,
+    message_limit: int | None = None,
+    before_seq: int | None = None,
+) -> tuple[list[ChatHistoryMessage], int, bool]:
+    """Read one branch's newest ``message_limit`` rows, chronologically.
+
+    ``before_seq`` restricts the window to rows stored below that seq, which is
+    how the client walks backwards through a long transcript without ever asking
+    the database for the whole branch.
+
+    Returns ``(rows, message_count, has_more)``: ``message_count`` is the
+    branch's full length and ``has_more`` says whether rows older than the
+    returned window exist.
+    """
+    query = db.query(ChatHistoryMessage).filter(*_branch_message_filter(entry, branch_id))
+    if before_seq is not None:
+        query = query.filter(ChatHistoryMessage.created_seq < before_seq)
+
+    if isinstance(message_limit, int) and message_limit > 0:
+        rows = (
+            query.order_by(
+                ChatHistoryMessage.created_seq.desc(),
+                ChatHistoryMessage.id.desc(),
+            )
+            .limit(message_limit)
+            .all()
+        )
+        rows.reverse()
+        message_count = _count_branch_messages(db, entry, branch_id)
+        if before_seq is None:
+            has_more = message_count > len(rows)
+        else:
+            has_more = bool(rows) and _count_branch_messages(
+                db,
+                entry,
+                branch_id,
+                before_seq=rows[0].created_seq,
+            ) > 0
+        return rows, message_count, has_more
+
+    rows = query.order_by(
+        ChatHistoryMessage.created_seq.asc(),
+        ChatHistoryMessage.id.asc(),
+    ).all()
+    return rows, len(rows), False
+
+
+def _fetch_branch_pinned_messages(
+    db: Session,
+    entry: ChatHistory,
+    branch_id: str,
+) -> list[dict[str, Any]]:
+    """Every pinned message of a branch, whatever its distance from the tail.
+
+    A client that only holds the recent window still needs the chat's pinned
+    memories, and those live at the top of the pin limit rather than at the end
+    of the transcript.
+    """
+    rows = (
+        db.query(ChatHistoryMessage)
+        .filter(
+            *_branch_message_filter(entry, branch_id),
+            ChatHistoryMessage.is_pinned.is_(True),
+        )
+        .order_by(ChatHistoryMessage.created_seq.asc(), ChatHistoryMessage.id.asc())
+        .all()
+    )
+    return [
+        message
+        for message in (_serialize_stored_message(row) for row in rows)
+        if message is not None
+    ]
+
+
 def _build_chat_history_payload_from_store(
     db: Session,
     entry: ChatHistory,
@@ -307,9 +430,10 @@ def _build_chat_history_payload_from_store(
 ) -> dict[str, Any]:
     """Rebuild the chat payload from the message rows.
 
-    ``message_limit`` returns only the newest N messages of each branch, plus the
-    branch's full ``message_count`` so a client holding a truncated transcript
-    still knows how much history the server has.
+    With ``message_limit`` each branch carries only its newest N messages, plus
+    what a client needs to keep paging: the branch's full ``message_count``, the
+    ``oldest_seq`` it received, whether more rows exist (``has_more``), and all
+    pinned messages (which can sit far above the window).
     """
     branches = (
         db.query(ChatHistoryBranch)
@@ -318,65 +442,25 @@ def _build_chat_history_payload_from_store(
         .all()
     )
     if not branches:
-        return normalize_chat_history_payload(entry.messages)
+        # Rows are the transcript's only store, so a chat without a branch row
+        # has no messages.
+        return normalize_chat_history_payload([])
 
     payload_branches: list[dict[str, Any]] = []
     known_branch_ids: set[str] = set()
 
     for branch in branches:
-        branch_query = db.query(ChatHistoryMessage).filter(
-            ChatHistoryMessage.chat_id == entry.chat_id,
-            ChatHistoryMessage.branch_id == branch.branch_id,
+        branch_messages, message_count, has_more = _fetch_branch_window(
+            db,
+            entry,
+            branch.branch_id,
+            message_limit=message_limit,
         )
-        truncated = isinstance(message_limit, int) and message_limit > 0
-        if truncated:
-            branch_messages = (
-                branch_query.order_by(
-                    ChatHistoryMessage.created_seq.desc(),
-                    ChatHistoryMessage.id.desc(),
-                )
-                .limit(message_limit)
-                .all()
-            )
-            branch_messages.reverse()
-            message_count = (
-                db.query(func.count(ChatHistoryMessage.id))
-                .filter(
-                    ChatHistoryMessage.chat_id == entry.chat_id,
-                    ChatHistoryMessage.branch_id == branch.branch_id,
-                )
-                .scalar()
-                or 0
-            )
-        else:
-            branch_messages = branch_query.order_by(
-                ChatHistoryMessage.created_seq.asc(),
-                ChatHistoryMessage.id.asc(),
-            ).all()
-            message_count = len(branch_messages)
-
-        serialized_messages: list[dict[str, Any]] = []
-        for item in branch_messages:
-            message = {
-                "role": item.role,
-                "content": item.content,
-            }
-            # Empty for rows whose stored time is not trustworthy, so the client
-            # has nothing to render a (wrong) clock from.
-            created_at = _display_timestamp(item.created_at)
-            if created_at:
-                message["created_at"] = created_at
-            if isinstance(item.usage, dict):
-                message["usage"] = item.usage
-            if item.role in {"user", "assistant"}:
-                message["is_pinned"] = bool(item.is_pinned)
-                if item.message_id:
-                    message["message_id"] = item.message_id
-                else:
-                    message["message_id"] = generate_chat_message_id()
-            payload_message = _normalize_message(message)
-            if payload_message is not None:
-                serialized_messages.append(payload_message)
+        serialized_messages = [
+            message
+            for message in (_serialize_stored_message(item) for item in branch_messages)
+            if message is not None
+        ]
 
         payload_branches.append(
             {
@@ -387,6 +471,9 @@ def _build_chat_history_payload_from_store(
                 "created_at": branch.created_at.isoformat() if branch.created_at else None,
                 "last_updated": branch.last_updated.isoformat() if branch.last_updated else None,
                 "message_count": message_count,
+                "oldest_seq": branch_messages[0].created_seq if branch_messages else None,
+                "has_more": has_more,
+                "pinned_messages": _fetch_branch_pinned_messages(db, entry, branch.branch_id),
                 "messages": serialized_messages,
             }
         )
@@ -471,19 +558,7 @@ def fetch_chat_history_branch_context(
         if messages and used_tokens + message_tokens > budget:
             omitted_count += len(window) - position
             break
-        message = {"role": item.role, "content": item.content}
-        created_at = _display_timestamp(item.created_at)
-        if created_at:
-            message["created_at"] = created_at
-        if isinstance(item.usage, dict):
-            message["usage"] = item.usage
-        if item.role in {"user", "assistant"}:
-            message["is_pinned"] = bool(item.is_pinned)
-            if item.message_id:
-                message["message_id"] = item.message_id
-            else:
-                message["message_id"] = generate_chat_message_id()
-        normalized = _normalize_message(message)
+        normalized = _serialize_stored_message(item)
         if normalized is not None:
             messages.append(normalized)
             used_tokens += message_tokens
@@ -623,15 +698,9 @@ def _sync_chat_history_store(
     entry: ChatHistory,
     payload: dict[str, Any],
     *,
-    live_timestamps: bool = True,
     payload_is_normalized: bool = False,
 ) -> None:
     """Append any messages the store does not have yet.
-
-    ``live_timestamps`` says whether the payload being synced was produced by the
-    send path, where "now" really is when those messages were sent. A read-path
-    backfill passes ``False``, because it is translating a legacy JSON blob whose
-    messages have no send time at all — see :data:`TIMESTAMP_UNKNOWN`.
 
     ``payload_is_normalized`` skips the two normalization passes when the caller
     already holds a :func:`normalize_chat_history_payload` result, which keeps a
@@ -754,10 +823,7 @@ def _sync_chat_history_store(
                     "usage": message.get("usage") if isinstance(message.get("usage"), dict) else None,
                     "is_pinned": bool(message.get("is_pinned")) if role in {"user", "assistant"} else False,
                     "created_seq": index,
-                    "created_at": (
-                        stored_message_times.get(message_id)
-                        or (insert_time if live_timestamps else TIMESTAMP_UNKNOWN)
-                    ),
+                    "created_at": stored_message_times.get(message_id) or insert_time,
                 }
             )
 
@@ -774,47 +840,179 @@ def _sync_chat_history_store(
 
 
 def _ensure_chat_history_store(db: Session, entry: ChatHistory) -> None:
-    """Create the store rows for `entry` if the chat has none yet.
+    """Make sure `entry` has the branch row its messages hang off.
 
-    This runs from read paths, so the rows a backfill has to create carry no
-    timestamps: the legacy payload being backfilled has no send times, and the
-    moment of the backfill is not one either.
+    Message rows are the transcript's only store, so a chat without a branch row
+    is simply a chat with no messages yet.
     """
     branch_exists = (
         db.query(ChatHistoryBranch.id)
         .filter(ChatHistoryBranch.chat_id == entry.chat_id)
         .first()
     )
-    if branch_exists:
-        if not isinstance(entry.active_branch_id, str) or not entry.active_branch_id.strip():
-            payload = _build_chat_history_payload_from_store(db, entry)
-            entry.active_branch_id = payload.get("active_branch_id")
-            db.flush()
-        return
+    if not branch_exists:
+        now = datetime.now(UTC)
+        db.add(
+            ChatHistoryBranch(
+                chat_id=entry.chat_id,
+                branch_id=DEFAULT_BRANCH_ID,
+                label="Main",
+                created_at=now,
+                last_updated=now,
+            )
+        )
+        db.flush()
 
-    payload = normalize_chat_history_payload(entry.messages)
-    _sync_chat_history_store(db, entry, payload, live_timestamps=False)
-    db.flush()
+    if not isinstance(entry.active_branch_id, str) or not entry.active_branch_id.strip():
+        # Only the branch id is needed here; reading the transcript to find it
+        # would defeat the point of normalizing it into rows.
+        entry.active_branch_id = resolve_chat_history_active_branch_id(db, entry)
+        db.flush()
+
+
+def resolve_chat_history_active_branch_id(db: Session, entry: ChatHistory) -> str:
+    """The chat's active branch id, without reading any message rows."""
+    if isinstance(entry.active_branch_id, str) and entry.active_branch_id.strip():
+        return entry.active_branch_id
+    branch_ids = [
+        row.branch_id
+        for row in db.query(ChatHistoryBranch.branch_id)
+        .filter(ChatHistoryBranch.chat_id == entry.chat_id)
+        .order_by(ChatHistoryBranch.created_at.asc(), ChatHistoryBranch.id.asc())
+        .all()
+    ]
+    return branch_ids[0] if branch_ids else DEFAULT_BRANCH_ID
+
+
+def fetch_chat_history_branch_page(
+    db: Session,
+    entry: ChatHistory,
+    branch_id: str,
+    *,
+    limit: int = CHAT_OPEN_MESSAGE_LIMIT,
+    before_seq: int | None = None,
+) -> Optional[dict[str, Any]]:
+    """One page of a branch's transcript, for the client's scrollback.
+
+    Pages are anchored on ``created_seq`` rather than on an offset: ``before_seq``
+    is the seq of the oldest message the client already holds, and the returned
+    page ends just below it, so pages stay contiguous while new turns are being
+    appended to the other end.
+    """
+    _ensure_chat_history_store(db, entry)
+    branch = (
+        db.query(ChatHistoryBranch)
+        .filter(
+            ChatHistoryBranch.chat_id == entry.chat_id,
+            ChatHistoryBranch.branch_id == branch_id,
+        )
+        .first()
+    )
+    if branch is None:
+        return None
+
+    page_size = max(1, min(int(limit), CHAT_OPEN_MESSAGE_LIMIT_MAX))
+    rows, message_count, has_more = _fetch_branch_window(
+        db,
+        entry,
+        branch_id,
+        message_limit=page_size,
+        before_seq=before_seq,
+    )
+    return {
+        "chat_id": entry.chat_id,
+        "branch_id": branch.branch_id,
+        "message_count": message_count,
+        "oldest_seq": rows[0].created_seq if rows else None,
+        "has_more": has_more,
+        "pinned_messages": _fetch_branch_pinned_messages(db, entry, branch_id),
+        "messages": [
+            message
+            for message in (_serialize_stored_message(row) for row in rows)
+            if message is not None
+        ],
+    }
+
+
+def fetch_chat_history_fork_prefix(
+    db: Session,
+    entry: ChatHistory,
+    branch_id: str,
+    *,
+    message_id: str,
+) -> tuple[bool, Optional[str], list[dict[str, Any]]]:
+    """The messages of a branch that come before ``message_id``.
+
+    Forking a branch materializes the source branch's prefix, so this reads from
+    the branch start rather than a window — but only the prefix, however long the
+    rest of the branch has grown since.
+
+    Returns ``(branch_exists, target_role, messages)``: ``target_role`` is None
+    when ``message_id`` is not in the branch, and ``messages`` are the rows stored
+    before it, chronologically.
+    """
+    _ensure_chat_history_store(db, entry)
+    branch_exists = (
+        db.query(ChatHistoryBranch.id)
+        .filter(
+            ChatHistoryBranch.chat_id == entry.chat_id,
+            ChatHistoryBranch.branch_id == branch_id,
+        )
+        .first()
+        is not None
+    )
+    if not branch_exists:
+        return False, None, []
+
+    target = (
+        db.query(ChatHistoryMessage.created_seq, ChatHistoryMessage.role)
+        .filter(
+            *_branch_message_filter(entry, branch_id),
+            ChatHistoryMessage.message_id == message_id,
+        )
+        .order_by(ChatHistoryMessage.created_seq.asc())
+        .first()
+    )
+    if target is None:
+        return True, None, []
+
+    rows = (
+        db.query(ChatHistoryMessage)
+        .filter(
+            *_branch_message_filter(entry, branch_id),
+            ChatHistoryMessage.created_seq < target.created_seq,
+        )
+        .order_by(ChatHistoryMessage.created_seq.asc(), ChatHistoryMessage.id.asc())
+        .all()
+    )
+    return (
+        True,
+        target.role,
+        [
+            message
+            for message in (_serialize_stored_message(row) for row in rows)
+            if message is not None
+        ],
+    )
 
 
 def serialize_chat_history_entry(entry: ChatHistory, *, message_limit: int | None = None) -> dict:
     """Convert a ChatHistory ORM object into a JSON-friendly dict.
 
     ``message_limit`` ships only the newest N messages per branch (plus each
-    branch's full ``message_count``). The import endpoint uses it so a 28k-message
-    transcript is not serialized, transferred and stored twice in the browser.
+    branch's full ``message_count``, the ``oldest_seq`` the client received,
+    whether older rows exist, and every pinned message). Without it the whole
+    transcript is serialized, which is only right for callers that need all of it
+    — see ``fetch_chat_history_branch_page`` for reading older pages.
     """
     db = object_session(entry)
     if db is not None:
         _ensure_chat_history_store(db, entry)
         payload = _build_chat_history_payload_from_store(db, entry, message_limit=message_limit)
     else:
-        payload = normalize_chat_history_payload(entry.messages)
-        if isinstance(message_limit, int) and message_limit > 0:
-            for branch in payload["branches"]:
-                branch_messages = branch.get("messages") or []
-                branch["message_count"] = len(branch_messages)
-                branch["messages"] = branch_messages[-message_limit:]
+        # A detached entry cannot read its message rows, and the transcript is
+        # not stored on the entry itself, so there is nothing to serialize.
+        payload = normalize_chat_history_payload([])
     active_branch = get_chat_history_branch(payload)
     return {
         "chat_id": entry.chat_id,
@@ -1277,8 +1475,8 @@ def restore_chat_history_group_to_recent(db: Session, user_id: str, entry: ChatH
 
 def prune_chat_history(db: Session, user_id: str, limit: int = 30, auto_commit: bool = True) -> None:
     """Keep only the newest `limit` entries for the user."""
-    # Only the primary keys are read here: hydrating the rows would decode each
-    # entry's multi-megabyte JSON blob just to delete it.
+    # Only the primary keys are read here: the chats are deleted wholesale, and
+    # hydrating them would load rows this function never inspects.
     extra_ids = [
         row[0]
         for row in (
@@ -1310,7 +1508,11 @@ def upsert_chat_history_entry(
     """Insert or update a chat history entry, then enforce the per-user limit."""
     entry = fetch_chat_history_entry(db, user_id, chat_id)
     now = datetime.now(UTC)
-    normalized_payload = normalize_chat_history_payload(payload.get("messages", getattr(entry, "messages", [])))
+    normalized_payload = (
+        normalize_chat_history_payload(payload["messages"])
+        if "messages" in payload
+        else None
+    )
 
     fields = {
         "character_id": payload.get("character_id"),
@@ -1322,7 +1524,12 @@ def upsert_chat_history_entry(
         "scene_picture": payload.get("scene_picture"),
         "title": payload.get("title"),
         "is_pinned": bool(payload.get("is_pinned")) if "is_pinned" in payload else bool(getattr(entry, "is_pinned", False)),
-        "active_branch_id": payload.get("active_branch_id", normalized_payload.get("active_branch_id")),
+        "active_branch_id": payload.get(
+            "active_branch_id",
+            normalized_payload["active_branch_id"]
+            if normalized_payload is not None
+            else getattr(entry, "active_branch_id", None),
+        ),
         "last_updated": payload.get("last_updated", now),
     }
 
@@ -1334,9 +1541,6 @@ def upsert_chat_history_entry(
         if not entry.created_at:
             entry.created_at = created_at
     else:
-        # The message rows written below are the transcript's source of truth, so
-        # the legacy JSONB blob is left empty instead of storing the same
-        # transcript a second time (it was the bulk of an import's write cost).
         entry = ChatHistory(
             chat_id=chat_id,
             user_id=user_id,
@@ -1346,7 +1550,8 @@ def upsert_chat_history_entry(
         db.add(entry)
 
     db.flush()
-    _sync_chat_history_store(db, entry, normalized_payload, payload_is_normalized=True)
+    if normalized_payload is not None:
+        _sync_chat_history_store(db, entry, normalized_payload, payload_is_normalized=True)
     prune_chat_history(db, user_id, limit, auto_commit=False)
     db.commit()
     db.refresh(entry)
