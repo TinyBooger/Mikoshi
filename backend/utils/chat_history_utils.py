@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, UTC
-import time
 import uuid
 from typing import Any, List, Optional
 import logging
@@ -1307,27 +1306,11 @@ def upsert_chat_history_entry(
     chat_id: str,
     payload: dict,
     limit: int = 30,
-    timings: dict[str, float] | None = None,
 ) -> ChatHistory:
-    """Insert or update a chat history entry, then enforce the per-user limit.
-
-    ``timings``, when given, receives a per-step millisecond breakdown of this
-    call so callers can log where a slow save spends its time.
-    """
-    timing_started = time.perf_counter()
-
-    def mark(stage: str) -> None:
-        nonlocal timing_started
-        if timings is None:
-            return
-        now_perf = time.perf_counter()
-        timings[stage] = round((now_perf - timing_started) * 1000, 1)
-        timing_started = now_perf
-
+    """Insert or update a chat history entry, then enforce the per-user limit."""
     entry = fetch_chat_history_entry(db, user_id, chat_id)
     now = datetime.now(UTC)
     normalized_payload = normalize_chat_history_payload(payload.get("messages", getattr(entry, "messages", [])))
-    mark("upsert:normalize")
 
     fields = {
         "character_id": payload.get("character_id"),
@@ -1363,15 +1346,10 @@ def upsert_chat_history_entry(
         db.add(entry)
 
     db.flush()
-    mark("upsert:flush")
     _sync_chat_history_store(db, entry, normalized_payload, payload_is_normalized=True)
-    mark("upsert:store")
     prune_chat_history(db, user_id, limit, auto_commit=False)
-    mark("upsert:prune")
     db.commit()
-    mark("upsert:commit")
     db.refresh(entry)
-    mark("upsert:refresh")
     return entry
 
 

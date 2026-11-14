@@ -39,7 +39,6 @@ import uuid
 import json
 import re
 import logging
-import time
 from functools import partial
 from datetime import datetime, UTC
 
@@ -626,21 +625,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     if history_mode == "stored_branch" and isinstance(turn_message, dict):
         full_messages = [turn_message]
 
-    # Hang triage: a request that logs this line but never reaches the
-    # "Context prepared" line below is stuck in request building, not in the
-    # provider call.
-    request_started = time.perf_counter()
-    logger.info(
-        "💬 Chat request start | user=%s | chat=%s | model=%s | mode=%s | messages=%d | context=%d | full=%d",
-        current_user.id,
-        chat_id or "new",
-        chat_config["model"],
-        history_mode or "client",
-        len(messages),
-        len(context_messages),
-        len(full_messages),
-    )
-
     if is_chat_banned(current_user):
         ban_until = getattr(current_user, "ban_until", None)
         return JSONResponse(
@@ -820,16 +804,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                     content={"error": "CHAT_BRANCH_NOT_FOUND", "message": "对话分支已更新，请重新加载后重试。"},
                     status_code=409,
                 )
-            if history_omitted_messages:
-                logger.info(
-                    "💬 Stored branch window | user=%s | chat=%s | branch=%s | budget_tokens=%d | loaded_messages=%d | omitted_messages=%d",
-                    current_user.id,
-                    chat_id or "none",
-                    source_branch_id,
-                    history_token_budget,
-                    len(stored_messages),
-                    history_omitted_messages,
-                )
             if chat_history_message_exists(
                 db,
                 entry=existing_entry,
@@ -889,7 +863,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     if not chat_id and character_id:
         chat_id = str(uuid.uuid4())
 
-    prepare_started = time.perf_counter()
     try:
         prepared_messages, context_window_info = await _run_context_stage(
             prepare_context_request,
@@ -919,17 +892,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         context_turn_metadata["context_truncated"] = True
         context_turn_metadata["omitted_message_count"] = history_omitted_messages
 
-    logger.info(
-        "💬 Context prepared | user=%s | chat=%s | model=%s | prepared_messages=%d | input_tokens=%d | prepare_ms=%.1f | since_request_ms=%.1f",
-        current_user.id,
-        chat_id or "new",
-        chat_config["model"],
-        len(prepared_messages),
-        int(context_window_info.get("input_tokens") or 0),
-        (time.perf_counter() - prepare_started) * 1000,
-        (time.perf_counter() - request_started) * 1000,
-    )
-
     if not prepared_messages:
         return JSONResponse(content={"error": "Invalid messages after normalization"}, status_code=400)
 
@@ -950,10 +912,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
     # prompt-only time marker. If it is too large, trim only older conversation
     # messages; system messages and the persisted transcript stay untouched.
     if provider_input_cap is not None and model_config_entry is not None:
-        # Timings here separate context shaping from the provider call: a
-        # "Context guard trimming" line with no "Context guard done" means the
-        # request never got past building its prompt.
-        guard_started = time.perf_counter()
         guard_input = estimate_request_input_tokens(prepared_messages)
         if guard_input > provider_input_cap:
             logger.warning(
@@ -1054,18 +1012,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         else:
             context_turn_metadata["max_tokens_clamped"] = False
 
-        logger.info(
-            "💬 Context guard done | user=%s | chat=%s | model=%s | guard_input=%d | input_cap=%d | trimmed=%s | omitted=%d | guard_ms=%.1f",
-            current_user.id,
-            chat_id or "none",
-            chat_config["model"],
-            int(guard_input),
-            provider_input_cap,
-            bool(context_turn_metadata.get("context_truncated", False)),
-            int(context_turn_metadata.get("omitted_message_count") or 0),
-            (time.perf_counter() - guard_started) * 1000,
-        )
-
     character = None
     effective_character_id = character_id or (existing_entry.character_id if existing_entry else None)
     if effective_character_id:
@@ -1079,43 +1025,20 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         current_credit_limit_info = credit_limit_info
         saved_chat_metadata = None
         chunk_count = 0
-        first_chunk_logged = False
-        stream_started = time.perf_counter()
         response_usage = {
             "prompt_tokens": 0,
             "completion_tokens": 0,
             "total_tokens": 0,
         }
 
-        logger.info(
-            "💬 Stream start | user=%s | chat=%s | model=%s | assistant_message=%s | prepared_messages=%d | input_tokens=%d | since_request_ms=%.1f",
-            current_user.id,
-            chat_id or "none",
-            chat_config["model"],
-            assistant_message_id,
-            len(prepared_messages),
-            int(context_window_info.get("input_tokens") or 0),
-            (time.perf_counter() - request_started) * 1000,
-        )
-
         # --- upstream bucket (per-model RPM pacing) ---
-        upstream_started = time.perf_counter()
         upstream_granted = await acquire_upstream(
             chat_config["model"], is_pro=bool(current_user.is_pro)
-        )
-        logger.info(
-            "💬 Upstream slot %s | user=%s | chat=%s | model=%s | waited_ms=%.1f",
-            "granted" if upstream_granted else "busy",
-            current_user.id,
-            chat_id or "none",
-            chat_config["model"],
-            (time.perf_counter() - upstream_started) * 1000,
         )
         if not upstream_granted:
             yield f"data: {json.dumps({'error': 'UPSTREAM_BUSY', 'message': 'The model provider is currently at capacity. Please try again shortly.'})}\n\n"
             return
 
-        model_call_started = time.perf_counter()
         try:
             async for stream_event in stream_chat_completion_with_config(
                 prepared_messages,
@@ -1137,29 +1060,10 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
                 accumulated_reply += chunk
                 chunk_count += 1
-                if not first_chunk_logged:
-                    first_chunk_logged = True
-                    logger.info(
-                        "💬 First token | user=%s | chat=%s | model=%s | ttfb_ms=%.1f",
-                        current_user.id,
-                        chat_id or "none",
-                        chat_config["model"],
-                        (time.perf_counter() - model_call_started) * 1000,
-                    )
                 # Send each chunk as SSE
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
 
             # After streaming completes, save to database
-            logger.info(
-                "💬 Stream completed | user=%s | chat=%s | model=%s | chunks=%d | chars=%d | gen_ms=%.1f",
-                current_user.id,
-                chat_id or "none",
-                chat_config["model"],
-                chunk_count,
-                len(accumulated_reply),
-                (time.perf_counter() - model_call_started) * 1000,
-            )
-            persist_started = time.perf_counter()
             stream_credit_amount = usage_to_credits(response_usage, chat_config["model"])
             logger.info(
                 "💬 Stream credit | user=%s | chat=%s | model=%s | prompt_tokens=%d | completion_tokens=%d | total_tokens=%d | credit=%.4f | has_character=%s",
@@ -1311,24 +1215,9 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             if saved_chat_metadata:
                 done_payload['chat_metadata'] = saved_chat_metadata
                 done_payload['branch_id'] = saved_chat_metadata["active_branch_id"]
-            logger.info(
-                "💬 Stream done event | user=%s | chat=%s | model=%s | persist_ms=%.1f | total_ms=%.1f",
-                current_user.id,
-                chat_id or "none",
-                chat_config["model"],
-                (time.perf_counter() - persist_started) * 1000,
-                (time.perf_counter() - stream_started) * 1000,
-            )
             yield f"data: {json.dumps(done_payload)}\n\n"
 
         except ClientDisconnect:
-            logger.info(
-                "💬 Client disconnected mid-stream | user=%s | chat=%s | model=%s | elapsed_ms=%.1f",
-                current_user.id,
-                chat_id or "none",
-                chat_config["model"],
-                (time.perf_counter() - stream_started) * 1000,
-            )
             return
         except Exception as e:
             if _is_content_moderation_error(e):
@@ -1336,12 +1225,11 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 yield f"data: {json.dumps({'error': _CONTENT_MODERATION_MESSAGE})}\n\n"
                 return
             logger.warning(
-                "⚠️ Chat stream failed | user=%s | chat=%s | model=%s | chunks=%d | elapsed_ms=%.1f | error=%r",
+                "Chat stream failed | user=%s | chat=%s | model=%s | chunks=%d | error=%r",
                 current_user.id,
                 chat_id or "none",
                 chat_config["model"],
                 chunk_count,
-                (time.perf_counter() - stream_started) * 1000,
                 e,
             )
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
@@ -1375,37 +1263,21 @@ def import_chat(
     if not filename.lower().endswith(".jsonl"):
         raise HTTPException(status_code=400, detail="Only JSONL chat files can be imported.")
 
-    # Stage timings for diagnosing slow imports; the breakdown is logged once
-    # per import so the dominant cost can be identified from the log line.
-    request_started = time.perf_counter()
-    stage_started = request_started
-    stage_times: dict[str, float] = {}
-
-    def mark(stage: str) -> None:
-        nonlocal stage_started
-        now_perf = time.perf_counter()
-        stage_times[stage] = round((now_perf - stage_started) * 1000, 1)
-        stage_started = now_perf
-
     try:
         content = file.file.read()
     except OSError as exc:
         raise HTTPException(status_code=400, detail="Unable to read the uploaded JSONL file.") from exc
     finally:
         file.file.close()
-    mark("read")
 
     try:
         decoded_content = content.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
         raise HTTPException(status_code=400, detail="The JSONL file must use UTF-8 encoding.") from exc
-    mark("decode")
 
     messages = _parse_sillytavern_jsonl(decoded_content)
-    mark("parse")
     for message in messages:
         message["message_id"] = generate_chat_message_id()
-    mark("message_ids")
 
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
@@ -1418,7 +1290,6 @@ def import_chat(
         character.creator_id != current_user.id and not current_user.is_admin
     ):
         raise HTTPException(status_code=404, detail="Character not found.")
-    mark("character")
 
     now = datetime.now(UTC)
     chat_id = str(uuid.uuid4())
@@ -1439,33 +1310,17 @@ def import_chat(
         user_id=current_user.id,
         chat_id=chat_id,
         payload=payload,
-        timings=stage_times,
     )
-    mark("db_write")
     serialized_entry = serialize_chat_history_entry(
         entry,
         message_limit=IMPORT_RESPONSE_MESSAGE_LIMIT,
     )
-    mark("serialize")
 
     audit_request(
         request,
         action="import_chat",
         user_id=current_user.id,
         metadata={"chat_id": chat_id, "character_id": character.id, "message_count": len(messages)},
-    )
-    mark("audit")
-
-    logger.info(
-        "chat import timing | chat_id=%s user=%s character=%s upload_bytes=%d messages=%d transcript_chars=%d | %s | total_ms=%.1f",
-        chat_id,
-        current_user.id,
-        character.id,
-        len(content),
-        len(messages),
-        sum(len(message.get("content") or "") for message in messages),
-        " ".join(f"{stage}={duration}ms" for stage, duration in stage_times.items()),
-        (time.perf_counter() - request_started) * 1000,
     )
 
     return serialized_entry
