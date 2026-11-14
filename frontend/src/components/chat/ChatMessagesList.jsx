@@ -9,7 +9,6 @@ import { useChatRuntimeValue } from '../../hooks/useChatRuntimeState';
 const INITIAL_VISIBLE_MESSAGES = 80;
 const MAX_VISIBLE_MESSAGES = 160;
 const LOAD_MESSAGE_BATCH = 80;
-const SCROLL_EDGE_THRESHOLD = 120;
 
 /**
  * Scrollable messages area of the chat: the welcome card for new chats and the
@@ -120,42 +119,14 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
     };
   }, [nonSystem]);
 
-  const handleScroll = useCallback(() => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-
-    if (container.scrollTop <= SCROLL_EDGE_THRESHOLD && firstVisibleIndex > 0) {
-      setScrollAnchor(firstVisibleIndex);
-      setVisibleRange((current) => {
-        const start = Math.max(0, current.start - LOAD_MESSAGE_BATCH);
-        return {
-          start,
-          end: Math.min(nonSystem.length, start + MAX_VISIBLE_MESSAGES),
-        };
-      });
-      return;
-    }
-
-    const isNearBottom = container.scrollTop + container.clientHeight
-      >= container.scrollHeight - SCROLL_EDGE_THRESHOLD;
-    if (isNearBottom && lastVisibleIndex < nonSystem.length) {
-      const retainedIndex = Math.min(
-        firstVisibleIndex + LOAD_MESSAGE_BATCH,
-        lastVisibleIndex - 1,
-      );
-      setScrollAnchor(retainedIndex);
-      setVisibleRange((current) => {
-        const end = Math.min(nonSystem.length, current.end + LOAD_MESSAGE_BATCH);
-        return {
-          start: Math.min(
-            Math.max(0, end - MAX_VISIBLE_MESSAGES),
-            current.start + LOAD_MESSAGE_BATCH,
-          ),
-          end,
-        };
-      });
-    }
-  }, [firstVisibleIndex, lastVisibleIndex, nonSystem.length, setScrollAnchor]);
+  const handleLoadEarlierMessages = useCallback(() => {
+    if (firstVisibleIndex <= 0) return;
+    setScrollAnchor(firstVisibleIndex);
+    setVisibleRange((current) => ({
+      start: Math.max(0, current.start - LOAD_MESSAGE_BATCH),
+      end: Math.min(nonSystem.length, current.end),
+    }));
+  }, [firstVisibleIndex, nonSystem.length, setScrollAnchor]);
 
   useLayoutEffect(() => {
     const anchor = pendingScrollAnchorRef.current;
@@ -216,14 +187,14 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
     if (nonSystem.length > previousMessageCount) {
       pendingBottomScrollRef.current = true;
     }
-    const windowSize = Math.min(
-      MAX_VISIBLE_MESSAGES,
-      Math.max(INITIAL_VISIBLE_MESSAGES, visibleRange.end - visibleRange.start),
-    );
-    setVisibleRange({
-      start: Math.max(0, nonSystem.length - windowSize),
+    setVisibleRange((current) => ({
+      start: nonSystem.length > previousMessageCount
+        ? (previousMessageCount === 0
+          ? Math.max(0, nonSystem.length - INITIAL_VISIBLE_MESSAGES)
+          : Math.min(current.start, nonSystem.length))
+        : Math.max(0, nonSystem.length - INITIAL_VISIBLE_MESSAGES),
       end: nonSystem.length,
-    });
+    }));
   }, [nonSystem.length, visibleRange]);
 
   return (
@@ -238,7 +209,6 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
         minHeight: 0,
       }}
       ref={messagesContainerRef}
-      onScroll={handleScroll}
     >
       <div style={chatContentRailStyle}>
         {showWelcome && (
@@ -261,49 +231,70 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
             暂无消息，快来开始对话吧！
           </div>
         ) : (
-          visibleMessages.map((m, visibleIndex) => {
-            const i = firstVisibleIndex + visibleIndex;
-            const isEditing = editingMessageId === m.message_id;
-            const nav = forkNavMap.get(m.message_id);
-            return (
-              <React.Fragment key={m.message_id || i}>
-                {dividers.has(i) && (
-                  <MessageTimestampDivider label={dividers.get(i)} palette={palette} />
-                )}
-                <MessageBubble
-                  message={m}
-                  chatState={chatState}
-                  isHovered={hoveredMessageId === m.message_id}
-                  isEditing={isEditing}
-                  isAnyMessageEditing={m.role === 'user' && !!editingMessageId}
-                  nav={nav}
-                  isMobile={isMobile}
-                  cleanMode={cleanMode}
-                  palette={palette}
-                  selectedCharacter={selectedCharacter}
-                  selectedPersona={selectedPersona}
-                  userProfilePicture={userProfilePicture}
-                  editingMessageTextRef={editingMessageTextRef}
-                  editingMessageTextSetterRef={editingMessageTextSetterRef}
-                  branchSelectionPending={!!nav && branchSelectionPending}
-                  sending={(m.role === 'user' || !!nav) && sending}
-                  renderMessageContent={renderMessageContent}
-                  onHoverMessage={setHoveredMessageId}
-                  onTogglePin={onTogglePin}
-                  onCopyMessage={onCopyMessage}
-                  selectionMode={selectionMode}
-                  selectedForSharing={selectedMessageIds.includes(m.message_id)}
-                  onStartMultiSelect={onStartMultiSelect}
-                  onToggleSelection={onToggleSelection}
-                  onCancelEditing={onCancelEditing}
-                  onSaveEditedMessage={onSaveEditedMessage}
-                  onResendMessage={onResendMessage}
-                  onStartEditing={onStartEditing}
-                  onSelectBranch={onSelectBranch}
-                />
-              </React.Fragment>
-            );
-          })
+          <>
+            {firstVisibleIndex > 0 && (
+              <button
+                type="button"
+                onClick={handleLoadEarlierMessages}
+                style={{
+                  display: 'block',
+                  margin: '0.5rem auto 1rem',
+                  padding: '0.45rem 0.9rem',
+                  border: `1px solid ${palette.dividerColor}`,
+                  borderRadius: '999px',
+                  background: palette.bubbleChar,
+                  color: palette.textColor,
+                  cursor: 'pointer',
+                  font: 'inherit',
+                }}
+              >
+                加载更早的消息
+              </button>
+            )}
+            {visibleMessages.map((m, visibleIndex) => {
+              const i = firstVisibleIndex + visibleIndex;
+              const isEditing = editingMessageId === m.message_id;
+              const nav = forkNavMap.get(m.message_id);
+              return (
+                <React.Fragment key={m.message_id || i}>
+                  {dividers.has(i) && (
+                    <MessageTimestampDivider label={dividers.get(i)} palette={palette} />
+                  )}
+                  <MessageBubble
+                    message={m}
+                    chatState={chatState}
+                    isHovered={hoveredMessageId === m.message_id}
+                    isEditing={isEditing}
+                    isAnyMessageEditing={m.role === 'user' && !!editingMessageId}
+                    nav={nav}
+                    isMobile={isMobile}
+                    cleanMode={cleanMode}
+                    palette={palette}
+                    selectedCharacter={selectedCharacter}
+                    selectedPersona={selectedPersona}
+                    userProfilePicture={userProfilePicture}
+                    editingMessageTextRef={editingMessageTextRef}
+                    editingMessageTextSetterRef={editingMessageTextSetterRef}
+                    branchSelectionPending={!!nav && branchSelectionPending}
+                    sending={(m.role === 'user' || !!nav) && sending}
+                    renderMessageContent={renderMessageContent}
+                    onHoverMessage={setHoveredMessageId}
+                    onTogglePin={onTogglePin}
+                    onCopyMessage={onCopyMessage}
+                    selectionMode={selectionMode}
+                    selectedForSharing={selectedMessageIds.includes(m.message_id)}
+                    onStartMultiSelect={onStartMultiSelect}
+                    onToggleSelection={onToggleSelection}
+                    onCancelEditing={onCancelEditing}
+                    onSaveEditedMessage={onSaveEditedMessage}
+                    onResendMessage={onResendMessage}
+                    onStartEditing={onStartEditing}
+                    onSelectBranch={onSelectBranch}
+                  />
+                </React.Fragment>
+              );
+            })}
+          </>
         )}
         {/* Invisible element to scroll to */}
         <div ref={messagesEndRef} />
