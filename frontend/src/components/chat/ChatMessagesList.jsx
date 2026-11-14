@@ -6,7 +6,7 @@ import { getChromeSurface, isVeiledBackground, getSurfacePalette } from '../../u
 import { buildTranscriptDividers } from '../../utils/chatTimestamps';
 import { useChatRuntimeValue } from '../../hooks/useChatRuntimeState';
 
-const INITIAL_VISIBLE_MESSAGES = 80;
+const INITIAL_VISIBLE_MESSAGES = 50;
 const MAX_VISIBLE_MESSAGES = 160;
 const LOAD_MESSAGE_BATCH = 80;
 
