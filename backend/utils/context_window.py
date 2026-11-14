@@ -12,31 +12,10 @@ CONTEXT_FALLBACK_MARKER = (
 # estimator error, NOT derived from real error data.
 ESTIMATOR_FULL_REQUEST_CUSHION = 1.15
 
-# Per-turn conversation-history budget, sized by COST and never by the model's
-# advertised window: a 1M-token model must not be handed a 1M-token transcript
-# just because it would accept one. Both the branch query (which messages load)
-# and the request-time trim (which messages send) share this number.
-#
-# The binding economics: 1 credit = ¥0.001, a Pro user gets
-# PRO_MONTHLY_CREDIT_CAP = 10,000 credits/month and a free user
-# FREE_DAILY_CREDIT_CAP = 10 credits/day. A saturated turn's prompt costs
-#     budget / 1M × input_price  (¥) × 1000 credits/¥
-# so 16k tokens costs, per fully-saturated turn:
-#
-#   qwen3.7-flash     ¥0.20/M →   3.2 credits  (0.03% of a Pro month)
-#   qwen-plus-character ¥0.80/M → 12.8 credits (0.13% of a Pro month)
-#   qwen3.7-plus      ¥2.00/M →  32.0 credits  (0.32% of a Pro month)
-#   deepseek-v4-flash ¥3.00/M peak → 48.0 credits (0.48% of a Pro month)
-#   deepseek-v4-pro   ¥9.00/M peak → 144.0 credits (1.4% of a Pro month)
-#
-# So even the most expensive model at peak pricing, on the longest history the
-# budget allows, is ~1% of a Pro month: ~70 maximal turns fit inside the cap, and
-# ordinary (non-saturated) turns cost a fraction of that. 16k also leaves room
-# under the smallest provider input cap (32k on qwen3.7-flash /
-# qwen-plus-character) for the character prompt, the time marker, the user's new
-# message and the reply, so the fail-closed guard stays a pathological-case path
-# instead of the normal one.
-HISTORY_TOKEN_BUDGET = 16_000
+# Per-turn conversation-history cost ceiling. This is independent of the model's
+# context window and requested output length; the provider input-cap guard in the
+# chat route separately enforces model limits.
+HISTORY_TOKEN_BUDGET = 4_095
 
 # Upper bound on rows a branch context query may pull before the token budget
 # decides. The token budget is authoritative; this only stops a transcript of

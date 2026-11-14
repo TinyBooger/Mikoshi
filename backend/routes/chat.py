@@ -804,9 +804,9 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 )
             source_branch_id = branch_id or existing_entry.active_branch_id or DEFAULT_BRANCH_ID
             branch_id = source_branch_id
-            # Cost target, not the model window: a 1M-token model must never turn
-            # into a 1M-token prompt just because the transcript allows it.
-            history_token_budget = min(HISTORY_TOKEN_BUDGET, context_window_soft_limit)
+            # Cost target, independent of the requested output length. The
+            # provider input-cap guard below handles model context limits.
+            history_token_budget = HISTORY_TOKEN_BUDGET
             source_branch, stored_messages, history_omitted_messages = (
                 fetch_chat_history_branch_context(
                     db,
