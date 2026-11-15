@@ -72,6 +72,10 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
   const previousMessageCountRef = useRef(nonSystem.length);
   const previousFirstMessageIdRef = useRef(nonSystem[0]?.message_id || null);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  // True until this list has been positioned at the bottom for the first time.
+  // Opening a chat must land at the bottom without replaying the scroll, so the
+  // first positioning is instant; every later one keeps its normal animation.
+  const initialBottomScrollPendingRef = useRef(true);
   const firstVisibleIndex = Math.min(visibleRange.start, nonSystem.length);
   const lastVisibleIndex = Math.min(Math.max(visibleRange.end, firstVisibleIndex), nonSystem.length);
   const visibleMessages = nonSystem.slice(firstVisibleIndex, lastVisibleIndex);
@@ -88,6 +92,21 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
     () => buildTranscriptDividers(nonSystem, timestampGapSeconds),
     [nonSystem, timestampGapSeconds],
   );
+
+  // First positioning happens before paint so the transcript is never shown at
+  // the top of the window and then scrolled down. It re-checks on later commits
+  // because the list can mount empty and receive the messages afterwards (the
+  // rendered window is applied a commit after the messages arrive), and only
+  // clears the flag once it actually had something scrollable to move.
+  useLayoutEffect(() => {
+    if (!initialBottomScrollPendingRef.current) return;
+    if (nonSystem.length === 0) return;
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    if (container.scrollHeight <= container.clientHeight) return;
+    initialBottomScrollPendingRef.current = false;
+    container.scrollTop = container.scrollHeight;
+  }, [nonSystem.length, visibleRange]);
 
   useEffect(() => {
     const scrollToBottom = () => {
@@ -196,8 +215,12 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
 
     if (pendingBottomScrollRef.current) {
       pendingBottomScrollRef.current = false;
+      // The transcript landing for the first time (chat opened) is positioned
+      // instantly; a scroll animation there looks like the whole page jumping.
+      const initialPositioning = initialBottomScrollPendingRef.current;
+      initialBottomScrollPendingRef.current = false;
       messagesEndRef.current?.scrollIntoView({
-        behavior: sending ? 'instant' : 'smooth',
+        behavior: initialPositioning || sending ? 'instant' : 'smooth',
         block: 'end',
       });
     }
