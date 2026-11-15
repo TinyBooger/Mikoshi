@@ -5,6 +5,7 @@ import MessageTimestampDivider from './MessageTimestampDivider';
 import { getChromeSurface, isVeiledBackground, getSurfacePalette } from '../../utils/backgroundPresets';
 import { buildTranscriptDividers } from '../../utils/chatTimestamps';
 import { useChatRuntimeValue } from '../../hooks/useChatRuntimeState';
+import './ChatMessagesList.css';
 
 const INITIAL_VISIBLE_MESSAGES = 50;
 const MAX_VISIBLE_MESSAGES = 160;
@@ -313,22 +314,20 @@ const ChatMessagesList = React.memo(function ChatMessagesList({
             {(firstVisibleIndex > 0 || hasOlderMessages) && (
               <button
                 type="button"
+                className="chat-scrollback-control"
                 onClick={handleLoadEarlierMessages}
                 disabled={loadingOlderMessages}
                 style={{
-                  display: 'block',
-                  margin: '0.5rem auto 1rem',
-                  padding: '0.45rem 0.9rem',
-                  border: `1px solid ${palette.dividerColor}`,
-                  borderRadius: '999px',
-                  background: palette.bubbleChar,
-                  color: palette.textColor,
-                  cursor: loadingOlderMessages ? 'progress' : 'pointer',
-                  font: 'inherit',
-                  opacity: loadingOlderMessages ? 0.6 : 1,
+                  '--scrollback-color': palette.mutedColor,
+                  '--scrollback-hover-color': palette.dividerColor,
                 }}
               >
-                {loadingOlderMessages ? '加载中…' : '加载更早的消息'}
+                <span className="chat-scrollback-control-label">
+                  {!loadingOlderMessages && (
+                    <i className="bi bi-chevron-double-up" aria-hidden="true" />
+                  )}
+                  {loadingOlderMessages ? '加载中…' : '加载更早的消息'}
+                </span>
               </button>
             )}
             {visibleMessages.map((m, visibleIndex) => {

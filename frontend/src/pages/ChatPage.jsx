@@ -402,6 +402,7 @@ export default function ChatPage() {
   const { loadOlderMessages, ensureMessageLoaded, hasOlderMessages } = useChatHistoryPaging({
     sessionToken,
     selectedChatRef,
+    selectedChat,
     setSelectedChat,
     chatState,
     toast,

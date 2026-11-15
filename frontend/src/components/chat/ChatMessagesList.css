@@ -1,0 +1,50 @@
+/* "Load earlier messages" affordance at the top of the transcript.
+   At rest it is plain text floating above the messages — no pill, no border, no
+   fill — so nothing competes with the first bubble. The hover wash sits on the
+   inner label so it hugs the text, while the button keeps the full rail width
+   as its click target. Colours come from the surface palette through the two
+   custom properties set on the element. */
+.chat-scrollback-control {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 0.25rem 0 0.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--scrollback-color);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chat-scrollback-control:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.chat-scrollback-control-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  transition: background-color 0.15s ease;
+}
+
+.chat-scrollback-control:hover:not(:disabled) .chat-scrollback-control-label {
+  background-color: var(--scrollback-hover-color);
+}
+
+/* The button itself is chromeless, so the focus ring has to be drawn on the
+   label to stay visible. */
+.chat-scrollback-control:focus-visible {
+  outline: none;
+}
+
+.chat-scrollback-control:focus-visible .chat-scrollback-control-label {
+  outline: 2px solid var(--scrollback-color);
+  outline-offset: -2px;
+}

@@ -33,6 +33,7 @@ const resolveActiveBranch = (chatEntry) => {
  * @param {object}   params
  * @param {string}   params.sessionToken  - auth token
  * @param {object}   params.selectedChatRef - ref holding the open chat entry
+ * @param {object}   params.selectedChat   - rendered chat entry (drives resync)
  * @param {function} params.setSelectedChat - chat entry setter (also renders)
  * @param {object}   params.chatState      - external chat runtime store
  * @param {object}   params.toast          - toast context
@@ -41,6 +42,7 @@ const resolveActiveBranch = (chatEntry) => {
 export function useChatHistoryPaging({
   sessionToken,
   selectedChatRef,
+  selectedChat,
   setSelectedChat,
   chatState,
   toast,
@@ -48,7 +50,8 @@ export function useChatHistoryPaging({
   const loadingRef = useRef(false);
   // Mirrors `has_more` of the branch on screen. Branch payloads are often
   // swapped through `selectedChatRef` without a page render (branch switch,
-  // fork), so the value is re-read whenever the transcript changes.
+  // fork), so the value is re-read whenever the transcript or the selected
+  // chat entry changes.
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
 
   const syncPagingState = useCallback(() => {
@@ -56,10 +59,15 @@ export function useChatHistoryPaging({
     setHasOlderMessages((previous) => (previous === nextHasOlderMessages ? previous : nextHasOlderMessages));
   }, [selectedChatRef]);
 
+  // Opening a chat replaces the transcript before the chat entry is selected
+  // (`loadChat` sets messages first), so a messages-only subscription would
+  // read the outgoing entry and keep a stale `has_more`. The rendered entry is
+  // watched as well, which makes the first sync after a selection the accurate
+  // one.
   useEffect(() => {
     syncPagingState();
     return chatState.subscribe('messages', syncPagingState);
-  }, [chatState, syncPagingState]);
+  }, [chatState, selectedChat, syncPagingState]);
 
   const fetchPage = useCallback(async ({ chatId, branchId, beforeSeq, limit }) => {
     const params = new URLSearchParams();
