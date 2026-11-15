@@ -1,8 +1,8 @@
 fastapi
 uvicorn[standard]
 anyio
-sqlalchemy==2.0.42
-psycopg[binary]==3.3.6
+sqlalchemy>=2.1,<2.2
+psycopg[binary]
 passlib[bcrypt]
 pydantic[email]
 python-multipart
