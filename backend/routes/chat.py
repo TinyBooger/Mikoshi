@@ -76,6 +76,10 @@ router = APIRouter()
 # ``message_count`` so the client still knows how much history it is not holding.
 IMPORT_RESPONSE_MESSAGE_LIMIT = 100
 
+# A 5 MB export is a few thousand messages; this ceiling only exists so a crafted
+# file cannot pin a worker thread (and its transaction) for an unbounded time.
+MAX_IMPORT_MESSAGES = 200_000
+
 # DashScope flags input/output blocked by its content audit with this code (native
 # API spells it `DataInspectionFailed`). The raw provider text is opaque to users,
 # so it is swapped for a localized message before being streamed to the client.
@@ -118,10 +122,19 @@ def _is_content_moderation_error(exc: Exception) -> bool:
     return _CONTENT_MODERATION_ERROR_CODE in _normalize_error_code(exc)
 
 
+def _clean_import_text(value: str) -> str:
+    """Make imported text storable: Postgres rejects NUL, lone surrogates are unencodable."""
+    return value.replace("\x00", "").encode("utf-8", "replace").decode("utf-8")
+
+
 def _parse_sillytavern_jsonl(content: str) -> list[dict]:
+    # Split on "\n" only. str.splitlines() also breaks on U+2028, U+0085, \x0b,
+    # \x0c and \x1c-\x1e, all of which are legal unescaped inside a JSON string,
+    # so a single roleplay message could be cut in half and misreported as
+    # invalid JSON. json.loads ignores a trailing "\r" on its own.
     lines = [
         (line_number, line)
-        for line_number, line in enumerate(content.splitlines(), start=1)
+        for line_number, line in enumerate(content.split("\n"), start=1)
         if line.strip()
     ]
     if not lines:
@@ -129,7 +142,7 @@ def _parse_sillytavern_jsonl(content: str) -> list[dict]:
 
     try:
         header = json.loads(lines[0][1])
-    except json.JSONDecodeError as exc:
+    except (json.JSONDecodeError, RecursionError) as exc:
         raise HTTPException(status_code=400, detail="The first JSONL line must be a valid chat header.") from exc
 
     if not isinstance(header, dict) or not (
@@ -142,13 +155,21 @@ def _parse_sillytavern_jsonl(content: str) -> list[dict]:
     for line_number, line in lines[1:]:
         try:
             message = json.loads(line)
-        except json.JSONDecodeError as exc:
+        except (json.JSONDecodeError, RecursionError) as exc:
             raise HTTPException(status_code=400, detail=f"Invalid JSON on line {line_number}.") from exc
 
-        if not isinstance(message, dict) or not isinstance(message.get("mes"), str):
+        if not isinstance(message, dict):
             raise HTTPException(status_code=400, detail=f"Invalid chat message on line {line_number}.")
 
-        content_text = message["mes"]
+        # Hidden/narrator lines are skipped before validating "mes": nothing is
+        # stored from them, so their payload must not fail the whole file.
+        if message.get("is_system") is True:
+            continue
+
+        if not isinstance(message.get("mes"), str):
+            raise HTTPException(status_code=400, detail=f"Invalid chat message on line {line_number}.")
+
+        content_text = _clean_import_text(message["mes"])
         if not content_text.strip():
             continue
 
@@ -163,6 +184,8 @@ def _parse_sillytavern_jsonl(content: str) -> list[dict]:
             "role": "user" if is_user else "assistant",
             "content": content_text,
         })
+        if len(messages) > MAX_IMPORT_MESSAGES:
+            raise HTTPException(status_code=413, detail="Too many messages in this file.")
 
     if not messages:
         raise HTTPException(status_code=400, detail="The JSONL file contains no importable messages.")
