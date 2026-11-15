@@ -122,9 +122,6 @@ export default function ContextWindowIndicator({
           <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>
             基于上次请求的上下文使用情况
           </div>
-          <div style={{ fontSize: '0.7rem', opacity: 0.9, marginTop: 4 }}>
-            接近模型输入上限时，本次请求会自动省略较早的消息。
-          </div>
           {Number(serverContextWindowUsage?.max_tokens_clamped || 0) > 0 && (
             <div style={{ fontSize: '0.7rem', color: '#fbbf24', marginTop: 4 }}>
               上下文接近上限，本次回复的最大长度已自动调整。
