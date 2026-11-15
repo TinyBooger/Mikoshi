@@ -623,11 +623,9 @@ export default function ChatPage() {
     handleDeleteConfirmed,
   } = useChatHistoryActions({
     sessionToken,
-    userData,
     setUserData,
     selectedChatRef,
     setSelectedChat,
-    refreshUserData,
     handleNewChat,
     newTitle,
     setNewTitle,

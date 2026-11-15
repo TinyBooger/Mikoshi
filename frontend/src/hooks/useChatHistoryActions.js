@@ -6,11 +6,9 @@ import { useCallback, useState } from 'react';
  *
  * @param {object}   params
  * @param {string}   params.sessionToken     - auth session token
- * @param {object}   params.userData         - current user (owns chat_history)
  * @param {function} params.setUserData      - setter for userData
  * @param {object}   params.selectedChatRef  - ref to the current chat entry
  * @param {function} params.setSelectedChat  - setter for selectedChat
- * @param {function} params.refreshUserData  - user refresh
  * @param {function} params.handleNewChat    - resets to a fresh chat when the
  *                                             active chat is the one deleted
  * @param {string}   params.newTitle         - title draft being edited
@@ -21,11 +19,9 @@ import { useCallback, useState } from 'react';
  */
 export function useChatHistoryActions({
   sessionToken,
-  userData,
   setUserData,
   selectedChatRef,
   setSelectedChat,
-  refreshUserData,
   handleNewChat,
   newTitle,
   setNewTitle,
@@ -41,6 +37,8 @@ export function useChatHistoryActions({
       return;
     }
 
+    const nextTitle = newTitle.trim();
+
     try {
       const res = await fetch(`${window.API_BASE_URL}/api/chat/rename`, {
         method: 'POST',
@@ -50,7 +48,7 @@ export function useChatHistoryActions({
         },
         body: JSON.stringify({
           chat_id: chatId,
-          new_title: newTitle.trim()
+          new_title: nextTitle
         })
       });
 
@@ -61,25 +59,26 @@ export function useChatHistoryActions({
         if (selectedChatRef.current?.chat_id === chatId) {
           setSelectedChat(prev => ({
             ...prev,
-            title: newTitle.trim()
+            title: nextTitle
           }));
         }
-        // Update chat title in userData.chat_history immutably and update context for instant UI
-        if (userData && userData.chat_history) {
-          setUserData(prev => ({
+        // This is the only writer of the new title: a follow-up refresh would
+        // re-read `/api/users/me` and stamp that snapshot over it, which is a
+        // no-op at best and reverts the rename when the read is stale.
+        setUserData(prev => {
+          if (!prev?.chat_history) return prev;
+          return {
             ...prev,
             chat_history: prev.chat_history.map(c =>
-              c.chat_id === chatId ? { ...c, title: newTitle.trim() } : c
+              c.chat_id === chatId ? { ...c, title: nextTitle } : c
             )
-          }));
-        }
-        // Optionally refresh from backend for consistency
-        refreshUserData();
+          };
+        });
       }
     } catch (error) {
       console.error('Error renaming chat:', error);
     }
-  }, [newTitle, setEditingChatId, sessionToken, selectedChatRef, setSelectedChat, setNewTitle, userData, setUserData, refreshUserData]);
+  }, [newTitle, setEditingChatId, sessionToken, selectedChatRef, setSelectedChat, setNewTitle, setUserData]);
 
   const handleDelete = useCallback(async (chatId) => {
     // Open confirmation modal instead of using window.confirm
@@ -100,24 +99,25 @@ export function useChatHistoryActions({
       });
 
       if (res.ok) {
-        // Remove chat from userData.chat_history immutably and update context for instant UI
-        if (userData && userData.chat_history) {
-          setUserData(prev => ({
+        // This is the only writer of the deletion: a follow-up refresh would
+        // re-read `/api/users/me` and stamp that snapshot over it, which is a
+        // no-op at best and resurrects the row when the read is stale.
+        setUserData(prev => {
+          if (!prev?.chat_history) return prev;
+          return {
             ...prev,
             chat_history: prev.chat_history.filter(c => c.chat_id !== chatId)
-          }));
-        }
+          };
+        });
         // If deleted chat was the selected one, reset to new chat state
         if (selectedChatRef.current?.chat_id === chatId) {
           await handleNewChat();
         }
-        // Optionally refresh from backend for consistency
-        refreshUserData();
       }
     } catch (error) {
       console.error('Error deleting chat:', error);
     }
-  }, [confirmModal.chatId, sessionToken, userData, setUserData, selectedChatRef, handleNewChat, refreshUserData]);
+  }, [confirmModal.chatId, sessionToken, setUserData, selectedChatRef, handleNewChat]);
 
   return {
     confirmModal,

@@ -337,18 +337,6 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
     }
   };
 
-
-  if (loading) {
-    return (
-      <aside className="d-flex flex-column h-100 p-3 bg-light border-end" style={{ minHeight: '100vh' }}>
-        <div className="text-center py-5">
-          <div className="spinner-border text-secondary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        </div>
-      </aside>
-    );
-  }
   const [profileOpen, setProfileOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   // Close profile dropdown on outside click
@@ -424,6 +412,20 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
     wordWrap: 'break-word',
     lineHeight: 1.4,
   };
+
+  // Must stay below every hook: `loading` flips during auth refreshes, and an
+  // early return above a hook would change the hook count between renders.
+  if (loading) {
+    return (
+      <aside className="d-flex flex-column h-100 p-3 bg-light border-end" style={{ minHeight: '100vh' }}>
+        <div className="text-center py-5">
+          <div className="spinner-border text-secondary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside

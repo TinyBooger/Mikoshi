@@ -363,6 +363,10 @@ const CharacterSidebar = React.memo(function CharacterSidebar({
     }
     return filtered.slice().sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated));
   }, [userData?.chat_history, isSceneMode, isCharacterMode, selectedScene?.id, selectedCharacter?.id, characterId]);
+  // Deleting the last remaining chat of the current entry mode would leave
+  // 对话历史 with nothing to show, so it is blocked here. ProfilePage is left
+  // alone: deleting a whole character/scene group is exactly its purpose.
+  const canDeleteChat = modeChatHistory.length > 1;
   const sidebarMotion = '0.35s cubic-bezier(.4,0,.2,1)';
 
   // Mobile: a fixed, right-side slide-in drawer rendered over the content via
@@ -1228,8 +1232,16 @@ const CharacterSidebar = React.memo(function CharacterSidebar({
                                   </button>
                                   <button
                                     className="dropdown-item text-danger"
+                                    aria-disabled={!canDeleteChat}
+                                    title={canDeleteChat ? undefined : '至少保留一个会话'}
+                                    style={canDeleteChat ? undefined : { cursor: 'not-allowed', opacity: 0.5 }}
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      if (!canDeleteChat) {
+                                        toast.show('至少保留一个会话。', { type: 'info' });
+                                        setMenuOpenId(null);
+                                        return;
+                                      }
                                       handleDelete(chat.chat_id);
                                       setMenuOpenId(null);
                                     }}
