@@ -8,6 +8,7 @@ import PageWrapper from '../components/PageWrapper';
 import SidebarToggleButton from '../components/chat/SidebarToggleButton';
 import ChatConversationArea from '../components/chat/ChatConversationArea';
 import ChatModals from '../components/chat/ChatModals';
+import ChatImportOverlay from '../components/chat/ChatImportOverlay';
 import './ChatPage.css';
 import ShareScreenshotDialog from '../components/share/ShareScreenshotDialog';
 import ShareCharacterDialog from '../components/share/ShareCharacterDialog';
@@ -77,6 +78,8 @@ export default function ChatPage() {
   }, []);
   const [wallpaper, setWallpaper] = useState({ id: 'none', url: null });
   const [characterBackground, setCharacterBackground] = useState(null);
+  // Non-null while a JSONL import is in flight; the overlay blocks the chat UI.
+  const [chatImportProgress, setChatImportProgress] = useState(null);
   const abortControllerRef = useRef(null);
   const [creditLimits, setCreditLimits] = useState(null);
   const { hasLiked, setHasLiked, likeEntity, unlikeEntity } = useLikeEntity({ sessionToken, setLikes });
@@ -555,6 +558,11 @@ export default function ChatPage() {
       return;
     }
 
+    if (chatImportProgress) {
+      return;
+    }
+
+    setChatImportProgress({ fileName: file.name });
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -583,10 +591,19 @@ export default function ChatPage() {
       toast.show('对话导入成功。', { type: 'success' });
     } catch (error) {
       console.error('Error importing chat:', error);
-      toast.show(error.message || '导入对话失败，请重试。', { type: 'error' });
+      // fetch() rejects with a bare TypeError when the connection dies mid-upload
+      // (a proxy body-size rejection, a dropped network). "Failed to fetch" tells
+      // the user nothing, so say what they can actually act on.
+      const message = error instanceof TypeError
+        ? '导入请求未收到响应，请检查网络连接，并确认文件不超过 25 MB。'
+        : (error.message || '导入对话失败，请重试。');
+      toast.show(message, { type: 'error' });
+    } finally {
+      setChatImportProgress(null);
     }
   }, [
     buildDisplayMessagesForChat,
+    chatImportProgress,
     isNewChat,
     pendingChatIdRef,
     selectedCharacter,
@@ -822,6 +839,7 @@ export default function ChatPage() {
         showChatHistory={showChatHistory}
         setShowChatHistory={setShowChatHistory}
         onImportChat={handleImportChat}
+        importingChat={chatImportProgress !== null}
         initializeChat={initializeChat}
         likeEntity={likeEntity}
         unlikeEntity={unlikeEntity}
@@ -899,6 +917,8 @@ export default function ChatPage() {
         type={selectedScene ? 'scene' : 'character'}
         id={(selectedScene || selectedCharacter)?.id}
       />
+
+      {chatImportProgress && <ChatImportOverlay fileName={chatImportProgress.fileName} />}
     </PageWrapper>
   );
 }

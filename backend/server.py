@@ -69,7 +69,13 @@ app.add_middleware(
 # Add security middleware
 # Note: Order matters - error logging should be early, rate limiting and security last
 app.add_middleware(ErrorLoggingMiddleware)
-app.add_middleware(RequestSizeLimitMiddleware, max_size=10 * 1024 * 1024)  # 10MB limit
+app.add_middleware(
+    RequestSizeLimitMiddleware,
+    max_size=10 * 1024 * 1024,  # 10MB limit
+    # Chat import uploads a JSONL file of up to 25 MiB, so the multipart body
+    # needs headroom above that. The route itself enforces the file limit.
+    path_overrides={"/api/chat/import": 32 * 1024 * 1024},
+)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     RateLimitMiddleware,

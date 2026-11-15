@@ -42,8 +42,11 @@ from utils.chat_history_utils import (
 )
 import uuid
 import json
+import os
 import re
 import logging
+import threading
+import time
 from functools import partial
 from datetime import datetime, UTC
 
@@ -79,6 +82,11 @@ IMPORT_RESPONSE_MESSAGE_LIMIT = 100
 # A 5 MB export is a few thousand messages; this ceiling only exists so a crafted
 # file cannot pin a worker thread (and its transaction) for an unbounded time.
 MAX_IMPORT_MESSAGES = 200_000
+
+# Imports parse and insert the whole file in one go, so only a couple may overlap
+# before they start competing for worker threads and memory on a small host.
+MAX_IMPORT_BYTES = 25 * 1024 * 1024
+_import_slots = threading.BoundedSemaphore(2)
 
 # DashScope flags input/output blocked by its content audit with this code (native
 # API spells it `DataInspectionFailed`). The raw provider text is opaque to users,
@@ -1292,22 +1300,8 @@ def import_chat(
     if not filename.lower().endswith(".jsonl"):
         raise HTTPException(status_code=400, detail="Only JSONL chat files can be imported.")
 
-    try:
-        content = file.file.read()
-    except OSError as exc:
-        raise HTTPException(status_code=400, detail="Unable to read the uploaded JSONL file.") from exc
-    finally:
-        file.file.close()
-
-    try:
-        decoded_content = content.decode("utf-8-sig")
-    except UnicodeDecodeError as exc:
-        raise HTTPException(status_code=400, detail="The JSONL file must use UTF-8 encoding.") from exc
-
-    messages = _parse_sillytavern_jsonl(decoded_content)
-    for message in messages:
-        message["message_id"] = generate_chat_message_id()
-
+    # Resolve the character first: a bad character_id or a missing permission must
+    # fail before a large upload is read, decoded and parsed.
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Character not found.")
@@ -1320,39 +1314,99 @@ def import_chat(
     ):
         raise HTTPException(status_code=404, detail="Character not found.")
 
-    now = datetime.now(UTC)
-    chat_id = str(uuid.uuid4())
-    payload = {
-        "character_id": character.id,
-        "character_name": character.name,
-        "character_picture": character.picture,
-        "scene_id": None,
-        "persona_id": None,
-        "title": _chat_import_title(filename, messages),
-        "messages": messages,
-        "created_at": now,
-        "last_updated": now,
-    }
+    if not _import_slots.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail="Too many imports in progress. Try again shortly.")
 
-    entry = upsert_chat_history_entry(
-        db,
-        user_id=current_user.id,
-        chat_id=chat_id,
-        payload=payload,
-    )
-    serialized_entry = serialize_chat_history_entry(
-        entry,
-        message_limit=IMPORT_RESPONSE_MESSAGE_LIMIT,
-    )
+    import_started = time.perf_counter()
 
-    audit_request(
-        request,
-        action="import_chat",
-        user_id=current_user.id,
-        metadata={"chat_id": chat_id, "character_id": character.id, "message_count": len(messages)},
-    )
+    # A slot is held from here on; the finally releases it exactly once, including
+    # on the HTTPException paths above the read.
+    try:
+        file.file.seek(0, os.SEEK_END)
+        size = file.file.tell()
+        file.file.seek(0)
+        if size > MAX_IMPORT_BYTES:
+            raise HTTPException(status_code=413, detail="File too large.")
 
-    return serialized_entry
+        try:
+            content = file.file.read()
+        except OSError as exc:
+            raise HTTPException(status_code=400, detail="Unable to read the uploaded JSONL file.") from exc
+        finally:
+            file.file.close()
+
+        # Counting the decode here keeps "parse" as byte-to-messages work.
+        parse_started = time.perf_counter()
+        try:
+            decoded_content = content.decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise HTTPException(status_code=400, detail="The JSONL file must use UTF-8 encoding.") from exc
+
+        messages = _parse_sillytavern_jsonl(decoded_content)
+        for message in messages:
+            message["message_id"] = generate_chat_message_id()
+        parse_elapsed = time.perf_counter() - parse_started
+
+        now = datetime.now(UTC)
+        chat_id = str(uuid.uuid4())
+        payload = {
+            "character_id": character.id,
+            "character_name": character.name,
+            "character_picture": character.picture,
+            "scene_id": None,
+            "persona_id": None,
+            "title": _chat_import_title(filename, messages),
+            "messages": messages,
+            "created_at": now,
+            "last_updated": now,
+        }
+
+        upsert_started = time.perf_counter()
+        entry = upsert_chat_history_entry(
+            db,
+            user_id=current_user.id,
+            chat_id=chat_id,
+            payload=payload,
+            prune=False,
+        )
+        upsert_elapsed = time.perf_counter() - upsert_started
+
+        # Serialize before pruning: the commit inside prune would expire `entry`.
+        serialized_entry = serialize_chat_history_entry(
+            entry,
+            message_limit=IMPORT_RESPONSE_MESSAGE_LIMIT,
+        )
+
+        # The import is already committed, so a prune failure must not fail it.
+        prune_started = time.perf_counter()
+        try:
+            prune_chat_history(db, current_user.id, auto_commit=True)
+        except Exception:
+            db.rollback()
+            logger.exception("import_chat: prune failed; import itself was committed")
+        prune_elapsed = time.perf_counter() - prune_started
+
+        audit_request(
+            request,
+            action="import_chat",
+            user_id=current_user.id,
+            metadata={"chat_id": chat_id, "character_id": character.id, "message_count": len(messages)},
+        )
+
+        logger.info(
+            "import_chat: chat_id=%s size=%d messages=%d parse=%.3fs upsert=%.3fs prune=%.3fs total=%.3fs",
+            chat_id,
+            size,
+            len(messages),
+            parse_elapsed,
+            upsert_elapsed,
+            prune_elapsed,
+            time.perf_counter() - import_started,
+        )
+
+        return serialized_entry
+    finally:
+        _import_slots.release()
 
 
 @router.post("/api/chat/rename")

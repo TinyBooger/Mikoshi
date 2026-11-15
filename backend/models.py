@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Date, Text, ForeignKey, ForeignKeyConstraint, UniqueConstraint, Boolean, Float, BigInteger, text
+from sqlalchemy import Column, String, Integer, DateTime, Date, Text, ForeignKey, ForeignKeyConstraint, UniqueConstraint, Index, Boolean, Float, BigInteger, text
 from sqlalchemy.orm import relationship
 from database import Base
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -194,10 +194,13 @@ class ChatHistoryBranch(Base):
 class ChatHistoryMessage(Base):
     __tablename__ = "chat_history_messages"
 
-    id = Column(Integer, primary_key=True, index=True)
-    chat_id = Column(String, ForeignKey('chat_histories.chat_id', ondelete='CASCADE'), nullable=False, index=True)
-    branch_id = Column(String, nullable=False, index=True)
-    message_id = Column(String, nullable=True, index=True)
+    # No single-column indexes on purpose: the primary key covers `id`, and
+    # uix_chat_history_messages_chat_branch_seq covers lookups that lead with
+    # chat_id or (chat_id, branch_id).
+    id = Column(Integer, primary_key=True)
+    chat_id = Column(String, ForeignKey('chat_histories.chat_id', ondelete='CASCADE'), nullable=False)
+    branch_id = Column(String, nullable=False)
+    message_id = Column(String, nullable=True)
     role = Column(String(20), nullable=False)
     content = Column(Text, nullable=False)
     usage = Column(JSONB, nullable=True)
@@ -216,6 +219,7 @@ class ChatHistoryMessage(Base):
             name='fk_chat_history_messages_branch',
         ),
         UniqueConstraint('chat_id', 'branch_id', 'created_seq', name='uix_chat_history_messages_chat_branch_seq'),
+        Index('ix_chat_history_messages_chat_id_message_id', 'chat_id', 'message_id'),
     )
 
 

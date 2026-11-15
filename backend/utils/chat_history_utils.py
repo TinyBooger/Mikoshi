@@ -1504,6 +1504,7 @@ def upsert_chat_history_entry(
     chat_id: str,
     payload: dict,
     limit: int = 30,
+    prune: bool = True,
 ) -> ChatHistory:
     """Insert or update a chat history entry, then enforce the per-user limit."""
     entry = fetch_chat_history_entry(db, user_id, chat_id)
@@ -1552,7 +1553,8 @@ def upsert_chat_history_entry(
     db.flush()
     if normalized_payload is not None:
         _sync_chat_history_store(db, entry, normalized_payload, payload_is_normalized=True)
-    prune_chat_history(db, user_id, limit, auto_commit=False)
+    if prune:
+        prune_chat_history(db, user_id, limit, auto_commit=False)
     db.commit()
     db.refresh(entry)
     return entry

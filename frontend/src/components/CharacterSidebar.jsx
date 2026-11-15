@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import SecondaryButton from './SecondaryButton';
+import { useToast } from './ToastProvider';
 
 import InfoCard from './InfoCard';
 import ContentReportModal from './ContentReportModal';
@@ -10,6 +11,10 @@ import { SIDEBAR_WIDTH, SIDEBAR_BORDER_WIDTH } from '../constants/layout';
 import { WALLPAPER_OPTIONS } from '../utils/chatPageConstants';
 import { resolveBackgroundPresetId } from '../utils/backgroundPresets';
 import { getMessagePreview } from '../utils/chatHelpers';
+
+// Mirrors MAX_IMPORT_BYTES in backend/routes/chat.py.
+const MAX_IMPORT_MB = 25;
+const MAX_IMPORT_BYTES = MAX_IMPORT_MB * 1024 * 1024;
 
 const PinnedMemoryManager = React.memo(function PinnedMemoryManager({
   chatState,
@@ -167,6 +172,7 @@ const CharacterSidebar = React.memo(function CharacterSidebar({
   showChatHistory,
   setShowChatHistory,
   onImportChat,
+  importingChat,
   initializeChat,
   likeCharacter,
   likeEntity, // <-- add likeEntity
@@ -200,7 +206,7 @@ const CharacterSidebar = React.memo(function CharacterSidebar({
   const [activeHintKey, setActiveHintKey] = React.useState(null);
   const [shareIconFocused, setShareIconFocused] = React.useState(false);
   const [reportIconFocused, setReportIconFocused] = React.useState(false);
-  const [importingChat, setImportingChat] = React.useState(false);
+  const toast = useToast();
   const importChatInputRef = React.useRef(null);
   const wallpaperUploadInputRef = React.useRef(null);
   const [lastSavedConfig, setLastSavedConfig] = React.useState(() =>
@@ -319,17 +325,22 @@ const CharacterSidebar = React.memo(function CharacterSidebar({
     e.stopPropagation();
     setMenuOpenId(menuOpenId === chatId ? null : chatId);
   };
-  const handleImportChatFile = async (event) => {
+  const handleImportChatFile = (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file || !onImportChat) return;
+    if (!file || !onImportChat || importingChat) return;
 
-    setImportingChat(true);
-    try {
-      await onImportChat(file);
-    } finally {
-      setImportingChat(false);
+    // Reject oversize files here: an upload the server rejects with 413 can lose
+    // its response while the body is still being sent, which surfaces as a bare
+    // "Failed to fetch". The server check stays as the backstop.
+    if (file.size > MAX_IMPORT_BYTES) {
+      toast.show(`文件过大，最大 ${MAX_IMPORT_MB} MB。`, { type: 'error' });
+      return;
     }
+
+    // ChatPage owns the in-flight state so its blocking overlay covers the
+    // whole page; the button below just mirrors it.
+    onImportChat(file);
   };
   // Determine entry mode based on which entity is currently selected
   // Priority: Scene > Character > None (mutually exclusive states)

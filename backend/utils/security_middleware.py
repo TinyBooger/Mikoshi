@@ -16,18 +16,30 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     """
     Middleware to limit the size of incoming requests to prevent DoS attacks.
     """
-    def __init__(self, app, max_size: int = 10 * 1024 * 1024):  # 10MB default
+    def __init__(self, app, max_size: int = 10 * 1024 * 1024, path_overrides: dict = None):
         super().__init__(app)
         self.max_size = max_size
+        # Per-path ceilings, sorted longest-prefix-first so "/api/chat/import"
+        # wins over a broader "/api" entry.
+        self.path_overrides = sorted(
+            (path_overrides or {}).items(), key=lambda item: len(item[0]), reverse=True
+        )
+
+    def _limit_for_path(self, path: str) -> int:
+        for prefix, limit in self.path_overrides:
+            if path.startswith(prefix):
+                return limit
+        return self.max_size
 
     async def dispatch(self, request: Request, call_next):
         # Check Content-Length header
         content_length = request.headers.get("content-length")
         if content_length:
             content_length = int(content_length)
-            if content_length > self.max_size:
+            max_size = self._limit_for_path(request.url.path)
+            if content_length > max_size:
                 return Response(
-                    content=f"Request body too large. Maximum size is {self.max_size} bytes.",
+                    content=f"Request body too large. Maximum size is {max_size} bytes.",
                     status_code=413
                 )
         
