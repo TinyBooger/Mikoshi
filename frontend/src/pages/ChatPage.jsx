@@ -290,9 +290,10 @@ export default function ChatPage() {
       character?.example_messages || '',
       persona?.description || null,
       persona?.name || null,
-      scene?.description || null
+      scene?.description || null,
+      userData?.name || null
     )
-  }), [selectedCharacter, selectedScene, selectedPersona]);
+  }), [selectedCharacter, selectedScene, selectedPersona, userData?.name]);
 
   const buildDisplayMessagesForChat = useCallback((chatEntry, character = selectedCharacter, scene = selectedScene, persona = selectedPersona) => {
     const normalizedChat = normalizeChatEntry(chatEntry);

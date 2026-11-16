@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { normalizeChatEntry, ensureMessageIds, generateMessageId, createLocalMessageTimestamp } from '../utils/chatHelpers';
 import { SPECIAL_IMPROVISING_GREETING, DEFAULT_ADVANCED_CHAT_CONFIG } from '../utils/chatPageConstants';
-import {
-  applyCharacterPlaceholders,
-  characterUsesUserPlaceholder,
-} from '../utils/characterPlaceholders';
+import { applyCharacterPlaceholders } from '../utils/characterPlaceholders';
 
 /**
  * Chat lifecycle controller: route/entry handling, greeting generation, history
@@ -107,8 +104,6 @@ export function useChatInitialization({
   const [advancedChatConfirm, setAdvancedChatConfirm] = useState(false);
   const pendingAdvancedChatStartRef = useRef(null);
   const prevSearchParamsRef = useRef(searchParams);
-  // The "set up your persona" nudge only needs to land once per page mount.
-  const personaNudgeShownRef = useRef(false);
 
   const handleCharacterEntry = async () => {
     setInitModal(false);
@@ -440,23 +435,6 @@ export function useChatInitialization({
     const { character, scene, persona } = fetchedData || {};
     const sys = buildSystemPromptMessage(character, scene, persona);
 
-    // The character's text relies on {{user}} but there is no persona name to
-    // resolve it to, so it falls back to the generic "用户". Tell the user once
-    // per mount how to fix that.
-    const personaName = typeof persona?.name === 'string' ? persona.name.trim() : '';
-    if (
-      !scene &&
-      !personaName &&
-      characterUsesUserPlaceholder(character) &&
-      !personaNudgeShownRef.current
-    ) {
-      personaNudgeShownRef.current = true;
-      toast.show(
-        '该角色使用了 {{user}} 占位符，但你还没有设置自设，对话中将以「用户」称呼你。建议点击侧栏的「自设」添加你的角色设定。',
-        { type: 'info', duration: 20000 }
-      );
-    }
-
     // For scenes, keep existing logic (scene.greeting is still a string)
     // For characters, greetings is now a list; pick one randomly
     let openingGreeting = null;
@@ -486,7 +464,7 @@ export function useChatInitialization({
         } else {
           // Greetings are shown verbatim, so {{char}} / {{user}} must be
           // resolved here (scenes are intentionally left alone).
-          openingGreeting = applyCharacterPlaceholders(pick, character?.name, persona?.name);
+          openingGreeting = applyCharacterPlaceholders(pick, character?.name, persona?.name, userData?.name);
         }
       }
     }

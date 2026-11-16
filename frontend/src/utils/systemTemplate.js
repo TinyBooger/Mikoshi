@@ -8,16 +8,18 @@ export function buildSystemMessage(
   exampleMessages = null,
   personaDescription = null,
   personaName = null,
-  scene = null
+  scene = null,
+  profileName = null
 ) {
   // Character-authored text may contain {{char}} / {{user}} placeholders.
-  // Resolve them against the character name and the active user persona
-  // (the account name is never used).
-  const resolvedDescription = applyCharacterPlaceholders(characterDescription, characterName, personaName);
+  // Resolve them against the character name and the active user persona,
+  // falling back to the user's profile name when no persona is set.
+  const resolvedDescription = applyCharacterPlaceholders(characterDescription, characterName, personaName, profileName);
   const resolvedExampleMessages = applyCharacterPlaceholders(
     normalizeExampleMessage(exampleMessages),
     characterName,
-    personaName
+    personaName,
+    profileName
   );
 
   // Base instruction
