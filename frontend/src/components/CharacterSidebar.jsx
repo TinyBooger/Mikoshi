@@ -11,6 +11,7 @@ import { SIDEBAR_WIDTH, SIDEBAR_BORDER_WIDTH } from '../constants/layout';
 import { WALLPAPER_OPTIONS } from '../utils/chatPageConstants';
 import { resolveBackgroundPresetId } from '../utils/backgroundPresets';
 import { getMessagePreview } from '../utils/chatHelpers';
+import { selectChatHistoryForMode } from '../utils/chatHistorySelection';
 
 // Mirrors MAX_IMPORT_BYTES in backend/routes/chat.py.
 const MAX_IMPORT_MB = 25;
@@ -347,22 +348,11 @@ const CharacterSidebar = React.memo(function CharacterSidebar({
   const isSceneMode = !!selectedScene;
   const isCharacterMode = !isSceneMode && !!selectedCharacter;
   // The history list mirrors the entry mode so that picking an entry never
-  // silently switches modes:
-  //   scene mode     → every chat that used this scene, whichever character
-  //   character mode → only the scene-less chats with this character (a chat
-  //                    that has a scene belongs to its scene group instead)
-  const modeChatHistory = React.useMemo(() => {
-    const history = (userData?.chat_history || []).filter((chat) => !chat?.hidden_from_recent);
-    let filtered;
-    if (isSceneMode) {
-      filtered = history.filter((chat) => String(chat.scene_id) === String(selectedScene.id));
-    } else if (isCharacterMode) {
-      filtered = history.filter((chat) => !chat.scene_id && String(chat.character_id) === String(selectedCharacter.id));
-    } else {
-      filtered = history.filter((chat) => String(chat.character_id) === String(characterId));
-    }
-    return filtered.slice().sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated));
-  }, [userData?.chat_history, isSceneMode, isCharacterMode, selectedScene?.id, selectedCharacter?.id, characterId]);
+  // silently switches modes — see `selectChatHistoryForMode`.
+  const modeChatHistory = React.useMemo(
+    () => selectChatHistoryForMode(userData?.chat_history, { selectedCharacter, selectedScene, characterId }),
+    [userData?.chat_history, selectedCharacter, selectedScene, characterId],
+  );
   // Deleting the last remaining chat of the current entry mode would leave
   // 对话历史 with nothing to show, so it is blocked here. ProfilePage is left
   // alone: deleting a whole character/scene group is exactly its purpose.

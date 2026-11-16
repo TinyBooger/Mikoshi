@@ -30,6 +30,7 @@ import {
 import { getSelectedWallpaper } from '../utils/chatMessages';
 import { getChatDraftStorageKeys } from '../utils/chatDraftStorage';
 import { toChatHistoryMetadata } from '../utils/chatHistoryMetadata';
+import { selectChatHistoryForMode } from '../utils/chatHistorySelection';
 import { useCreditAndChatLimits } from '../hooks/useCreditAndChatLimits';
 import { usePinnedMemories } from '../hooks/usePinnedMemories';
 import { useChatHistoryPaging } from '../hooks/useChatHistoryPaging';
@@ -615,6 +616,17 @@ export default function ChatPage() {
   ]);
 
   // ---- Chat history actions (rename / delete + confirm modal state) ----
+  // Deleting the active chat falls back to the newest remaining chat of the
+  // same 对话历史 group (same set the sidebar lists) rather than starting a new
+  // one, which would immediately recreate a deleted row.
+  const getFallbackChatAfterDelete = useCallback((deletedChatId) => {
+    return selectChatHistoryForMode(userData?.chat_history, {
+      selectedCharacter,
+      selectedScene,
+      characterId,
+    }).find((chat) => chat.chat_id !== deletedChatId) || null;
+  }, [userData?.chat_history, selectedCharacter, selectedScene, characterId]);
+
   const {
     confirmModal,
     setConfirmModal,
@@ -627,6 +639,8 @@ export default function ChatPage() {
     selectedChatRef,
     setSelectedChat,
     handleNewChat,
+    loadChat,
+    getFallbackChat: getFallbackChatAfterDelete,
     newTitle,
     setNewTitle,
     editingChatId,

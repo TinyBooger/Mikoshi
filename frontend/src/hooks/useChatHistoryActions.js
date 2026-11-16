@@ -10,7 +10,14 @@ import { useCallback, useState } from 'react';
  * @param {object}   params.selectedChatRef  - ref to the current chat entry
  * @param {function} params.setSelectedChat  - setter for selectedChat
  * @param {function} params.handleNewChat    - resets to a fresh chat when the
- *                                             active chat is the one deleted
+ *                                             active chat is deleted and nothing
+ *                                             is left to fall back to
+ * @param {function} params.loadChat         - loads a chat entry; used to fall
+ *                                             back to the next-most-recent chat
+ *                                             after the active one is deleted
+ * @param {function} params.getFallbackChat  - `(deletedChatId) => chat|null`,
+ *                                             the next chat of the current
+ *                                             对话历史 group
  * @param {string}   params.newTitle         - title draft being edited
  * @param {function} params.setNewTitle      - setter for newTitle
  * @param {string}   params.editingChatId    - id of the chat whose title is being edited
@@ -23,6 +30,8 @@ export function useChatHistoryActions({
   selectedChatRef,
   setSelectedChat,
   handleNewChat,
+  loadChat,
+  getFallbackChat,
   newTitle,
   setNewTitle,
   editingChatId,
@@ -109,15 +118,22 @@ export function useChatHistoryActions({
             chat_history: prev.chat_history.filter(c => c.chat_id !== chatId)
           };
         });
-        // If deleted chat was the selected one, reset to new chat state
+        // Deleting the active chat falls back to the most recent remaining chat
+        // of the same group. Starting a new chat instead would repopulate 对话历史
+        // immediately, so the list never shrinks.
         if (selectedChatRef.current?.chat_id === chatId) {
-          await handleNewChat();
+          const fallbackChat = getFallbackChat?.(chatId);
+          if (fallbackChat) {
+            await loadChat(fallbackChat);
+          } else {
+            await handleNewChat();
+          }
         }
       }
     } catch (error) {
       console.error('Error deleting chat:', error);
     }
-  }, [confirmModal.chatId, sessionToken, setUserData, selectedChatRef, handleNewChat]);
+  }, [confirmModal.chatId, sessionToken, setUserData, selectedChatRef, loadChat, getFallbackChat, handleNewChat]);
 
   return {
     confirmModal,
