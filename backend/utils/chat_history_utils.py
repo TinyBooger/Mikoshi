@@ -495,20 +495,25 @@ def fetch_chat_history_branch_context(
     entry: ChatHistory,
     branch_id: str,
     *,
-    token_budget: int = HISTORY_TOKEN_BUDGET,
     message_window: int = HISTORY_CONTEXT_MESSAGE_WINDOW,
-) -> tuple[dict[str, Any] | None, list[dict[str, Any]], int]:
-    """Load the newest slice of one branch's context without materializing its history.
+    stop_at_message_id: str | None = None,
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]], int, str | None]:
+    """The newest slice of one branch, cut at ``stop_at_message_id`` if given.
 
     A stored transcript can hold tens of thousands of messages, and a chat request
     only needs a recent tail of it. Reading (and then sending) the whole branch
     costs real money per turn, so this reads just the newest ``message_window``
-    rows and keeps the newest whole turns that fit ``token_budget``. That budget is
-    a cost decision, deliberately far below any model's context window — a
-    1M-token window must not become a 1M-token prompt.
+    rows. Deciding which of those fit the token budget is left to
+    :func:`select_recent_messages`, whose caller also knows the system prompt.
 
-    Returns ``(branch, messages, omitted_count)``: ``messages`` in chronological
-    order, and how many of the branch's messages are not in it.
+    ``stop_at_message_id`` drops that message and everything after it, which is how
+    resend/edit reads the branch it is about to fork from.
+
+    Returns ``(branch, messages, omitted_count, target_role)``. ``branch`` is None
+    when the branch does not exist, ``messages`` are chronological,
+    ``omitted_count`` is how many of the branch's messages are not in them, and
+    ``target_role`` is the role of ``stop_at_message_id`` — None when no stop was
+    requested or that message is not in this branch.
     """
     _ensure_chat_history_store(db, entry)
     branch = (
@@ -520,76 +525,236 @@ def fetch_chat_history_branch_context(
         .first()
     )
     if branch is None:
-        return None, [], 0
+        return None, [], 0, None
 
-    branch_filter = (
-        ChatHistoryMessage.chat_id == entry.chat_id,
-        ChatHistoryMessage.branch_id == branch_id,
-    )
-    window_size = max(1, int(message_window))
-    # Newest-first so the window is the recent tail; reversed below into the
-    # chronological order the model expects.
-    window = (
-        db.query(ChatHistoryMessage)
-        .filter(*branch_filter)
-        .order_by(ChatHistoryMessage.created_seq.desc(), ChatHistoryMessage.id.desc())
-        .limit(window_size)
-        .all()
-    )
-    omitted_count = 0
-    if len(window) >= window_size:
-        # The window itself may be hiding older rows; report the real remainder so
-        # the client's "older context omitted" indicator stays truthful.
-        total_count = int(
-            db.query(func.count(ChatHistoryMessage.id))
-            .filter(*branch_filter)
-            .scalar()
-            or 0
-        )
-        omitted_count = max(0, total_count - len(window))
-
-    messages: list[dict[str, Any]] = []
-    serialized = [
-        message
-        for message in (_serialize_stored_message(item) for item in reversed(window))
-        if message is not None
-    ]
-    # Newest-first, whole-turn trimming — the same selection the final
-    # provider-cap guard uses.
-    messages, trimmed_count = select_recent_messages(
-        serialized,
-        token_budget=token_budget,
-    )
-    omitted_count += trimmed_count
-
-    return {
+    branch_metadata = {
         "branch_id": branch.branch_id,
         "parent_branch_id": branch.parent_branch_id,
         "parent_message_id": branch.parent_message_id,
         "label": branch.label or "Branch",
         "created_at": branch.created_at.isoformat() if branch.created_at else None,
         "last_updated": branch.last_updated.isoformat() if branch.last_updated else None,
-    }, messages, omitted_count
+    }
+
+    stop_seq = None
+    target_role = None
+    if stop_at_message_id:
+        target = (
+            db.query(ChatHistoryMessage.created_seq, ChatHistoryMessage.role)
+            .filter(
+                *_branch_message_filter(entry, branch_id),
+                ChatHistoryMessage.message_id == stop_at_message_id,
+            )
+            .order_by(ChatHistoryMessage.created_seq.asc())
+            .first()
+        )
+        if target is None:
+            return branch_metadata, [], 0, None
+        stop_seq = target.created_seq
+        target_role = target.role
+
+    rows, _, _ = _fetch_branch_window(
+        db,
+        entry,
+        branch_id,
+        message_limit=max(1, int(message_window)),
+        before_seq=stop_seq,
+    )
+    omitted_count = max(
+        0,
+        _count_branch_messages(db, entry, branch_id, before_seq=stop_seq) - len(rows),
+    )
+    messages = [
+        message
+        for message in (_serialize_stored_message(row) for row in rows)
+        if message is not None
+    ]
+    return branch_metadata, messages, omitted_count, target_role
 
 
-def chat_history_message_exists(
-    db: Session,
-    *,
-    entry: ChatHistory,
-    branch_id: str,
-    message_id: str,
-) -> bool:
+class ChatTurnContextError(Exception):
+    """A turn whose stored branch no longer matches what the client sent."""
+
+    def __init__(self, code: str, message: str, *, status_code: int = 409) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.status_code = status_code
+
+
+def _chat_message_id_exists(db: Session, entry: ChatHistory, message_id: str) -> bool:
+    """Whether ``message_id`` is already stored anywhere in this chat.
+
+    Branch-scoped lookups cannot answer this for a fork, because the forked turn
+    lands in a branch that does not exist yet.
+    """
     _ensure_chat_history_store(db, entry)
     return (
         db.query(ChatHistoryMessage.id)
         .filter(
             ChatHistoryMessage.chat_id == entry.chat_id,
-            ChatHistoryMessage.branch_id == branch_id,
             ChatHistoryMessage.message_id == message_id,
         )
         .first()
         is not None
     )
+
+
+def _require_user_message(message: Any) -> dict[str, Any]:
+    if (
+        not isinstance(message, dict)
+        or message.get("role") != "user"
+        or not isinstance(message.get("message_id"), str)
+        or not message["message_id"].strip()
+        or not isinstance(message.get("content"), str)
+        or not message["content"].strip()
+    ):
+        raise ChatTurnContextError(
+            "INVALID_CHAT_TURN",
+            "无法识别新消息，请重新加载对话后重试。",
+            status_code=400,
+        )
+    return message
+
+
+def build_chat_turn_context(
+    db: Session,
+    entry: ChatHistory,
+    *,
+    branch_id: str | None,
+    system_messages: list[dict[str, Any]],
+    token_budget: int = HISTORY_TOKEN_BUDGET,
+    message_window: int = HISTORY_CONTEXT_MESSAGE_WINDOW,
+    turn_message: dict[str, Any] | None = None,
+    fork_from_message_id: str | None = None,
+    fork_message: dict[str, Any] | None = None,
+    client_messages: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Build one turn's prompt and persistence payload for every chat entrance.
+
+    ``POST /api/chat`` is reached from four places — first send, resend,
+    regenerate and edit/fork — and they must not diverge. Resend and edit differ
+    from a plain send in exactly one input: they read the branch *before* the
+    message being replaced instead of the whole branch. Everything downstream is
+    shared, including the window, :func:`select_recent_messages` (the newest whole
+    turns that fit ``token_budget``) and the guards.
+
+    Returns ``branch_id``, ``messages`` (the prompt: system messages, then the
+    trimmed conversation), ``full_messages`` (the messages this turn adds to the
+    branch) and ``omitted_count`` (stored messages the prompt does not contain).
+    """
+    resolved_branch_id = (
+        branch_id.strip() if isinstance(branch_id, str) and branch_id.strip() else None
+    ) or entry.active_branch_id or DEFAULT_BRANCH_ID
+    pending = fork_message if fork_from_message_id else turn_message
+
+    if fork_from_message_id or isinstance(pending, dict):
+        # Send, resend, regenerate and edit share this whole block. Resend/edit
+        # differ in exactly one input — they read the prefix before the message
+        # they replace instead of the whole branch — so the window, the trim, the
+        # counts and the guards below all apply to them unchanged.
+        branch, stored_messages, omitted_count, target_role = (
+            fetch_chat_history_branch_context(
+                db,
+                entry,
+                resolved_branch_id,
+                message_window=message_window,
+                stop_at_message_id=fork_from_message_id,
+            )
+        )
+        if branch is None:
+            raise ChatTurnContextError(
+                "CHAT_BRANCH_NOT_FOUND", "对话分支已更新，请重新加载后重试。"
+            )
+        if fork_from_message_id and target_role != "user":
+            raise ChatTurnContextError(
+                "FORK_MESSAGE_NOT_FOUND", "无法找到要创建分支的消息，请重新加载对话。"
+            )
+        pending = _require_user_message(pending)
+        if _chat_message_id_exists(db, entry, pending["message_id"]):
+            raise ChatTurnContextError(
+                "INVALID_CHAT_TURN", "新消息已存在，请重新加载对话后重试。"
+            )
+        # An imported chat stores its system prompt as the branch's first row.
+        # The request's system messages are authoritative, so the stored copy is
+        # dropped here instead of reaching the prompt as a second one.
+        stored_messages = [
+            message
+            for message in stored_messages
+            if isinstance(message, dict) and message.get("role") != "system"
+        ]
+        stored_messages.append(pending)
+        full_messages = [pending]
+    else:
+        # Legacy clients send the whole transcript instead of one ``turn_message``,
+        # so this path diffs their full list against the stored ids and rewrites
+        # the branch. Truncating the stored side would make older messages look
+        # new and re-append them, so it stays a full read; the current client
+        # never reaches it.
+        serialized_entry = serialize_chat_history_entry(entry)
+        history_payload = normalize_chat_history_payload(
+            {
+                "active_branch_id": serialized_entry.get("active_branch_id"),
+                "branches": serialized_entry.get("branches") or [],
+            }
+        )
+        source_branch = next(
+            (
+                branch
+                for branch in history_payload["branches"]
+                if branch.get("branch_id") == resolved_branch_id
+            ),
+            None,
+        )
+        if source_branch is None:
+            raise ChatTurnContextError(
+                "CHAT_BRANCH_NOT_FOUND", "对话分支已更新，请重新加载后重试。"
+            )
+        stored_messages = [
+            message
+            for message in source_branch.get("messages") or []
+            if isinstance(message, dict) and message.get("role") != "system"
+        ]
+        stored_message_ids = {
+            message.get("message_id")
+            for message in stored_messages
+            if isinstance(message.get("message_id"), str)
+        }
+        client_list = [item for item in client_messages or [] if isinstance(item, dict)]
+        new_user_messages = [
+            message
+            for message in client_list
+            if message.get("role") == "user"
+            and message.get("message_id") not in stored_message_ids
+        ]
+        if not new_user_messages or new_user_messages[-1] is not client_list[-1]:
+            raise ChatTurnContextError(
+                "INVALID_CHAT_TURN",
+                "无法识别新消息，请重新加载对话后重试。",
+                status_code=400,
+            )
+        stored_messages = [*stored_messages, *new_user_messages]
+        full_messages = [*system_messages, *stored_messages]
+        omitted_count = 0
+
+    # The one selection every entrance shares.
+    selected, trimmed_count = select_recent_messages(
+        [*system_messages, *stored_messages],
+        token_budget=token_budget,
+    )
+    if not selected:
+        raise ChatTurnContextError(
+            "INVALID_CHAT_TURN",
+            "无法识别新消息，请重新加载对话后重试。",
+            status_code=400,
+        )
+
+    return {
+        "branch_id": resolved_branch_id,
+        "messages": selected,
+        "full_messages": full_messages,
+        "omitted_count": omitted_count + trimmed_count,
+    }
 
 
 def append_chat_history_turn_to_store(
@@ -931,68 +1096,6 @@ def fetch_chat_history_branch_page(
             if message is not None
         ],
     }
-
-
-def fetch_chat_history_fork_prefix(
-    db: Session,
-    entry: ChatHistory,
-    branch_id: str,
-    *,
-    message_id: str,
-) -> tuple[bool, Optional[str], list[dict[str, Any]]]:
-    """The messages of a branch that come before ``message_id``.
-
-    Forking a branch materializes the source branch's prefix, so this reads from
-    the branch start rather than a window — but only the prefix, however long the
-    rest of the branch has grown since.
-
-    Returns ``(branch_exists, target_role, messages)``: ``target_role`` is None
-    when ``message_id`` is not in the branch, and ``messages`` are the rows stored
-    before it, chronologically.
-    """
-    _ensure_chat_history_store(db, entry)
-    branch_exists = (
-        db.query(ChatHistoryBranch.id)
-        .filter(
-            ChatHistoryBranch.chat_id == entry.chat_id,
-            ChatHistoryBranch.branch_id == branch_id,
-        )
-        .first()
-        is not None
-    )
-    if not branch_exists:
-        return False, None, []
-
-    target = (
-        db.query(ChatHistoryMessage.created_seq, ChatHistoryMessage.role)
-        .filter(
-            *_branch_message_filter(entry, branch_id),
-            ChatHistoryMessage.message_id == message_id,
-        )
-        .order_by(ChatHistoryMessage.created_seq.asc())
-        .first()
-    )
-    if target is None:
-        return True, None, []
-
-    rows = (
-        db.query(ChatHistoryMessage)
-        .filter(
-            *_branch_message_filter(entry, branch_id),
-            ChatHistoryMessage.created_seq < target.created_seq,
-        )
-        .order_by(ChatHistoryMessage.created_seq.asc(), ChatHistoryMessage.id.asc())
-        .all()
-    )
-    return (
-        True,
-        target.role,
-        [
-            message
-            for message in (_serialize_stored_message(row) for row in rows)
-            if message is not None
-        ],
-    )
 
 
 def serialize_chat_history_entry(entry: ChatHistory, *, message_limit: int | None = None) -> dict:

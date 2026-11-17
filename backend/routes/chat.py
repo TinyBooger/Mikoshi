@@ -12,11 +12,10 @@ from utils.chat_history_utils import (
     CHAT_OPEN_MESSAGE_LIMIT_MAX,
     DEFAULT_BRANCH_ID,
     fetch_chat_history_entry,
-    fetch_chat_history_branch_context,
     fetch_chat_history_branch_page,
-    fetch_chat_history_fork_prefix,
+    ChatTurnContextError,
+    build_chat_turn_context,
     resolve_chat_history_active_branch_id,
-    chat_history_message_exists,
     append_chat_history_turn_to_store,
     upsert_chat_history_entry,
     serialize_chat_history_entry,
@@ -313,6 +312,7 @@ def _persist_chat_history_turn(
     assistant_message_id: str,
     base_message_count: int | None = None,
     stored_turn_message: dict | None = None,
+    fork_message: dict | None = None,
 ) -> tuple[ChatHistory, dict, bool]:
     assistant_message = _build_assistant_message(reply, response_usage, assistant_message_id)
 
@@ -397,7 +397,31 @@ def _persist_chat_history_turn(
                 "message_count": current_message_count,
             }, False
 
-    if existing_entry and not fork_from_message_id:
+    if fork_from_message_id:
+        # A fork copies the source branch verbatim up to the message it replaces,
+        # so the write still needs the whole prefix even though the prompt only
+        # needed a recent window of it. It is sliced from the transcript just read.
+        source_branch_id = requested_branch_id or get_chat_history_active_branch_id(existing_payload)
+        source_messages = get_chat_history_messages(existing_payload, source_branch_id)
+        fork_index = next(
+            (
+                index
+                for index, message in enumerate(source_messages)
+                if message.get("message_id") == fork_from_message_id
+            ),
+            None,
+        )
+        if fork_index is None or not fork_message:
+            logger.warning(
+                "Fork point vanished; branch not written | user=%s | chat=%s | branch=%s | fork_from=%s",
+                current_user_id,
+                chat_id,
+                source_branch_id,
+                fork_from_message_id,
+            )
+            return existing_entry, {"branch_id": source_branch_id}, False
+        updated_messages = [*source_messages[:fork_index], fork_message]
+    elif existing_entry:
         target_branch_id = requested_branch_id or get_chat_history_active_branch_id(existing_payload)
         existing_branch = get_chat_history_branch(existing_payload, target_branch_id)
         existing_messages = list(existing_branch.get("messages") or [])
@@ -660,8 +684,6 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
 
     if not isinstance(context_messages, list) or not context_messages:
         context_messages = messages
-    if history_mode == "stored_branch" and isinstance(turn_message, dict):
-        full_messages = [turn_message]
 
     if is_chat_banned(current_user):
         ban_until = getattr(current_user, "ban_until", None)
@@ -762,143 +784,38 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
             message for message in messages
             if isinstance(message, dict) and message.get("role") == "system"
         ]
+        # Cost target, independent of the requested output length. Clamped to the
+        # provider's real input cap so a small-window model does not load history
+        # it can never send; the guard below still enforces the cap.
+        history_token_budget = HISTORY_TOKEN_BUDGET
+        if provider_input_cap is not None:
+            history_token_budget = min(history_token_budget, provider_input_cap)
 
-        if fork_from_message_id:
-            # A fork materializes the source branch's prefix, so it needs
-            # everything up to the fork point but nothing after it.
-            source_branch_id = (
-                branch_id
-                or existing_entry.active_branch_id
-                or resolve_chat_history_active_branch_id(db, existing_entry)
-            )
-            branch_id = source_branch_id
-            branch_found, fork_target_role, prefix_messages = fetch_chat_history_fork_prefix(
+        # Send, resend, regenerate and fork all build their prompt here: one
+        # window, one trim, one set of guards. Only the branch write differs.
+        try:
+            turn_context = build_chat_turn_context(
                 db,
                 existing_entry,
-                source_branch_id,
-                message_id=fork_from_message_id,
+                branch_id=branch_id,
+                system_messages=system_messages,
+                token_budget=history_token_budget,
+                turn_message=turn_message,
+                fork_from_message_id=fork_from_message_id,
+                fork_message=fork_message,
+                client_messages=messages,
             )
-            if not branch_found:
-                return JSONResponse(
-                    content={"error": "CHAT_BRANCH_NOT_FOUND", "message": "对话分支已更新，请重新加载后重试。"},
-                    status_code=409,
-                )
-            if fork_target_role != "user":
-                return JSONResponse(
-                    content={"error": "FORK_MESSAGE_NOT_FOUND", "message": "无法找到要创建分支的消息，请重新加载对话。"},
-                    status_code=409,
-                )
-            if (
-                not isinstance(fork_message, dict)
-                or fork_message.get("role") != "user"
-                or not isinstance(fork_message.get("message_id"), str)
-                or not isinstance(fork_message.get("content"), str)
-                or not fork_message["content"].strip()
-            ):
-                return JSONResponse(
-                    content={"error": "INVALID_FORK_MESSAGE", "message": "无法读取要重新发送的消息，请重试。"},
-                    status_code=400,
-                )
-            stored_messages = [
-                message for message in prefix_messages
-                if isinstance(message, dict) and message.get("role") != "system"
-            ]
-            stored_messages = [*stored_messages, fork_message]
-            full_messages = [*system_messages, *stored_messages]
-            messages = full_messages
-            context_messages = full_messages
-        elif isinstance(turn_message, dict):
-            if (
-                turn_message.get("role") != "user"
-                or not isinstance(turn_message.get("message_id"), str)
-                or not turn_message["message_id"].strip()
-                or not isinstance(turn_message.get("content"), str)
-                or not turn_message["content"].strip()
-            ):
-                return JSONResponse(
-                    content={"error": "INVALID_CHAT_TURN", "message": "无法识别新消息，请重新加载对话后重试。"},
-                    status_code=400,
-                )
-            source_branch_id = branch_id or existing_entry.active_branch_id or DEFAULT_BRANCH_ID
-            branch_id = source_branch_id
-            # Cost target, independent of the requested output length. Clamped to
-            # the provider's real input cap so a small-window model does not load
-            # history it can never send; the guard below still enforces the cap.
-            history_token_budget = HISTORY_TOKEN_BUDGET
-            if provider_input_cap is not None:
-                history_token_budget = min(history_token_budget, provider_input_cap)
-            source_branch, stored_messages, history_omitted_messages = (
-                fetch_chat_history_branch_context(
-                    db,
-                    existing_entry,
-                    source_branch_id,
-                    token_budget=history_token_budget,
-                )
+        except ChatTurnContextError as error:
+            return JSONResponse(
+                content={"error": error.code, "message": error.message},
+                status_code=error.status_code,
             )
-            if source_branch is None:
-                return JSONResponse(
-                    content={"error": "CHAT_BRANCH_NOT_FOUND", "message": "对话分支已更新，请重新加载后重试。"},
-                    status_code=409,
-                )
-            if chat_history_message_exists(
-                db,
-                entry=existing_entry,
-                branch_id=source_branch_id,
-                message_id=turn_message["message_id"],
-            ):
-                return JSONResponse(
-                    content={"error": "INVALID_CHAT_TURN", "message": "新消息已存在，请重新加载对话后重试。"},
-                    status_code=409,
-                )
-            messages = [*system_messages, *stored_messages, turn_message]
-            full_messages = [turn_message]
-            context_messages = messages
-        else:
-            # Legacy clients send the whole transcript instead of one
-            # ``turn_message``, so this path diffs their full list against the
-            # stored ids and rewrites the branch. Truncating the stored side would
-            # make older messages look new and re-append them, so it stays a full
-            # read; the current client never reaches it.
-            serialized_entry = serialize_chat_history_entry(existing_entry)
-            history_payload = normalize_chat_history_payload({
-                "active_branch_id": serialized_entry.get("active_branch_id"),
-                "branches": serialized_entry.get("branches") or [],
-            })
-            source_branch_id = branch_id or history_payload["active_branch_id"]
-            branch_id = source_branch_id
-            source_branch = next(
-                (branch for branch in history_payload["branches"] if branch.get("branch_id") == source_branch_id),
-                None,
-            )
-            if source_branch is None:
-                return JSONResponse(
-                    content={"error": "CHAT_BRANCH_NOT_FOUND", "message": "对话分支已更新，请重新加载后重试。"},
-                    status_code=409,
-                )
-            stored_messages = [
-                message for message in source_branch.get("messages") or []
-                if isinstance(message, dict) and message.get("role") != "system"
-            ]
-            stored_message_ids = {
-                message.get("message_id")
-                for message in stored_messages
-                if isinstance(message.get("message_id"), str)
-            }
-            new_user_messages = [
-                message for message in messages
-                if isinstance(message, dict)
-                and message.get("role") == "user"
-                and message.get("message_id") not in stored_message_ids
-            ]
-            if not new_user_messages or new_user_messages[-1] is not messages[-1]:
-                return JSONResponse(
-                    content={"error": "INVALID_CHAT_TURN", "message": "无法识别新消息，请重新加载对话后重试。"},
-                    status_code=400,
-                )
-            stored_messages.extend(new_user_messages)
-            full_messages = [*system_messages, *stored_messages]
-            messages = full_messages
-            context_messages = full_messages
+
+        branch_id = turn_context["branch_id"]
+        messages = turn_context["messages"]
+        full_messages = turn_context["full_messages"]
+        history_omitted_messages = turn_context["omitted_count"]
+        context_messages = messages
 
     # Generate chat_id upfront for new chats
     if not chat_id and character_id:
@@ -1189,6 +1106,7 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                             if history_mode == "stored_branch" and not fork_from_message_id
                             else None
                         ),
+                        fork_message=fork_message,
                     )
                     saved_chat_metadata = {
                         "chat_id": entry.chat_id,
