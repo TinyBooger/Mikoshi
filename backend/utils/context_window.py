@@ -4,13 +4,14 @@ from typing import Dict, List, Optional
 from utils.usage_utils import normalize_usage
 
 DEFAULT_SOFT_TOKEN_LIMIT = 8000
-CONTEXT_FALLBACK_MARKER = (
-    "Older conversation context was omitted to fit the model context window. "
-    "Continue from the remaining messages and the user's latest message."
-)
-# Fail-closed guard cushion. This is a placeholder invented to absorb
-# estimator error, NOT derived from real error data.
+# Fail-closed guard cushion, applied on top of the per-character weights below.
 ESTIMATOR_FULL_REQUEST_CUSHION = 1.15
+
+# Tokens per Han character. Chinese BPE vocabularies carry whole words, so a
+# character is worth well under one token. Measured against provider
+# ``prompt_tokens`` on a Chinese transcript: counting 1 token per character
+# inflated the request by ~1.4x, which silently shrank the usable context.
+CJK_TOKENS_PER_CHAR = 0.75
 
 # Per-turn conversation-history cost ceiling. This is independent of the model's
 # context window and requested output length; the provider input-cap guard in the
@@ -46,9 +47,13 @@ def _estimate_tokens(text: str) -> int:
     cjk_count = len(cjk_chars)
     remaining_chars = max(0, len(normalized) - ascii_letters_count - cjk_count)
 
-    # Rough approximation: English words ~1 token, CJK chars ~1 token,
+    # Rough approximation: English words ~1 token, CJK chars ~0.75 token,
     # punctuation/other content ~1 token per 6 chars.
-    estimate = len(english_words) + cjk_count + ceil(remaining_chars / 6)
+    estimate = (
+        len(english_words)
+        + ceil(cjk_count * CJK_TOKENS_PER_CHAR)
+        + ceil(remaining_chars / 6)
+    )
     return max(1, int(estimate))
 
 
@@ -89,9 +94,85 @@ def _latest_assistant_usage(messages: List[dict]) -> dict[str, int]:
     return normalize_usage(None)
 
 
-def estimate_text_tokens(text: str) -> int:
-    """Public token estimate for one string (shared with the history query)."""
-    return _estimate_tokens(text)
+def select_recent_messages(
+    messages: List[dict],
+    *,
+    token_budget: int,
+) -> tuple[List[dict], int]:
+    """Keep the newest whole turns of a prompt that fit ``token_budget``.
+
+    This is the one place that decides what history the model sees, so send,
+    resend, regenerate and fork cannot drift apart.
+
+    The budget is spent newest-first — system messages first (they are never
+    trimmed), then the turn being answered, then earlier turns for as long as
+    they fit. The retained slice is therefore the *most recent* history, and a
+    cut only ever lands between turns: a reply whose user message was dropped is
+    dropped too, so the transcript never starts on the character's line and never
+    ends on a prompt the model was already answering.
+
+    Nothing is injected into the prompt to announce the cut. A second system
+    message is not honoured by every model, and it lands in the middle of the
+    transcript where it reads as role confusion rather than instruction; the
+    omission is reported to the client through ``omitted_count`` instead.
+
+    Returns ``(messages, omitted_count)``.
+    """
+    budget = max(1, int(token_budget))
+    system_messages = [message for message in messages if message.get("role") == "system"]
+    conversation = [message for message in messages if message.get("role") != "system"]
+
+    room = budget - system_tokens(system_messages)
+
+    kept = conversation
+    if conversation:
+        # Charge the turn being answered before anything else: it must never be
+        # the message the budget squeezes out.
+        keep_from = len(conversation) - 1
+        used = _estimate_tokens(conversation[keep_from]["content"])
+        for index in range(len(conversation) - 2, -1, -1):
+            cost = _estimate_tokens(conversation[index]["content"])
+            if used + cost > room:
+                break
+            used += cost
+            keep_from = index
+        kept = conversation[keep_from:]
+        # Never open on the character's line: that reply answers a user message
+        # this budget just dropped.
+        while len(kept) > 1 and kept[0].get("role") != "user":
+            kept.pop(0)
+
+    omitted = len(conversation) - len(kept)
+    return [*system_messages, *_merge_consecutive_roles(kept)], omitted
+
+
+def _merge_consecutive_roles(messages: List[dict]) -> List[dict]:
+    """Collapse turns a previous failure left stacked (two user lines in a row).
+
+    Stored transcripts can hold two consecutive user messages when a reply never
+    landed, and two consecutive replies after a regenerate. Either reads to the
+    model as an unanswered question, so the pair is merged into one turn instead
+    of being dropped — the words stay, the phantom pending task goes.
+    """
+    merged: List[dict] = []
+    for message in messages:
+        if merged and merged[-1].get("role") == message.get("role"):
+            previous = merged.pop()
+            message = {
+                **message,
+                "content": f"{previous.get('content') or ''}\n\n{message.get('content') or ''}".strip(),
+            }
+        merged.append(message)
+    return merged
+
+
+def system_tokens(messages: List[dict]) -> int:
+    """Token estimate of the messages that are never trimmed."""
+    return sum(
+        _estimate_tokens(str(message.get("content") or ""))
+        for message in messages
+        if message.get("role") == "system"
+    )
 
 
 def trim_oldest_context_for_fallback(
@@ -100,100 +181,22 @@ def trim_oldest_context_for_fallback(
     target_token_limit: int,
     context_info: Optional[dict] = None,
 ) -> tuple[List[dict], Dict[str, object]]:
-    """Trim oldest raw conversation messages from the request, never system messages.
+    """Fit an over-long request to the provider's input cap, newest turns first.
 
-    Works backwards from the newest message and keeps the longest recent tail the
-    budget allows, so the cost is proportional to what is *kept* rather than to
-    what is dropped. A transcript of tens of thousands of messages is therefore
-    as cheap as a short one — the omitted messages are never token-estimated.
-
-    System messages and the user message being answered are always retained, so
-    a single oversized user message can still exceed the budget; the fail-closed
-    guard in ``routes/chat.py`` is what refuses that case.
+    ``target_token_limit`` is a cushioned estimate, so it is converted back to
+    raw tokens before :func:`select_recent_messages` runs. System messages and
+    the turn being answered are always retained, so a single oversized user
+    message can still exceed the cap; ``routes/chat.py`` refuses that case.
     """
     sanitized = _sanitize_messages(messages)
     if not sanitized:
         return [], dict(context_info or {})
 
     target = max(1, int(target_token_limit))
-    system_tokens = sum(
-        _estimate_tokens(message["content"])
-        for message in sanitized
-        if message["role"] == "system"
+    request_messages, omitted = select_recent_messages(
+        sanitized,
+        token_budget=int(target / ESTIMATOR_FULL_REQUEST_CUSHION),
     )
-    # ``estimate_request_input_tokens`` inflates the whole request by the cushion,
-    # so undo it here to get the raw token room the retained tail may use. System
-    # messages are never trimmed, so they come off the top.
-    budget = int(target / ESTIMATOR_FULL_REQUEST_CUSHION) - system_tokens
-    marker_tokens = _estimate_tokens(CONTEXT_FALLBACK_MARKER)
-
-    latest_user_index = next(
-        (index for index in range(len(sanitized) - 1, -1, -1) if sanitized[index]["role"] == "user"),
-        None,
-    )
-    if latest_user_index is None:
-        latest_user_index = next(
-            (index for index in range(len(sanitized) - 1, -1, -1) if sanitized[index]["role"] != "system"),
-            None,
-        )
-
-    # ``keep_from`` is the first index of the retained tail: everything before it
-    # is a removal candidate. Walking newest-first means only the messages that
-    # survive are ever estimated. The answered user message is always retained, so
-    # its tokens are charged to the budget up front instead of being discovered
-    # mid-walk — otherwise it would silently overrun the target.
-    forced_tokens = (
-        _estimate_tokens(sanitized[latest_user_index]["content"])
-        if latest_user_index is not None
-        else 0
-    )
-    kept_tokens = forced_tokens
-    keep_from = 0
-    truncated = False
-    for index in range(len(sanitized) - 1, -1, -1):
-        message = sanitized[index]
-        if message["role"] == "system" or index == latest_user_index:
-            keep_from = index
-            continue
-        message_tokens = _estimate_tokens(message["content"])
-        if kept_tokens + message_tokens > budget:
-            keep_from = index + 1
-            truncated = True
-            break
-        kept_tokens += message_tokens
-        keep_from = index
-
-    if truncated:
-        # The marker that stands in for the omitted messages is part of the
-        # request too, so the retained tail has to give up its room as well.
-        while keep_from < len(sanitized) and kept_tokens + marker_tokens > budget:
-            message = sanitized[keep_from]
-            if message["role"] != "system" and keep_from != latest_user_index:
-                kept_tokens -= _estimate_tokens(message["content"])
-            keep_from += 1
-
-    removed_indexes: set[int] = {
-        index
-        for index in range(keep_from)
-        if sanitized[index]["role"] != "system" and index != latest_user_index
-    }
-
-    def build_request() -> List[dict]:
-        retained = [
-            message
-            for index, message in enumerate(sanitized)
-            if index not in removed_indexes
-        ]
-        if not removed_indexes:
-            return retained
-        marker = {"role": "system", "content": CONTEXT_FALLBACK_MARKER}
-        insertion_index = next(
-            (index for index, message in enumerate(retained) if message["role"] != "system"),
-            len(retained),
-        )
-        return [*retained[:insertion_index], marker, *retained[insertion_index:]]
-
-    request_messages = build_request()
     estimated_tokens = _estimate_messages(request_messages)
     info = dict(context_info or {})
     info.update(
@@ -202,12 +205,8 @@ def trim_oldest_context_for_fallback(
             "estimated_new_tokens": estimated_tokens,
             "measured_input_tokens": 0,
             "guard_input_tokens": estimate_request_input_tokens(request_messages),
-            "context_truncated": bool(removed_indexes),
-            "omitted_message_count": sum(
-                1
-                for index in removed_indexes
-                if sanitized[index]["role"] != "system"
-            ),
+            "context_truncated": omitted > 0,
+            "omitted_message_count": omitted,
             "fallback_target_tokens": target,
         }
     )

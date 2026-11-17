@@ -15,7 +15,7 @@ from models import ChatHistory, Character, ChatHistoryBranch, ChatHistoryMessage
 from utils.context_window import (
     HISTORY_CONTEXT_MESSAGE_WINDOW,
     HISTORY_TOKEN_BUDGET,
-    estimate_text_tokens,
+    select_recent_messages,
 )
 from utils.prompt_time import MIN_GAP_SECONDS
 
@@ -503,9 +503,9 @@ def fetch_chat_history_branch_context(
     A stored transcript can hold tens of thousands of messages, and a chat request
     only needs a recent tail of it. Reading (and then sending) the whole branch
     costs real money per turn, so this reads just the newest ``message_window``
-    rows and drops the oldest of those until the retained messages fit
-    ``token_budget``. That budget is a cost decision, deliberately far below any
-    model's context window — a 1M-token window must not become a 1M-token prompt.
+    rows and keeps the newest whole turns that fit ``token_budget``. That budget is
+    a cost decision, deliberately far below any model's context window — a
+    1M-token window must not become a 1M-token prompt.
 
     Returns ``(branch, messages, omitted_count)``: ``messages`` in chronological
     order, and how many of the branch's messages are not in it.
@@ -549,19 +549,18 @@ def fetch_chat_history_branch_context(
         omitted_count = max(0, total_count - len(window))
 
     messages: list[dict[str, Any]] = []
-    budget = max(1, int(token_budget))
-    used_tokens = 0
-    for position, item in enumerate(reversed(window)):
-        message_tokens = estimate_text_tokens(item.content)
-        # The newest message is always sent, even when it alone blows the budget:
-        # the fail-closed guard in routes/chat.py owns that decision.
-        if messages and used_tokens + message_tokens > budget:
-            omitted_count += len(window) - position
-            break
-        normalized = _serialize_stored_message(item)
-        if normalized is not None:
-            messages.append(normalized)
-            used_tokens += message_tokens
+    serialized = [
+        message
+        for message in (_serialize_stored_message(item) for item in reversed(window))
+        if message is not None
+    ]
+    # Newest-first, whole-turn trimming — the same selection the final
+    # provider-cap guard uses.
+    messages, trimmed_count = select_recent_messages(
+        serialized,
+        token_budget=token_budget,
+    )
+    omitted_count += trimmed_count
 
     return {
         "branch_id": branch.branch_id,

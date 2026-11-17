@@ -18,6 +18,7 @@ backend/migrations/*
 !backend/migrations/add_problem_report_user_note.sql
 
 backend/tests/
+tests/
 
 nginx/conf.d/mikoshi.conf.backup
 nginx/yubandao.com_nginx/

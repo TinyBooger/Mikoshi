@@ -45,6 +45,7 @@ import json
 import os
 import re
 import logging
+import tempfile
 import threading
 import time
 from functools import partial
@@ -1075,6 +1076,25 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
         if not upstream_granted:
             yield f"data: {json.dumps({'error': 'UPSTREAM_BUSY', 'message': 'The model provider is currently at capacity. Please try again shortly.'})}\n\n"
             return
+
+        # Temporary prompt diagnostics. Logged at the last possible point, after
+        # the history rebuild, trimming, omission notice and input-cap guard, so
+        # this is exactly what the provider receives.
+        est_tokens = estimate_request_input_tokens(prepared_messages)
+        logger.warning(
+            "PROMPT model=%s msgs=%d est_tokens=%d",
+            chat_config["model"],
+            len(prepared_messages),
+            est_tokens,
+        )
+        for i, message in enumerate(prepared_messages):
+            content = message.get("content")
+            content = content if isinstance(content, str) else str(content)
+            logger.warning("  [%02d] %-9s chars=%-6d head=%r", i, message.get("role"), len(content), content[:60])
+        dump_path = os.getenv("PROMPT_DUMP_PATH") or os.path.join(tempfile.gettempdir(), "last_prompt.json")
+        with open(dump_path, "w", encoding="utf-8") as dump:
+            json.dump(prepared_messages, dump, ensure_ascii=False, indent=2)
+        logger.warning("PROMPT dump written | path=%s", os.path.abspath(dump_path))
 
         try:
             async for stream_event in stream_chat_completion_with_config(
