@@ -15,8 +15,9 @@ CJK_TOKENS_PER_CHAR = 0.75
 
 # Per-turn conversation-history cost ceiling. This is independent of the model's
 # context window and requested output length; the provider input-cap guard in the
-# chat route separately enforces model limits.
-HISTORY_TOKEN_BUDGET = 4_095
+# chat route separately enforces model limits, and the route clamps this down to
+# that cap so a small-window model never pays to load history it cannot send.
+HISTORY_TOKEN_BUDGET = 8_191
 
 # Upper bound on rows a branch context query may pull before the token budget
 # decides. The token budget is authoritative; this only stops a transcript of

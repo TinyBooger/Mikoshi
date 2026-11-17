@@ -821,9 +821,12 @@ async def chat(request: Request, current_user: User = Depends(get_current_user),
                 )
             source_branch_id = branch_id or existing_entry.active_branch_id or DEFAULT_BRANCH_ID
             branch_id = source_branch_id
-            # Cost target, independent of the requested output length. The
-            # provider input-cap guard below handles model context limits.
+            # Cost target, independent of the requested output length. Clamped to
+            # the provider's real input cap so a small-window model does not load
+            # history it can never send; the guard below still enforces the cap.
             history_token_budget = HISTORY_TOKEN_BUDGET
+            if provider_input_cap is not None:
+                history_token_budget = min(history_token_budget, provider_input_cap)
             source_branch, stored_messages, history_omitted_messages = (
                 fetch_chat_history_branch_context(
                     db,
