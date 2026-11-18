@@ -12,6 +12,10 @@
 - So locally: the backend is a native Windows process (venv at `backend/venv`), not a container. Never give `docker compose` commands for local dev — those apply to `docker-compose.dev.yml`/`docker-compose.prod.yml` deployments only.
 - Backend paths are Windows paths. A container-style path such as `/tmp/x.json` resolves against the current drive root (`D:\tmp\x.json`), never inside the repo — prefer repo-relative paths or `%TEMP%` for local diagnostics.
 
+## Terminal usage
+
+- Avoid running command-line commands in the terminal unless necessary. Prefer reading files, searching, and inspecting with non-terminal tools; use the terminal only when no better tool exists or when the user asks for it.
+
 ## Validation defaults
 
 - Do not run `npm run build` after frontend changes unless the user explicitly requests it.

@@ -4,7 +4,8 @@
 const PREFETCH_ROUTES = [
   { test: /^\/chat$/, load: () => import('../pages/ChatPage.jsx') },
   { test: /^\/search$/, load: () => import('../pages/SearchPage.jsx') },
-  { test: /^\/(character|persona|scene)\/create$/, load: () => import('../pages/EntityFormPage.jsx') },
+  { test: /^\/character\/create$/, load: () => import('../pages/CharacterFormPage.jsx') },
+  { test: /^\/(persona|scene)\/create$/, load: () => import('../pages/EntityFormPage.jsx') },
   { test: /^\/character\/(edit|fork)\//, load: () => import('../pages/CharacterFormPage.jsx') },
   { test: /^\/(persona|scene)\/(edit|fork)\//, load: () => import('../pages/EntityFormPage.jsx') },
   { test: /^\/profile(\/|$)/, load: () => import('../pages/ProfilePage.jsx') },
@@ -12,7 +13,9 @@ const PREFETCH_ROUTES = [
   { test: /^\/pro-upgrade$/, load: () => import('../pages/ProUpgradePage.jsx') },
   { test: /^\/credit-topup$/, load: () => import('../pages/CreditTopUpPage.jsx') },
   { test: /^\/admin(\/|$)/, load: () => import('../admin/AdminApp.jsx') },
-  { test: /^\/[^/]+\/[^/]+$/, load: () => import('../pages/EntityDetailPage.jsx') },
+  // Detail pages only: entity types EntityDetailPage supports, excluding the
+  // create/edit/fork routes that also live under those prefixes.
+  { test: /^\/(character|persona|scene)\/(?!(?:create|edit|fork)(?:\/|$))[^/]+$/, load: () => import('../pages/EntityDetailPage.jsx') },
 ];
 
 const requested = new Set();
