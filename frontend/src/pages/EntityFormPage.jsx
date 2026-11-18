@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useContext, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
-import TagsInput from '../components/TagsInput';
-import TagRecommendations from '../components/TagRecommendations';
+import FormTextField from '../components/FormTextField';
+import FormTagsField from '../components/FormTagsField';
+import FormPictureField from '../components/FormPictureField';
+import CharCounter from '../components/CharCounter';
 import ImageCropModal from '../components/ImageCropModal';
+import { GREETING_FIELD_STYLE, DISABLED_FIELD_STYLE } from '../components/formStyles';
 import { createPortal } from 'react-dom';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from "../components/PageWrapper";
@@ -553,218 +556,58 @@ export default function EntityFormPage() {
           )}
 
           {/* Cover Picture */}
-          <div className="mb-4">
-            <div
-              style={{
-                position: 'relative',
-                width: '100%',
-                maxWidth: 'min(360px, 100%)',
-                aspectRatio: picturePreview ? String(pictureAspectRatio || 1) : '1 / 1',
-              }}
-            >
-              <label
-                htmlFor="entity-picture-upload"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'block',
-                  borderRadius: 16,
-                  background: '#f5f6fa',
-                  border: '1.5px solid #e9ecef',
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                }}
-              >
-                {picturePreview ? (
-                  <img
-                    src={picturePreview}
-                    alt="预览"
-                    onLoad={e => {
-                      const nextRatio = e.currentTarget.naturalWidth / e.currentTarget.naturalHeight;
-                      if (Number.isFinite(nextRatio) && nextRatio > 0) {
-                        setPictureAspectRatio(nextRatio);
-                      }
-                    }}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#eef2f7' }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexDirection: 'column',
-                      color: '#94a3b8',
-                      gap: 8,
-                      fontSize: '0.95rem',
-                    }}
-                  >
-                    <i className="bi bi-image" style={{ fontSize: '1.7rem' }}></i>
-                    <span>{entityType === 'scene' ? '点击上传场景封面' : '点击上传形象图片'}</span>
-                    <span style={{ fontSize: '0.82rem' }}>支持 JPG / PNG / GIF / WebP / BMP / TIFF</span>
-                  </div>
-                )}
-                <input
-                  id="entity-picture-upload"
-                  type="file"
-                  accept="image/*"
-                  className="d-none"
-                  onChange={e => {
-                    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                    if (!f) return;
-                    setPicture(f);
-                    const reader = new FileReader();
-                    reader.onload = () => { setPicturePreview(reader.result); };
-                    reader.readAsDataURL(f);
-                    if (entityType === 'persona') {
-                      setRawSelectedFile(f);
-                      setShowCrop(true);
-                    }
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-
-                      {entityType === 'persona' && picturePreview && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            right: 10,
-                            bottom: 10,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: 4,
-                            pointerEvents: 'none',
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 72,
-                              height: 72,
-                              overflow: 'hidden',
-                              borderRadius: '50%',
-                              background: '#fff',
-                              border: '1px solid #e9ecef',
-                              boxShadow: '0 4px 12px rgba(15, 23, 42, 0.18)',
-                            }}
-                          >
-                            {avatarPreview ? (
-                              <img src={avatarPreview} alt="头像预览" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.75rem' }}>头像</div>
-                            )}
-                          </div>
-                          <span
-                            style={{
-                              fontSize: '0.72rem',
-                              lineHeight: 1,
-                              color: '#475569',
-                              background: 'rgba(255, 255, 255, 0.9)',
-                              borderRadius: 999,
-                              padding: '0.18rem 0.45rem',
-                              border: '1px solid #e2e8f0',
-                            }}
-                          >
-                            头像预览
-                          </span>
-                        </div>
-                      )}
-            </div>
-          </div>
+          <FormPictureField
+            id="entity-picture-upload"
+            label={entityType === 'scene' ? '场景封面' : '形象图片'}
+            hint="选填"
+            placeholder={entityType === 'scene' ? '点击上传场景封面' : '点击上传形象图片'}
+            preview={picturePreview}
+            aspectRatio={pictureAspectRatio}
+            onAspectRatioChange={setPictureAspectRatio}
+            onSelectFile={(file, dataUrl) => {
+              setPicture(file);
+              setPicturePreview(dataUrl);
+              if (entityType === 'persona') {
+                setRawSelectedFile(file);
+                setShowCrop(true);
+              }
+            }}
+            avatarPreview={avatarPreview}
+            showAvatar={entityType === 'persona' && !!picturePreview}
+          />
 
           {/* Name */}
-          <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              名称
-              <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
-            </label>
-            <input
-              className="form-control"
-              required
-              value={entityData.name}
-              placeholder={entityType === 'scene' ? '例如："霓虹小巷"' : ''}
-              onChange={e => handleChange('name', e.target.value)}
-              style={{
-                background: '#f5f6fa',
-                color: '#18191a',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-                paddingRight: '3rem',
-              }}
-            />
-            <small className="position-absolute" style={{ top: 0, right: 0, color: entityData.name.length > MAX_NAME_LENGTH ? '#dc2626' : '#6c757d' }}>
-              {entityData.name.length}/{MAX_NAME_LENGTH}
-            </small>
-          </div>
+          <FormTextField
+            label="名称"
+            variant="single"
+            required
+            value={entityData.name}
+            placeholder={entityType === 'scene' ? '例如："霓虹小巷"' : ''}
+            onChange={value => handleChange('name', value)}
+            maxLength={MAX_NAME_LENGTH}
+          />
 
           {/* Intro (short tagline-like summary) */}
-          <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              简介
-              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>封面介绍</small>
-            </label>
-            <textarea
-              className="form-control"
-              rows={Math.max(1, Math.min(3, Math.ceil(entityData.intro.length / 80)))}
-              value={entityData.intro}
-              placeholder=""
-              onChange={e => handleChange('intro', e.target.value)}
-              style={{
-                background: '#f5f6fa',
-                color: '#18191a',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-                paddingRight: '3rem',
-                resize: 'vertical',
-              }}
-            />
-            <small className="position-absolute" style={{ top: 0, right: 0, color: entityData.intro.length > MAX_INTRO_LENGTH ? '#dc2626' : '#6c757d' }}>
-              {entityData.intro.length}/{MAX_INTRO_LENGTH}
-            </small>
-          </div>
+          <FormTextField
+            label="简介"
+            variant="summary"
+            hint="封面介绍"
+            value={entityData.intro}
+            onChange={value => handleChange('intro', value)}
+            maxLength={MAX_INTRO_LENGTH}
+          />
 
           {/* Description (main content field) */}
-          <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              描述
-              <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
-              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{entityType === 'persona' ? '性格、背景故事等' : '决定了场景的背景设定和氛围'}</small>
-            </label>
-            <textarea
-              className="form-control"
-              rows={Math.max(5, Math.min(20, Math.ceil(entityData.description.length / 80)))}
-              maxLength={MAX_DESC_LENGTH}
-              value={entityData.description}
-              placeholder={entityType === 'scene' ? '描述该场景的背景、氛围和故事。例如：雨夜的赛博朋克后街，招牌闪烁。' : ''}
-              onChange={e => handleChange('description', e.target.value)}
-              style={{
-                background: '#f5f6fa',
-                color: '#18191a',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-                paddingRight: '3rem',
-                resize: 'vertical',
-              }}
-            />
-            <small className="position-absolute" style={{ top: 0, right: 0, color: entityData.description.length > MAX_DESC_LENGTH ? '#dc2626' : '#6c757d' }}>
-              {entityData.description.length}/{MAX_DESC_LENGTH}
-            </small>
-          </div>
+          <FormTextField
+            label="描述"
+            variant="long"
+            required={entityType === 'scene'}
+            hint={entityType === 'persona' ? '性格、背景故事等' : '决定了场景的背景设定和氛围'}
+            value={entityData.description}
+            placeholder={entityType === 'scene' ? '描述该场景的背景、氛围和故事。例如：雨夜的赛博朋克后街，招牌闪烁。' : ''}
+            onChange={value => handleChange('description', value)}
+            maxLength={MAX_DESC_LENGTH}
+          />
 
           {entityType === 'scene' && (
             <div className="mb-4 position-relative">
@@ -772,7 +615,6 @@ export default function EntityFormPage() {
                 <span>
                   开场白
                   <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
-                  <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>{''}</small>
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400, whiteSpace: 'nowrap' }}>
                   <input
@@ -787,49 +629,28 @@ export default function EntityFormPage() {
               <textarea
                 className="form-control"
                 rows={3}
+                maxLength={MAX_GREETING_LENGTH}
                 value={isImprovisingGreeting ? '' : entityData.greeting}
                 onChange={e => handleChange('greeting', e.target.value)}
                 disabled={isImprovisingGreeting}
                 placeholder={isImprovisingGreeting ? '系统将自动生成动态开场白。' : ''}
                 style={{
-                  background: isImprovisingGreeting ? '#f0f0f0' : '#f5f6fa',
-                  color: '#18191a',
-                  border: '1.5px solid #e9ecef',
-                  borderRadius: 16,
-                  fontSize: '1.08rem',
-                  padding: '0.7rem 1.2rem',
-                  boxShadow: 'none',
-                  outline: 'none',
-                  paddingRight: '3rem',
+                  ...GREETING_FIELD_STYLE,
+                  ...(isImprovisingGreeting ? DISABLED_FIELD_STYLE : null),
                   resize: 'vertical',
                 }}
               />
-              <small className="position-absolute" style={{ top: 0, right: 0, color: entityData.greeting.length > MAX_GREETING_LENGTH ? '#dc2626' : '#6c757d' }}>
-                {entityData.greeting.length}/{MAX_GREETING_LENGTH}
-              </small>
+              <CharCounter value={entityData.greeting} max={MAX_GREETING_LENGTH} />
             </div>
           )}
 
           {/* Tags */}
-          <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              标签
-              <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>
-              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>第一个标签会显示在封面上。</small>
-            </label>
-            <TagsInput
-              tags={entityData.tags}
-              setTags={tags => handleChange('tags', tags)}
-              maxTags={MAX_TAGS}
-              placeholder="输入后按Enter添加"
-            />
-            <TagRecommendations
-              currentTags={entityData.tags}
-              onAddTag={tag => handleChange('tags', [...entityData.tags, tag])}
-              sourceText={[entityData.name, entityData.description, entityData.intro, entityData.greeting]}
-              maxTags={MAX_TAGS}
-            />
-          </div>
+          <FormTagsField
+            tags={entityData.tags}
+            onChange={tags => handleChange('tags', tags)}
+            maxTags={MAX_TAGS}
+            sourceText={[entityData.name, entityData.description, entityData.intro, entityData.greeting]}
+          />
 
           {/* Visibility & Options */}
           <div className="mb-4">

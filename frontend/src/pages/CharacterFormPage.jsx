@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useContext, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
-import TagsInput from '../components/TagsInput';
-import TagRecommendations from '../components/TagRecommendations';
+import FormTextField from '../components/FormTextField';
+import FormTagsField from '../components/FormTagsField';
+import FormPictureField from '../components/FormPictureField';
+import CharCounter from '../components/CharCounter';
 import ImageCropModal from '../components/ImageCropModal';
+import { GREETING_FIELD_STYLE } from '../components/formStyles';
 import ImageGenerateModal from '../components/ImageGenerateModal';
 import { createPortal } from 'react-dom';
 import { AuthContext } from '../components/AuthProvider';
@@ -233,7 +236,6 @@ export default function CharacterFormPage() {
   };
   const [isImprovisingGreeting, setIsImprovisingGreeting] = useState(false);
   const greetingRefs = useRef(new Map());
-  const taglineRef = useRef(null);
   const autoResizeTextarea = (el) => {
     if (!el) return;
     el.style.height = 'auto';
@@ -243,10 +245,6 @@ export default function CharacterFormPage() {
   useEffect(() => {
     greetingRefs.current.forEach((el) => autoResizeTextarea(el));
   }, [charData.greetings]);
-  // Auto-resize the tagline textarea when its value changes (e.g. loaded in edit mode)
-  useEffect(() => {
-    autoResizeTextarea(taglineRef.current);
-  }, [charData.tagline]);
   const [showCrop, setShowCrop] = useState(false);
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   // Seed the AI image prompt from whatever the creator has filled in so far.
@@ -845,309 +843,93 @@ export default function CharacterFormPage() {
           )}
 
           {/* 角色图片 (mandatory) */}
-          <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              角色图片
-              <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
-            </label>
-            <div
-              style={{
-                position: 'relative',
-                width: '100%',
-                maxWidth: 'min(360px, 100%)',
-                aspectRatio: picturePreview ? String(pictureAspectRatio || 1) : '1 / 1',
-                marginBottom: 12,
-              }}
-            >
-              <label
-                htmlFor="character-picture-upload"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'block',
-                  borderRadius: 16,
-                  background: '#f5f6fa',
-                  border: '1.5px solid #e9ecef',
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                }}
-              >
-                {picturePreview ? (
-                  <img
-                    src={picturePreview}
-                    alt="预览"
-                    onLoad={e => {
-                      const nextRatio = e.currentTarget.naturalWidth / e.currentTarget.naturalHeight;
-                      if (Number.isFinite(nextRatio) && nextRatio > 0) {
-                        setPictureAspectRatio(nextRatio);
-                      }
-                    }}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#eef2f7' }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexDirection: 'column',
-                      color: '#94a3b8',
-                      gap: 8,
-                      fontSize: '0.95rem',
-                    }}
-                  >
-                    <i className="bi bi-image" style={{ fontSize: '1.7rem' }}></i>
-                    <span>点击上传封面图片</span>
-                    <span style={{ fontSize: '0.82rem' }}>支持 JPG / PNG / GIF / WebP / BMP / TIFF</span>
-                  </div>
-                )}
-                <input
-                  id="character-picture-upload"
-                  type="file"
-                  accept="image/*"
-                  className="d-none"
-                  onChange={e => {
-                    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                    if (!f) return;
-                    setPicture(f);
-                    setSelectedDefaultPicture(null);
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      setPicturePreview(reader.result);
-                    };
-                    reader.readAsDataURL(f);
-                    setRawSelectedFile(f);
-                    setShowCrop(true);
-                    // Reset so selecting the same file again still triggers onChange.
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-
-              <div
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  bottom: 10,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 4,
-                  pointerEvents: 'none',
-                }}
-              >
-                <div
+          <FormPictureField
+            id="character-picture-upload"
+            label="角色图片"
+            required
+            preview={picturePreview}
+            aspectRatio={pictureAspectRatio}
+            onAspectRatioChange={setPictureAspectRatio}
+            onSelectFile={(file, dataUrl) => {
+              setPicture(file);
+              setSelectedDefaultPicture(null);
+              setPicturePreview(dataUrl);
+              setRawSelectedFile(file);
+              setShowCrop(true);
+            }}
+            avatarPreview={avatarPreview}
+            showAvatar={!!picturePreview}
+            presets={DEFAULT_PICTURES}
+            selectedPreset={selectedDefaultPicture}
+            onSelectPreset={handleSelectDefaultPicture}
+            footer={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
+                <small className="text-muted" style={{ margin: 0 }}>
+                  或选择默认图片，将同时用作封面和头像
+                </small>
+                <button
+                  type="button"
+                  onClick={() => setShowImageGen(true)}
+                  disabled={isSubmitting}
                   style={{
-                    width: 72,
-                    height: 72,
-                    overflow: 'hidden',
-                    borderRadius: '50%',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
                     background: '#fff',
-                    border: '1px solid #e9ecef',
-                    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.18)',
-                  }}
-                >
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt="预览" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.75rem' }}>头像</div>
-                  )}
-                </div>
-                <span
-                  style={{
-                    fontSize: '0.72rem',
-                    lineHeight: 1,
-                    color: '#475569',
-                    background: 'rgba(255, 255, 255, 0.9)',
+                    color: '#736B92',
+                    border: '1.5px solid #736B92',
                     borderRadius: 999,
-                    padding: '0.18rem 0.45rem',
-                    border: '1px solid #e2e8f0',
+                    padding: '0.28rem 0.85rem',
+                    fontSize: '0.84rem',
+                    fontWeight: 600,
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  头像预览
-                </span>
+                  <i className="bi bi-stars"></i>
+                  AI 生成图片
+                </button>
               </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              {DEFAULT_PICTURES.map(pic => (
-                <div
-                  key={pic.name}
-                  onClick={() => handleSelectDefaultPicture(pic.src, `${pic.name}.png`)}
-                  title={selectedDefaultPicture === pic.src ? `${pic.label} — 点击取消选择` : pic.label}
-                  style={{
-                    position: 'relative',
-                    width: 80,
-                    height: 80,
-                    borderRadius: 12,
-                    cursor: 'pointer',
-                    border: selectedDefaultPicture === pic.src ? '3px solid #7c3aed' : '2px solid #e9ecef',
-                    boxShadow: selectedDefaultPicture === pic.src ? '0 0 0 3px rgba(124, 58, 237, 0.25)' : 'none',
-                    transition: 'border 0.15s, box-shadow 0.15s',
-                    flexShrink: 0,
-                  }}
-                >
-                  <div style={{ width: '100%', height: '100%', borderRadius: 12, overflow: 'hidden' }}>
-                    <img
-                      src={pic.src}
-                      alt={pic.label}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  </div>
-                  {selectedDefaultPicture === pic.src && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: -6,
-                        right: -6,
-                        width: 20,
-                        height: 20,
-                        borderRadius: '50%',
-                        background: '#7c3aed',
-                        color: '#fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        lineHeight: 1,
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      ×
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
-              <small className="text-muted" style={{ margin: 0 }}>
-                或选择默认图片，将同时用作封面和头像
-              </small>
-              <button
-                type="button"
-                onClick={() => setShowImageGen(true)}
-                disabled={isSubmitting}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  background: '#fff',
-                  color: '#736B92',
-                  border: '1.5px solid #736B92',
-                  borderRadius: 999,
-                  padding: '0.28rem 0.85rem',
-                  fontSize: '0.84rem',
-                  fontWeight: 600,
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                }}
-              >
-                <i className="bi bi-stars"></i>
-                AI 生成图片
-              </button>
-            </div>
-          </div>
+            }
+          />
 
           {/* Name */}
-          <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              名称
-              <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
-            </label>
-            <input
-              className="form-control"
-              required
-              value={charData.name}
-              placeholder="例如：威廉·莎士比亚"
-              onChange={e => handleChange('name', e.target.value)}
-              style={{
-                background: '#f5f6fa',
-                color: '#18191a',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-                paddingRight: '3rem',
-              }}
-            />
-            <small className="position-absolute" style={{ top: 0, right: 0, color: charData.name.length > MAX_NAME_LENGTH ? '#dc2626' : '#6c757d' }}>
-              {charData.name.length}/{MAX_NAME_LENGTH}
-            </small>
-          </div>
+          <FormTextField
+            label="名称"
+            variant="single"
+            required
+            value={charData.name}
+            placeholder="例如：威廉·莎士比亚"
+            onChange={value => handleChange('name', value)}
+            maxLength={MAX_NAME_LENGTH}
+          />
 
           {/* Tagline */}
-          <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              简介
-              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>仅用于展示，不影响角色性格和对话风格</small>
-            </label>
-            <textarea
-              className="form-control"
-              rows={1}
-              ref={taglineRef}
-              value={charData.tagline}
-              placeholder=""
-              onInput={e => autoResizeTextarea(e.target)}
-              onChange={e => handleChange('tagline', e.target.value)}
-              style={{
-                background: '#f5f6fa',
-                color: '#18191a',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-                paddingRight: '3rem',
-                resize: 'none',
-                overflow: 'hidden',
-              }}
-            />
-            <small className="position-absolute" style={{ top: 0, right: 0, color: charData.tagline.length > MAX_TAGLINE_LENGTH ? '#dc2626' : '#6c757d' }}>
-              {charData.tagline.length}/{MAX_TAGLINE_LENGTH}
-            </small>
-          </div>
+          <FormTextField
+            label="简介"
+            variant="summary"
+            hint="仅用于展示，不影响角色性格和对话风格"
+            value={charData.tagline}
+            onChange={value => handleChange('tagline', value)}
+            maxLength={MAX_TAGLINE_LENGTH}
+          />
 
           {/* 角色设定 */}
-          <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              角色设定
-              <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
-              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>设定决定了角色的行为方式和说话风格，仅自己可见</small>
-            </label>
-            <textarea
-              className="form-control"
-              rows={Math.max(5, Math.min(20, Math.ceil(charData.description.length / 80)))}
-              required
-              value={charData.description}
-              placeholder="描述角色的特质、背景和说话风格。例如：文艺复兴时期的剧作家，语言华丽，喜欢用隐喻。"
-              onChange={e => handleChange('description', e.target.value)}
-              style={{
-                background: '#f5f6fa',
-                color: '#18191a',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-                paddingRight: '3rem',
-                resize: 'vertical',
-              }}
-            />
-            <small className="position-absolute" style={{ top: 0, right: 0, color: charData.description.length > MAX_DESCRIPTION_LENGTH ? '#dc2626' : '#6c757d' }}>
-              {charData.description.length}/{MAX_DESCRIPTION_LENGTH}
-            </small>
+          <FormTextField
+            label="角色设定"
+            variant="long"
+            required
+            hint="设定决定了角色的行为方式和说话风格，仅自己可见"
+            value={charData.description}
+            placeholder="描述角色的特质、背景和说话风格。例如：文艺复兴时期的剧作家，语言华丽，喜欢用隐喻。"
+            onChange={value => handleChange('description', value)}
+            maxLength={MAX_DESCRIPTION_LENGTH}
+          >
             <small style={{ display: 'block', color: isAdvancedDescription ? '#b45309' : '#9ca3af', marginBottom: 6, fontSize: '0.8rem', fontWeight: isAdvancedDescription ? 600 : 400 }}>
               {isAdvancedDescription
                 ? <>设定超过 {ADVANCED_DESCRIPTION_THRESHOLD} 字，角色卡片封面将显示「长设定」标识，表示该角色消耗更多点数</>
                 : <>设定超过 {ADVANCED_DESCRIPTION_THRESHOLD} 字后，角色卡片封面将显示「长设定」标识，表示该角色消耗更多点数</>}
             </small>
-          </div>
+          </FormTextField>
 
           {/* Greetings */}
           <div className="mb-4">
@@ -1194,15 +976,9 @@ export default function CharacterFormPage() {
                     handleChange('greetings', updated);
                   }}
                   placeholder=""
+                  maxLength={MAX_GREETING_LENGTH}
                   style={{
-                    background: '#f5f6fa',
-                    color: '#18191a',
-                    border: '1.5px solid #e9ecef',
-                    borderRadius: 12,
-                    fontSize: '1.02rem',
-                    padding: '0.5rem 0.9rem',
-                    boxShadow: 'none',
-                    outline: 'none',
+                    ...GREETING_FIELD_STYLE,
                     resize: 'none',
                     overflow: 'hidden',
                     flex: 1,
@@ -1220,9 +996,12 @@ export default function CharacterFormPage() {
                 >
                   <i className="bi bi-trash"></i>
                 </button>
-                <small style={{ minWidth: 45, textAlign: 'right', lineHeight: 2.2, color: g.length > MAX_GREETING_LENGTH ? '#dc2626' : '#6c757d' }}>
-                  {g.length}/{MAX_GREETING_LENGTH}
-                </small>
+                <CharCounter
+                  inline
+                  value={g}
+                  max={MAX_GREETING_LENGTH}
+                  style={{ minWidth: 45, textAlign: 'right', lineHeight: 2.2 }}
+                />
               </div>
             ))}
 
@@ -1261,51 +1040,23 @@ export default function CharacterFormPage() {
           </div>
 
           {/* Tags */}
-          <div className="mb-4 position-relative">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              标签
-              <span style={{ color: '#d32f2f', marginLeft: 6 }}>*</span>
-              <small style={{ marginLeft: 8, fontSize: '0.8rem', color: '#9ca3af', fontWeight: 400 }}>第一个标签会显示在封面上</small>
-            </label>
-            <TagsInput tags={charData.tags} setTags={value => handleChange('tags', value)} maxTags={MAX_TAGS} placeholder="输入后按Enter添加" />
-            <small className="text-muted" style={{ top: 0, right: 0 }}>
-              {charData.tags.length}/{MAX_TAGS} 个标签
-            </small>
-            <TagRecommendations
-              currentTags={charData.tags}
-              onAddTag={tag => handleChange('tags', [...charData.tags, tag])}
-              sourceText={[charData.name, charData.tagline, charData.description, charData.sample]}
-              maxTags={MAX_TAGS}
-            />
-          </div>
+          <FormTagsField
+            tags={charData.tags}
+            onChange={tags => handleChange('tags', tags)}
+            maxTags={MAX_TAGS}
+            sourceText={[charData.name, charData.tagline, charData.description, charData.sample]}
+          />
 
           {/* Sample Dialogue */}
-          <div className="mb-4">
-            <label className="form-label fw-bold" style={{ color: '#232323' }}>
-              示例对话（可选）
-            </label>
-            <textarea
-              className="form-control"
-              rows={Math.max(3, Math.min(12, Math.ceil(charData.sample.length / 100)))}
-              value={charData.sample}
-              placeholder={`{{user}}：你好，很高兴认识你。\n{{char}}：我也很高兴认识你。`}
-              onChange={e => handleChange('sample', e.target.value)}
-              style={{
-                background: '#f5f6fa',
-                color: '#18191a',
-                border: '1.5px solid #e9ecef',
-                borderRadius: 16,
-                fontSize: '1.08rem',
-                padding: '0.7rem 1.2rem',
-                boxShadow: 'none',
-                outline: 'none',
-                resize: 'vertical',
-              }}
-            />
-            <small style={{ color: charData.sample.length > MAX_SAMPLE_LENGTH ? '#dc2626' : '#6c757d' }}>
-              {charData.sample.length}/{MAX_SAMPLE_LENGTH}
-            </small>
-          </div>
+          <FormTextField
+            label="示例对话（可选）"
+            variant="long"
+            hint="选填"
+            value={charData.sample}
+            placeholder={`{{user}}：你好，很高兴认识你。\n{{char}}：我也很高兴认识你。`}
+            onChange={value => handleChange('sample', value)}
+            maxLength={MAX_SAMPLE_LENGTH}
+          />
 
           {/* Model & Context Window — available to all users */}
           <div className="mb-4">
