@@ -182,10 +182,7 @@ export default function CharacterFormPage() {
     } catch (_) { return null; }
   }, [getDraftKey]);
 
-  const isProUser = !!userData?.is_pro;
-
   const canPrivate = true;
-  const canFork = isProUser;
   const navigate = useNavigate();
   const toast = useToast();
   const [charData, setCharData] = useState({
