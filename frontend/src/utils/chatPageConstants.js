@@ -81,8 +81,15 @@ export const MARKDOWN_COMPONENTS = {
   table: MarkdownTable,
 };
 
-export const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
-export const SHARED_TOKEN_TIERS = [1024, 2048, 4096, 6144, 8192];
+// Ceiling is defined by the highest entry in SHARED_TOKEN_TIERS.
+export const SHARED_TOKEN_LIMITS = { min: 1, defaultValue: 4096 };
+export const SHARED_TOKEN_TIERS = [
+  { value: 1024, label: '短句' },
+  { value: 2048, label: '段落' },
+  { value: 4096, label: '长回复' },
+  { value: 6144, label: '超长回复' },
+  { value: 8192, label: '最大' },
+];
 
 export const DEFAULT_ADVANCED_CHAT_CONFIG = {
   model: 'qwen-plus-character',

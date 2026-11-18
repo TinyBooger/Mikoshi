@@ -16,7 +16,8 @@ import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { EXAMPLE_MESSAGE_MAX_LENGTH, normalizeExampleMessage } from '../utils/exampleMessages';
 import { parseCharacterCardFile } from '../utils/characterCardImport';
 
-import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
+import { AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
+import { getTokenLimits, getTokenTiers, normalizeTokenTierValue } from '../utils/chatConfigHelpers';
 import ModelSelect from '../components/ModelSelect';
 import BanNotice from '../components/BanNotice';
 import { WALLPAPER_OPTIONS } from '../utils/chatPageConstants';
@@ -39,36 +40,14 @@ const migrateDraftCharData = (charData) => {
 
 export default function CharacterFormPage() {
   const { t } = useTranslation();
-  const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096, step: 128 };
-  const SHARED_TOKEN_TIERS = [
-    { value: 1024, label: '短句' },
-    { value: 2048, label: '段落' },
-    { value: 4096, label: '长回复' },
-    { value: 6144, label: '超长回复' },
-    { value: 8192, label: '最大' },
-  ];
   const normalizeModelName = (modelName) => (
     AVAILABLE_MODEL_IDS.includes(modelName)
       ? modelName
       : DEFAULT_CHAT_CONFIG.model
   );
-  const getTokenLimits = () => SHARED_TOKEN_LIMITS;
-  const getTokenTiers = (modelId) => {
-    const cfg = getModelConfig(modelId);
-    if (!cfg) return SHARED_TOKEN_TIERS;
-    return SHARED_TOKEN_TIERS.filter((t) => t.value <= cfg.maxOutputTokens);
-  };
   const clampValue = (value, min, max, fallback) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
-  };
-  const normalizeTokenTierValue = (modelName, rawValue) => {
-    const tokenLimits = getTokenLimits(modelName);
-    const tiers = getTokenTiers(modelName);
-    const clamped = clampValue(rawValue, tokenLimits.min, tokenLimits.max, tokenLimits.defaultValue);
-    return tiers.reduce((nearest, tier) => (
-      Math.abs(tier.value - clamped) < Math.abs(nearest.value - clamped) ? tier : nearest
-    ), tiers[0]).value;
   };
   const InfoHint = ({ text }) => {
     const [visible, setVisible] = useState(false);

@@ -5,7 +5,8 @@ import { useToast } from './ToastProvider';
 
 import InfoCard from './InfoCard';
 import ContentReportModal from './ContentReportModal';
-import { getModelConfig, AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
+import { AVAILABLE_MODEL_IDS } from '../utils/modelConfigs';
+import { getTokenLimits, getTokenTiers, normalizeTokenTierValue } from '../utils/chatConfigHelpers';
 import ModelSelect from './ModelSelect';
 import { SIDEBAR_WIDTH, SIDEBAR_BORDER_WIDTH } from '../constants/layout';
 import { WALLPAPER_OPTIONS } from '../utils/chatPageConstants';
@@ -223,36 +224,6 @@ const CharacterSidebar = React.memo(function CharacterSidebar({
   const handleSaveWithDirty = () => {
     setLastSavedConfig(JSON.parse(JSON.stringify(advancedChatConfig)));
     onSaveAdvancedChatConfig();
-  };
-  const SHARED_TOKEN_LIMITS = { min: 1, max: 8192, defaultValue: 4096 };
-  const SHARED_TOKEN_TIERS = [
-    { value: 1024, label: '短句' },
-    { value: 2048, label: '段落' },
-    { value: 4096, label: '长回复' },
-    { value: 6144, label: '超长回复' },
-    { value: 8192, label: '最大' },
-  ];
-  const getTokenLimits = () => SHARED_TOKEN_LIMITS;
-  /**
-   * Return token tiers filtered by the selected model's max_output_tokens.
-   * Tiers whose value exceeds the model cap are excluded.
-   */
-  const getTokenTiers = (modelId) => {
-    const cfg = getModelConfig(modelId);
-    if (!cfg) return SHARED_TOKEN_TIERS;
-    return SHARED_TOKEN_TIERS.filter((t) => t.value <= cfg.maxOutputTokens);
-  };
-  const clampValue = (value, min, max, fallback) => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
-  };
-  const normalizeTokenTierValue = (modelName, rawValue) => {
-    const tokenLimits = getTokenLimits(modelName);
-    const tiers = getTokenTiers(modelName);
-    const clamped = clampValue(rawValue, tokenLimits.min, tokenLimits.max, tokenLimits.defaultValue);
-    return tiers.reduce((nearest, tier) => (
-      Math.abs(tier.value - clamped) < Math.abs(nearest.value - clamped) ? tier : nearest
-    ), tiers[0]).value;
   };
   const selectedTokenLimits = getTokenLimits(advancedChatConfig?.model || 'deepseek-v4-flash');
   const selectedTokenTiers = getTokenTiers(advancedChatConfig?.model || 'deepseek-v4-flash');
