@@ -1128,10 +1128,7 @@ export default function CharacterFormPage() {
             <textarea
               className="form-control"
               rows={1}
-              ref={el => {
-                taglineRef.current = el;
-                autoResizeTextarea(el);
-              }}
+              ref={taglineRef}
               value={charData.tagline}
               placeholder=""
               onInput={e => autoResizeTextarea(e.target)}
@@ -1225,7 +1222,6 @@ export default function CharacterFormPage() {
                   ref={el => {
                     if (el) {
                       greetingRefs.current.set(idx, el);
-                      autoResizeTextarea(el);
                     } else {
                       greetingRefs.current.delete(idx);
                     }
