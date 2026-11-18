@@ -182,7 +182,6 @@ export default function CharacterFormPage() {
     } catch (_) { return null; }
   }, [getDraftKey]);
 
-  const canPrivate = true;
   const navigate = useNavigate();
   const toast = useToast();
   const [charData, setCharData] = useState({
@@ -194,8 +193,6 @@ export default function CharacterFormPage() {
     greetings: [],
     is_public: true,
     is_forkable: false,
-    is_free: true,
-    price: 0,
     forked_from_id: null,
     forked_from_name: null,
     forked_from_creator_id: null,
@@ -345,20 +342,11 @@ export default function CharacterFormPage() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [charData.name, charData.description, charData.greetings]);
 
-  // Enforce level locks on fork/paid options
+  // In fork mode, must be forkable
   useEffect(() => {
-    setCharData(prev => {
-      let next = prev;
-      if (!canPrivate && !prev.is_public) {
-        next = { ...next, is_public: true };
-      }
-      // In fork mode, must be free and forkable
-      if (mode === 'fork') {
-        next = { ...next, is_free: true, price: 0, is_forkable: true };
-      }
-      return next;
-    });
-  }, [canPrivate, mode]);
+    if (mode !== 'fork') return;
+    setCharData(prev => ({ ...prev, is_forkable: true }));
+  }, [mode]);
 
   useEffect(() => {
     if (mode === 'edit' || mode === 'fork') {
@@ -406,8 +394,6 @@ export default function CharacterFormPage() {
               greetings: manualGreetings,
               is_public: !!data.is_public,
               is_forkable: true,
-              is_free: true,
-              price: 0,
               forked_from_id: data.id,
               forked_from_name: data.name,
               forked_from_creator_id: data.creator_id || null,
@@ -437,8 +423,6 @@ export default function CharacterFormPage() {
               greetings: manualGreetings,
               is_public: !!data.is_public,
               is_forkable: !!data.is_forkable,
-              is_free: true,
-              price: 0,
               forked_from_id: data.forked_from_id || null,
               forked_from_name: data.forked_from_name || null,
               model: loadedModel,
@@ -1740,7 +1724,7 @@ export default function CharacterFormPage() {
             </label>
             
             {/* Public/Private Toggle */}
-            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canPrivate && !charData.is_public ? 0.55 : 1 }}>
+            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className={`bi ${charData.is_public ? 'bi-globe2' : 'bi-lock-fill'}`} style={{ fontSize: '1.2rem', color: charData.is_public ? '#10b981' : '#6b7280' }}></i>
@@ -1753,11 +1737,6 @@ export default function CharacterFormPage() {
                         ? '所有人可见'
                         : '仅自己可见'}
                     </div>
-                    {!canPrivate && !charData.is_public && (
-                      <div className="text-danger" style={{ fontSize: '0.75rem' }}>
-                        该功能将在达到等级 2 后开放
-                      </div>
-                    )}
                   </div>
                 </div>
                 <div className="form-check form-switch">
@@ -1766,9 +1745,8 @@ export default function CharacterFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!!charData.is_public}
-                    disabled={!canPrivate && !charData.is_public}
                     onChange={e => handleChange('is_public', e.target.checked)}
-                    style={{ width: '3rem', height: '1.5rem', cursor: (!canPrivate && !charData.is_public) ? 'not-allowed' : 'pointer' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
                   />
                 </div>
               </div>

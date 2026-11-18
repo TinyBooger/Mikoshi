@@ -99,7 +99,6 @@ export default function EntityFormPage() {
     } catch (_) { return null; }
   }, [getDraftKey]);
 
-  const canPrivate = true;
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -176,20 +175,11 @@ export default function EntityFormPage() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [entityData.name, entityData.description, entityData.greeting, entityType]);
 
-  // Enforce level locks
+  // In fork mode, must be forkable
   useEffect(() => {
-    setEntityData(prev => {
-      let next = prev;
-      if (!canPrivate && !prev.is_public) {
-        next = { ...next, is_public: true };
-      }
-      // In fork mode, must be forkable
-      if (mode === 'fork') {
-        next = { ...next, is_forkable: true };
-      }
-      return next;
-    });
-  }, [canPrivate, mode]);
+    if (mode !== 'fork') return;
+    setEntityData(prev => ({ ...prev, is_forkable: true }));
+  }, [mode]);
 
   // Fetch entity data in edit mode
   useEffect(() => {
@@ -848,7 +838,7 @@ export default function EntityFormPage() {
             </label>
 
             {/* Public/Private Toggle */}
-            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef', opacity: !canPrivate && !entityData.is_public ? 0.55 : 1 }}>
+            <div className="mb-3 p-3" style={{ background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
               <div className="d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center gap-2">
                   <i className={`bi ${entityData.is_public ? 'bi-globe2' : 'bi-lock-fill'}`} style={{ fontSize: '1.2rem', color: entityData.is_public ? '#10b981' : '#6b7280' }}></i>
@@ -859,11 +849,6 @@ export default function EntityFormPage() {
                     <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                       {entityData.is_public ? '所有人可见' : '仅自己可见'}
                     </div>
-                    {!canPrivate && !entityData.is_public && (
-                      <div className="text-danger" style={{ fontSize: '0.75rem' }}>
-                        该功能将在达到等级 2 后开放
-                      </div>
-                    )}
                   </div>
                 </div>
                 <div className="form-check form-switch">
@@ -872,9 +857,8 @@ export default function EntityFormPage() {
                     type="checkbox"
                     role="switch"
                     checked={!!entityData.is_public}
-                    disabled={!canPrivate && !entityData.is_public}
                     onChange={e => handleChange('is_public', e.target.checked)}
-                    style={{ width: '3rem', height: '1.5rem', cursor: (!canPrivate && !entityData.is_public) ? 'not-allowed' : 'pointer' }}
+                    style={{ width: '3rem', height: '1.5rem', cursor: 'pointer' }}
                   />
                 </div>
               </div>
