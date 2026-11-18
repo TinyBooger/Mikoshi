@@ -13,6 +13,9 @@ from utils.image_moderation import moderate_image_with_decision
 from utils.text_moderation import moderate_form_payload_with_review
 from utils.text_normalization import normalize_line_endings
 from utils.session import get_current_user, get_optional_current_user
+from utils.collaborative_filtering import get_cf_personas
+from datetime import datetime, UTC
+from utils.user_utils import get_active_ban_type, is_upload_banned
 from utils.public_cache import (
     PUBLIC_CACHE_HEADERS,
     get_cached_text,
