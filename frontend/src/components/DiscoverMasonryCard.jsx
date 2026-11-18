@@ -34,9 +34,10 @@ export default function DiscoverMasonryCard({
   const [isCardHovered, setIsCardHovered] = useState(false);
   const [isAdvancedBadgeHovered, setIsAdvancedBadgeHovered] = useState(false);
   const [isDetailCtaActive, setIsDetailCtaActive] = useState(false);
-  const [isPersonaAdded, setIsPersonaAdded] = useState(() => !!(entity?.liked));
+  // Public lists are cached anonymously, so "added to my personas" has to be
+  // read from the overlay; a toggle made on this card wins until it changes.
+  const [personaAddedOverride, setPersonaAddedOverride] = useState(null);
   const [isAddPersonaHovered, setIsAddPersonaHovered] = useState(false);
-  const [isAddPersonaLoading, setIsAddPersonaLoading] = useState(false);
   const [isLikeHovered, setIsLikeHovered] = useState(false);
   const [cardTilt, setCardTilt] = useState({ x: 0, y: 0 });
 
@@ -134,10 +135,13 @@ export default function DiscoverMasonryCard({
   const boxSize = intrinsicSize || measuredSize;
   const isAdvancedCharacter = type === 'character' && entity?.context_label === 'advanced';
   const isOwnPersona = type === 'persona' && !!(userData && String(userData.id) === String(creator_id));
+  const isPersonaAdded = isOwnPersona || (personaAddedOverride ?? isLiked);
 
+  // Drop the local override once the authoritative flag catches up with it; it
+  // only has to survive while no overlay is available for this card.
   useEffect(() => {
-    setIsPersonaAdded(isOwnPersona || !!entity?.liked);
-  }, [entity?.id, entity?.liked, isOwnPersona]);
+    setPersonaAddedOverride(null);
+  }, [entity?.id, isLiked]);
 
   const handleClick = () => {
     if (clickSuppressed) return;
@@ -172,28 +176,20 @@ export default function DiscoverMasonryCard({
     likeToggle.mutate({ id, nextLiked: !isLiked });
   };
 
-  const handleAddPersona = async (e) => {
+  const handleAddPersona = (e) => {
     e.stopPropagation();
-    if (!sessionToken || isAddPersonaLoading || isOwnPersona) return;
-    setIsAddPersonaLoading(true);
-    try {
-      const endpoint = isPersonaAdded ? 'unlike' : 'like';
-      const res = await fetch(`${window.API_BASE_URL}/api/${endpoint}/persona/${id}`, {
-        method: 'POST',
-        headers: { Authorization: sessionToken },
-      });
-      if (res.ok) {
-        setIsPersonaAdded(!isPersonaAdded);
-      } else if (res.status === 400) {
-        const data = await res.json().catch(() => ({}));
-        if (data?.detail?.includes('Already liked')) setIsPersonaAdded(true);
-        else if (data?.detail?.includes('not liked')) setIsPersonaAdded(false);
+    if (!sessionToken || isLikeLoading || isOwnPersona) return;
+    const nextAdded = !isPersonaAdded;
+    setPersonaAddedOverride(nextAdded);
+    likeToggle.mutate(
+      { id, nextLiked: nextAdded },
+      {
+        onError: (error) => {
+          // 400 means the server already matches the desired state.
+          if (error?.status !== 400) setPersonaAddedOverride(null);
+        },
       }
-    } catch (_) {
-      // silently fail
-    } finally {
-      setIsAddPersonaLoading(false);
-    }
+    );
   };
 
   const handleCardMouseMove = (e) => {
@@ -522,7 +518,7 @@ export default function DiscoverMasonryCard({
               onMouseEnter={() => setIsAddPersonaHovered(true)}
               onMouseLeave={() => setIsAddPersonaHovered(false)}
               title={isPersonaAdded ? '已添加自设' : '添加到我的自设'}
-              disabled={isAddPersonaLoading || isOwnPersona}
+              disabled={isLikeLoading || isOwnPersona}
               style={{
                 width: isMobile ? '28px' : '30px',
                 height: isMobile ? '28px' : '30px',
@@ -539,13 +535,13 @@ export default function DiscoverMasonryCard({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: isOwnPersona ? 'not-allowed' : (isAddPersonaLoading ? 'wait' : 'pointer'),
+                cursor: isOwnPersona ? 'not-allowed' : (isLikeLoading ? 'wait' : 'pointer'),
                 transition: 'background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.12s ease',
                 transform: isAddPersonaHovered && !isPersonaAdded && !isOwnPersona ? 'scale(1.1)' : 'scale(1)',
                 padding: 0,
                 outline: 'none',
                 flexShrink: 0,
-                opacity: isOwnPersona ? 0.85 : (isAddPersonaLoading ? 0.55 : 1),
+                opacity: isOwnPersona ? 0.85 : (isLikeLoading ? 0.55 : 1),
                 boxShadow: isPersonaAdded && isAddPersonaHovered ? '0 0 0 3px rgba(107, 95, 147, 0.18)' : 'none',
               }}
             >

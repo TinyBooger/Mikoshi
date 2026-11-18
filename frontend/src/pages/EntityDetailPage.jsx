@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { AuthContext } from '../components/AuthProvider';
 import PageWrapper from '../components/PageWrapper';
 import FloatingLoginReminder from '../components/FloatingLoginReminder';
@@ -21,6 +22,7 @@ export default function EntityDetailPage() {
   const location = useLocation();
   const { sessionToken, userData } = useContext(AuthContext);
   const toast = useToast();
+  const queryClient = useQueryClient();
   const isProUser = !!userData?.is_pro;
   
   const [entity, setEntity] = useState(null);
@@ -92,6 +94,7 @@ export default function EntityDetailPage() {
       })
       .then(data => {
         setEntity(data);
+        if (typeof data?.liked === 'boolean') setLiked(data.liked);
         setLoading(false);
       })
       .catch(err => {
@@ -179,7 +182,7 @@ export default function EntityDetailPage() {
     }
   };
 
-  const handleLike = async () => {
+  const handleLike = async ({ errorMessage = '点赞失败' } = {}) => {
     if (!sessionToken) {
       requireLogin();
       return;
@@ -212,6 +215,8 @@ export default function EntityDetailPage() {
       const data = await res.json();
 
       setLiked(nextLiked);
+      // Keep the browse overlay cache in step so cards reflect the new state.
+      queryClient.invalidateQueries({ queryKey: ['interactions', 'liked', type] });
 
       if (typeof data?.likes === 'number') {
         setEntity((prev) => (prev ? { ...prev, likes: data.likes } : prev));
@@ -220,8 +225,14 @@ export default function EntityDetailPage() {
       setLiked(prevLiked);
       setEntity((prev) => (prev ? { ...prev, likes: prevLikes } : prev));
       console.error(err);
-      toast.show('点赞失败', { type: 'error' });
+      toast.show(errorMessage, { type: 'error' });
     }
+  };
+
+  // For personas, "liking" is what puts them into 我的自设, so the shortcut
+  // button reuses the same like/unlike route to stay consistent with the cards.
+  const handleAddToMyPersonas = () => {
+    handleLike({ errorMessage: liked ? '从我的自设移除失败' : '添加到我的自设失败' });
   };
 
   const handleEdit = () => {
@@ -665,7 +676,7 @@ export default function EntityDetailPage() {
                 </span>
               </div>
               <button
-                onClick={handleLike}
+                onClick={() => handleLike()}
                 className="d-flex align-items-center"
                 aria-label={liked ? '取消点赞' : '点赞'}
                 style={{
@@ -744,6 +755,30 @@ export default function EntityDetailPage() {
                   >
                     <i className="bi bi-chat-dots me-2"></i>
                     开始聊天
+                  </PrimaryButton>
+                )}
+                {type === 'persona' && !isOwner && (
+                  <PrimaryButton
+                    onClick={handleAddToMyPersonas}
+                    aria-pressed={liked}
+                    title={liked ? '已添加到我的自设' : '添加到我的自设'}
+                    style={{
+                      background: liked ? '#f4f1fb' : '#a590dc',
+                      color: liked ? '#5b4b8a' : '#ffffff',
+                      border: liked ? '1px solid #c9bfe6' : '1px solid #9078cc',
+                      boxShadow: liked ? 'none' : '0 6px 14px rgba(117, 92, 182, 0.22)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = liked ? '#ebe5f8' : '#967fd2';
+                      e.currentTarget.style.boxShadow = liked ? 'none' : '0 8px 16px rgba(117, 92, 182, 0.28)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = liked ? '#f4f1fb' : '#a590dc';
+                      e.currentTarget.style.boxShadow = liked ? 'none' : '0 6px 14px rgba(117, 92, 182, 0.22)';
+                    }}
+                  >
+                    <i className={`bi ${liked ? 'bi-bookmark-check-fill' : 'bi-bookmark-plus'} me-2`}></i>
+                    {liked ? '已添加到我的自设' : '添加到我的自设'}
                   </PrimaryButton>
                 )}
               </div>
