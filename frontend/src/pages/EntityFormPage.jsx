@@ -63,6 +63,21 @@ export default function EntityFormPage() {
 
   const { sessionToken, userData } = useContext(AuthContext);
 
+  // A draft is only worth keeping once it holds something the user would
+  // actually lose. A form still at its defaults (or made empty again) must
+  // not create one, otherwise the banner offers to restore nothing.
+  const hasDraftContent = useCallback((data, improvising) => {
+    if (!data) return false;
+    return Boolean(
+      data.name?.trim()
+      || data.description?.trim()
+      || data.intro?.trim()
+      || data.greeting?.trim()
+      || (Array.isArray(data.tags) && data.tags.length > 0)
+      || improvising
+    );
+  }, []);
+
   // ── Draft helpers ──────────────────────────────────────────────
   const getDraftKey = useCallback(() => {
     const uid = userData?.id || 'anonymous';
@@ -144,13 +159,18 @@ export default function EntityFormPage() {
 
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
-      saveDraft({ entityData, isImprovisingGreeting });
+      if (hasDraftContent(entityData, isImprovisingGreeting)) {
+        saveDraft({ entityData, isImprovisingGreeting });
+      } else {
+        // Everything meaningful was cleared — don't keep a stale/empty draft.
+        clearDraft();
+      }
     }, 800);
 
     return () => {
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     };
-  }, [entityData, isImprovisingGreeting, loading, mode, saveDraft]);
+  }, [entityData, isImprovisingGreeting, loading, mode, saveDraft, clearDraft, hasDraftContent]);
 
   // ── Restore draft on mount (create / edit / fork) ─────────────
   useEffect(() => {
@@ -158,12 +178,15 @@ export default function EntityFormPage() {
     if ((mode === 'edit' || mode === 'fork') && loading) return;
     if (draftRestoredRef.current) return;
     const draft = loadDraft();
-    if (draft && draft.entityData) {
+    if (draft && draft.entityData && hasDraftContent(draft.entityData, draft.isImprovisingGreeting)) {
       setShowDraftBanner(true);
     } else {
+      // Drafts written by older builds could be empty; drop them so the
+      // banner never appears for content that restores nothing.
+      if (draft) clearDraft();
       draftRestoredRef.current = true;
     }
-  }, [mode, loadDraft, loading]);
+  }, [mode, loadDraft, loading, clearDraft, hasDraftContent]);
 
   // ── beforeunload warning for unsaved changes ──────────────────
   useEffect(() => {
