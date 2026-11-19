@@ -23,8 +23,11 @@ See `.env.example` for a template.
 `dist/` directory as a static shell: every route receives the same
 `index.html`, which contains a `<link rel="preload" as="fetch">` plus a small
 inline script that starts the popular-character request in parallel with the JS
-bundle. Nothing is rendered at startup, so a slow or unavailable backend only
-makes the first data request slower — it can never fail the frontend start.
+bundle. The preload carries `crossorigin="anonymous"` because browsers only let
+a `fetch()` reuse an `as="fetch"` preload when the CORS/credentials modes match,
+including for same-origin URLs. Nothing is rendered at startup, so a slow or
+unavailable backend only makes the first data request slower — it can never
+fail the frontend start.
 
 Public lists (`/api/characters|scenes|personas/popular|recent`) are token-free
 and identical for every viewer. The backend caches them in Redis and serves
