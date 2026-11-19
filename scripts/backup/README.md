@@ -1,5 +1,12 @@
 # Mikoshi Production Postgres Backup Scripts
 
+## backup_daily.sh (preferred)
+
+- Usage: `./backup_daily.sh`, intended for a single daily cron entry
+- Output: `/home/lighthouse/lhcos-data/backups/db_YYYY-MM-DD.sql.gz` on the data disk
+- Retention: deletes dumps older than 14 days in the same run
+- Dumps to `*.tmp` first, so a failed `pg_dump` never overwrites a good file
+
 ## backup_prod_postgres.sh
 
 Creates a compressed logical backup of the production Postgres database running in Docker.
