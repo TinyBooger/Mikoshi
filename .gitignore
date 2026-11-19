@@ -19,6 +19,7 @@ backend/migrations/*
 
 backend/tests/
 tests/
+backups/
 
 nginx/conf.d/mikoshi.conf.backup
 nginx/yubandao.com_nginx/
