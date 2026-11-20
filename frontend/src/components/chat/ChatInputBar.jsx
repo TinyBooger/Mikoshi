@@ -4,6 +4,8 @@ import { CreditLockedBanner, BanBanner } from '../ChatBanners';
 import { isCreditLocked } from '../../utils/creditCheck';
 import {
   CHAT_INPUT_BASE_HEIGHT,
+  CHAT_INPUT_INLINE_ACTIONS_PADDING,
+  CHAT_INPUT_INLINE_WAVE_GUTTER,
   CHAT_INPUT_MAX_HEIGHT,
 } from '../../utils/chatPageConstants';
 import { getChromeSurface } from '../../utils/backgroundPresets';
@@ -15,6 +17,20 @@ import { useChatRuntimeValue } from '../../hooks/useChatRuntimeState';
 import { useContextWindowUsage } from '../../hooks/useContextWindowUsage';
 import { loadChatDraft, saveChatDraft } from '../../utils/chatDraftStorage';
 import './ChatInputBar.css';
+
+// Bars the recording waveform shows: the most recent samples, one per bar. The
+// sheet sizes the slot from this count (`.chat-composer-wave` in ChatInputBar.css).
+const WAVE_BAR_COUNT = 28;
+// Rolling history sampled every 65ms; the wave renders its tail. Oversampling
+// gives the strip a bit of scrollback so it moves rather than snapping.
+const WAVE_SAMPLE_BUFFER = 80;
+// Per-bar emphasis so the strip reads as a wave rather than a flat block of
+// identical columns; indexed modulo the bar count.
+const WAVE_BAR_SHAPES = [
+  0.58, 0.82, 1, 0.72, 0.94, 0.68, 0.88, 0.62, 0.74, 0.92,
+  0.66, 0.86, 0.7, 0.96, 0.6, 0.84, 0.98, 0.7, 0.9, 0.64,
+  0.8, 0.76, 0.94, 0.66, 0.88, 0.72, 0.96, 0.62,
+];
 
 function ChatContextUsageIndicator({ chatState, advancedChatConfig }) {
   const messages = useChatRuntimeValue(chatState, 'contextUsageMessages');
@@ -83,7 +99,6 @@ const ChatInputBar = React.memo(function ChatInputBar({
   }, [inputRef]);
   localInputRef.current = input;
 
-  const { handleInputChange } = useAutoResizeTextarea({ textareaRef, input, setInput });
   const {
     isRecording,
     isTranscribing,
@@ -92,6 +107,18 @@ const ChatInputBar = React.memo(function ChatInputBar({
     stopVoiceInput,
     closeVoiceConnection,
   } = useVoiceInput({ sessionToken, input, setInput, toast });
+  // Trailing room the one-line layout reserves for the actions. While recording
+  // the waveform joins them, so the reservation grows and the text wraps sooner;
+  // the textarea is measured against this exact value.
+  const inlinePaddingRight = isRecording
+    ? `calc(${CHAT_INPUT_INLINE_ACTIONS_PADDING} + ${CHAT_INPUT_INLINE_WAVE_GUTTER})`
+    : CHAT_INPUT_INLINE_ACTIONS_PADDING;
+  const { handleInputChange, isMultiline } = useAutoResizeTextarea({
+    textareaRef,
+    input,
+    setInput,
+    inlinePaddingRight,
+  });
   const creditLocked = isCreditLocked(creditLimits);
   // Dev-only UI preview: append ?preview=credit-locked (or -pro-broke) to the chat URL.
   const previewCreditLock = import.meta.env.DEV
@@ -123,7 +150,9 @@ const ChatInputBar = React.memo(function ChatInputBar({
         }
       : null;
   const chromeSurface = getChromeSurface(selectedWallpaper?.kind);
-  const [waveformSamples, setWaveformSamples] = useState(() => Array(40).fill(0.025));
+  // Rolling history of level samples, one per sampling tick, rendered by the
+  // waveform's last WAVE_BAR_COUNT entries.
+  const [waveformSamples, setWaveformSamples] = useState(() => Array(WAVE_SAMPLE_BUFFER).fill(0.025));
   const recordingLevelRef = useRef(recordingLevel);
 
   useEffect(() => {
@@ -154,7 +183,7 @@ const ChatInputBar = React.memo(function ChatInputBar({
 
   useEffect(() => {
     if (!isRecording) {
-      setWaveformSamples(Array(40).fill(0.025));
+      setWaveformSamples(Array(WAVE_SAMPLE_BUFFER).fill(0.025));
       return undefined;
     }
 
@@ -201,75 +230,71 @@ const ChatInputBar = React.memo(function ChatInputBar({
         {(creditLocked || previewLimits) && (
           <CreditLockedBanner creditLimits={previewLimits || creditLimits} />
         )}
-        {isRecording && (
-          <div className="chat-voice-recording-status" role="status" aria-label="正在录音">
-            <span className="chat-voice-recording-wave" aria-hidden="true">
-              {waveformSamples.map((sample, index) => (
-                <span
-                  key={index}
-                  style={{
-                    transform: `scaleY(${Math.max(0.04, sample * [0.58, 0.82, 1, 0.72, 0.94, 0.68, 0.88, 0.62][index % 8])})`,
-                  }}
-                />
-              ))}
-            </span>
-          </div>
-        )}
-        <div style={{ width: '100%', display: 'flex', gap: '0.64rem', alignItems: 'center' }}>
+        <div
+          style={{
+            width: '100%',
+            display: 'flex',
+            gap: '0.64rem',
+            alignItems: isMultiline ? 'flex-start' : 'center',
+          }}
+        >
           <ChatContextUsageIndicator
             chatState={chatState}
             advancedChatConfig={advancedChatConfig}
           />
 
-          <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex', alignItems: 'center' }}>
+          {/* One painted surface holds both layers: the field and its actions.
+              A one-line field overlays the buttons on its right; once the text
+              wraps, the buttons drop to a quiet tool row below it, inside the
+              same border with no divider between the layers. */}
+          <div
+            className={`chat-composer${isMultiline ? ' chat-composer--multiline' : ''}`}
+            style={{ flex: 1, minWidth: 0 }}
+          >
             <textarea
               ref={textareaRef}
+              className="chat-composer-input"
               style={{
-                flex: 1,
-                width: '100%',
-                borderRadius: `${CHAT_INPUT_BASE_HEIGHT / 2}px`,
-                border: '1.2px solid #e9ecef',
-                background: '#fff',
-                padding: '0.6rem 0.96rem',
-                paddingRight: '5.7rem',
-                fontSize: '16px',
-                outline: 'none',
-                color: '#232323',
-                boxShadow: 'none',
-                transition: 'border 0.14s',
-                resize: 'none',
                 minHeight: `${CHAT_INPUT_BASE_HEIGHT}px`,
                 maxHeight: `${CHAT_INPUT_MAX_HEIGHT}px`,
-                overflowY: 'hidden',
-                fontFamily: 'inherit',
-                lineHeight: '1.55',
-                boxSizing: 'border-box',
-                WebkitAppearance: 'none',
-                appearance: 'none',
+                paddingTop: '0.6rem',
+                paddingBottom: isMultiline ? '0.35rem' : '0.6rem',
+                paddingLeft: '0.96rem',
+                paddingRight: isMultiline ? '0.96rem' : inlinePaddingRight,
               }}
               placeholder={'输入您的消息...'}
               value={input}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               disabled={creditLocked}
-              onFocus={e => {
-                e.target.style.border = '1.2px solid #18191a';
-              }}
-              onBlur={e => e.target.style.border = '1.2px solid #e9ecef'}
               rows={1}
             />
-            <ChatVoiceButton
-              isRecording={isRecording}
-              isTranscribing={isTranscribing}
-              disabled={isTranscribing || creditLocked}
-              onClick={handleVoiceToggle}
-            />
-            <ChatSendButton
-              isStreaming={isStreaming}
-              sending={sending}
-              disabled={sending || creditLocked}
-              onAbort={onAbort}
-            />
+            <div className="chat-composer-toolbar">
+              {isRecording && (
+                <span className="chat-composer-wave" role="status" aria-label="正在录音">
+                  {waveformSamples.slice(-WAVE_BAR_COUNT).map((sample, index) => (
+                    <span
+                      key={index}
+                      style={{
+                        transform: `scaleY(${Math.max(0.04, sample * WAVE_BAR_SHAPES[index % WAVE_BAR_SHAPES.length])})`,
+                      }}
+                    />
+                  ))}
+                </span>
+              )}
+              <ChatVoiceButton
+                isRecording={isRecording}
+                isTranscribing={isTranscribing}
+                disabled={isTranscribing || creditLocked}
+                onClick={handleVoiceToggle}
+              />
+              <ChatSendButton
+                isStreaming={isStreaming}
+                sending={sending}
+                disabled={sending || creditLocked}
+                onAbort={onAbort}
+              />
+            </div>
           </div>
         </div>
         <div

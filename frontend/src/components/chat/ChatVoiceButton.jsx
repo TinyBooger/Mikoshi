@@ -1,9 +1,8 @@
 import React from 'react';
-import { CHAT_INPUT_BASE_HEIGHT } from '../../utils/chatPageConstants';
 
 /**
- * Microphone button overlaid on the chat textarea. Turns into a spinner while
- * the recorded clip is being transcribed. Extracted verbatim from ChatPage.
+ * Microphone button in the chat composer's tool row. Turns into a spinner while
+ * the recorded clip is being transcribed. Placement is owned by the toolbar.
  */
 export default function ChatVoiceButton({ isRecording, isTranscribing, disabled, onClick }) {
   return (
@@ -12,9 +11,6 @@ export default function ChatVoiceButton({ isRecording, isTranscribing, disabled,
       onClick={onClick}
       disabled={disabled}
       style={{
-        position: 'absolute',
-        right: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2 + 38 + 6}px`,
-        bottom: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
         background: isRecording
           ? 'linear-gradient(180deg, #eee8fb 0%, #ded4f5 100%)'
           : 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)',

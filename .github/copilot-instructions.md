@@ -22,6 +22,13 @@
 - Do not run terminal commands to check backend Python syntax unless the user explicitly requests it.
 - Continue to run focused tests or other validation explicitly requested by the user.
 
+## Runtime verification limits
+
+- Do not probe for or start dev servers: no port scans, `Test-NetConnection`, `curl` against localhost, or launching `start-dev.bat` / `npm run dev` / `python server.py`.
+- Do not open, navigate, screenshot, or interact with browser pages — including `file://` pages created for verification. Do not create throwaway HTML harnesses for visual checks.
+- Do not connect to, query, or inspect databases (no `sqlite3`, no SQL clients, no backend scripts that touch the DB).
+- Verify frontend and backend behavior by reading code and reasoning about it, then state plainly what was not verified at runtime and let the user confirm in their own running app.
+
 ## Dependency installs
 
 - Package installs are handled manually by the user. Never run `npm install`, `pip install`, or similar commands.

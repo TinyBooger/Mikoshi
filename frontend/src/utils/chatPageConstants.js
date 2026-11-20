@@ -105,3 +105,12 @@ export const SPECIAL_IMPROVISING_GREETING = '[IMPROVISE_GREETING]';
 
 export const CHAT_INPUT_MAX_HEIGHT = 200;
 export const CHAT_INPUT_BASE_HEIGHT = 44;
+
+// Right padding that keeps typed text clear of the voice/send buttons while
+// they sit inline with a one-line field. `utils/textarea.js` measures against
+// this same width, so the one-line / tool-row decision cannot oscillate.
+export const CHAT_INPUT_INLINE_ACTIONS_PADDING = '5.7rem';
+
+// Extra trailing room for the recording waveform that appears left of the voice
+// button: wave slot width (8rem) + the toolbar gap (0.375rem).
+export const CHAT_INPUT_INLINE_WAVE_GUTTER = '8.375rem';

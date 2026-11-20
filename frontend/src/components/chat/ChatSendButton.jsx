@@ -1,12 +1,11 @@
 import React from 'react';
-import { CHAT_INPUT_BASE_HEIGHT } from '../../utils/chatPageConstants';
 
 /**
- * Dual-state action button overlaid on the chat textarea:
+ * Dual-state action button in the chat composer's tool row:
  * a red "stop generating" button while a turn is streaming, otherwise the
- * purple submit button. Extracted verbatim from ChatPage — the two branches
- * are mutually exclusive, so they are returned early rather than nested in a
- * ternary; the rendered element is identical either way.
+ * purple submit button. Placement is owned by the toolbar (`ChatInputBar`),
+ * which overlays it in the one-line layout and drops it to its own row once
+ * the field grows.
  */
 export default function ChatSendButton({ isStreaming, sending, disabled, onAbort }) {
   if (isStreaming) {
@@ -15,9 +14,6 @@ export default function ChatSendButton({ isStreaming, sending, disabled, onAbort
         type="button"
         onClick={onAbort}
         style={{
-          position: 'absolute',
-          right: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
-          bottom: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
           background: '#dc3545',
           color: '#fff',
           border: 'none',
@@ -47,9 +43,6 @@ export default function ChatSendButton({ isStreaming, sending, disabled, onAbort
     <button
       type="submit"
       style={{
-        position: 'absolute',
-        right: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
-        bottom: `${(CHAT_INPUT_BASE_HEIGHT - 38) / 2}px`,
         background: sending
           ? 'rgba(222, 215, 236, 0.82)'
           : 'linear-gradient(180deg, rgba(243, 238, 249, 0.95) 0%, rgba(235, 229, 241, 0.9) 100%)',
