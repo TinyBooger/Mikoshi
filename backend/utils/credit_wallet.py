@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from models import User, UserCreditWalletLedger
+
+SIGNUP_BONUS_CREDITS = float(os.getenv("SIGNUP_BONUS_CREDITS", "200"))
 
 DEFAULT_CREDIT_TOPUP_PACKAGES = [
     {"id": "topup_2000", "credits": 2000, "price_cny": 6, "label": "入门"},

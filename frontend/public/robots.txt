@@ -15,7 +15,6 @@ Disallow: /api/
 
 # --- Auth / account pages (thin, no indexable content) ------------------
 Disallow: /login
-Disallow: /sign-up
 Disallow: /reset-password
 
 # --- Authenticated app surfaces -----------------------------------------

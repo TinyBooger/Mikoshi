@@ -101,7 +101,7 @@ export function AuthProvider({ children, initialState = null }) {
       typeof update === 'function' ? update(previous) : update
     ));
   }, []);
-  // `loading` now only covers explicit auth actions (login/register/verify).
+  // `loading` now only covers explicit auth actions (login/verify).
   // Background validation never blocks the first paint.
   const [loading, setLoading] = useState(initialState?.loading ?? false);
   const [error, setError] = useState(null);
@@ -177,60 +177,6 @@ export function AuthProvider({ children, initialState = null }) {
       }
     } catch (err) {
       setError('Login error');
-      setUserData(null);
-      setSessionToken(null);
-      localStorage.removeItem('sessionToken');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Registration function
-  const register = async (email, name, password, bio, profileFile = null, invitationCode = null) => {
-    setLoading(true);
-    setError(null);
-    try {
-      let response;
-      const fp = getDeviceFingerprint();
-      const fpHeader = fp ? { 'X-Device-Fingerprint': fp } : {};
-      if (profileFile) {
-        const formData = new FormData();
-        formData.append('email', email);
-        formData.append('name', name);
-        formData.append('password', password);
-        formData.append('invitation_code', invitationCode);
-        if (bio) formData.append('bio', bio);
-        formData.append('profile_pic', profileFile);
-        response = await fetch(`${window.API_BASE_URL}/api/users`, {
-          method: 'POST',
-          headers: { ...fpHeader },
-          body: formData
-        });
-      } else {
-        response = await fetch(`${window.API_BASE_URL}/api/users`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...fpHeader },
-          body: new URLSearchParams({ email, name, password, invitation_code: invitationCode, bio })
-        });
-      }
-      const result = await response.json();
-      if (response.ok && result.token) {
-        setSessionToken(result.token);
-        localStorage.setItem('sessionToken', result.token);
-        setUserData(result.user);
-        writeSessionHint(result.token, result.user);
-        setError(null);
-        return true;
-      } else {
-        setError(getApiErrorMessage(result, 'Registration failed', t));
-        setUserData(null);
-        setSessionToken(null);
-        localStorage.removeItem('sessionToken');
-        return false;
-      }
-    } catch (err) {
-      setError('Registration error');
       setUserData(null);
       setSessionToken(null);
       localStorage.removeItem('sessionToken');
@@ -352,7 +298,6 @@ export function AuthProvider({ children, initialState = null }) {
       loading,
       error,
       login,
-      register,
       logout,
       sendVerificationCode,
       verifyPhone,

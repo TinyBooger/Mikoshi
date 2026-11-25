@@ -201,7 +201,6 @@ Mikoshi-MonoRepo
 │  │  │  ├─ ResetPasswordPage.jsx
 │  │  │  ├─ SearchPage.jsx
 │  │  │  ├─ SettingsPage.jsx
-│  │  │  ├─ SignUpPage.jsx
 │  │  │  ├─ TermsOfServicePage.jsx
 │  │  │  ├─ TestPage.jsx
 │  │  │  ├─ TokenTopUpPage.jsx

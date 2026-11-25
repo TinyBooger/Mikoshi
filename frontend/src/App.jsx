@@ -7,7 +7,6 @@ import { AuthContext } from './components/AuthProvider';
 
 const AdminApp = lazy(() => import('./admin/AdminApp.jsx'));
 const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
-const SignUpPage = lazy(() => import('./pages/SignUpPage.jsx'));
 const EntityFormPage = lazy(() => import('./pages/EntityFormPage.jsx'));
 const CharacterFormPage = lazy(() => import('./pages/CharacterFormPage.jsx'));
 const ChatPage = lazy(() => import('./pages/ChatPage.jsx'));
@@ -120,10 +119,6 @@ export const routes = [
   {
     path: '/login',
     element: <PublicOnlyPage><LazyPage Component={LoginPage} /></PublicOnlyPage>,
-  },
-  {
-    path: '/sign-up',
-    element: <PublicOnlyPage><LazyPage Component={SignUpPage} /></PublicOnlyPage>,
   },
   {
     path: '/reset-password',
