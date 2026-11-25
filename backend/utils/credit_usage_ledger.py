@@ -97,13 +97,19 @@ def apply_fixed_credit_usage_with_wallet(
     source: str,
     idempotency_key: str,
     metadata: dict[str, Any] | None = None,
+    force_wallet: bool = False,
 ) -> dict[str, Any]:
-    """Apply fixed service usage to plan quota first, then purchased credits."""
+    """Apply fixed service usage to plan quota first, then purchased credits.
+
+    `force_wallet=True` skips the plan quota entirely and always debits the
+    purchased wallet. Callers use it for services that are not covered by a
+    plan quota (e.g. image generation for non-pro users).
+    """
     if credit_amount <= 0:
         return {"success": True, "credit_amount": 0.0, "consumed_from_wallet": False}
 
     credit_check = can_consume_credits(user, db_session)
-    if credit_check.get("blocked"):
+    if credit_check.get("blocked") and not force_wallet:
         return {
             "success": False,
             "error": "CREDIT_CAP_REACHED",
@@ -111,7 +117,7 @@ def apply_fixed_credit_usage_with_wallet(
             "consumed_from_wallet": False,
         }
 
-    if credit_check.get("consume_from_wallet"):
+    if force_wallet or credit_check.get("consume_from_wallet"):
         consumed, balance_after = consume_wallet_credits(
             db_session,
             user_id=user.id,

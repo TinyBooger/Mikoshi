@@ -22,11 +22,7 @@ from starlette.concurrency import run_in_threadpool
 
 from database import get_db
 from models import User
-from utils.credit_cap import (
-    build_credit_cap_reached_payload,
-    can_consume_credits,
-    get_credit_cap_info,
-)
+from utils.credit_cap import can_consume_credits, get_credit_cap_info
 from utils.credit_usage_ledger import apply_fixed_credit_usage_with_wallet
 from utils.model_rate_limiter import rate_limiter
 from utils.session import get_current_user
@@ -88,9 +84,10 @@ DOWNLOAD_TIMEOUT_SECONDS = 60.0
 # 200 credits = ¥0.20 against a real provider cost of ¥0.18 per image — the
 # rounded-up price, which is the intended margin.
 #
-# Mind the plan caps in utils/credit_cap.py when changing this: the free daily
-# cap defaults to 10 credits, so a free user can afford at most one image per
-# day at this price, and a pro's monthly 10000-credit quota buys 50 images.
+# Mind the plan caps in utils/credit_cap.py when changing this: image
+# generation is never billed to a free user's daily quota (it is far above the
+# 10-credit daily cap) and always comes out of the wallet, while a pro's monthly
+# 10000-credit quota buys 50 images.
 IMAGE_GENERATION_CREDIT_COST = float(os.getenv("IMAGE_GENERATION_CREDIT_COST", "200"))
 
 
@@ -213,9 +210,12 @@ async def generate_image(
 ):
     """Generate a character image from a text prompt.
 
-    Billed at a flat `IMAGE_GENERATION_CREDIT_COST`. Affordability is checked
-    *before* the provider call so a user who cannot pay never costs us money,
-    and the charge is applied *after* success so a failed generation is free.
+    Billed at a flat `IMAGE_GENERATION_CREDIT_COST`. An active pro's monthly
+    quota may pay for it; everyone else (free users and pro users whose monthly
+    quota is exhausted) always pays from the purchased wallet. The remaining
+    balance must cover the full cost. Affordability is checked *before* the
+    provider call so a user who cannot pay never costs us money, and the charge
+    is applied *after* success so a failed generation is free.
     """
     if is_upload_banned(current_user):
         raise HTTPException(status_code=403, detail="UPLOAD_BANNED")
@@ -239,34 +239,49 @@ async def generate_image(
     negative_prompt = (payload.negative_prompt or "").strip()
 
     # -- Credit pre-check ----------------------------------------------------
-    # `can_consume_credits` only reports whether *any* wallet credit remains, not
-    # whether there is enough for this request, so the wallet case needs an
-    # explicit balance comparison. Without it a user with 5 credits could pass
-    # the check, get a ¥0.18 image generated, and then fail to be charged.
+    # Only a pro user's monthly quota can pay for an image. Free users (and
+    # pro users whose monthly quota is exhausted) must pay from the wallet, so
+    # the wallet balance has to cover the full cost. `can_consume_credits` only
+    # reports whether *any* source remains, not whether it covers this request,
+    # hence the explicit remaining-quota and balance comparisons below. Without
+    # them a user could pass the check, get a ¥0.18 image generated, and then
+    # fail to be charged.
     cost = IMAGE_GENERATION_CREDIT_COST
     credit_check = can_consume_credits(current_user, db)
     credit_limit_info = credit_check.get("limit") or {}
-    if credit_check.get("blocked"):
+    is_pro_active = bool(credit_limit_info.get("is_pro"))
+    pro_on_monthly_quota = is_pro_active and not bool(credit_limit_info.get("broke"))
+    remaining_quota = credit_limit_info.get("remaining_credits")
+    wallet_balance = float(credit_limit_info.get("purchased_credit_balance") or 0.0)
+
+    quota_covers_cost = pro_on_monthly_quota and (
+        remaining_quota is None or float(remaining_quota) >= cost
+    )
+    fund_from_wallet = not quota_covers_cost
+
+    if fund_from_wallet and wallet_balance < cost:
+        if pro_on_monthly_quota:
+            message = (
+                f"生图需要 {cost:g} 点数，本月剩余 {float(remaining_quota or 0.0):g} 点数，"
+                f"钱包余额 {wallet_balance:g}。请充值后再试。"
+            )
+        else:
+            message = (
+                f"生图需使用钱包点数，需要 {cost:g} 点数，"
+                f"当前余额 {wallet_balance:g}。请充值后再试。"
+            )
         return JSONResponse(
-            content=build_credit_cap_reached_payload(credit_limit_info),
+            content={
+                "error": "INSUFFICIENT_WALLET_CREDITS",
+                "message": message,
+                "required_credits": cost,
+                "wallet_balance": wallet_balance,
+                "remaining_credits": remaining_quota,
+                "fund_from_wallet": True,
+                "credit_limits": credit_limit_info,
+            },
             status_code=429,
         )
-    if credit_check.get("consume_from_wallet"):
-        wallet_balance = float(credit_limit_info.get("purchased_credit_balance") or 0.0)
-        if wallet_balance < cost:
-            return JSONResponse(
-                content={
-                    "error": "INSUFFICIENT_WALLET_CREDITS",
-                    "message": (
-                        f"钱包点数不足，生图需要 {cost:g} 点数，当前余额 {wallet_balance:g}。"
-                        "请充值后再试。"
-                    ),
-                    "required_credits": cost,
-                    "wallet_balance": wallet_balance,
-                    "credit_limits": credit_limit_info,
-                },
-                status_code=429,
-            )
 
     # Image generation is the most expensive per-request call in the app, so it
     # shares the per-user LLM rate-limit window rather than adding a new one.
@@ -294,6 +309,7 @@ async def generate_image(
         source="image_generation",
         idempotency_key=f"image_generation:{uuid.uuid4()}",
         metadata={"model": model, "size": size},
+        force_wallet=fund_from_wallet,
     )
     if usage_result.get("success"):
         db.commit()

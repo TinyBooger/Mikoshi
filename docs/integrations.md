@@ -37,6 +37,6 @@
 - Frontend: `frontend/src/components/ImageGenerateModal.jsx`, opened from the 角色图片 section of `frontend/src/pages/CharacterFormPage.jsx`.
 - Billing: a flat **200 credits (点数)** per generation, via `IMAGE_GENERATION_CREDIT_COST` (env-overridable). At the internal rate of 1 credit = ¥0.001 that is ¥0.20 against a ¥0.18 provider cost.
   - Charged **after** a successful generation, so failures (moderation, provider error, download error) are free; affordability is checked **before** the provider call so an unpayable user never costs money.
-  - The wallet case compares the balance against the cost explicitly, because `can_consume_credits` only reports whether *any* wallet credit remains.
-  - Failure payloads use the shared credit codes: `CREDIT_CAP_REACHED` (429, `build_credit_cap_reached_payload`) and `INSUFFICIENT_WALLET_CREDITS` (429).
-  - ⚠️ 200 credits exceeds the default `FREE_DAILY_CREDIT_CAP` of 10, so a free user can afford at most **one image per day** and is then blocked until the noon reset. A pro's default 10000-credit monthly quota buys 50 images.
+  - Funding: an active Pro user's monthly quota may pay for the image (remaining quota must be ≥ 200). Free users — and Pro users whose monthly quota is exhausted — must pay from the purchased wallet; image generation never draws on the free daily quota. The check compares the relevant remaining balance against the cost explicitly, because `can_consume_credits` only reports whether *any* source remains.
+  - Failure payloads use `INSUFFICIENT_WALLET_CREDITS` (429, includes `required_credits`, `wallet_balance`, `remaining_credits`, `fund_from_wallet`) when neither the monthly quota nor the wallet covers 200 credits.
+  - A pro's default 10000-credit monthly quota buys 50 images; a free user needs at least 200 wallet credits per image.
