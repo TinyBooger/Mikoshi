@@ -173,7 +173,14 @@ class UserOut(BaseModel):
     broke: bool = False
     free_daily_cap_reached: bool = False
     next_free_daily_reset_at: Optional[Any] = None
-    free_daily_credit_cap: float = 10.0
+    free_daily_credit_cap: float = 100.0
+    # Rolling free credit pool (点数): refills on an interval, banks up to the cap.
+    free_credit_balance: Optional[float] = None
+    free_credit_max_accumulation: float = 100.0
+    free_credit_refill_amount: float = 3.0
+    free_credit_refill_interval_seconds: int = 3600
+    next_free_credit_refill_at: Optional[Any] = None
+    free_credit_full: bool = False
     pro_monthly_credit_cap: float = 10000.0
     purchased_credit_balance: float = 0.0
     purchased_credits_bought_total: float = 0.0

@@ -11,7 +11,7 @@ import textLogo from '../assets/images/logo_text.png';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import TextButton from './TextButton';
-import { formatCompactTokenCount, formatCreditCount, getTokenQuotaLabel } from '../utils/creditDisplay.js';
+import CreditQuotaMeter, { WalletCreditValue } from './CreditQuotaMeter.jsx';
 import ProblemReportBadge from './ProblemReportBadge.jsx';
 import { useUnhandledProblemReportCount } from '../hooks/useUnhandledProblemReportCount.js';
 
@@ -1120,59 +1120,13 @@ export default function Sidebar({ isMobile, setSidebarVisible }) {
         {userData && (
           <>
           <div className="rounded-4 mb-1" style={{ background: '#fff', border: '1px solid #eef0f3', padding: '0.45rem 0.65rem' }}>
-            {(() => {
-              const creditScope = userData?.credit_cap_scope;
-              const creditUsedRaw = Number(creditScope === 'monthly'
-                ? (userData?.monthly_credit_usage)
-                : (userData?.daily_credit_usage)) || 0;
-              // Keep displayed credit usage to at most 2 decimals (round float noise).
-              const creditUsed = Math.round(creditUsedRaw * 100) / 100;
-              const creditCap = Number((userData?.credit_cap) || 0);
-              const creditUsageValue = creditCap > 0
-                ? `${formatCompactTokenCount(creditUsed)} / ${formatCompactTokenCount(creditCap)}`
-                : formatCompactTokenCount(creditUsed);
-              const creditProgressPercent = creditCap > 0
-                ? Math.min(100, Math.max(0, (creditUsed / creditCap) * 100))
-                : 0;
-              const creditProgressLabel = `${creditProgressPercent.toFixed(1)}%`;
-              const activeLocale = i18n?.resolvedLanguage || i18n?.language;
-              const nextCreditResetDate = userData?.credit_reset_at
-                ? new Date(userData.credit_reset_at)
-                : null;
-              const formattedNextCreditResetDate = nextCreditResetDate ? nextCreditResetDate.toLocaleDateString(activeLocale) : null;
-              const proExpireDateObj = userData?.pro_expire_date ? new Date(userData.pro_expire_date) : null;
-              const isProDueBeforeNextReset = Boolean(proExpireDateObj && nextCreditResetDate && proExpireDateObj < nextCreditResetDate);
-              return (
-                <>
-                  <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 4 }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#5b2f9b' }}>
-                      {creditProgressLabel}
-                    </span>
-                  </div>
-                  <div style={{ height: 6, borderRadius: 999, background: 'rgba(167, 139, 250, 0.16)', overflow: 'hidden' }}>
-                    <div
-                      style={{
-                        width: `${creditProgressPercent}%`,
-                        height: '100%',
-                        borderRadius: 999,
-                        background: 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%)',
-                        transition: 'width 0.25s ease',
-                      }}
-                    />
-                  </div>
-                </>
-              );
-            })()}
+            <CreditQuotaMeter user={userData} size="sm" style={{ marginBottom: 6 }} />
             <div
               className="d-flex align-items-center justify-content-between mt-1"
-              style={{
-                color: '#334155',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-              }}
+              style={{ color: '#4f456c', fontSize: '0.72rem', fontWeight: 700 }}
             >
               <span>钱包点数</span>
-              <span>{formatCreditCount(Number(userData?.purchased_credit_balance || 0))}</span>
+              <WalletCreditValue size="sm" balance={Number(userData?.purchased_credit_balance || 0)} />
             </div>
             <button
               type="button"

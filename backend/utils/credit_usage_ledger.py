@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 from models import User, UserCreditUsageLedger
 from utils.credit_cap import (
     can_consume_credits,
+    consume_free_credit_quota,
     get_free_daily_usage_date,
     should_record_to_free_daily,
 )
@@ -141,12 +142,17 @@ def apply_fixed_credit_usage_with_wallet(
             "wallet_balance": balance_after,
         }
 
+    use_free_pool = should_record_to_free_daily(credit_check.get("limit") or {})
     record_fixed_credit_usage(
         db_session,
         user_id=user.id,
         credit_amount=credit_amount,
-        use_free_daily_reset=should_record_to_free_daily(credit_check.get("limit") or {}),
+        use_free_daily_reset=use_free_pool,
     )
+    if use_free_pool:
+        # The rolling free pool is the balance source for this bucket, so keep
+        # it in sync with what the ledger records.
+        consume_free_credit_quota(db_session, user.id, credit_amount)
     return {"success": True, "credit_amount": credit_amount, "consumed_from_wallet": False}
 
 
@@ -209,13 +215,18 @@ def apply_credit_usage_with_wallet(
             "wallet_balance": balance_after,
         }
 
+    use_free_pool = should_record_to_free_daily(credit_check.get("limit") or {})
     record_credit_usage(
         db_session,
         user_id=user.id,
         usage=normalized,
-        use_free_daily_reset=should_record_to_free_daily(credit_check.get("limit") or {}),
+        use_free_daily_reset=use_free_pool,
         credit_amount=credit_amount,
     )
+    if use_free_pool:
+        # The rolling free pool is the balance source for this bucket, so keep
+        # it in sync with what the ledger records.
+        consume_free_credit_quota(db_session, user.id, credit_amount)
     return {
         "success": True,
         "total_tokens": total_tokens,

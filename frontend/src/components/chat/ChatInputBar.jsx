@@ -142,10 +142,14 @@ const ChatInputBar = React.memo(function ChatInputBar({
           broke: false,
           is_pro: false,
           cap_scope: 'daily',
-          credit_cap: 10,
-          used_credits: 10,
-          daily_credit_usage: 10,
+          credit_cap: 100,
+          used_credits: 100,
+          daily_credit_usage: 100,
           remaining_credits: 0,
+          free_credit_balance: 0,
+          free_credit_max_accumulation: 100,
+          free_credit_refill_amount: 3,
+          free_credit_refill_interval_seconds: 3600,
           purchased_credit_balance: 0,
         }
       : null;

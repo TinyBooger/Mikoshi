@@ -14,7 +14,15 @@ Major database migrations and implementation changes for Mikoshi. Run migrations
 - Character setting merge (`characters.persona` + `characters.long_description` → `characters.description`, see `backend/migrations/migration5.sql`)
 - Non-unique character and persona names (see `backend/migrations/migration6.sql`)
 - Reporter-facing problem report replies (`backend/migrations/add_problem_report_user_note.sql`)
+- Free credit quota pool (`backend/migrations/add_free_credit_quota.sql`)
 - Other SQL/Python migrations as needed
+
+## Free Credit Quota Pool
+- Free-tier chat credits moved from a per-day usage sum to a rolling pool table `user_free_credit_quota` (`user_id`, `balance`, `last_refill_at`, `updated_at`).
+- The pool refills `3` credits at every round hour (fixed wall-clock ticks, not an interval measured from the last spend), accumulating up to `100`; it no longer resets to zero on a daily boundary, so credits carry over until spent.
+- `backend/migrations/add_free_credit_quota.sql` creates the table and seeds every existing user at `100` (idempotent: `CREATE TABLE IF NOT EXISTS` + `INSERT … ON CONFLICT DO NOTHING`).
+- New users are seeded at `100` on first read, so no `users` column change is required.
+- `user_credit_usage_ledger` still records consumption per usage day for admin statistics, but the pool table is the source of truth for balance and blocking.
 
 ## Chat History Migration
 - Split users.chat_history JSONB into chat_histories table for better organization and performance.

@@ -2,9 +2,14 @@
  * Unified Credit Check Utility
  *
  * Credit consumption order:
- *   1. Daily/monthly quota (free users: daily; pro users: monthly)
+ *   1. Plan quota (free users: rolling hourly-refilled pool, capped at 100;
+ *      pro users: monthly quota)
  *   2. Wallet credits (purchased_credit_balance)
  *   3. No balance → locked
+ *
+ * Free quota is a rolling pool: +3 credits per hour, accumulating up to 100.
+ * It never resets to zero, so `cap_reached` means "pool is empty right now"
+ * and replenishes on its own (see `next_free_credit_refill_at`).
  *
  * This mirrors the backend `can_consume_credits()` logic:
  *   blocked = cap_reached && !wallet_available
@@ -13,17 +18,23 @@
 
 /**
  * @typedef {Object} CreditLimits
- * @property {boolean} cap_reached - Whether daily/monthly quota is exhausted
+ * @property {boolean} cap_reached - Whether the plan quota is exhausted
  * @property {number} purchased_credit_balance - Wallet credit balance
  * @property {number} remaining_credits - Remaining quota credits (0 when cap_reached)
  * @property {boolean} is_limited - Whether a cap is enforced
- * @property {string} cap_scope - "daily" or "monthly"
- * @property {number} daily_credit_usage - Credits used today
+ * @property {string} cap_scope - "daily" (free pool) or "monthly" (pro quota)
+ * @property {number} daily_credit_usage - Credits used in the current usage day
  * @property {number} monthly_credit_usage - Credits used this month
  * @property {number} credit_cap - The cap value
  * @property {boolean} is_pro - Whether user is Pro
  * @property {string} plan - "free" or "pro"
  * @property {string} reset_at - ISO timestamp when quota resets
+ * @property {number|null} free_credit_balance - Free pool balance (null for active pro)
+ * @property {number} free_credit_max_accumulation - Free pool ceiling (100)
+ * @property {number} free_credit_refill_amount - Credits granted per refill tick (3)
+ * @property {number} free_credit_refill_interval_seconds - Seconds per refill tick (3600)
+ * @property {string|null} next_free_credit_refill_at - Next refill timestamp (null when full)
+ * @property {boolean} free_credit_full - Whether the free pool sits at its ceiling
  */
 
 /**

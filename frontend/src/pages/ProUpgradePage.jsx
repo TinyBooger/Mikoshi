@@ -79,7 +79,7 @@ export default function ProUpgradePage() {
   }, [userData?.pro_expire_date]);
 
   const freeFeatures = [
-    '每日 10 点聊天点数额度',
+    '每小时补充 3 点聊天点数，最多可积累 100 点',
     '聊天请求排队处理',
     '每日消息数量有上限',
     '可进行基础创作',
@@ -95,7 +95,7 @@ export default function ProUpgradePage() {
   const packageFeatures = [
     '点数包为更灵活的定制方案',
     '购买的点数存入钱包，永不过期',
-    '每日/每月点数额度用完后自动抵扣钱包点数',
+    '免费/每月点数额度用完后自动抵扣钱包点数',
     '多个档位可选，满足不同用量需求',
   ];
 

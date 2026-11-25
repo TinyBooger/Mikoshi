@@ -36,7 +36,7 @@ export const formatCreditCount = (value) => {
 };
 
 export const getTokenQuotaLabel = (scope) => (
-  scope === 'monthly' ? '本月点数额度' : '本日点数额度'
+  scope === 'monthly' ? '本月点数额度' : '免费点数'
 );
 
 /** Legacy alias */

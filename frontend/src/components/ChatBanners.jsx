@@ -7,9 +7,9 @@ import { formatCreditCount } from '../utils/creditDisplay';
 export function CreditLockedBanner({ creditLimits }) {
   const isPro = !!creditLimits?.is_pro;
   const broke = !!creditLimits?.broke;
-  // Broke pros (monthly quota exhausted) fall back to the free daily bucket.
+  // Broke pros (monthly quota exhausted) fall back to the free credit pool.
   const usingDailyScope = !isPro || broke;
-  const scopeLabel = usingDailyScope ? '本日免费额度' : '本月剩余点数';
+  const scopeLabel = usingDailyScope ? '免费点数' : '本月点数';
   const used =
     Number(
       creditLimits?.used_credits ??
@@ -19,16 +19,31 @@ export function CreditLockedBanner({ creditLimits }) {
     ) || 0;
   const cap = Number(creditLimits?.credit_cap || 0);
 
+  // The free pool has no "used out of cap" ratio to show — it is a balance that
+  // refills on its own, so only the monthly bucket gets the `used / cap` form.
   const reachInfo = `${formatCreditCount(used)} / ${formatCreditCount(cap)}`;
+
+  const refillAmount = formatCreditCount(
+    Number(creditLimits?.free_credit_refill_amount || 3)
+  );
+  const refillIntervalHours = Math.max(
+    1,
+    Math.round(Number(creditLimits?.free_credit_refill_interval_seconds || 3600) / 3600)
+  );
+  const refillHint = `每 ${refillIntervalHours} 小时补充 ${refillAmount} 点，可积累至 ${formatCreditCount(
+    Number(creditLimits?.free_credit_max_accumulation || cap || 0)
+  )} 点`;
 
   const openTopUp = () => window.open('/credit-topup', '_blank', 'noopener,noreferrer');
   const openProUpgrade = () => window.open('/pro-upgrade', '_blank', 'noopener,noreferrer');
 
   const message = broke
-    ? `本月聊天点数已用尽（${reachInfo}），已切换至每日免费点数`
-    : cap > 0
-      ? `${scopeLabel}已达上限（${reachInfo}）`
-      : `${scopeLabel}已达上限，钱包点数已用尽`;
+    ? `本月聊天点数已用尽（${reachInfo}），已切换至免费点数`
+    : usingDailyScope
+      ? `免费点数已用完，正等待补充`
+      : cap > 0
+        ? `${scopeLabel}已用完（${reachInfo}）`
+        : `${scopeLabel}已用完，钱包点数已用尽`;
 
   return (
     <div
@@ -53,7 +68,7 @@ export function CreditLockedBanner({ creditLimits }) {
       <span style={{ flex: 1, minWidth: 140, color: '#6b7280', lineHeight: 1.4 }}>
         {message}
         {usingDailyScope && (
-          <span style={{ color: '#a1a1aa' }}> · 每日 12:00 重置</span>
+          <span style={{ color: '#a1a1aa' }}> · {refillHint}</span>
         )}
       </span>
       <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>

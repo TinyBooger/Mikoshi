@@ -128,6 +128,25 @@ class UserCreditUsageLedger(Base):
     )
 
 
+class UserFreeCreditQuota(Base):
+    """Rolling free-plan credit pool (点数).
+
+    Free users (and pro users whose monthly quota is exhausted) spend from this
+    pool. It refills a fixed amount at every wall-clock refill tick (whole hours
+    by default) and banks unused credits up to a maximum, so the balance never
+    resets to zero on a schedule. `last_refill_at` is the refill-grid boundary
+    the last accounting reached — the next tick is the following boundary, never
+    an interval measured from the last spend.
+    """
+
+    __tablename__ = "user_free_credit_quota"
+
+    user_id = Column(String, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True, nullable=False)
+    balance = Column(Float, default=0.0, nullable=False)
+    last_refill_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+
+
 class UserCreditWalletLedger(Base):
     __tablename__ = "user_credit_wallet_ledger"
 

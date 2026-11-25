@@ -264,31 +264,35 @@ export function AuthProvider({ children, initialState = null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionToken]);
 
+  // Free quota (点数) refills on fixed wall-clock ticks (every round hour), so
+  // the timer is re-armed for the *next* tick each time it fires: refreshing
+  // when a refill lands is what surfaces the "+3" in the UI (which animates on
+  // any balance increase).
   useEffect(() => {
-    const resetAt = Date.parse(userData?.next_free_daily_reset_at || '');
-    if (!sessionToken || !Number.isFinite(resetAt)) return undefined;
+    const refillAt = Date.parse(userData?.next_free_credit_refill_at || '');
+    if (!sessionToken || !Number.isFinite(refillAt)) return undefined;
 
-    const refreshAfterReset = () => {
-      if (Date.now() >= resetAt) {
+    const refreshAfterRefill = () => {
+      if (Date.now() >= refillAt) {
         fetchUserData({ silent: true });
       }
     };
     const timeoutId = window.setTimeout(
-      refreshAfterReset,
-      Math.max(0, resetAt - Date.now()) + 1000
+      refreshAfterRefill,
+      Math.max(0, refillAt - Date.now()) + 1000
     );
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') refreshAfterReset();
+      if (document.visibilityState === 'visible') refreshAfterRefill();
     };
 
-    window.addEventListener('focus', refreshAfterReset);
+    window.addEventListener('focus', refreshAfterRefill);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       window.clearTimeout(timeoutId);
-      window.removeEventListener('focus', refreshAfterReset);
+      window.removeEventListener('focus', refreshAfterRefill);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchUserData, sessionToken, userData?.next_free_daily_reset_at]);
+  }, [fetchUserData, sessionToken, userData?.next_free_credit_refill_at]);
 
   return (
     <AuthContext.Provider value={{

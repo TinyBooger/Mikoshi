@@ -234,6 +234,12 @@ export default function ChatPage() {
       free_daily_cap_reached: !!userData.free_daily_cap_reached,
       next_free_daily_reset_at: userData.next_free_daily_reset_at,
       free_daily_credit_cap: Number(userData.free_daily_credit_cap || 0),
+      free_credit_balance: userData.free_credit_balance ?? null,
+      free_credit_max_accumulation: Number(userData.free_credit_max_accumulation ?? userData.free_daily_credit_cap ?? 0),
+      free_credit_refill_amount: Number(userData.free_credit_refill_amount || 0),
+      free_credit_refill_interval_seconds: Number(userData.free_credit_refill_interval_seconds || 0),
+      next_free_credit_refill_at: userData.next_free_credit_refill_at ?? null,
+      free_credit_full: !!userData.free_credit_full,
       pro_monthly_credit_cap: Number(userData.pro_monthly_credit_cap || 0),
       reset_at: userData.credit_reset_at,
       is_limited: userData.credit_cap !== null,
@@ -244,6 +250,8 @@ export default function ChatPage() {
     userData?.daily_credit_usage,
     userData?.monthly_credit_usage,
     userData?.credit_reset_at,
+    userData?.free_credit_balance,
+    userData?.next_free_credit_refill_at,
   ]);
 
   // Scroll to bottom when the keyboard appears/disappears on mobile.

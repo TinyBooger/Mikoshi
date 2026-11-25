@@ -15,7 +15,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import ContentReportModal from '../components/ContentReportModal';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
-import { formatCompactTokenCount, formatCreditCount } from '../utils/creditDisplay';
+import CreditQuotaMeter, { WalletCreditValue } from '../components/CreditQuotaMeter.jsx';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -114,7 +114,6 @@ export default function ProfilePage() {
   const [personaSort, setPersonaSort] = useState(ENTITY_SORTS.RECENT);
   const [scenes, setScenes] = useState([]);
   const [likedScenes, setLikedScenes] = useState([]);
-  const [creditBarHovered, setCreditBarHovered] = useState(false);
   const [inviteData, setInviteData] = useState(null);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [invitationInput, setInvitationInput] = useState('');
@@ -1475,34 +1474,6 @@ export default function ProfilePage() {
   const formattedProExpireDate = displayUser?.pro_expire_date
     ? new Date(displayUser.pro_expire_date).toLocaleDateString(activeLocale)
     : null;
-  const tokenScope = displayUser?.credit_cap_scope;
-  const tokenUsed = Number(tokenScope === 'monthly'
-    ? (displayUser?.monthly_credit_usage)
-    : (displayUser?.daily_credit_usage)) || 0;
-  // Keep the displayed credit usage number to at most 2 decimals.
-  const tokenUsedRounded = Math.round(tokenUsed * 100) / 100;
-  const tokenCap = Number((displayUser?.credit_cap) || 0);
-  const tokenUsageValue = tokenCap > 0
-    ? `${formatCompactTokenCount(tokenUsedRounded)} / ${formatCompactTokenCount(tokenCap)}`
-    : formatCompactTokenCount(tokenUsedRounded);
-  const tokenProgressPercent = tokenCap > 0
-    ? Math.min(100, Math.max(0, (tokenUsed / tokenCap) * 100))
-    : 0;
-  const tokenProgressLabel = `${tokenProgressPercent.toFixed(1)}%`;
-  const nextTokenResetDate = displayUser?.credit_reset_at
-    ? new Date(displayUser.credit_reset_at)
-    : null;
-  const formattedNextTokenResetDate = nextTokenResetDate ? nextTokenResetDate.toLocaleDateString(activeLocale) : null;
-  const proExpireDateObj = displayUser?.pro_expire_date ? new Date(displayUser.pro_expire_date) : null;
-  const isProDueBeforeNextReset = Boolean(proExpireDateObj && nextTokenResetDate && proExpireDateObj <= nextTokenResetDate);
-  const creditBroke = Boolean(displayUser?.broke);
-  const tokenNoticeText = !isActivePro
-    ? '点数每日中午12:00重置'
-    : creditBroke
-    ? 'Pro月额度已用尽，已切换至每日免费点数（每日中午12:00重置）。'
-    : isProDueBeforeNextReset
-    ? `Pro会员将于 ${formattedProExpireDate} 到期，届时将按当前规则重置积分。`
-    : `下次积分重置时间：${formattedNextTokenResetDate}`;
 
   useEffect(() => {
     setShowProBenefits(false);
@@ -1897,167 +1868,74 @@ export default function ProfilePage() {
 
               {!isMobile && isOwnProfile && (
               <div style={{ marginTop: 12, width: '100%', maxWidth: 640 }}>
-                <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 6 }}>
-                  <span
-                    onMouseEnter={() => setCreditBarHovered(true)}
-                    onMouseLeave={() => setCreditBarHovered(false)}
-                    style={{ fontSize: '0.92rem', fontWeight: 700, color: '#5b2f9b', cursor: 'default' }}
-                  >
-                    {creditBarHovered ? tokenUsageValue : tokenProgressLabel}
-                  </span>
-                  <span style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 700 }}>
-                    {tokenNoticeText}
-                  </span>
-                </div>
-                <div
-                  onMouseEnter={() => setCreditBarHovered(true)}
-                  onMouseLeave={() => setCreditBarHovered(false)}
-                  style={{
-                    height: 10,
-                    borderRadius: 999,
-                    background: 'rgba(167, 139, 250, 0.16)',
-                    overflow: 'hidden',
-                  }}
-                >
+                <div className="rounded-4" style={{ background: '#fff', border: '1px solid #eef0f3', padding: '0.45rem 0.65rem' }}>
+                  <CreditQuotaMeter user={displayUser} style={{ marginBottom: 6 }} />
                   <div
-                    style={{
-                      width: `${tokenProgressPercent}%`,
-                      height: '100%',
-                      borderRadius: 999,
-                      background: 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%)',
-                      transition: 'width 0.25s ease',
-                    }}
-                  ></div>
-                </div>
-                {isOwnProfile && (
-                  <div
-                    style={{
-                      marginTop: 10,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 10,
-                      padding: '0.58rem 0.7rem',
-                      borderRadius: 12,
-                      background: 'rgba(115, 107, 146, 0.07)',
-                      border: '1px solid rgba(115, 107, 146, 0.12)',
-                    }}
+                    className="d-flex align-items-center justify-content-between mt-1"
+                    style={{ color: '#4f456c', fontSize: '0.82rem', fontWeight: 700 }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#4f456c', fontSize: '0.8rem', fontWeight: 700, minWidth: 0 }}>
-                      <i className="bi bi-wallet2" style={{ fontSize: '0.9rem', color: '#5b2f9b', flexShrink: 0 }} />
-                      <span style={{ whiteSpace: 'nowrap' }}>钱包余额</span>
-                      <span style={{ color: '#5b2f9b', marginLeft: 2, whiteSpace: 'nowrap' }}>{formatCreditCount(Number(displayUser?.purchased_credit_balance || 0))}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => window.open('/pro-upgrade', '_blank', 'noopener,noreferrer')}
-                      style={{
-                        border: 'none',
-                        borderRadius: 999,
-                        background: 'rgba(115, 107, 146, 0.12)',
-                        color: '#4f456c',
-                        padding: '0.38rem 0.7rem',
-                        fontSize: '0.78rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        whiteSpace: 'nowrap',
-                        transition: 'background 0.16s ease',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(115, 107, 146, 0.18)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(115, 107, 146, 0.12)'; }}
-                    >
-                      <i className="bi bi-wallet2" />
-                      <span>充值</span>
-                    </button>
+                    <span>钱包点数</span>
+                    <WalletCreditValue balance={Number(displayUser?.purchased_credit_balance || 0)} />
                   </div>
-                )}
+                  <button
+                    type="button"
+                    className="btn btn-sm w-100 mt-2"
+                    onClick={() => window.open('/pro-upgrade', '_blank', 'noopener,noreferrer')}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(115, 107, 146, 0.14)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(115, 107, 146, 0.07)'; }}
+                    style={{
+                      borderRadius: 8,
+                      background: 'rgba(115, 107, 146, 0.07)',
+                      color: '#4f456c',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      padding: '0.32rem 0.45rem',
+                      border: 'none',
+                      transition: 'background 0.16s ease',
+                    }}
+                  >
+                    <i className="bi bi-wallet2 me-1"></i>
+                    充值点数
+                  </button>
+                </div>
               </div>
               )}
             </div>
 
             {isMobile && isOwnProfile && (
               <div style={{ flex: '1 1 100%', width: '100%', marginTop: 2 }}>
-                <div style={{ width: '100%', maxWidth: '100%' }}>
-                  <div className="d-flex align-items-center justify-content-between" style={{ marginBottom: 6 }}>
-                    <span
-                      onMouseEnter={() => setCreditBarHovered(true)}
-                      onMouseLeave={() => setCreditBarHovered(false)}
-                      style={{ fontSize: '0.92rem', fontWeight: 700, color: '#5b2f9b', cursor: 'default' }}
-                    >
-                      {creditBarHovered ? tokenUsageValue : tokenProgressLabel}
-                    </span>
-                    <span style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 700 }}>
-                      {tokenNoticeText}
-                    </span>
-                  </div>
+                <div
+                  className="rounded-4"
+                  style={{ width: '100%', maxWidth: '100%', background: '#fff', border: '1px solid #eef0f3', padding: '0.45rem 0.65rem' }}
+                >
+                  <CreditQuotaMeter user={displayUser} style={{ marginBottom: 6 }} />
                   <div
-                    onMouseEnter={() => setCreditBarHovered(true)}
-                    onMouseLeave={() => setCreditBarHovered(false)}
+                    className="d-flex align-items-center justify-content-between mt-1"
+                    style={{ color: '#4f456c', fontSize: '0.82rem', fontWeight: 700 }}
+                  >
+                    <span>钱包点数</span>
+                    <WalletCreditValue balance={Number(displayUser?.purchased_credit_balance || 0)} />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm w-100 mt-2"
+                    onClick={() => window.open('/pro-upgrade', '_blank', 'noopener,noreferrer')}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(115, 107, 146, 0.14)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(115, 107, 146, 0.07)'; }}
                     style={{
-                      height: 10,
-                      borderRadius: 999,
-                      background: 'rgba(167, 139, 250, 0.16)',
-                      overflow: 'hidden',
+                      borderRadius: 8,
+                      background: 'rgba(115, 107, 146, 0.07)',
+                      color: '#4f456c',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      padding: '0.32rem 0.45rem',
+                      border: 'none',
+                      transition: 'background 0.16s ease',
                     }}
                   >
-                    <div
-                      style={{
-                        width: `${tokenProgressPercent}%`,
-                        height: '100%',
-                        borderRadius: 999,
-                        background: 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%)',
-                        transition: 'width 0.25s ease',
-                      }}
-                    ></div>
-                  </div>
-                  {isOwnProfile && (
-                    <div
-                      style={{
-                        marginTop: 10,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 10,
-                        padding: '0.58rem 0.7rem',
-                        borderRadius: 12,
-                        background: 'rgba(115, 107, 146, 0.07)',
-                        border: '1px solid rgba(115, 107, 146, 0.12)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#4f456c', fontSize: '0.8rem', fontWeight: 700, minWidth: 0 }}>
-                        <i className="bi bi-wallet2" style={{ fontSize: '0.9rem', color: '#5b2f9b', flexShrink: 0 }} />
-                        <span style={{ whiteSpace: 'nowrap' }}>钱包余额</span>
-                        <span style={{ color: '#5b2f9b', marginLeft: 2, whiteSpace: 'nowrap' }}>{formatCreditCount(Number(displayUser?.purchased_credit_balance || 0))}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => window.open('/pro-upgrade', '_blank', 'noopener,noreferrer')}
-                        style={{
-                          border: 'none',
-                          borderRadius: 999,
-                          background: 'rgba(115, 107, 146, 0.12)',
-                          color: '#4f456c',
-                          padding: '0.38rem 0.7rem',
-                          fontSize: '0.78rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          whiteSpace: 'nowrap',
-                          transition: 'background 0.16s ease',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(115, 107, 146, 0.18)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(115, 107, 146, 0.12)'; }}
-                      >
-                        <i className="bi bi-wallet2" />
-                        <span>充值</span>
-                      </button>
-                    </div>
-                  )}
+                    <i className="bi bi-wallet2 me-1"></i>
+                    充值点数
+                  </button>
                 </div>
               </div>
             )}
